@@ -4,65 +4,56 @@
 import type { CanonicalSignal } from "../types/signal";
 import type { SignalSummary, SignalDeployment, SignalPricingOption } from "../types/api";
 
-const DATA_PROVIDER = "AdCP Signals Adaptor - Demo Provider (Evgeny)";
-const TOTAL_ADDRESSABLE = 240_000_000; // US adult internet baseline
+const DATA_PROVIDER = "AdCP Signals Adaptor - Demo Provider (Evegny)";
+const TOTAL_ADDRESSABLE = 240_000_000;
 
-// Maps internal destination IDs to spec deployment objects
-const DESTINATION_PLATFORM_MAP: Record<string, { name: string; activationSupported: boolean }> = {
-  mock_dsp:         { name: "Mock DSP",                 activationSupported: true },
-  mock_cleanroom:   { name: "Mock Clean Room",           activationSupported: true },
-  mock_cdp:         { name: "Mock CDP",                  activationSupported: true },
-  mock_measurement: { name: "Mock Measurement Platform", activationSupported: false },
+const DESTINATION_PLATFORM_MAP: Record<string, { activationSupported: boolean }> = {
+  mock_dsp:         { activationSupported: true },
+  mock_cleanroom:   { activationSupported: true },
+  mock_cdp:         { activationSupported: true },
+  mock_measurement: { activationSupported: false },
 };
 
 export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
-  // coverage_percentage: audience size as % of total addressable, capped at 99
   const coveragePct = signal.estimatedAudienceSize
     ? Math.min(99, Math.round((signal.estimatedAudienceSize / TOTAL_ADDRESSABLE) * 100 * 10) / 10)
     : 0;
 
-  // signal_type: dynamic = "custom", seeded catalog = "marketplace"
   const signalType: SignalSummary["signal_type"] =
-    signal.generationMode === "dynamic"
-      ? "custom"
-      : signal.generationMode === "derived"
-      ? "marketplace"
-      : "marketplace";
+    signal.generationMode === "dynamic" ? "custom" : "marketplace";
 
-  // Build deployments array from destinations
+  // Spec: discriminated union with type: "platform", field name is "platform" not "decisioning_platform"
   const deployments: SignalDeployment[] = signal.destinations.map((dest) => {
-    const platform = DESTINATION_PLATFORM_MAP[dest] ?? {
-      name: dest,
-      activationSupported: true,
-    };
+    const platform = DESTINATION_PLATFORM_MAP[dest] ?? { activationSupported: true };
     return {
-      decisioning_platform: dest,
+      type: "platform",
+      platform: dest,
       is_live: signal.status === "available",
       decisioning_platform_segment_id: `${dest}_${signal.signalId}`,
       activation_supported: platform.activationSupported,
     };
   });
 
-  // pricing_options array — map single pricing to array format
+  // Spec: pricing_option_id required, field is "cpm" not "value" for CPM model
   const pricingOptions: SignalPricingOption[] = signal.pricing
     ? [
         {
-          model: signal.pricing.model === "mock_cpm"
-            ? "cpm"
-            : signal.pricing.model === "mock_flat"
-            ? "flat"
-            : "none",
-          ...(signal.pricing.value !== undefined ? { value: signal.pricing.value } : {}),
+          pricing_option_id: `opt-${signal.pricing.model}-${signal.signalId}`.slice(0, 64),
+          model: signal.pricing.model === "mock_cpm" ? "cpm"
+               : signal.pricing.model === "mock_flat" ? "flat_fee"
+               : "none",
+          ...(signal.pricing.model === "mock_cpm" && signal.pricing.value !== undefined
+            ? { cpm: signal.pricing.value }
+            : {}),
+          ...(signal.pricing.model === "mock_flat" && signal.pricing.value !== undefined
+            ? { amount: signal.pricing.value }
+            : {}),
           ...(signal.pricing.currency ? { currency: signal.pricing.currency } : {}),
-          description: signal.pricing.model === "mock_cpm"
-            ? `$${signal.pricing.value} CPM (demo rate)`
-            : "Demo pricing",
         },
       ]
-    : [{ model: "none", description: "No pricing configured" }];
+    : [{ pricing_option_id: `opt-none-${signal.signalId}`.slice(0, 64), model: "none" }];
 
   return {
-    // AdCP spec required
     signal_agent_segment_id: signal.signalId,
     name: signal.name,
     description: signal.description,
@@ -72,20 +63,15 @@ export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
     deployments,
     pricing_options: pricingOptions,
 
-    // Extended metadata
     category_type: signal.categoryType,
     taxonomy_system: signal.taxonomySystem,
-    ...(signal.externalTaxonomyId
-      ? { external_taxonomy_id: signal.externalTaxonomyId }
-      : {}),
+    ...(signal.externalTaxonomyId ? { external_taxonomy_id: signal.externalTaxonomyId } : {}),
     generation_mode: signal.generationMode,
     ...(signal.estimatedAudienceSize !== undefined
       ? { estimated_audience_size: signal.estimatedAudienceSize }
       : {}),
     ...(signal.geography ? { geography: signal.geography } : {}),
     status: signal.status,
-
-    // Internal ID kept for activation compatibility
     signalId: signal.signalId,
   };
 }

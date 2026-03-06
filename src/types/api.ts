@@ -79,18 +79,23 @@ export interface SignalSummary {
   signalId: string;
 }
 
+// Spec: discriminated union - type "platform" or "agent"
 export interface SignalDeployment {
-  decisioning_platform: string;
+  type: "platform" | "agent";
+  platform?: string;           // present when type = "platform"
+  agent_url?: string;          // present when type = "agent"
   is_live: boolean;
   decisioning_platform_segment_id: string;
   activation_supported: boolean;
 }
 
 export interface SignalPricingOption {
-  model: "cpm" | "revenue_share" | "flat" | "none";
-  value?: number;
+  pricing_option_id: string;   // required by spec
+  model: "cpm" | "percent_of_media" | "flat_fee" | "none";
+  cpm?: number;                // used when model = "cpm"
+  percent?: number;            // used when model = "percent_of_media"
+  amount?: number;             // used when model = "flat_fee"
   currency?: string;
-  description?: string;
 }
 
 // ── Activation ────────────────────────────────────────────────────────────────

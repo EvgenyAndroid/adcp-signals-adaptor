@@ -1,0 +1,26 @@
+{
+  "name": "adcp-signals-adaptor",
+  "version": "1.0.0",
+  "description": "AdCP Signals Adaptor Agent - Demo Provider for agentic advertising workflows",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit",
+    "db:migrate": "wrangler d1 migrations apply adcp-signals-db",
+    "db:seed": "wrangler d1 execute adcp-signals-db --file=./migrations/seed.sql",
+    "lint": "eslint src --ext .ts"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241022.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "wrangler": "^3.85.0"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  }
+}

@@ -1,0 +1,31 @@
+city,state,metro_tier,region,estimated_population
+New York,NY,top_10,northeast,8336817
+Los Angeles,CA,top_10,west,3979576
+Chicago,IL,top_10,midwest,2693976
+Houston,TX,top_10,south,2304580
+Phoenix,AZ,top_10,west,1608139
+Philadelphia,PA,top_10,northeast,1603797
+San Antonio,TX,top_10,south,1434625
+San Diego,CA,top_10,west,1386932
+Dallas,TX,top_10,south,1304379
+San Jose,CA,top_10,west,1013240
+Austin,TX,top_25,south,961855
+Jacksonville,FL,top_25,south,949611
+Fort Worth,TX,top_25,south,918915
+Columbus,OH,top_25,midwest,905748
+Charlotte,NC,top_25,south,874579
+Indianapolis,IN,top_25,midwest,867125
+San Francisco,CA,top_25,west,881549
+Seattle,WA,top_25,west,737255
+Denver,CO,top_25,west,727211
+Washington,DC,top_25,northeast,689545
+Nashville,TN,top_50,south,689447
+Oklahoma City,OK,top_50,south,681054
+El Paso,TX,top_50,south,678815
+Boston,MA,top_50,northeast,675647
+Las Vegas,NV,top_50,west,641903
+Portland,OR,top_50,west,652503
+Memphis,TN,top_50,south,633104
+Louisville,KY,top_50,south,620118
+Baltimore,MD,top_50,northeast,585708
+Milwaukee,WI,top_50,midwest,577222

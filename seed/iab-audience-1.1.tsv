@@ -1,0 +1,48 @@
+Unique ID	Parent ID	Name	Tier 1	Tier 2	Tier 3	Extension
+1		Demographic		
+2	1	Age	Demographic	Age	
+3	2	18-24	Demographic	Age	18-24
+4	2	25-34	Demographic	Age	25-34
+5	2	35-44	Demographic	Age	35-44
+6	2	45-54	Demographic	Age	45-54
+7	2	55-64	Demographic	Age	55-64
+8	2	65+	Demographic	Age	65+
+9	1	Education	Demographic	Education	
+10	9	College Educated	Demographic	Education	College Educated
+11	9	Graduate Educated	Demographic	Education	Graduate Educated
+12	9	High School	Demographic	Education	High School
+13	1	Household Income	Demographic	Household Income	
+14	13	Under $50,000	Demographic	Household Income	Under $50,000
+15	13	$50,000-$100,000	Demographic	Household Income	$50,000-$100,000
+16	13	$100,000-$150,000	Demographic	Household Income	$100,000-$150,000
+17	13	Over $150,000	Demographic	Household Income	Over $150,000
+18	1	Household Composition	Demographic	Household Composition	
+19	18	Single Adult	Demographic	Household Composition	Single Adult
+20	18	Family with Children	Demographic	Household Composition	Family with Children
+21	18	Couple No Children	Demographic	Household Composition	Couple No Children
+22	18	Senior Household	Demographic	Household Composition	Senior Household
+100		Interests & Hobbies		
+101	100	Entertainment	Interests & Hobbies	Entertainment	
+102	101	Movies	Interests & Hobbies	Entertainment	Movies
+103	102	Action & Adventure	Interests & Hobbies	Entertainment	Action & Adventure
+104	102	Science Fiction & Fantasy	Interests & Hobbies	Entertainment	Science Fiction & Fantasy
+105	102	Drama	Interests & Hobbies	Entertainment	Drama
+106	102	Comedy	Interests & Hobbies	Entertainment	Comedy
+107	102	Documentary	Interests & Hobbies	Entertainment	Documentary
+108	101	Television	Interests & Hobbies	Entertainment	Television
+109	108	Streaming TV	Interests & Hobbies	Entertainment	Streaming TV
+110	101	Music	Interests & Hobbies	Entertainment	Music
+200		Purchase Behavior		
+201	200	Technology Buyers	Purchase Behavior	Technology	
+202	200	Streaming Service Subscribers	Purchase Behavior	Streaming	
+203	200	Premium Content Buyers	Purchase Behavior	Premium Content	
+300		Geographic		
+301	300	Urban	Geographic	Urban	
+302	300	Suburban	Geographic	Suburban	
+303	300	Top 10 Metro	Geographic	Metro	Top 10
+304	300	Top 25 Metro	Geographic	Metro	Top 25
+305	300	Top 50 Metro	Geographic	Metro	Top 50
+400		Professional		
+401	400	Business Decision Makers	Professional	Business	
+402	400	IT Decision Makers	Professional	Technology	
+403	400	Marketing Professionals	Professional	Marketing	

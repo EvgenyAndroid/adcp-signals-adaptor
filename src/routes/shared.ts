@@ -1,0 +1,46 @@
+// src/routes/shared.ts
+// Shared HTTP helpers for route handlers.
+
+import type { ApiError } from "../types/api";
+
+export function jsonResponse(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "X-AdCP-Provider": "adcp-signals-adaptor-demo",
+      "X-AdCP-Version": "3.0-rc",
+    },
+  });
+}
+
+export function errorResponse(
+  code: string,
+  message: string,
+  status: number,
+  details?: unknown
+): Response {
+  const body: ApiError = {
+    error: message,
+    code,
+    ...(details !== undefined ? { details } : {}),
+  };
+  return jsonResponse(body, status);
+}
+
+export async function parseJsonBody<T>(request: Request): Promise<T | null> {
+  try {
+    return (await request.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+export function requireAuth(request: Request, expectedKey: string): boolean {
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader) return false;
+
+  // Support both "Bearer <key>" and "ApiKey <key>"
+  const match = authHeader.match(/^(?:Bearer|ApiKey)\s+(.+)$/i);
+  return match !== null && match[1] === expectedKey;
+}

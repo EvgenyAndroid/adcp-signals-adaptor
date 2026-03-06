@@ -251,10 +251,25 @@ async function callActivateSignal(
   env: Env,
   logger: Logger
 ): Promise<unknown> {
+  // AdCP spec sends deployments as an array: [{ type: "platform", platform: "mock_dsp" }]
+  // Extract the first platform value from deployments, fall back to legacy destination field
+  let destination: string | undefined;
+  if (Array.isArray(args["deployments"]) && args["deployments"].length > 0) {
+    const first = args["deployments"][0] as Record<string, unknown>;
+    destination = first["platform"] as string ?? first["agent_url"] as string;
+  } else {
+    destination = (args["destination"] ?? args["destinations"]) as string | undefined;
+  }
+
+  if (!destination) {
+    throw new McpToolError(
+      "Missing required field: deployments (array with at least one { type: \"platform\", platform: \"<id>\" })"
+    );
+  }
+
   const req = {
-    // Accept both AdCP spec name and legacy alias
     signalId: (args["signal_agent_segment_id"] ?? args["signalId"]) as string,
-    destination: args["destination"] as string,
+    destination: destination,
     accountId: args["accountId"] as string | undefined,
     campaignId: args["campaignId"] as string | undefined,
     notes: args["notes"] as string | undefined,

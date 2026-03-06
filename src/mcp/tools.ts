@@ -91,10 +91,25 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
             "The signal to activate. Use the signal_agent_segment_id returned by get_signals. " +
             "Example: 'sig_high_income_households'",
         },
-        destination: {
-          type: "string",
-          enum: ["mock_dsp", "mock_cleanroom", "mock_cdp", "mock_measurement"],
-          description: "The destination platform to activate the signal on.",
+        deployments: {
+          type: "array",
+          description: "The platforms to activate the signal on.",
+          items: {
+            type: "object",
+            properties: {
+              type: {
+                type: "string",
+                enum: ["platform", "agent"],
+                description: "Deployment type.",
+              },
+              platform: {
+                type: "string",
+                enum: ["mock_dsp", "mock_cleanroom", "mock_cdp", "mock_measurement"],
+                description: "Platform ID (when type is platform).",
+              },
+            },
+            required: ["type", "platform"],
+          },
         },
         accountId: {
           type: "string",
@@ -109,7 +124,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
           description: "Optional notes about this activation.",
         },
       },
-      required: ["signal_agent_segment_id", "destination"],
+      required: ["signal_agent_segment_id", "deployments"],
     },
   },
 

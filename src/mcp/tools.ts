@@ -119,6 +119,10 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
           type: "string",
           description: "Optional campaign ID to associate this activation with.",
         },
+        pricing_option_id: {
+          type: "string",
+          description: "The pricing_option_id from the signal's pricing_options array to use for this activation.",
+        },
         notes: {
           type: "string",
           description: "Optional notes about this activation.",

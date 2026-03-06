@@ -251,27 +251,50 @@ async function callActivateSignal(
   env: Env,
   logger: Logger
 ): Promise<unknown> {
-  // AdCP client sends destinations array: [{ type: "platform", platform: "mock_dsp" }]
-  // Also handle deployments and legacy destination field names
+  // Normalize all destination variants the spec or test runners may send:
+  //   destinations: [{ type, platform, account_id }]  — spec array (plural)
+  //   deployments:  [{ type, platform }]               — our MCP schema
+  //   destination:  { platform, account_id }           — singular object (test runner)
+  //   destination:  "mock_dsp"                         — legacy string
   let destination: string | undefined;
-  const depArray = (args["destinations"] ?? args["deployments"]) as unknown[] | undefined;
-  if (Array.isArray(depArray) && depArray.length > 0) {
-    const first = depArray[0] as Record<string, unknown>;
-    destination = first["platform"] as string ?? first["agent_url"] as string;
-  } else {
-    destination = args["destination"] as string | undefined;
+  let accountId: string | undefined;
+
+  const raw = args["destinations"] ?? args["deployments"] ?? args["destination"];
+
+  if (Array.isArray(raw) && raw.length > 0) {
+    const first = raw[0] as Record<string, unknown>;
+    destination = (first["platform"] ?? first["agent_url"]) as string | undefined;
+    accountId = first["account_id"] as string | undefined;
+  } else if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const obj = raw as Record<string, unknown>;
+    destination = (obj["platform"] ?? obj["agent_url"]) as string | undefined;
+    accountId = obj["account_id"] as string | undefined;
+  } else if (typeof raw === "string") {
+    destination = raw;
   }
 
   if (!destination) {
     throw new McpToolError(
-      "Missing required field: deployments (array with at least one { type: \"platform\", platform: \"<id>\" })"
+      "Missing required field: destinations (array with { type: \"platform\", platform: \"<id>\" })"
     );
   }
 
+  // Map any external platform names to our internal destination IDs
+  const PLATFORM_MAP: Record<string, string> = {
+    "mock_dsp": "mock_dsp", "mock_cleanroom": "mock_cleanroom",
+    "mock_cdp": "mock_cdp", "mock_measurement": "mock_measurement",
+    "trade-desk": "mock_dsp", "the-trade-desk": "mock_dsp", "ttd": "mock_dsp",
+    "dv360": "mock_dsp", "xandr": "mock_dsp", "pubmatic": "mock_dsp",
+    "index-exchange": "mock_dsp", "liveramp": "mock_cleanroom",
+  };
+  const resolvedDestination = PLATFORM_MAP[destination.toLowerCase()] ?? "mock_dsp";
+
+  const signalId = (args["signal_agent_segment_id"] ?? args["signalId"]) as string;
+
   const req = {
-    signalId: (args["signal_agent_segment_id"] ?? args["signalId"]) as string,
-    destination: destination,
-    accountId: args["accountId"] as string | undefined,
+    signalId,
+    destination: resolvedDestination,
+    accountId: (args["accountId"] ?? accountId) as string | undefined,
     campaignId: args["campaignId"] as string | undefined,
     notes: args["notes"] as string | undefined,
   };
@@ -284,7 +307,30 @@ async function callActivateSignal(
   try {
     const db = getDb(env);
     const result = await activateSignalService(db, req, logger);
-    return toolResult(JSON.stringify(result, null, 2));
+    const platformSegmentId = `${resolvedDestination}_${signalId}`;
+
+    // Spec-compliant response: deployments array with activation_key object
+    const specResponse = {
+      signal_agent_segment_id: signalId,
+      status: result.status,
+      deployments: [
+        {
+          type: "platform",
+          platform: destination,
+          ...(req.accountId ? { account: req.accountId } : {}),
+          activation_key: {
+            type: "segment_id",
+            segment_id: platformSegmentId,
+          },
+          estimated_activation_duration_minutes: 0,
+          deployment_status: "active",
+          decisioning_platform_segment_id: platformSegmentId,
+        },
+      ],
+      operationId: result.operationId,
+    };
+
+    return toolResult(JSON.stringify(specResponse, null, 2));
   } catch (err) {
     if (err instanceof NotFoundError || err instanceof ValidationError) {
       throw new McpToolError(err.message);

@@ -346,13 +346,14 @@ async function callActivateSignal(
     });
 
     const specResponse = {
-      context_id: `ctx_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
       deployments: responseDeployments,
-      // Extended fields
-      signal_agent_segment_id: signalId,
-      status: result.status,
-      operationId: result.operationId,
-      ...(pricingOptionId ? { pricing_option_id: pricingOptionId } : {}),
+      context: {
+        context_id: `ctx_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+        signal_agent_segment_id: signalId,
+        status: result.status,
+        operationId: result.operationId,
+        ...(pricingOptionId ? { pricing_option_id: pricingOptionId } : {}),
+      },
     };
 
     return toolResult(JSON.stringify(specResponse, null, 2));

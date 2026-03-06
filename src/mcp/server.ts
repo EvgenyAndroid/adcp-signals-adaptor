@@ -252,7 +252,8 @@ async function callActivateSignal(
   logger: Logger
 ): Promise<unknown> {
   const req = {
-    signalId: args["signalId"] as string,
+    // Accept both AdCP spec name and legacy alias
+    signalId: (args["signal_agent_segment_id"] ?? args["signalId"]) as string,
     destination: args["destination"] as string,
     accountId: args["accountId"] as string | undefined,
     campaignId: args["campaignId"] as string | undefined,

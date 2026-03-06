@@ -85,10 +85,10 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
-        signalId: {
+        signal_agent_segment_id: {
           type: "string",
           description:
-            "The signal ID to activate. Must be a valid signal from get_signals. " +
+            "The signal to activate. Use the signal_agent_segment_id returned by get_signals. " +
             "Example: 'sig_high_income_households'",
         },
         destination: {
@@ -109,7 +109,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
           description: "Optional notes about this activation.",
         },
       },
-      required: ["signalId", "destination"],
+      required: ["signal_agent_segment_id", "destination"],
     },
   },
 

@@ -1,53 +1,54 @@
 // src/domain/capabilityService.ts
 
-import type { Env } from "../types/env";
-
-const CACHE_KEY = "adcp_capabilities_v2";
+const CACHE_KEY = "adcp_capabilities_v3";
 const CACHE_TTL_SECONDS = 3600;
 
 const STATIC_CAPABILITIES = {
-  agent_type: "signals",
-  protocol_version: "2.6",
-  provider: "AdCP Signals Adaptor - Demo Provider",
-  supported_tasks: ["get_signals", "activate_signal"],
-  signal_categories: [
-    "demographic",
-    "interest",
-    "purchase_intent",
-    "geo",
-    "composite",
-  ],
-  dynamic_segment_generation: true,
-  activation_mode: "async",
-  destinations: [
-    {
-      id: "mock_dsp",
-      name: "Mock DSP",
-      type: "dsp",
-      activation_supported: true,
+  adcp: {
+    major_versions: [2],
+  },
+  supported_protocols: ["signals"],
+  signals: {
+    signal_categories: [
+      "demographic",
+      "interest",
+      "purchase_intent",
+      "geo",
+      "composite",
+    ],
+    dynamic_segment_generation: true,
+    activation_mode: "async",
+    provider: "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+    destinations: [
+      {
+        id: "mock_dsp",
+        name: "Mock DSP",
+        type: "dsp",
+        activation_supported: true,
+      },
+      {
+        id: "mock_cleanroom",
+        name: "Mock Clean Room",
+        type: "cleanroom",
+        activation_supported: true,
+      },
+      {
+        id: "mock_cdp",
+        name: "Mock CDP",
+        type: "cdp",
+        activation_supported: true,
+      },
+      {
+        id: "mock_measurement",
+        name: "Mock Measurement Platform",
+        type: "measurement",
+        activation_supported: false,
+      },
+    ],
+    limits: {
+      max_signals_per_request: 100,
+      max_rules_per_segment: 6,
     },
-    {
-      id: "mock_cleanroom",
-      name: "Mock Clean Room",
-      type: "cleanroom",
-      activation_supported: true,
-    },
-    {
-      id: "mock_cdp",
-      name: "Mock CDP",
-      type: "cdp",
-      activation_supported: true,
-    },
-    {
-      id: "mock_measurement",
-      name: "Mock Measurement Platform",
-      type: "measurement",
-      activation_supported: false,
-    },
-  ],
-  limits: {
-    max_signals_per_request: 100,
-    max_rules_per_segment: 6,
   },
 };
 

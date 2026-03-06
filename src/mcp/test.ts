@@ -31,7 +31,7 @@ describe("MCP tool definitions", () => {
 
   it("activate_signal requires signalId and destination", () => {
     const tool = getToolByName("activate_signal")!;
-    expect(tool.inputSchema.required).toContain("signalId");
+    expect(tool.inputSchema.required).toContain("signal_agent_segment_id");
     expect(tool.inputSchema.required).toContain("destination");
   });
 

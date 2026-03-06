@@ -13,7 +13,7 @@ import { toSignalSummary, toSignalSummaries } from "../mappers/signalMapper";
 import { validateRules, generateSegment } from "./ruleEngine";
 import type { ResolvedRule } from "../types/rule";
 import type { RuleDimension, RuleOperator } from "../types/signal";
-import { operationId } from "../utils/ids";
+import { requestId } from "../utils/ids";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -36,12 +36,21 @@ export async function searchSignalsService(
     offset,
   });
 
+  const summaries = toSignalSummaries(signals);
+  const filterDesc = req.query
+    ? `matching "${req.query}"`
+    : req.categoryType
+    ? `in category "${req.categoryType}"`
+    : "from catalog";
+
   return {
-    signals: toSignalSummaries(signals),
-    count: signals.length,
+    message: `Found ${summaries.length} signal(s) ${filterDesc}. Review pricing and deployment status before activating.`,
+    context_id: requestId(),
+    signals: summaries,
+    count: summaries.length,
     totalCount,
     offset,
-    hasMore: offset + signals.length < totalCount,
+    hasMore: offset + summaries.length < totalCount,
   };
 }
 
@@ -56,7 +65,6 @@ export async function generateSignalService(
   db: DB,
   req: GenerateSignalRequest
 ): Promise<GenerateSignalResponse> {
-  // Map request rules to resolved rules (basic type coercion)
   const resolvedRules: ResolvedRule[] = req.rules.map((r) => ({
     dimension: r.dimension as RuleDimension,
     operator: r.operator as RuleOperator,
@@ -72,7 +80,6 @@ export async function generateSignalService(
 
   const now = new Date().toISOString();
 
-  // Persist the dynamic signal for later retrieval
   const signal: CanonicalSignal = {
     signalId: result.signalId,
     taxonomySystem: "iab_audience_1_1",

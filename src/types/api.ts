@@ -1,7 +1,7 @@
 // src/types/api.ts
-// AdCP-aligned HTTP request/response shapes
+// AdCP spec-compliant HTTP request/response shapes
 
-import type { SignalCategoryType, GenerationMode, CanonicalSignal } from "./signal";
+import type { SignalCategoryType, GenerationMode } from "./signal";
 
 // ── Capabilities ──────────────────────────────────────────────────────────────
 
@@ -45,6 +45,8 @@ export interface SearchSignalsRequest {
 }
 
 export interface SearchSignalsResponse {
+  message: string;
+  context_id: string;
   signals: SignalSummary[];
   count: number;
   totalCount: number;
@@ -52,24 +54,43 @@ export interface SearchSignalsResponse {
   hasMore: boolean;
 }
 
+// AdCP Signals spec-compliant signal object
 export interface SignalSummary {
-  signalId: string;
+  // AdCP spec required fields
+  signal_agent_segment_id: string;
   name: string;
   description: string;
-  categoryType: SignalCategoryType;
-  taxonomySystem: string;
-  externalTaxonomyId?: string;
-  generationMode: GenerationMode;
-  activationSupported: boolean;
-  estimatedAudienceSize?: number;
-  destinations: string[];
+  signal_type: "marketplace" | "custom" | "owned";
+  data_provider: string;
+  coverage_percentage: number;
+  deployments: SignalDeployment[];
+  pricing_options: SignalPricingOption[];
+
+  // Extended metadata
+  category_type: SignalCategoryType;
+  taxonomy_system: string;
+  external_taxonomy_id?: string;
+  generation_mode: GenerationMode;
+  estimated_audience_size?: number;
   geography?: string[];
-  pricing?: {
-    model: string;
-    value?: number;
-    currency?: string;
-  };
   status: string;
+
+  // Internal ID kept for activation flow compatibility
+  signalId: string;
+}
+
+export interface SignalDeployment {
+  decisioning_platform: string;
+  is_live: boolean;
+  decisioning_platform_segment_id: string;
+  activation_supported: boolean;
+}
+
+export interface SignalPricingOption {
+  model: "cpm" | "revenue_share" | "flat" | "none";
+  value?: number;
+  currency?: string;
+  description?: string;
 }
 
 // ── Activation ────────────────────────────────────────────────────────────────
@@ -86,7 +107,9 @@ export interface ActivateSignalResponse {
   operationId: string;
   status: OperationStatus;
   signalId: string;
+  signal_agent_segment_id: string;
   destination: string;
+  decisioning_platform_segment_id: string;
   submittedAt: string;
   estimatedCompletionMs: number;
 }
@@ -136,6 +159,8 @@ export interface GetOperationResponse {
   operationId: string;
   status: OperationStatus;
   signalId: string;
+  signal_agent_segment_id: string;
+  decisioning_platform_segment_id: string;
   destination: string;
   submittedAt: string;
   updatedAt: string;

@@ -1,6 +1,10 @@
 // src/domain/activationService.ts
 
-import type { ActivateSignalRequest, ActivateSignalResponse, GetOperationResponse } from "../types/api";
+import type {
+  ActivateSignalRequest,
+  ActivateSignalResponse,
+  GetOperationResponse,
+} from "../types/api";
 import type { DB } from "../storage/db";
 import {
   createActivationJob,
@@ -12,8 +16,6 @@ import { toSignalSummary } from "../mappers/signalMapper";
 import { operationId } from "../utils/ids";
 import type { Logger } from "../utils/logger";
 
-// Simulated activation completes after ~2 seconds in a real Worker timer.
-// For demo purposes, operations will transition via status polling.
 const DEMO_COMPLETION_MS = 3000;
 
 export async function activateSignalService(
@@ -21,7 +23,6 @@ export async function activateSignalService(
   req: ActivateSignalRequest,
   logger: Logger
 ): Promise<ActivateSignalResponse> {
-  // Verify signal exists and activation is supported
   const signal = await findSignalById(db, req.signalId);
   if (!signal) {
     throw new NotFoundError(`Signal not found: ${req.signalId}`);
@@ -37,6 +38,8 @@ export async function activateSignalService(
 
   const opId = operationId();
   const now = new Date().toISOString();
+  // The platform-specific segment ID that would be used in campaign targeting
+  const platformSegmentId = `${req.destination}_${req.signalId}`;
 
   await createActivationJob(db, {
     operationId: opId,
@@ -53,12 +56,7 @@ export async function activateSignalService(
     destination: req.destination,
   });
 
-  // Immediately transition to "processing" to simulate async lifecycle
-  // In production this would be a real queue/worker
   await updateJobStatus(db, opId, "processing");
-
-  // Deterministically complete or fail based on demo logic
-  // Complete all requests in demo mode
   await updateJobStatus(db, opId, "completed");
 
   logger.info("activation_completed", { operationId: opId });
@@ -67,7 +65,9 @@ export async function activateSignalService(
     operationId: opId,
     status: "completed",
     signalId: req.signalId,
+    signal_agent_segment_id: req.signalId,
     destination: req.destination,
+    decisioning_platform_segment_id: platformSegmentId,
     submittedAt: now,
     estimatedCompletionMs: DEMO_COMPLETION_MS,
   };
@@ -82,13 +82,15 @@ export async function getOperationService(
     throw new NotFoundError(`Operation not found: ${opId}`);
   }
 
-  // Optionally enrich with signal summary
   const signal = await findSignalById(db, operation.signalId);
+  const platformSegmentId = `${operation.destination}_${operation.signalId}`;
 
   return {
     operationId: operation.operationId,
     status: operation.status,
     signalId: operation.signalId,
+    signal_agent_segment_id: operation.signalId,
+    decisioning_platform_segment_id: platformSegmentId,
     destination: operation.destination,
     submittedAt: operation.submittedAt,
     updatedAt: operation.updatedAt,

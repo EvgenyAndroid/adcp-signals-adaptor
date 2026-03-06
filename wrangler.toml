@@ -4,19 +4,9 @@ compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
-ENVIRONMENT = "development"
+ENVIRONMENT = "production"
 API_VERSION = "3.0-rc"
 DEMO_API_KEY = "demo-key-adcp-signals-v1"
-
-[[d1_databases]]
-binding = "DB"
-database_name = "adcp-signals-db"
-database_id = "placeholder-replace-with-real-id"
-
-[[kv_namespaces]]
-binding = "SIGNALS_CACHE"
-id = "placeholder-replace-with-real-kv-id"
-preview_id = "placeholder-replace-with-real-kv-preview-id"
 
 [dev]
 port = 8787

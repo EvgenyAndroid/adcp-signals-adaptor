@@ -2,55 +2,81 @@
 
 ## Design Philosophy
 
-This adaptor is intentionally a **thin orchestration layer**, not a data warehouse or a signal marketplace. The protocol surface (HTTP routes, future MCP tool wrappers) does minimal work — it validates inputs, calls domain services, and maps outputs. All business logic lives in the domain layer.
+Thin protocol-compliant orchestration layer. Routes validate and dispatch — all business logic lives in domain services. Both HTTP and MCP surfaces call the same domain functions with no duplication.
 
-## Key Separations
+## Layer Map
 
-### Protocol ↔ Domain
-Routes in `src/routes/` never import from `src/storage/` directly. They call `src/domain/` services, which own all D1 interaction. This means adding an MCP interface later is additive — new tool handlers call the same domain functions.
+```
+HTTP / MCP request
+       │
+       ▼
+src/index.ts          Router + auth + CORS + auto-seed
+       │
+       ├── src/routes/          HTTP handlers (validate → call domain → respond)
+       └── src/mcp/server.ts    JSON-RPC 2.0 dispatcher (tools/list, tools/call)
+                │
+                ▼
+       src/domain/              All business logic
+         signalService.ts       search, generate, destinations filter
+         activationService.ts   activate, get operation status
+         capabilityService.ts   capabilities (KV-cached 1hr)
+         ruleEngine.ts          rule validation + segment generation
+         signalModel.ts         seeded + derived signal catalog (33 signals)
+         seedPipeline.ts        D1 ingestion (runs once, idempotent)
+                │
+                ├── src/connectors/    Raw data parsers (no protocol knowledge)
+                ├── src/mappers/       Canonical model → AdCP response shape
+                └── src/storage/      D1 queries (signalRepo, activationRepo)
+```
 
-### Domain ↔ Data
-Domain services don't know what format raw data came in. Connectors (`src/connectors/`) do all parsing and output clean intermediate types. Domain services consume those types. Swapping a CSV for a real API call only requires touching the connector.
+## AdCP Protocol Compliance (v2.6)
 
-### Taxonomy as Metadata
-IAB Taxonomy nodes are **classification handles**, not commercial audience segments. A taxonomy node like "Science Fiction & Fantasy (IAB-104)" tells you *how to classify* a segment. The `CanonicalSignal` wraps that with operational context: pricing, destinations, freshness, activation status. This is intentional — the taxonomy is a stable public reference, not a vendor construct.
+### Capabilities response
+```
+adcp.major_versions + supported_protocols + signals{} envelope
+```
 
-### Dynamic vs. Seeded
-`generationMode` is a first-class signal attribute because buyers and downstream systems need to know whether a segment is a stable catalog entry (`seeded`), a pre-built combination (`derived`), or freshly synthesized from rules (`dynamic`). Freshly generated signals have a 4.0 CPM floor (vs 2.5 for seeded) and a `7d` freshness indicator.
+### Signal object (get_signals)
+Required fields: `signal_agent_segment_id`, `signal_type`, `data_provider`, `coverage_percentage`, `deployments[]`, `pricing_options[]`
 
-## Storage Strategy
+Deployment objects use discriminated union: `type: "platform"` or `type: "agent"`. When `is_live: true`, `activation_key: { type: "segment_id", segment_id }` is included.
 
-**D1** handles all durable state: the taxonomy tree, signal catalog, activation jobs, and audit events. D1's SQLite semantics make it easy to add JOIN-based queries later without schema migration pain.
+Pricing uses `pricing_options` array with `pricing_option_id`, `pricing_model`, `cpm`, `currency`.
 
-**KV** is used only for the capabilities endpoint response, which is static per deployment and can be safely cached for 1 hour. Avoid putting signal data in KV — row-based querying requires D1.
+### Activation response (activate_signal)
+Top-level: `message`, `context_id`, `deployments[]` only. No status/operationId at top level.
 
-## Audience Size Estimation
+Deployment objects preserve input type — agent deployments return `agent_url` and `adcp_{signalId}` segment ID; platform deployments return `platform` and `{platform}_{signalId}` segment ID.
 
-The heuristic model uses **independent probability intersection** against a 240M US adult internet-connected baseline. This is conservative (assumes independence, which narrows too aggressively in practice) but produces plausible numbers for demo purposes. A `50K` floor prevents absurdly small numbers from highly specific multi-rule segments.
+Input normalization accepts all field name variants: `destinations[]`, `deployments[]`, `destination{}` (object), `destination` (string), plus external platform name mapping (trade-desk → mock_dsp, etc.).
 
-All estimates carry `methodology: "heuristic_demo"` and a human-readable `note` field. Production implementations would replace this with measured panel data or modeled population counts from the actual data provider.
+## Key Design Decisions
 
-## Activation Lifecycle
+**Taxonomy as metadata, not segments.** IAB taxonomy nodes are classification handles. `CanonicalSignal` wraps them with operational context (pricing, destinations, freshness, activation status).
 
-The current implementation completes activations synchronously (submitted → processing → completed in one request). This is appropriate for a demo. A real implementation would:
+**`coverage_percentage` derivation.** Computed as `(estimatedAudienceSize / 240M) * 100`, capped at 99. All estimates carry `heuristic_demo` methodology marker.
 
-1. Write `submitted` status to D1
-2. Enqueue to a Cloudflare Queue
-3. Return `submitted` to the caller
-4. Process asynchronously in a Queue Consumer Worker
-5. Update status to `completed` or `failed` with error message
-6. Optionally webhook the caller
+**`signal_type` classification.** `seeded` and `derived` → `"marketplace"`. `dynamic` (rule engine output) → `"custom"`. No `"owned"` type in this demo.
 
-The `activation_events` table is already designed for this — it's a chronological log of status transitions per operation, suitable for audit, billing, and debug.
+**Destinations filtering in get_signals.** When `destinations: [{ type: "platform", platform }]` is passed, each signal's deployments array is filtered to matching platforms only. Signals with zero matches are dropped. If only `type: "agent"` destinations are passed, filter is skipped (agent = the provider itself, supports all deployments).
 
-## Extensibility Checklist
+**KV for capabilities only.** Capabilities are static per deployment — KV cache avoids unnecessary D1 reads. All queryable data stays in D1.
 
-| Change | File(s) to Touch |
+**Auto-seed on first request.** `ctx.waitUntil()` runs seed pipeline in background. Idempotent — skips if signals already present. Force via `POST /seed`.
+
+**Platform name normalization.** External DSP names (trade-desk, ttd, dv360, index-exchange, liveramp) are mapped to internal destination IDs at the MCP layer. REST API still requires internal IDs.
+
+## Conformance Test Fixture
+
+`test-signal-001` is a stable fixture signal with a hardcoded ID (bypasses the `sig_` prefix convention) included specifically for AdCP conformance test runners that use static segment IDs rather than dynamic ones from `get_signals`.
+
+## Extensibility
+
+| Change | Touch |
 |---|---|
+| Add real data provider | `src/connectors/` + `src/domain/seedPipeline.ts` |
 | Add new signal category | `src/types/signal.ts`, `src/utils/estimation.ts`, `src/utils/validation.ts` |
-| Add new destination | `src/utils/validation.ts`, `src/domain/capabilityService.ts` |
-| Add new rule dimension | `src/domain/ruleEngine.ts`, `src/utils/estimation.ts`, `src/utils/validation.ts` |
-| Replace CSV seed with real API | `src/connectors/`, `src/domain/seedPipeline.ts` |
-| Add MCP tool surface | New `src/mcp/` directory, import domain services |
-| Add webhook for activation | `src/domain/activationService.ts`, new Queue Consumer |
-| Add per-account entitlements | `src/routes/shared.ts` (auth), `src/storage/signalRepo.ts` (access_policy filter) |
+| Add new destination | `src/utils/validation.ts`, `src/domain/capabilityService.ts`, `src/mcp/server.ts` PLATFORM_MAP |
+| Add MCP auth (API key per client) | `src/mcp/server.ts` handleInitialize |
+| Real async activation | Replace synchronous status updates in `activationService.ts` with Cloudflare Queue + Consumer Worker |
+| Add A2A transport | New `src/a2a/` directory, same domain services |

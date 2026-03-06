@@ -36,7 +36,26 @@ export async function searchSignalsService(
     offset,
   });
 
-  const summaries = toSignalSummaries(signals);
+  let summaries = toSignalSummaries(signals);
+
+  // Filter deployments by requested destinations array (spec: [{type, platform}])
+  const destFilter = (req as Record<string, unknown>)["destinations"] as Array<{type: string; platform?: string}> | undefined;
+  if (destFilter && Array.isArray(destFilter) && destFilter.length > 0) {
+    const requestedPlatforms = destFilter
+      .filter((d) => d.type === "platform" && d.platform)
+      .map((d) => d.platform as string);
+    if (requestedPlatforms.length > 0) {
+      summaries = summaries
+        .map((s) => ({
+          ...s,
+          deployments: s.deployments.filter((dep) =>
+            requestedPlatforms.includes(dep.platform ?? "")
+          ),
+        }))
+        .filter((s) => s.deployments.length > 0);
+    }
+  }
+
   const filterDesc = req.query
     ? `matching "${req.query}"`
     : req.categoryType

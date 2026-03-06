@@ -233,6 +233,8 @@ async function callGetSignals(
     taxonomyId: args["taxonomyId"] as string | undefined,
     limit: args["limit"] ? Number(args["limit"]) : 20,
     offset: args["offset"] ? Number(args["offset"]) : 0,
+    // Pass destinations array through for deployment filtering
+    destinations: args["destinations"] as Array<{type: string; platform?: string}> | undefined,
   };
 
   const validation = validateSearchRequest(req);

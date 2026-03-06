@@ -317,6 +317,7 @@ async function callActivateSignal(
         {
           type: "platform",
           platform: destination,
+          is_live: true,
           ...(req.accountId ? { account: req.accountId } : {}),
           activation_key: {
             type: "segment_id",

@@ -19,22 +19,27 @@ export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
     ? Math.min(99, Math.round((signal.estimatedAudienceSize / TOTAL_ADDRESSABLE) * 100 * 10) / 10)
     : 0;
 
-  const signalType: SignalSummary["signal_type"] =
+  // Spec uses catalog_type: marketplace | custom | owned
+  const catalogType: SignalSummary["catalog_type"] =
     signal.generationMode === "dynamic" ? "custom" : "marketplace";
 
-  // Spec: discriminated union with type: "platform", field name is "platform" not "decisioning_platform"
+  // Deployments: add activation_key when is_live = true (spec requirement)
   const deployments: SignalDeployment[] = signal.destinations.map((dest) => {
     const platform = DESTINATION_PLATFORM_MAP[dest] ?? { activationSupported: true };
+    const isLive = signal.status === "available";
+    const platformSegmentId = `${dest}_${signal.signalId}`;
     return {
       type: "platform",
       platform: dest,
-      is_live: signal.status === "available",
-      decisioning_platform_segment_id: `${dest}_${signal.signalId}`,
+      is_live: isLive,
+      decisioning_platform_segment_id: platformSegmentId,
       activation_supported: platform.activationSupported,
+      // Required by spec when is_live: true
+      ...(isLive ? { activation_key: platformSegmentId } : {}),
     };
   });
 
-  // Spec: pricing_option_id required, field is "cpm" not "value" for CPM model
+  // pricing_options with required pricing_option_id and cpm field
   const pricingOptions: SignalPricingOption[] = signal.pricing
     ? [
         {
@@ -51,18 +56,20 @@ export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
           ...(signal.pricing.currency ? { currency: signal.pricing.currency } : {}),
         },
       ]
-    : [{ pricing_option_id: `opt-none-${signal.signalId}`.slice(0, 64), model: "none" }];
+    : [{ pricing_option_id: `opt-none-${signal.signalId}`.slice(0, 64), model: "none" as const }];
 
   return {
+    // AdCP spec required
     signal_agent_segment_id: signal.signalId,
     name: signal.name,
     description: signal.description,
-    signal_type: signalType,
+    catalog_type: catalogType,          // spec field name (not signal_type)
     data_provider: DATA_PROVIDER,
     coverage_percentage: coveragePct,
     deployments,
     pricing_options: pricingOptions,
 
+    // Extended metadata
     category_type: signal.categoryType,
     taxonomy_system: signal.taxonomySystem,
     ...(signal.externalTaxonomyId ? { external_taxonomy_id: signal.externalTaxonomyId } : {}),
@@ -72,7 +79,7 @@ export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
       : {}),
     ...(signal.geography ? { geography: signal.geography } : {}),
     status: signal.status,
-    signalId: signal.signalId,
+    // signalId intentionally omitted — not in AdCP spec
   };
 }
 

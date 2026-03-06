@@ -60,7 +60,7 @@ export interface SignalSummary {
   signal_agent_segment_id: string;
   name: string;
   description: string;
-  signal_type: "marketplace" | "custom" | "owned";
+  catalog_type: "marketplace" | "custom" | "owned";
   data_provider: string;
   coverage_percentage: number;
   deployments: SignalDeployment[];
@@ -74,9 +74,6 @@ export interface SignalSummary {
   estimated_audience_size?: number;
   geography?: string[];
   status: string;
-
-  // Internal ID kept for activation flow compatibility
-  signalId: string;
 }
 
 // Spec: discriminated union - type "platform" or "agent"
@@ -87,6 +84,7 @@ export interface SignalDeployment {
   is_live: boolean;
   decisioning_platform_segment_id: string;
   activation_supported: boolean;
+  activation_key?: string;     // required by spec when is_live = true
 }
 
 export interface SignalPricingOption {

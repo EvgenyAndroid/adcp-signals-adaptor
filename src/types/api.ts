@@ -109,12 +109,17 @@ export interface ActivateSignalRequest {
 }
 
 export interface ActivateSignalResponse {
+  // AdCP spec required
+  signal_agent_segment_id: string;
+  deployment_status: "active" | "pending" | "failed";
+  activation_key: string;
+  platform: string;
+  decisioning_platform_segment_id: string;
+  // Extended
   operationId: string;
   status: OperationStatus;
   signalId: string;
-  signal_agent_segment_id: string;
   destination: string;
-  decisioning_platform_segment_id: string;
   submittedAt: string;
   estimatedCompletionMs: number;
 }
@@ -165,6 +170,9 @@ export interface GetOperationResponse {
   status: OperationStatus;
   signalId: string;
   signal_agent_segment_id: string;
+  deployment_status: "active" | "pending" | "failed";
+  activation_key: string;
+  platform: string;
   decisioning_platform_segment_id: string;
   destination: string;
   submittedAt: string;

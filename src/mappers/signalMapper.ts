@@ -4,7 +4,7 @@
 import type { CanonicalSignal } from "../types/signal";
 import type { SignalSummary, SignalDeployment, SignalPricingOption } from "../types/api";
 
-const DATA_PROVIDER = "AdCP Signals Adaptor - Demo Provider (Evegny)";
+const DATA_PROVIDER = "AdCP Signals Adaptor - Demo Provider (Evgeny)";
 const TOTAL_ADDRESSABLE = 240_000_000;
 
 const DESTINATION_PLATFORM_MAP: Record<string, { activationSupported: boolean }> = {

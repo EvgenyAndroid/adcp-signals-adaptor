@@ -71,6 +71,18 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
           type: "number",
           description: "Pagination offset. Default 0.",
         },
+        destinations: {
+          type: "array",
+          description: "Filter signals by deployment platform. Only returns signals available on these platforms.",
+          items: {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["platform", "agent"] },
+              platform: { type: "string" },
+            },
+            required: ["type"],
+          },
+        },
       },
     },
   },

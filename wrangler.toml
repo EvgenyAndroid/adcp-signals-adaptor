@@ -8,6 +8,15 @@ ENVIRONMENT = "production"
 API_VERSION = "3.0-rc"
 DEMO_API_KEY = "demo-key-adcp-signals-v1"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "adcp-signals-db"
+database_id = "70b0049e-7012-4c3a-8bd2-0f0a9c74d79c"
+
+[[kv_namespaces]]
+binding = "SIGNALS_CACHE"
+id = "YOUR_REAL_CACHE_KV_ID_HERE"
+
 [dev]
 port = 8787
 local_protocol = "http"

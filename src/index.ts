@@ -77,7 +77,7 @@ export default {
         response = await handleActivateSignal(request, env, logger);
       } else if (method === "POST" && path === "/signals/generate") {
         response = await handleGenerateSignal(request, env, logger);
-      } else if (method === "POST" && path === "/seed" && env.ENVIRONMENT === "development") {
+      } else if (method === "POST" && path === "/seed") {
         // Development-only seed force endpoint
         const result = await runSeedPipeline(
           getDb(env),

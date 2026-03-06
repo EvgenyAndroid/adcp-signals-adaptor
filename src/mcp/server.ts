@@ -327,11 +327,10 @@ async function callActivateSignal(
             segment_id: `adcp_${signalId}`,
           },
           estimated_activation_duration_minutes: 0,
-          deployment_status: "active",
         };
       } else {
         const platform = (dep["platform"] as string) ?? resolvedDestination;
-        const platformSegmentId = `mock_${platform}_${signalId}`;
+        const platformSegmentId = `${platform}_${signalId}`;
         return {
           type: "platform",
           platform,
@@ -342,7 +341,6 @@ async function callActivateSignal(
             segment_id: platformSegmentId,
           },
           estimated_activation_duration_minutes: 0,
-          deployment_status: "active",
           decisioning_platform_segment_id: platformSegmentId,
         };
       }

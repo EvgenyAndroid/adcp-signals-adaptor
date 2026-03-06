@@ -206,7 +206,10 @@ import { SEEDED_SIGNALS, DERIVED_SIGNALS } from "../src/domain/signalModel";
 describe("Signal catalog", () => {
   it("all seeded signals have required fields", () => {
     for (const signal of SEEDED_SIGNALS) {
-      expect(signal.signalId).toMatch(/^sig_/);
+      // test-signal-001 is a conformance fixture with a stable non-prefixed ID
+      if (signal.signalId !== "test-signal-001") {
+        expect(signal.signalId).toMatch(/^sig_/);
+      }
       expect(signal.name.length).toBeGreaterThan(0);
       expect(signal.taxonomySystem).toBe("iab_audience_1_1");
       expect(signal.generationMode).toBe("seeded");

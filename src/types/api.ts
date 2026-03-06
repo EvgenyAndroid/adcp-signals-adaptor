@@ -39,6 +39,8 @@ export interface SearchSignalsRequest {
   taxonomyId?: string;
   geography?: string[];
   destination?: string;
+  // AdCP spec: filter by deployment platforms [{type, platform}]
+  destinations?: Array<{ type: string; platform?: string; agent_url?: string }>;
   activationSupported?: boolean;
   limit?: number;
   offset?: number;

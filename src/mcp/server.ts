@@ -349,9 +349,12 @@ async function callActivateSignal(
     });
 
     const specResponse = {
+      message: `Signal ${signalId} successfully activated on ${responseDeployments.length} platform(s).`,
+      context_id: `ctx_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+      deployments: responseDeployments,
+      // Extended fields
       signal_agent_segment_id: signalId,
       status: result.status,
-      deployments: responseDeployments,
       operationId: result.operationId,
       ...(pricingOptionId ? { pricing_option_id: pricingOptionId } : {}),
     };

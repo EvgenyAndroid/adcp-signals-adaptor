@@ -14,8 +14,6 @@ import { requestId } from "./utils/ids";
 import { runSeedPipeline } from "./domain/seedPipeline";
 import { getDb } from "./storage/db";
 
-// Seed data imported as text modules via wrangler assets
-// These will be bundled at deploy time
 import { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv } from "./seedData";
 
 export default {
@@ -34,8 +32,8 @@ export default {
       });
     }
 
-    // Auth check for write endpoints (not GET /capabilities)
-    const publicPaths = ["/capabilities", "/health"];
+    // Auth check - /mcp, /capabilities, /health are public
+    const publicPaths = ["/capabilities", "/health", "/mcp"];
     const isPublic = publicPaths.some((p) => path === p || path.startsWith(p + "/"));
 
     if (!isPublic && !requireAuth(request, env.DEMO_API_KEY)) {
@@ -69,6 +67,20 @@ export default {
         response = await handleGetCapabilities(env, logger);
       } else if (method === "GET" && path === "/health") {
         response = jsonResponse({ status: "ok", provider: "adcp-signals-adaptor" });
+      } else if (path === "/mcp" || path.startsWith("/mcp/")) {
+        // MCP Streamable HTTP endpoint - no auth, protocol handles sessions
+        if (method === "OPTIONS") {
+          response = new Response(null, {
+            status: 204,
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+              "Access-Control-Allow-Methods": "POST, OPTIONS",
+              "Access-Control-Allow-Headers": "Content-Type, Authorization, Mcp-Session-Id",
+            },
+          });
+        } else {
+          response = await handleMcpRequest(request, env, logger);
+        }
       } else if (
         (method === "POST" || method === "GET") &&
         path === "/signals/search"
@@ -79,7 +91,6 @@ export default {
       } else if (method === "POST" && path === "/signals/generate") {
         response = await handleGenerateSignal(request, env, logger);
       } else if (method === "POST" && path === "/seed") {
-        // Development-only seed force endpoint
         const result = await runSeedPipeline(
           getDb(env),
           { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv },
@@ -112,7 +123,7 @@ function corsHeaders(): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, Mcp-Session-Id",
     "Access-Control-Max-Age": "86400",
   };
 }

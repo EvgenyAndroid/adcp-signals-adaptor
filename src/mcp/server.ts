@@ -290,6 +290,7 @@ async function callActivateSignal(
   const resolvedDestination = PLATFORM_MAP[destination.toLowerCase()] ?? "mock_dsp";
 
   const signalId = (args["signal_agent_segment_id"] ?? args["signalId"]) as string;
+  const pricingOptionId = args["pricing_option_id"] as string | undefined;
 
   const req = {
     signalId,
@@ -329,6 +330,7 @@ async function callActivateSignal(
         },
       ],
       operationId: result.operationId,
+      ...(pricingOptionId ? { pricing_option_id: pricingOptionId } : {}),
     };
 
     return toolResult(JSON.stringify(specResponse, null, 2));

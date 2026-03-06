@@ -7,6 +7,7 @@ import { handleSearchSignals } from "./routes/searchSignals";
 import { handleActivateSignal } from "./routes/activateSignal";
 import { handleGenerateSignal } from "./routes/generateSignal";
 import { handleGetOperation } from "./routes/getOperation";
+import { handleMcpRequest } from "./mcp/server";
 import { jsonResponse, errorResponse, requireAuth } from "./routes/shared";
 import { createLogger } from "./utils/logger";
 import { requestId } from "./utils/ids";

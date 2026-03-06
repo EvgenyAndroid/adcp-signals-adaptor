@@ -39,11 +39,11 @@ export async function searchSignalsService(
   let summaries = toSignalSummaries(signals);
 
   // Filter deployments by requested destinations array (spec: [{type, platform}])
-  const destFilter = (req as Record<string, unknown>)["destinations"] as Array<{type: string; platform?: string}> | undefined;
-  if (destFilter && Array.isArray(destFilter) && destFilter.length > 0) {
-    const requestedPlatforms = destFilter
+  if (req.destinations && req.destinations.length > 0) {
+    const requestedPlatforms = req.destinations
       .filter((d) => d.type === "platform" && d.platform)
       .map((d) => d.platform as string);
+    // Only filter if platform destinations specified; agent-type = return all
     if (requestedPlatforms.length > 0) {
       summaries = summaries
         .map((s) => ({

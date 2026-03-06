@@ -66,7 +66,13 @@ export interface SignalSummary {
   data_provider: string;
   coverage_percentage: number;
   deployments: SignalDeployment[];
-  pricing?: { cpm?: number; flat_fee?: number; currency?: string };
+  pricing_options: Array<{
+    pricing_option_id: string;
+    pricing_model: string;
+    cpm?: number;
+    flat_fee?: number;
+    currency?: string;
+  }>;
 
   // Extended metadata
   category_type: SignalCategoryType;

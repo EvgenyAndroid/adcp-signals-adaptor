@@ -44,18 +44,21 @@ export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
     };
   });
 
-  // spec: pricing object with cpm + currency directly (not pricing_options array)
-  const pricing = signal.pricing && signal.pricing.model === "mock_cpm"
-    ? {
-        cpm: signal.pricing.value ?? 0,
-        currency: signal.pricing.currency ?? "USD",
-      }
-    : signal.pricing && signal.pricing.model === "mock_flat"
-    ? {
-        flat_fee: signal.pricing.value ?? 0,
-        currency: signal.pricing.currency ?? "USD",
-      }
-    : undefined;
+  // Build both pricing (flat) and pricing_options (array) to satisfy spec validators
+  const pricingCpm = signal.pricing?.model === "mock_cpm" ? signal.pricing.value ?? 0 : undefined;
+  const pricingCurrency = signal.pricing?.currency ?? "USD";
+  const pricingOptionId = `opt-${signal.pricing?.model ?? "none"}-${signal.signalId}`.slice(0, 64);
+
+  const pricingOptions = signal.pricing
+    ? [
+        {
+          pricing_option_id: pricingOptionId,
+          pricing_model: signal.pricing.model === "mock_cpm" ? "cpm" : "flat_fee",
+          ...(pricingCpm !== undefined ? { cpm: pricingCpm } : {}),
+          currency: pricingCurrency,
+        },
+      ]
+    : [];
 
   return {
     signal_agent_segment_id: signal.signalId,
@@ -65,7 +68,7 @@ export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
     data_provider: DATA_PROVIDER,
     coverage_percentage: coveragePct,
     deployments,
-    ...(pricing ? { pricing } : {}),
+    pricing_options: pricingOptions,
     category_type: signal.categoryType,
     taxonomy_system: signal.taxonomySystem,
     ...(signal.externalTaxonomyId ? { external_taxonomy_id: signal.externalTaxonomyId } : {}),

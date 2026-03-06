@@ -341,13 +341,11 @@ async function callActivateSignal(
             segment_id: platformSegmentId,
           },
           estimated_activation_duration_minutes: 0,
-          decisioning_platform_segment_id: platformSegmentId,
         };
       }
     });
 
     const specResponse = {
-      message: `Signal ${signalId} successfully activated on ${responseDeployments.length} platform(s).`,
       context_id: `ctx_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
       deployments: responseDeployments,
       // Extended fields

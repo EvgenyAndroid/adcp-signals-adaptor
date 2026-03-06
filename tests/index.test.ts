@@ -312,10 +312,12 @@ describe("Signal mapper", () => {
     const canonical = SEEDED_SIGNALS[0]!;
     const summary = toSignalSummary(canonical);
 
-    expect(summary.signalId).toBe(canonical.signalId);
+    expect(summary.signal_agent_segment_id).toBe(canonical.signalId);
     expect(summary.name).toBe(canonical.name);
-    // Rules should not be in summary
+    expect(summary.catalog_type).toBeDefined();
+    // Internal fields should not be in summary
     expect((summary as Record<string, unknown>)["rules"]).toBeUndefined();
     expect((summary as Record<string, unknown>)["rawSourceRefs"]).toBeUndefined();
+    expect((summary as Record<string, unknown>)["signalId"]).toBeUndefined();
   });
 });

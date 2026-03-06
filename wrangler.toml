@@ -15,7 +15,7 @@ database_id = "70b0049e-7012-4c3a-8bd2-0f0a9c74d79c"
 
 [[kv_namespaces]]
 binding = "SIGNALS_CACHE"
-id = "YOUR_REAL_CACHE_KV_ID_HERE"
+id = "e17c4c99b649460a92016e1257436f22"
 
 [dev]
 port = 8787

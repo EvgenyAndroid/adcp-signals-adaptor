@@ -251,14 +251,15 @@ async function callActivateSignal(
   env: Env,
   logger: Logger
 ): Promise<unknown> {
-  // AdCP spec sends deployments as an array: [{ type: "platform", platform: "mock_dsp" }]
-  // Extract the first platform value from deployments, fall back to legacy destination field
+  // AdCP client sends destinations array: [{ type: "platform", platform: "mock_dsp" }]
+  // Also handle deployments and legacy destination field names
   let destination: string | undefined;
-  if (Array.isArray(args["deployments"]) && args["deployments"].length > 0) {
-    const first = args["deployments"][0] as Record<string, unknown>;
+  const depArray = (args["destinations"] ?? args["deployments"]) as unknown[] | undefined;
+  if (Array.isArray(depArray) && depArray.length > 0) {
+    const first = depArray[0] as Record<string, unknown>;
     destination = first["platform"] as string ?? first["agent_url"] as string;
   } else {
-    destination = (args["destination"] ?? args["destinations"]) as string | undefined;
+    destination = args["destination"] as string | undefined;
   }
 
   if (!destination) {

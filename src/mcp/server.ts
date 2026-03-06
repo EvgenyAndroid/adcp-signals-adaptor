@@ -309,16 +309,32 @@ async function callActivateSignal(
   try {
     const db = getDb(env);
     const result = await activateSignalService(db, req, logger);
-    const platformSegmentId = `${resolvedDestination}_${signalId}`;
+    // Build response deployments preserving type: "agent" vs "platform"
+    const inputDeployments = Array.isArray(args["destinations"] ?? args["deployments"])
+      ? (args["destinations"] ?? args["deployments"]) as Array<Record<string, unknown>>
+      : [{ type: "platform", platform: destination }];
 
-    // Spec-compliant response: deployments array with activation_key object
-    const specResponse = {
-      signal_agent_segment_id: signalId,
-      status: result.status,
-      deployments: [
-        {
+    const responseDeployments = inputDeployments.map((dep) => {
+      const depType = dep["type"] as string;
+      if (depType === "agent") {
+        const agentUrl = dep["agent_url"] as string;
+        return {
+          type: "agent",
+          agent_url: agentUrl,
+          is_live: true,
+          activation_key: {
+            type: "segment_id",
+            segment_id: `adcp_${signalId}`,
+          },
+          estimated_activation_duration_minutes: 0,
+          deployment_status: "active",
+        };
+      } else {
+        const platform = (dep["platform"] as string) ?? resolvedDestination;
+        const platformSegmentId = `mock_${platform}_${signalId}`;
+        return {
           type: "platform",
-          platform: destination,
+          platform,
           is_live: true,
           ...(req.accountId ? { account: req.accountId } : {}),
           activation_key: {
@@ -328,8 +344,14 @@ async function callActivateSignal(
           estimated_activation_duration_minutes: 0,
           deployment_status: "active",
           decisioning_platform_segment_id: platformSegmentId,
-        },
-      ],
+        };
+      }
+    });
+
+    const specResponse = {
+      signal_agent_segment_id: signalId,
+      status: result.status,
+      deployments: responseDeployments,
       operationId: result.operationId,
       ...(pricingOptionId ? { pricing_option_id: pricingOptionId } : {}),
     };

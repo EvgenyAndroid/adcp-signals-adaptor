@@ -1,87 +1,67 @@
 // src/domain/capabilityService.ts
 
-import type { CapabilitiesResponse } from "../types/api";
-import type { KVNamespace } from "@cloudflare/workers-types";
+import type { Env } from "../types/env";
 
-const CACHE_KEY = "adcp_capabilities_v1";
-const CACHE_TTL_SECONDS = 3600; // 1 hour
+const CACHE_KEY = "adcp_capabilities_v2";
+const CACHE_TTL_SECONDS = 3600;
 
-const STATIC_CAPABILITIES: CapabilitiesResponse = {
+const STATIC_CAPABILITIES = {
+  agent_type: "signals",
+  protocol_version: "2.6",
   provider: "AdCP Signals Adaptor - Demo Provider",
-  protocolVersion: "3.0-rc",
-  adcpVersion: "3.0-rc",
-  supportedOperations: [
-    "get_adcp_capabilities",
-    "get_signals",
-    "activate_signal",
-    "generate_custom_signal",
-    "get_operation_status",
-  ],
-  signalCategories: [
+  supported_tasks: ["get_signals", "activate_signal"],
+  signal_categories: [
     "demographic",
     "interest",
     "purchase_intent",
     "geo",
     "composite",
   ],
-  activationMode: "async",
-  authMode: "api_key_demo",
-  outputFormats: ["json"],
-  dynamicSegmentGeneration: true,
+  dynamic_segment_generation: true,
+  activation_mode: "async",
   destinations: [
     {
       id: "mock_dsp",
       name: "Mock DSP",
       type: "dsp",
-      activationSupported: true,
+      activation_supported: true,
     },
     {
       id: "mock_cleanroom",
       name: "Mock Clean Room",
       type: "cleanroom",
-      activationSupported: true,
+      activation_supported: true,
     },
     {
       id: "mock_cdp",
       name: "Mock CDP",
       type: "cdp",
-      activationSupported: true,
+      activation_supported: true,
     },
     {
       id: "mock_measurement",
       name: "Mock Measurement Platform",
       type: "measurement",
-      activationSupported: false,
+      activation_supported: false,
     },
   ],
   limits: {
-    maxSignalsPerRequest: 100,
-    maxRulesPerSegment: 6,
-    maxAudienceSizeEstimate: 50_000_000,
+    max_signals_per_request: 100,
+    max_rules_per_segment: 6,
   },
 };
 
-export async function getCapabilities(
-  kv: KVNamespace
-): Promise<CapabilitiesResponse> {
-  // Try cache first
+export async function getCapabilities(kv: KVNamespace): Promise<typeof STATIC_CAPABILITIES> {
   try {
     const cached = await kv.get(CACHE_KEY);
-    if (cached) {
-      return JSON.parse(cached) as CapabilitiesResponse;
-    }
-  } catch {
-    // Cache miss or parse error - fall through to static
-  }
+    if (cached) return JSON.parse(cached) as typeof STATIC_CAPABILITIES;
+  } catch { /* cache miss */ }
 
-  // Cache for next time
   try {
     await kv.put(CACHE_KEY, JSON.stringify(STATIC_CAPABILITIES), {
       expirationTtl: CACHE_TTL_SECONDS,
     });
-  } catch {
-    // Non-fatal: continue without caching
-  }
+  } catch { /* non-fatal */ }
 
   return STATIC_CAPABILITIES;
 }

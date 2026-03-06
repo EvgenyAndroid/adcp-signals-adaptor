@@ -38,8 +38,9 @@ export async function activateSignalService(
 
   const opId = operationId();
   const now = new Date().toISOString();
-  // The platform-specific segment ID that would be used in campaign targeting
   const platformSegmentId = `${req.destination}_${req.signalId}`;
+  // Opaque activation key as required by spec
+  const activationKey = `ak_${opId}`;
 
   await createActivationJob(db, {
     operationId: opId,
@@ -63,11 +64,16 @@ export async function activateSignalService(
 
   return {
     operationId: opId,
+    // AdCP spec required fields
+    signal_agent_segment_id: req.signalId,
+    deployment_status: "active",
+    activation_key: activationKey,
+    platform: req.destination,
+    decisioning_platform_segment_id: platformSegmentId,
+    // Extended fields
     status: "completed",
     signalId: req.signalId,
-    signal_agent_segment_id: req.signalId,
     destination: req.destination,
-    decisioning_platform_segment_id: platformSegmentId,
     submittedAt: now,
     estimatedCompletionMs: DEMO_COMPLETION_MS,
   };
@@ -90,6 +96,9 @@ export async function getOperationService(
     status: operation.status,
     signalId: operation.signalId,
     signal_agent_segment_id: operation.signalId,
+    deployment_status: operation.status === "completed" ? "active" : "pending",
+    activation_key: `ak_${operation.operationId}`,
+    platform: operation.destination,
     decisioning_platform_segment_id: platformSegmentId,
     destination: operation.destination,
     submittedAt: operation.submittedAt,
@@ -99,8 +108,6 @@ export async function getOperationService(
     ...(signal ? { signal: toSignalSummary(signal) } : {}),
   };
 }
-
-// ── Domain errors ─────────────────────────────────────────────────────────────
 
 export class NotFoundError extends Error {
   constructor(message: string) {

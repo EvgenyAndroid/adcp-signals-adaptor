@@ -293,6 +293,19 @@ export const SEEDED_SIGNALS: CanonicalSignal[] = [
     "401",
     { estimatedAudienceSize: 3_100_000 }
   ),
+
+  // AdCP conformance test fixture — stable ID required by test runner
+  seeded(
+    "test_signal_001",
+    "Test Signal 001",
+    "Stable fixture signal for AdCP conformance testing. Broad demographic segment.",
+    "demographic",
+    "1",
+    {
+      signalId: "test-signal-001",
+      estimatedAudienceSize: 5_000_000,
+    }
+  ),
 ];
 
 // ── Derived Signals Catalog ───────────────────────────────────────────────────

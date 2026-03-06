@@ -60,11 +60,11 @@ export interface SignalSummary {
   signal_agent_segment_id: string;
   name: string;
   description: string;
-  catalog_type: "marketplace" | "custom" | "owned";
+  signal_type: "marketplace" | "custom" | "owned";
   data_provider: string;
   coverage_percentage: number;
   deployments: SignalDeployment[];
-  pricing_options: SignalPricingOption[];
+  pricing?: { cpm?: number; flat_fee?: number; currency?: string };
 
   // Extended metadata
   category_type: SignalCategoryType;
@@ -79,12 +79,12 @@ export interface SignalSummary {
 // Spec: discriminated union - type "platform" or "agent"
 export interface SignalDeployment {
   type: "platform" | "agent";
-  platform?: string;           // present when type = "platform"
-  agent_url?: string;          // present when type = "agent"
+  platform?: string;
+  agent_url?: string;
   is_live: boolean;
   decisioning_platform_segment_id: string;
   activation_supported: boolean;
-  activation_key?: string;     // required by spec when is_live = true
+  activation_key?: { type: string; segment_id: string };
 }
 
 export interface SignalPricingOption {

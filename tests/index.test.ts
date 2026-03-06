@@ -314,7 +314,7 @@ describe("Signal mapper", () => {
 
     expect(summary.signal_agent_segment_id).toBe(canonical.signalId);
     expect(summary.name).toBe(canonical.name);
-    expect(summary.catalog_type).toBeDefined();
+    expect(summary.signal_type).toBeDefined();
     // Internal fields should not be in summary
     expect((summary as Record<string, unknown>)["rules"]).toBeUndefined();
     expect((summary as Record<string, unknown>)["rawSourceRefs"]).toBeUndefined();

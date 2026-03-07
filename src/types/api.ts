@@ -100,6 +100,7 @@ export interface SignalSummary {
   estimated_audience_size?: number;
   geography?: string[];
   status: string;
+  x_dts?: DtsV12Label;
 }
 
 // Spec: discriminated union - type "platform" or "agent"
@@ -172,6 +173,79 @@ export interface GetOperationResponse {
   updatedAt: string;
   completedAt?: string;
   errorMessage?: string;
+}
+
+
+// ── DTS v1.2 ─────────────────────────────────────────────────────────────────
+// IAB Tech Lab Data Transparency Standard v1.2 (April 2024 "Privacy Update")
+// Embedded in signal objects as AdCP x_ extension field.
+
+export type DtsRefreshCadence =
+  | "Intra-day" | "Daily" | "Weekly" | "Monthly"
+  | "Bi-Monthly" | "Quarterly" | "Bi-Annually" | "Annually" | "Static" | "N/A";
+
+export type DtsDataSource =
+  | "App Behavior" | "App Usage" | "Web Usage" | "Geo Location"
+  | "Email" | "TV OTT or STB Device" | "Online Ecommerce"
+  | "Credit Data" | "Loyalty Card" | "Transaction"
+  | "Online Survey" | "Offline Survey"
+  | "Public Record: Census" | "Public Record: Voter File" | "Public Record: Other"
+  | "Offline Transaction";
+
+export type DtsInclusionMethodology =
+  | "Observed/Known" | "Declared" | "Inferred" | "Derived" | "Modeled";
+
+export type DtsPrecisionLevel =
+  | "Individual" | "Household" | "Business" | "Device" | "Browser" | "Geography";
+
+export type DtsPrivacyMechanism =
+  | "TCF (Europe)" | "GPP" | "MSPA" | "USPrivacy"
+  | "NAI Opt Out" | "DAA" | "EDAA" | "DAAC" | "GPC"
+  | "Other (Not Listed)" | "None";
+
+export type DtsAudienceScope =
+  | "Single domain / App"
+  | "Cross-domain within O&O"
+  | "Cross-domain outside O&O"
+  | "N/A (Offline)";
+
+export type DtsIdType =
+  | "Cookie ID" | "Mobile ID" | "Platform ID" | "User-enabled ID";
+
+export interface DtsV12Label {
+  dts_version: "1.2";
+
+  // Core fields
+  provider_name: string;
+  provider_domain: string;
+  provider_email: string;
+  audience_name: string;
+  audience_id: string;
+  taxonomy_id_list: string;           // IAB AT 1.1 node IDs, comma-separated
+  audience_criteria: string;          // Inclusion logic, 500 char max
+  audience_precision_levels: DtsPrecisionLevel[];
+  audience_scope: DtsAudienceScope;
+  originating_domain: string;
+  audience_size: number;
+  id_types: DtsIdType[];
+  geocode_list: string;               // ISO-3166-1-alpha-3, pipe-separated
+  privacy_compliance_mechanisms: DtsPrivacyMechanism[];
+  privacy_policy_url: string;
+  iab_techlab_compliant: "Yes" | "No";
+
+  // Audience Details fields
+  data_sources: DtsDataSource[];
+  audience_inclusion_methodology: DtsInclusionMethodology;
+  audience_expansion: "Yes" | "No";
+  device_expansion: "Yes" | "No";
+  audience_refresh: DtsRefreshCadence;
+  lookback_window: DtsRefreshCadence;
+
+  // Onboarder Details (conditional — required when data_sources includes offline)
+  onboarder_match_keys: string;       // "N/A" for non-offline sources
+  onboarder_audience_expansion: "Yes" | "No" | "N/A";
+  onboarder_device_expansion: "Yes" | "No" | "N/A";
+  onboarder_audience_precision_level: string; // "N/A" for non-offline sources
 }
 
 // ── Errors ────────────────────────────────────────────────────────────────────

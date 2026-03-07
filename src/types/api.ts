@@ -139,7 +139,8 @@ export interface ActivateSignalResponse {
 
 // ── Operations ────────────────────────────────────────────────────────────────
 
-export type OperationStatus = "submitted" | "processing" | "completed" | "failed";
+// Aligned with @adcp/client ADCP_STATUS constants
+export type OperationStatus = "submitted" | "working" | "completed" | "failed" | "canceled" | "rejected";
 
 export interface OperationRecord {
   operationId: string;

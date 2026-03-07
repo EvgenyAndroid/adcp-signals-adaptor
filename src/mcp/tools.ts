@@ -2,6 +2,13 @@
 // MCP tool definitions — 4 tools matching the AdCP Signals protocol.
 // generate_custom_signal removed: proposals are surfaced in get_signals via brief parameter.
 // activate_signal creates custom segments lazily if a proposal ID is passed.
+//
+// @adcp/client SDK reference:
+//   SIGNALS_TOOLS = ['get_signals', 'activate_signal']  — core protocol tools
+//   ADCP_STATUS   — canonical status constants
+
+// SDK-defined core signal tools (subset — we also implement get_adcp_capabilities + get_operation_status)
+export const ADCP_SIGNALS_CORE_TOOLS = ['get_signals', 'activate_signal'] as const;
 
 export interface McpToolDefinition {
   name: string;

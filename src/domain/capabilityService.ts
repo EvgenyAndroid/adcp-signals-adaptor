@@ -1,11 +1,13 @@
 // src/domain/capabilityService.ts
+// @adcp/client SDK: COMPATIBLE_ADCP_VERSIONS = ['v2.5', 'v2.6', 'v3', ...]
+// SIGNALS_TOOLS = ['get_signals', 'activate_signal']
 
 const CACHE_KEY = "adcp_capabilities_v3";
 const CACHE_TTL_SECONDS = 3600;
 
 const STATIC_CAPABILITIES = {
   adcp: {
-    major_versions: [2],
+    major_versions: [2, 3],  // SDK confirms v2.5, v2.6, v3 all compatible
   },
   supported_protocols: ["signals"],
   signals: {

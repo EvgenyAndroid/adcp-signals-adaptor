@@ -120,9 +120,14 @@ function buildGeocodeList(signal: CanonicalSignal): string {
 
   const codes: string[] = ["USA"]; // All signals are US-sourced
 
-  // DMA signals carry DMA codes in rawSourceRefs e.g. "DMA-501"
+  // DMA codes from rawSourceRefs e.g. "DMA-501"
   for (const ref of refs) {
     if (ref.startsWith("DMA-")) codes.push(ref);
+  }
+
+  // DMA codes from geography field e.g. ["DMA-501", "NY", "NJ"]
+  for (const g of geo) {
+    if (g.startsWith("DMA-")) codes.push(g);
   }
 
   return [...new Set(codes)].join("|");

@@ -155,6 +155,52 @@ Migration history:
 
 `SIGNALS_CACHE` KV namespace used only for capabilities response (key: `adcp_capabilities_v3`, TTL: 1hr). All queryable data stays in D1. Increment cache key version when capabilities change.
 
+## @adcp/client SDK Integration
+
+`@adcp/client@^4.5.2` is a dev dependency. It is a **client-only library** with no server-side MCP framework.
+
+### What we use
+
+- **`createOperationId()`** → `src/utils/ids.ts` — replaces local `operationId()`. Format: `op_{timestamp}_{nanoid}` (e.g. `op_1772905632696_6d0bpy12o`). Falls back to local impl if Worker bundler can't resolve the require.
+
+- **`ADCP_STATUS` constants** → status values aligned in `activationService.ts`:
+  - `"submitted"` → `"working"` → `"completed"` (SDK uses `"working"`, not `"processing"`)
+  - `OperationStatus` type extended with `"working"`, `"canceled"`, `"rejected"`
+
+- **`COMPATIBLE_ADCP_VERSIONS`** → `['v2.5', 'v2.6', 'v3', ...]` informs `major_versions: [2, 3]` in capabilities
+
+- **`SIGNALS_TOOLS`** → `['get_signals', 'activate_signal']` confirms core protocol tools (we also expose `get_adcp_capabilities` + `get_operation_status`)
+
+### What we don't use
+
+No server framework, no MCP dispatcher, no type generation. `src/mcp/server.ts` stays hand-rolled — it's 393 lines covering the full Streamable HTTP / JSON-RPC 2.0 lifecycle with all edge cases we need.
+
+### SDK test suite field normalization
+
+The `@adcp/client` conformance test suite sends different field names than the spec. Handled in `callActivateSignal()`:
+
+```typescript
+// All accepted aliases for signal ID
+const signalId = args["signal_agent_segment_id"] ?? args["signal_id"] ?? args["signalId"]
+
+// All accepted destination shapes
+const raw = args["destinations"] ?? args["deployments"] ?? args["destination"]
+// handles: array, singular object, legacy string
+
+// External platform → internal ID
+const PLATFORM_MAP = { dv360: "mock_dsp", "trade-desk": "mock_dsp",
+  meta: "mock_dsp", liveramp: "mock_cleanroom", ... }
+```
+
+### Known issue (fixed)
+
+The `"processing"` status was written directly by old code before SDK alignment. The lazy state machine now handles it:
+```
+"submitted" → "working"  (on first poll)
+"processing" → "working"  (legacy alias, same poll)  
+"working" → "completed"   (on same poll)
+```
+
 ## Extensibility
 
 | Change | Files |
@@ -163,6 +209,6 @@ Migration history:
 | Add CTV/ACR signal type | `src/types/signal.ts` + `src/domain/enrichedSignalModel.ts` |
 | Add exclusion/negative targeting | `src/domain/ruleEngine.ts` (add `exclude` operator) |
 | Add real async activation | `activationService.ts` + Cloudflare Queue + Consumer Worker |
-| Replace hand-rolled MCP | Evaluate `@adcp/client` server utilities |
+| Replace hand-rolled MCP | No server utilities in `@adcp/client` — Worker MCP server stays as-is |
 | Add A2A transport | New `src/a2a/` directory, same domain services |
 | Add per-account entitlements | `src/routes/shared.ts` + `accessPolicy` filter in `signalRepo.ts` |

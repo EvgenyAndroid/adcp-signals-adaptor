@@ -105,7 +105,7 @@ export async function getOperationService(
 
   if (currentStatus === "submitted") {
     await updateJobStatus(db, opId, "working");  // ADCP_STATUS.WORKING
-    currentStatus = "processing";
+    currentStatus = "working";
   }
 
   if (currentStatus === "working") {  // ADCP_STATUS.WORKING

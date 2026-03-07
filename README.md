@@ -169,7 +169,7 @@ Webhook support: pass `webhook_url` to `activate_signal` — a POST callback fir
 
 ```json
 {
-  "task_id": "op_1772904289806_33de3f233c4cd206",
+  "task_id": "op_1772905632696_6d0bpy12o",
   "status": "pending",
   "signal_agent_segment_id": "sig_dyn_...",
   "deployments": [
@@ -186,9 +186,11 @@ Webhook support: pass `webhook_url` to `activate_signal` — a POST callback fir
 
 ### `get_operation_status`
 
+Status lifecycle: `pending → working → completed` (aligned with `ADCP_STATUS` from `@adcp/client`)
+
 ```json
 {
-  "task_id": "op_1772904289806_33de3f233c4cd206",
+  "task_id": "op_1772905632696_6d0bpy12o",
   "status": "completed",
   "signal_agent_segment_id": "sig_dyn_...",
   "deployments": [
@@ -343,7 +345,33 @@ Claude can then describe a target audience in natural language, get proposals, a
 npm test
 ```
 
-45 tests: ID utilities, estimation, taxonomy loader, demographic loader, rule engine validation + generation, signal catalog integrity, request validation, signal mapper, MCP tool definitions (4 tools, task_id, brief param, webhook param).
+45 tests: ID utilities, estimation, taxonomy loader, demographic loader, rule engine validation + generation, signal catalog integrity, request validation, signal mapper, MCP tool definitions (4 tools, task_id, brief param, webhook param, signal_id alias).
+
+## SDK Integration (@adcp/client)
+
+`@adcp/client` is a dev dependency. It is a **client library only** — no server framework. We use it for:
+
+| What | Where | Why |
+|---|---|---|
+| `createOperationId()` | `src/utils/ids.ts` | Spec-compliant op ID format with nanoid suffix |
+| `ADCP_STATUS` constants | `src/domain/activationService.ts` | Status values: `submitted → working → completed` |
+| `COMPATIBLE_ADCP_VERSIONS` | `src/domain/capabilityService.ts` | `major_versions: [2, 3]` per SDK compatibility matrix |
+| `SIGNALS_TOOLS` reference | `src/mcp/tools.ts` | Confirms `get_signals` + `activate_signal` as core tools |
+
+### SDK test suite compatibility
+
+The `@adcp/client` conformance test suite uses different field names than our spec. We normalize all variants:
+
+| SDK sends | Our field | Resolved |
+|---|---|---|
+| `signal_id` | `signal_agent_segment_id` | Both accepted |
+| `destination: {platform}` | `destinations: [{type, platform}]` | Both accepted |
+| `dv360`, `trade-desk`, `meta`, `ttd` | Internal platform ID | Mapped via `PLATFORM_MAP` |
+
+Test directly with the SDK CLI:
+```bash
+npx @adcp/client https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp get_signals "{"brief":"high income streaming fans"}"
+```
 
 ---
 

@@ -154,12 +154,18 @@ async function handleToolCall(
 ): Promise<unknown> {
   const { name, arguments: args = {} } = params;
 
-  const toolDef = getToolByName(name);
+  // Aliases not in ADCP_TOOLS schema are still valid — check after resolving aliases
+  const TOOL_ALIASES: Record<string, string> = {
+    "get_task_status": "get_operation_status",
+    "get_signal_status": "get_operation_status",
+  };
+  const resolvedName = TOOL_ALIASES[name] ?? name;
+  const toolDef = getToolByName(resolvedName);
   if (!toolDef) throw new McpToolError(`Unknown tool: ${name}`);
 
-  logger.info("mcp_tool_call", { tool: name });
+  logger.info("mcp_tool_call", { tool: resolvedName });
 
-  switch (name) {
+  switch (resolvedName) {
     case "get_adcp_capabilities":
       return callGetCapabilities(env);
     case "get_signals":

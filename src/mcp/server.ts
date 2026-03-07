@@ -167,6 +167,8 @@ async function handleToolCall(
     case "activate_signal":
       return callActivateSignal(args, env, logger);
     case "get_operation_status":
+    case "get_task_status":        // spec alias — both accepted
+    case "get_signal_status":      // legacy alias
       return callGetOperation(args, env, logger);
     default:
       throw new McpToolError(`Tool not implemented: ${name}`);
@@ -315,7 +317,7 @@ async function callActivateSignal(
       task_id: result.task_id,
       status: "pending",
       signal_agent_segment_id: signalId,
-      deployments: responseDeployments,
+      destinations: responseDeployments,  // spec uses destinations (not deployments)
       ...(webhookUrl ? { webhook_url: webhookUrl } : {}),
       ...(pricingOptionId ? { pricing_option_id: pricingOptionId } : {}),
     };

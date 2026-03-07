@@ -11,6 +11,8 @@ interface JobRow {
   campaign_id: string | null;
   notes: string | null;
   status: string;
+  webhook_url: string | null;
+  webhook_fired: number;
   submitted_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -25,6 +27,8 @@ function rowToOperation(row: JobRow): OperationRecord {
     ...(row.account_id ? { accountId: row.account_id } : {}),
     ...(row.campaign_id ? { campaignId: row.campaign_id } : {}),
     status: row.status as OperationStatus,
+    ...(row.webhook_url ? { webhookUrl: row.webhook_url } : {}),
+    webhookFired: row.webhook_fired === 1,
     submittedAt: row.submitted_at,
     updatedAt: row.updated_at,
     ...(row.completed_at ? { completedAt: row.completed_at } : {}),
@@ -41,14 +45,15 @@ export async function createActivationJob(
     accountId?: string;
     campaignId?: string;
     notes?: string;
+    webhookUrl?: string;
   }
 ): Promise<void> {
   const now = new Date().toISOString();
   await execute(
     db,
     `INSERT INTO activation_jobs
-      (operation_id, signal_id, destination, account_id, campaign_id, notes, status, submitted_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?)`,
+      (operation_id, signal_id, destination, account_id, campaign_id, notes, webhook_url, status, submitted_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?)`,
     [
       job.operationId,
       job.signalId,
@@ -56,6 +61,7 @@ export async function createActivationJob(
       job.accountId ?? null,
       job.campaignId ?? null,
       job.notes ?? null,
+      job.webhookUrl ?? null,
       "submitted",
       now,
       now,
@@ -95,6 +101,14 @@ export async function updateJobStatus(
   );
 
   await appendEvent(db, operationId, status, errorMessage);
+}
+
+export async function markWebhookFired(db: DB, operationId: string): Promise<void> {
+  await execute(
+    db,
+    "UPDATE activation_jobs SET webhook_fired = 1 WHERE operation_id = ?",
+    [operationId]
+  );
 }
 
 export async function appendEvent(

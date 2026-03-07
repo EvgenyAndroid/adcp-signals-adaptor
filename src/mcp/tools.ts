@@ -1,6 +1,7 @@
-// src/mcp/tools.ts
-// MCP tool definitions - schema + descriptions.
-// These are the contracts exposed to AI agents via the MCP protocol.
+﻿// src/mcp/tools.ts
+// MCP tool definitions — 4 tools matching the AdCP Signals protocol.
+// generate_custom_signal removed: proposals are surfaced in get_signals via brief parameter.
+// activate_signal creates custom segments lazily if a proposal ID is passed.
 
 export interface McpToolDefinition {
   name: string;
@@ -28,19 +29,24 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
   {
     name: "get_signals",
     description:
-      "Search and discover available audience signals from this AdCP provider. " +
-      "Signals are IAB Audience Taxonomy 1.1 aligned and include demographics, interests, " +
-      "purchase intent, geo, and composite segments. " +
-      "Supports filtering by category, keyword, generation mode, destination, and taxonomy ID. " +
-      "Returns signal metadata including estimated audience size, CPM pricing, and activation status.",
+      "Discover audience signals from this AdCP provider. " +
+      "Pass a natural language 'brief' to get AI-generated custom segment proposals alongside catalog signals. " +
+      "Proposals have signal_type='custom' and is_live=false — activate them to create and deploy. " +
+      "Also supports keyword search and structured filters. " +
+      "Returns catalog signals (marketplace) and any custom proposals matching the brief.",
     inputSchema: {
       type: "object",
       properties: {
-        query: {
+        brief: {
           type: "string",
           description:
-            "Keyword search across signal names and descriptions. " +
-            "Examples: 'sci-fi', 'high income', 'streaming', 'urban'",
+            "Natural language targeting brief. Generates custom segment proposals inline with catalog results. " +
+            "Example: 'affluent parents in top metros interested in streaming', " +
+            "'college-educated sci-fi fans aged 25-34', 'high income couples no kids'.",
+        },
+        query: {
+          type: "string",
+          description: "Keyword search across signal names and descriptions.",
         },
         categoryType: {
           type: "string",
@@ -50,30 +56,16 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
         generationMode: {
           type: "string",
           enum: ["seeded", "derived", "dynamic"],
-          description:
-            "Filter by how the signal was created. " +
-            "'seeded' = static catalog, 'derived' = pre-built combinations, 'dynamic' = AI-generated.",
+          description: "Filter by generation mode.",
         },
         destination: {
           type: "string",
           enum: ["mock_dsp", "mock_cleanroom", "mock_cdp", "mock_measurement"],
-          description: "Filter signals available for a specific destination platform.",
-        },
-        taxonomyId: {
-          type: "string",
-          description: "Filter by IAB Audience Taxonomy 1.1 node ID (e.g. '104' for Sci-Fi).",
-        },
-        limit: {
-          type: "number",
-          description: "Maximum number of signals to return. Default 20, max 100.",
-        },
-        offset: {
-          type: "number",
-          description: "Pagination offset. Default 0.",
+          description: "Filter signals available for a specific destination.",
         },
         destinations: {
           type: "array",
-          description: "Filter signals by deployment platform. Only returns signals available on these platforms.",
+          description: "Filter by deployment platforms.",
           items: {
             type: "object",
             properties: {
@@ -83,6 +75,18 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
             required: ["type"],
           },
         },
+        taxonomyId: {
+          type: "string",
+          description: "Filter by IAB Audience Taxonomy 1.1 node ID.",
+        },
+        limit: {
+          type: "number",
+          description: "Max signals to return. Default 20, max 100.",
+        },
+        offset: {
+          type: "number",
+          description: "Pagination offset. Default 0.",
+        },
       },
     },
   },
@@ -90,146 +94,75 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
   {
     name: "activate_signal",
     description:
-      "Activate an audience signal to a destination platform for use in ad campaigns. " +
-      "Submits an async activation job and returns an operation ID for status tracking. " +
-      "The signal must exist and have activationSupported=true. " +
-      "Use get_signals first to find a valid signalId.",
+      "Activate an audience signal to a destination platform. " +
+      "Returns task_id immediately with status 'pending' — this is an async operation. " +
+      "Poll get_operation_status with task_id to check progress. " +
+      "Optionally provide webhook_url to receive a POST callback on completion. " +
+      "If activating a custom proposal from get_signals (is_live=false), the segment is created on activation.",
     inputSchema: {
       type: "object",
       properties: {
         signal_agent_segment_id: {
           type: "string",
           description:
-            "The signal to activate. Use the signal_agent_segment_id returned by get_signals. " +
+            "The signal to activate. From get_signals catalog or proposals array. " +
             "Example: 'sig_high_income_households'",
         },
-        deployments: {
+        destinations: {
           type: "array",
           description: "The platforms to activate the signal on.",
           items: {
             type: "object",
             properties: {
-              type: {
-                type: "string",
-                enum: ["platform", "agent"],
-                description: "Deployment type.",
-              },
+              type: { type: "string", enum: ["platform", "agent"] },
               platform: {
                 type: "string",
                 enum: ["mock_dsp", "mock_cleanroom", "mock_cdp", "mock_measurement"],
-                description: "Platform ID (when type is platform).",
               },
+              account_id: { type: "string", description: "Platform account/seat ID." },
             },
-            required: ["type", "platform"],
+            required: ["type"],
           },
+        },
+        webhook_url: {
+          type: "string",
+          description:
+            "Optional URL to receive a POST callback when activation completes. " +
+            "Payload: { task_id, status, signal_agent_segment_id, deployments }",
+        },
+        pricing_option_id: {
+          type: "string",
+          description: "Pricing option to use, from the signal's pricing_options array.",
         },
         accountId: {
           type: "string",
           description: "Optional account or seat ID on the destination platform.",
-        },
-        campaignId: {
-          type: "string",
-          description: "Optional campaign ID to associate this activation with.",
-        },
-        pricing_option_id: {
-          type: "string",
-          description: "The pricing_option_id from the signal's pricing_options array to use for this activation.",
         },
         notes: {
           type: "string",
           description: "Optional notes about this activation.",
         },
       },
-      required: ["signal_agent_segment_id", "deployments"],
-    },
-  },
-
-  {
-    name: "generate_custom_signal",
-    description:
-      "Dynamically generate a new composite audience signal by combining targeting rules. " +
-      "Supports up to 6 rules across dimensions like age, income, education, household type, " +
-      "metro tier, content genre, and streaming affinity. " +
-      "Returns a new signal with an estimated audience size and IAB taxonomy mapping. " +
-      "The generated signal is persisted and can be immediately activated. " +
-      "Example use: 'Create a segment of high-income sci-fi fans in top metros aged 25-34'.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        name: {
-          type: "string",
-          description:
-            "Human-readable name for the segment. " +
-            "If omitted, a name is auto-generated from the rules.",
-        },
-        description: {
-          type: "string",
-          description: "Optional description of the segment's intent.",
-        },
-        rules: {
-          type: "array",
-          description: "Array of targeting rules (2-6 recommended for meaningful segments).",
-          items: {
-            type: "object",
-            properties: {
-              dimension: {
-                type: "string",
-                enum: [
-                  "age_band",
-                  "income_band",
-                  "education",
-                  "household_type",
-                  "metro_tier",
-                  "content_genre",
-                  "streaming_affinity",
-                ],
-                description: "The targeting dimension.",
-              },
-              operator: {
-                type: "string",
-                enum: ["eq", "in"],
-                description: "'eq' for single value match, 'in' for multiple values.",
-              },
-              value: {
-                description:
-                  "The value(s) to match. " +
-                  "age_band: '18-24','25-34','35-44','45-54','55-64','65+'. " +
-                  "income_band: 'under_50k','50k_100k','100k_150k','150k_plus'. " +
-                  "education: 'high_school','some_college','bachelors','graduate'. " +
-                  "household_type: 'single','couple_no_kids','family_with_kids','senior_household'. " +
-                  "metro_tier: 'top_10','top_25','top_50','other'. " +
-                  "content_genre: 'action','sci_fi','drama','comedy','documentary','thriller','animation','romance'. " +
-                  "streaming_affinity: 'high','medium','low'.",
-              },
-            },
-            required: ["dimension", "operator", "value"],
-          },
-          minItems: 1,
-          maxItems: 6,
-        },
-      },
-      required: ["rules"],
+      required: ["signal_agent_segment_id", "destinations"],
     },
   },
 
   {
     name: "get_operation_status",
     description:
-      "Check the status of a signal activation operation. " +
-      "Returns current status (submitted/processing/completed/failed) " +
-      "and the full signal details associated with the operation. " +
-      "Use the operationId returned from activate_signal.",
+      "Poll the status of an async activation task. " +
+      "Returns current status: pending → processing → completed (or failed). " +
+      "On completion, includes the activated deployments with activation keys. " +
+      "Use the task_id returned by activate_signal.",
     inputSchema: {
       type: "object",
       properties: {
-        operationId: {
+        task_id: {
           type: "string",
-          description:
-            "The operation ID to check. Returned by activate_signal. " +
-            "Format: 'op_{timestamp}_{hex}'",
+          description: "The task ID returned by activate_signal. Format: 'op_{timestamp}_{hex}'",
         },
       },
-      required: ["operationId"],
+      required: ["task_id"],
     },
   },
 ];

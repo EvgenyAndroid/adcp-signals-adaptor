@@ -6,20 +6,18 @@ import type { SignalCategoryType, GenerationMode } from "./signal";
 // ── Capabilities ──────────────────────────────────────────────────────────────
 
 export interface CapabilitiesResponse {
-  provider: string;
-  protocolVersion: string;
-  adcpVersion: string;
-  supportedOperations: string[];
-  signalCategories: string[];
-  activationMode: "async";
-  authMode: "api_key_demo";
-  outputFormats: string[];
-  dynamicSegmentGeneration: boolean;
-  destinations: DestinationInfo[];
-  limits: {
-    maxSignalsPerRequest: number;
-    maxRulesPerSegment: number;
-    maxAudienceSizeEstimate: number;
+  adcp: { major_versions: number[] };
+  supported_protocols: string[];
+  signals: {
+    signal_categories: string[];
+    dynamic_segment_generation: boolean;
+    activation_mode: "async";
+    provider: string;
+    destinations: DestinationInfo[];
+    limits: {
+      max_signals_per_request: number;
+      max_rules_per_segment: number;
+    };
   };
 }
 
@@ -27,38 +25,60 @@ export interface DestinationInfo {
   id: string;
   name: string;
   type: "dsp" | "cleanroom" | "cdp" | "measurement";
-  activationSupported: boolean;
+  activation_supported: boolean;
 }
 
 // ── Signal Search ─────────────────────────────────────────────────────────────
 
 export interface SearchSignalsRequest {
+  // Standard filters
   query?: string;
   categoryType?: SignalCategoryType;
   generationMode?: GenerationMode;
   taxonomyId?: string;
   geography?: string[];
   destination?: string;
-  // AdCP spec: filter by deployment platforms [{type, platform}]
   destinations?: Array<{ type: string; platform?: string; agent_url?: string }>;
   activationSupported?: boolean;
   limit?: number;
   offset?: number;
+  // AdCP brief — natural language, triggers custom segment proposals
+  brief?: string;
 }
 
 export interface SearchSignalsResponse {
   message: string;
   context_id: string;
   signals: SignalSummary[];
+  // Custom proposals generated from brief (not yet created, activated on demand)
+  proposals?: CustomSignalProposal[];
   count: number;
   totalCount: number;
   offset: number;
   hasMore: boolean;
 }
 
+// A proposed custom signal — not persisted until activated
+export interface CustomSignalProposal {
+  signal_agent_segment_id: string;   // deterministic ID, valid for activation
+  name: string;
+  description: string;
+  signal_type: "custom";
+  category_type: string;
+  estimated_audience_size: number;
+  coverage_percentage: number;
+  pricing_options: Array<{
+    pricing_option_id: string;
+    pricing_model: string;
+    cpm?: number;
+    currency?: string;
+  }>;
+  deployments: SignalDeployment[];
+  generation_rationale: string;      // why this segment matches the brief
+}
+
 // AdCP Signals spec-compliant signal object
 export interface SignalSummary {
-  // AdCP spec required fields
   signal_agent_segment_id: string;
   name: string;
   description: string;
@@ -73,8 +93,6 @@ export interface SignalSummary {
     flat_fee?: number;
     currency?: string;
   }>;
-
-  // Extended metadata
   category_type: SignalCategoryType;
   taxonomy_system: string;
   external_taxonomy_id?: string;
@@ -95,15 +113,6 @@ export interface SignalDeployment {
   activation_key?: { type: string; segment_id: string };
 }
 
-export interface SignalPricingOption {
-  pricing_option_id: string;   // required by spec
-  model: "cpm" | "percent_of_media" | "flat_fee" | "none";
-  cpm?: number;                // used when model = "cpm"
-  percent?: number;            // used when model = "percent_of_media"
-  amount?: number;             // used when model = "flat_fee"
-  currency?: string;
-}
-
 // ── Activation ────────────────────────────────────────────────────────────────
 
 export interface ActivateSignalRequest {
@@ -112,51 +121,25 @@ export interface ActivateSignalRequest {
   accountId?: string;
   campaignId?: string;
   notes?: string;
+  webhookUrl?: string;       // optional: POST status updates here when complete
+  proposalData?: import("../types/signal").CanonicalSignal;  // for lazy custom signal creation
 }
 
 export interface ActivateSignalResponse {
-  // AdCP spec required
+  // AdCP spec: task_id for async polling
+  task_id: string;
+  status: "pending" | "processing" | "completed" | "failed";
   signal_agent_segment_id: string;
-  deployment_status: "active" | "pending" | "failed";
-  activation_key: string;
-  platform: string;
-  decisioning_platform_segment_id: string;
+  // Webhook info
+  webhook_url?: string;
   // Extended
   operationId: string;
-  status: OperationStatus;
-  signalId: string;
-  destination: string;
   submittedAt: string;
-  estimatedCompletionMs: number;
-}
-
-// ── Custom Signal Generation ──────────────────────────────────────────────────
-
-export interface GenerateSignalRequest {
-  name?: string;
-  description?: string;
-  rules: GenerateSignalRule[];
-}
-
-export interface GenerateSignalRule {
-  dimension: string;
-  operator: string;
-  value: string | number | string[];
-}
-
-export interface GenerateSignalResponse {
-  signal: SignalSummary;
-  generationNotes: string;
-  ruleCount: number;
 }
 
 // ── Operations ────────────────────────────────────────────────────────────────
 
-export type OperationStatus =
-  | "submitted"
-  | "processing"
-  | "completed"
-  | "failed";
+export type OperationStatus = "submitted" | "processing" | "completed" | "failed";
 
 export interface OperationRecord {
   operationId: string;
@@ -164,6 +147,8 @@ export interface OperationRecord {
   destination: string;
   accountId?: string;
   campaignId?: string;
+  webhookUrl?: string;
+  webhookFired: boolean;
   status: OperationStatus;
   submittedAt: string;
   updatedAt: string;
@@ -172,20 +157,20 @@ export interface OperationRecord {
 }
 
 export interface GetOperationResponse {
-  operationId: string;
+  task_id: string;
   status: OperationStatus;
-  signalId: string;
   signal_agent_segment_id: string;
-  deployment_status: "active" | "pending" | "failed";
-  activation_key: string;
-  platform: string;
-  decisioning_platform_segment_id: string;
-  destination: string;
+  deployments?: Array<{
+    type: string;
+    platform?: string;
+    is_live: boolean;
+    activation_key?: { type: string; segment_id: string };
+    estimated_activation_duration_minutes: number;
+  }>;
   submittedAt: string;
   updatedAt: string;
   completedAt?: string;
   errorMessage?: string;
-  signal?: SignalSummary;
 }
 
 // ── Errors ────────────────────────────────────────────────────────────────────

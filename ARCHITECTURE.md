@@ -2,7 +2,7 @@
 
 ## Design Philosophy
 
-Thin protocol-compliant orchestration layer. Routes validate and dispatch — all business logic lives in domain services. Both HTTP and MCP surfaces call the same domain functions with no duplication.
+Thin protocol-compliant orchestration layer. Routes validate and dispatch — all business logic in domain services. Both HTTP and MCP surfaces call the same domain functions. No logic duplication.
 
 ## Layer Map
 
@@ -13,122 +13,156 @@ HTTP / MCP request
 src/index.ts              Router + auth + CORS + auto-seed
        │
        ├── src/routes/         HTTP handlers (validate → domain → respond)
-       └── src/mcp/server.ts   JSON-RPC 2.0 dispatcher
+       └── src/mcp/server.ts   JSON-RPC 2.0 dispatcher (4 tools)
                 │
                 ▼
        src/domain/
-         signalService.ts        search, generate, destinations filter
-         activationService.ts    activate, get operation status
+         signalService.ts        search, brief parsing, proposal gen + D1 persistence
+         activationService.ts    async activate, lazy state machine, webhook
          capabilityService.ts    capabilities (KV-cached 1hr)
          ruleEngine.ts           rule validation + segment generation
          signalModel.ts          base seeded + derived catalog (33 signals)
          enrichedSignalModel.ts  Census ACS + DMA + cross-taxonomy (16 signals)
-         seedPipeline.ts         D1 ingestion — runs all catalogs in sequence
+         seedPipeline.ts         D1 ingestion — 4-phase, idempotent
                 │
-                ├── src/connectors/     Raw data parsers (no protocol knowledge)
-                │     iabTaxonomyLoader.ts
-                │     demographicLoader.ts
-                │     interestLoader.ts
-                │     geoLoader.ts
-                │     censusLoader.ts        ACS 5-yr estimates parser + MOE handling
-                │     dmaLoader.ts           Nielsen DMA parser + tier aggregation
-                │     taxonomyBridgeLoader.ts  Audience 1.1 × Content CT3 bridge
-                │
-                ├── src/mappers/        Canonical model → AdCP response shape
-                └── src/storage/        D1 queries (signalRepo, activationRepo)
+                ├── src/connectors/     Raw data parsers
+                ├── src/mappers/        Canonical → AdCP response shape
+                └── src/storage/        D1 (signalRepo, activationRepo)
 ```
 
-## Data Sources
+## Tool Surface (4 tools — AdCP spec compliant)
 
-### IAB Audience Taxonomy 1.1
-Semantic classification backbone for all signals. Taxonomy nodes are metadata handles, not commercial segments. `CanonicalSignal` wraps taxonomy IDs with operational context: pricing, destinations, freshness, activation status.
+`generate_custom_signal` was deliberately not implemented as a standalone tool. The correct AdCP pattern is:
 
-### US Demographics Sample
-Hand-curated 25-row CSV for base demographic signals. Age × income × education × household × geography buckets.
+1. **`get_signals(brief)`** — natural language brief drives inline custom segment proposals. Proposals are persisted to D1 at generation time so their IDs are stable.
+2. **`activate_signal`** — if the ID belongs to a proposal (not yet live), the segment is created on activation. No separate creation step.
 
-### Entertainment Affinity (MovieLens Genre Structure)
-Genre affinity scores derived from MovieLens genre taxonomy. Not real user data — models genre interest profiles by demographic cross-section.
+This matches how real signal providers work: discovery and proposal happen in one step, commitment (activation) in a second.
 
-### US Census ACS 2022 5-Year Estimates
-Real public data from Census Bureau. Tables used:
-- **B01001** — Age/sex by single year (source for age bands)
-- **B19001** — Household income in past 12 months (source for income brackets)
-- **B15003** — Educational attainment (source for education segments)
-- **B11001** — Household type by presence of own children (source for household types)
+## Async Activation Pattern
 
-Census signals include margin of error at 90% confidence, ACS table references, and data year. This replaces vibes-based size estimates with defensible public statistics.
+```
+activate_signal()
+  1. Validate signal exists (catalog or persisted proposal)
+  2. Create activation_jobs row (status: "submitted")
+  3. Return { task_id, status: "pending" } immediately
+  ↓
+get_operation_status(task_id)
+  1. Load job row
+  2. Lazy state machine:
+     submitted → processing → completed (on first poll)
+  3. If webhook_url present and not fired:
+     POST payload to webhook_url
+     Mark webhook_fired = 1
+  4. Return { status, deployments with is_live: true }
+```
 
-### Nielsen DMA Universe 2023-24
-Nielsen Designated Market Areas are the standard US advertising geographic unit. This data is public and widely used for media planning. Geography fields carry proper `DMA-{code}` identifiers (e.g., DMA-501 for New York) matching industry conventions. Signals include TV household counts and percent-of-US coverage.
+No Cloudflare Queues or Durable Objects needed for demo. The lazy state machine on poll is a clean pattern that correctly models async behavior without infrastructure complexity.
 
-### IAB Audience × Content Taxonomy Bridge
-Semantic bridge between IAB Audience Taxonomy 1.1 and IAB Content Taxonomy 3.0. Three mapping types:
-- **Strong** — Direct genre/topic correspondence (bidirectional)
-- **Moderate** — Audience over-indexes on content type (directional)
-- **Contextual** — Behavioral correlation without direct semantic match
+## Brief Parsing → Proposal Generation
 
-Cross-taxonomy signals are composites where audience membership is validated by content consumption — the most advanced signal type in AdCP's architecture.
+`signalService.ts` extracts targeting dimensions from free-form text using keyword detection:
+
+```
+"affluent parents in top metros who love sci-fi"
+  → income_band: 150k_plus    (affluent)
+  → household_type: family_with_kids    (parents)
+  → metro_tier: top_10, top_25    (top metros)
+  → content_genre: sci_fi    (sci-fi)
+```
+
+Rules are validated, passed to `ruleEngine.ts`, which generates a `CanonicalSignal` and estimates audience size via independent probability intersection (heuristic, 240M baseline, 50K floor). The signal is upserted to D1 immediately — the proposal ID in the response is a real D1 record, activatable instantly.
+
+Proposals appear in `get_signals` response under `proposals[]`, distinct from `signals[]`. They have `signal_type: "custom"` and `is_live: false` on all deployments.
+
+## Webhook Delivery
+
+When `webhook_url` is provided to `activate_signal`:
+- URL stored in `activation_jobs.webhook_url`
+- On first `get_operation_status` poll that completes the job, `fireWebhook()` is called
+- Payload: `{ task_id, status: "completed", signal_agent_segment_id, deployments }`
+- `webhook_fired` flag set to prevent duplicate delivery
+- Non-fatal: webhook failure is logged but doesn't fail the status call
 
 ## AdCP Protocol Compliance (v2.6)
 
-### Capabilities response envelope
+### Capabilities envelope
 ```
 adcp.major_versions + supported_protocols + signals{} nested object
 ```
 
-### Signal object fields (get_signals)
-- `signal_agent_segment_id` — stable string ID
-- `signal_type` — `"marketplace"` (seeded/derived) or `"custom"` (dynamic)
-- `data_provider` — provider attribution string
-- `coverage_percentage` — `(estimatedAudienceSize / 240M) * 100`, capped at 99
-- `deployments[]` — discriminated union: `type: "platform"` or `type: "agent"`
-  - When `is_live: true`: `activation_key: { type: "segment_id", segment_id }` included
-- `pricing_options[]` — array with `pricing_option_id`, `pricing_model`, `cpm`, `currency`
+### Signal object
+- `signal_type`: `"marketplace"` (seeded/derived) or `"custom"` (dynamic/proposals)
+- `coverage_percentage`: `(estimatedAudienceSize / 240M) * 100`, capped at 99
+- `deployments[]`: discriminated union `type: "platform" | "agent"`, `activation_key` when `is_live: true`
+- `pricing_options[]`: array with `pricing_option_id`, `pricing_model`, `cpm`, `currency`
 
-### Activation response (activate_signal)
-Top-level: `message`, `context_id`, `deployments[]` only.
+### Activation response
+Top-level: `task_id`, `status: "pending"`, `signal_agent_segment_id`, `deployments[]`
 
-Deployment objects preserve input type. Agent deployments: `agent_url` + `adcp_{signalId}` segment ID. Platform deployments: `platform` + `{platform}_{signalId}` segment ID.
+### Operation status response
+Top-level: `task_id`, `status`, `signal_agent_segment_id`, `deployments[]` (with `is_live: true` when completed)
 
-Input normalization accepts: `destinations[]`, `deployments[]`, `destination{}` (object), `destination` (string). External platform names (trade-desk, ttd, dv360, liveramp) map to internal IDs via PLATFORM_MAP.
+### Input normalization (activate_signal)
+Accepts all field name variants the spec and test runners send:
+- `destinations: [{ type, platform, account_id }]` — spec array
+- `deployments: [{ type, platform }]` — alternate name
+- `destination: { platform }` — singular object
+- `destination: "mock_dsp"` — legacy string
 
-### destinations filter in get_signals
-When `destinations: [{ type: "platform", platform }]` is passed, each signal's deployments are filtered to matching platforms and signals with zero matches are dropped. If only `type: "agent"` destinations are passed, filter is skipped (agent type = provider itself, all deployments valid).
+External platform names mapped to internal IDs: `trade-desk`, `ttd`, `dv360`, `index-exchange`, `liveramp`, etc.
+
+## Data Sources
+
+### US Census ACS 2022 5-Year Estimates
+Tables B01001 (age) × B19001 (income) × B15003 (education) × B11001 (household). MOE combines in quadrature for aggregated estimates. Signals carry `rawSourceRefs` with ACS table codes.
+
+### Nielsen DMA Universe 2023-24
+Top 50 DMAs with official codes (DMA-501 = New York), ranks, TV household counts, and percent-of-US. Geography field carries `DMA-{code}` identifiers matching industry conventions.
+
+### IAB Audience × Content Taxonomy Bridge
+Semantic bridge between IAB Audience Taxonomy 1.1 and Content Taxonomy 3.0. Three mapping types: strong (bidirectional), moderate (directional), contextual. Cross-taxonomy signals carry `rawSourceRefs` with both taxonomy node IDs.
 
 ## Seed Pipeline Sequence
 
 ```
 runSeedPipeline()
-  1. Parse IAB Taxonomy 1.1 TSV → upsert taxonomy_nodes
-  2. Insert SEEDED_SIGNALS (25 base signals)
-  3. Insert DERIVED_SIGNALS (6 composite signals)
-  4. Insert ALL_ENRICHED_SIGNALS (16 signals: 5 ACS + 6 DMA + 5 cross-taxonomy)
+  1. Parse IAB Taxonomy 1.1 TSV → taxonomy_nodes
+  2. Insert SEEDED_SIGNALS (25)
+  3. Insert DERIVED_SIGNALS (6)
+  4. Insert ALL_ENRICHED_SIGNALS (16: 5 ACS + 6 DMA + 5 cross-taxonomy)
 
-Total: 49 signals (+ test-signal-001 fixture = 50 entries)
-Idempotent: skips if signals already present (unless force=true)
+Total: 49 signals + test-signal-001 fixture = 50 D1 rows
+Force re-seed: POST /seed (requires ENVIRONMENT=development)
 ```
 
-## Key Implementation Decisions
+## D1 Schema
 
-**ACS MOE handling.** Census margins of error combine in quadrature when aggregating across geographies (standard ACS methodology). The `censusLoader.ts` implements `Math.sqrt(sum of squared MOEs)` for combined estimates.
+```
+taxonomy_nodes      — IAB taxonomy tree
+signals             — canonical signal catalog (all 50)
+signal_rules        — rules for derived/dynamic signals
+source_records      — raw loader reference records
+activation_jobs     — async activation tasks (+ webhook_url, webhook_fired)
+activation_events   — audit log per task transition
+```
 
-**DMA tier classification.** Nielsen's official tiers are used: top_10, top_25, top_50, top_100. The `dmaLoader.ts` preserves the rank field so downstream consumers can implement custom tier thresholds.
+Migration history:
+- `0001_initial_schema.sql` — initial 6-table schema
+- `0002_webhook_taskid.sql` — added `webhook_url`, `webhook_fired` to `activation_jobs`
 
-**Cross-taxonomy bridge directionality.** Bidirectional mappings (`bidirectional: true`) mean the content consumption signal implies audience membership — useful for probabilistic audience extension. Directional mappings only flow from audience → content.
+## KV Cache
 
-**conformance test fixture.** `test-signal-001` has a stable hardcoded ID (bypassing the `sig_` prefix convention) for AdCP conformance test runners that use static IDs rather than dynamic ones from `get_signals`.
-
-**KV cache key versioning.** Capabilities cache key includes a version suffix (`adcp_capabilities_v3`). Increment this when capabilities change to force cache invalidation without waiting for TTL.
+`SIGNALS_CACHE` KV namespace used only for capabilities response (key: `adcp_capabilities_v3`, TTL: 1hr). All queryable data stays in D1. Increment cache key version when capabilities change.
 
 ## Extensibility
 
-| Change | Files to touch |
+| Change | Files |
 |---|---|
-| Add real ACS data via Census API | `src/connectors/censusLoader.ts` + `src/enrichedSeedData.ts` |
-| Add real Nielsen DMA data | `src/connectors/dmaLoader.ts` + `src/enrichedSeedData.ts` |
-| Add IAB Content Taxonomy 3.0 full bridge | `src/connectors/taxonomyBridgeLoader.ts` + `src/enrichedSeedData.ts` |
-| Add CTV/ACR signal category | `src/types/signal.ts` + `src/domain/enrichedSignalModel.ts` |
-| Add exclusion signals (negative targeting) | `src/domain/ruleEngine.ts` (add `exclude` operator) |
-| Add real DSP activation | `src/domain/activationService.ts` + Cloudflare Queue |
+| Add real data provider | `src/connectors/` + `src/enrichedSeedData.ts` + `src/domain/enrichedSignalModel.ts` |
+| Add CTV/ACR signal type | `src/types/signal.ts` + `src/domain/enrichedSignalModel.ts` |
+| Add exclusion/negative targeting | `src/domain/ruleEngine.ts` (add `exclude` operator) |
+| Add real async activation | `activationService.ts` + Cloudflare Queue + Consumer Worker |
+| Replace hand-rolled MCP | Evaluate `@adcp/client` server utilities |
 | Add A2A transport | New `src/a2a/` directory, same domain services |
-| Add per-account entitlements | `src/routes/shared.ts` (auth) + `accessPolicy` filter in `signalRepo.ts` |
+| Add per-account entitlements | `src/routes/shared.ts` + `accessPolicy` filter in `signalRepo.ts` |

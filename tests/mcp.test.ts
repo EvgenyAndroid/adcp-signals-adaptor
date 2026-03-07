@@ -31,12 +31,16 @@ describe("MCP tool definitions", () => {
   it("activate_signal requires signalId and destination", () => {
     const tool = getToolByName("activate_signal")!;
     expect(tool.inputSchema.required).toContain("signal_agent_segment_id");
-    expect(tool.inputSchema.required).toContain("destinations");
+    expect(tool.inputSchema.required).toContain("deliver_to");
   });
 
-  it("get_signals supports brief parameter", () => {
+  it("get_signals uses canonical spec param names (signal_spec, deliver_to, max_results)", () => {
     const tool = getToolByName("get_signals")!;
-    expect(tool.inputSchema.properties).toHaveProperty("brief");
+    expect(tool.inputSchema.properties).toHaveProperty("signal_spec");
+    expect(tool.inputSchema.properties).toHaveProperty("deliver_to");
+    expect(tool.inputSchema.properties).toHaveProperty("max_results");
+    expect(tool.inputSchema.required).toContain("signal_spec");
+    expect(tool.inputSchema.required).toContain("deliver_to");
   });
 
   it("activate_signal supports webhook_url parameter", () => {

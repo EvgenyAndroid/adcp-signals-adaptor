@@ -184,16 +184,28 @@ async function callGetSignals(
   args: Record<string, unknown>,
   env: Env
 ): Promise<unknown> {
+  // Normalize spec param names → internal names
+  // signal_spec (spec) = brief (internal)
+  // max_results (spec) = limit (internal)
+  // deliver_to.deployments (spec) = destinations (internal)
+  // filters.query / filters.category_type etc (spec) = flat query/categoryType (internal)
+  const filters = args["filters"] as Record<string, unknown> | undefined;
+  const deliverTo = args["deliver_to"] as Record<string, unknown> | undefined;
+  const pagination = args["pagination"] as Record<string, unknown> | undefined;
+
   const req = {
-    brief: args["brief"] as string | undefined,
-    query: args["query"] as string | undefined,
-    categoryType: args["categoryType"] as string | undefined,
-    generationMode: args["generationMode"] as string | undefined,
+    brief: (args["signal_spec"] ?? args["brief"]) as string | undefined,
+    query: (filters?.["query"] ?? args["query"]) as string | undefined,
+    categoryType: (filters?.["category_type"] ?? args["categoryType"]) as string | undefined,
+    generationMode: (filters?.["generation_mode"] ?? args["generationMode"]) as string | undefined,
+    taxonomyId: (filters?.["taxonomy_id"] ?? args["taxonomyId"]) as string | undefined,
     destination: args["destination"] as string | undefined,
-    taxonomyId: args["taxonomyId"] as string | undefined,
-    limit: args["limit"] ? Number(args["limit"]) : 20,
-    offset: args["offset"] ? Number(args["offset"]) : 0,
-    destinations: args["destinations"] as Array<{ type: string; platform?: string; agent_url?: string }> | undefined,
+    limit: args["max_results"] ? Number(args["max_results"]) : args["limit"] ? Number(args["limit"]) : 20,
+    offset: (pagination?.["offset"] ? Number(pagination["offset"]) : args["offset"] ? Number(args["offset"]) : 0),
+    // deliver_to.deployments takes priority over destinations
+    destinations: (
+      deliverTo?.["deployments"] as Array<{ type: string; platform?: string; agent_url?: string }> | undefined
+    ) ?? (args["destinations"] as Array<{ type: string; platform?: string; agent_url?: string }> | undefined),
   };
 
   const validation = validateSearchRequest(req);
@@ -212,10 +224,12 @@ async function callActivateSignal(
   logger: Logger
 ): Promise<unknown> {
   // Normalize all destination field variants
+  // deliver_to.deployments (spec) > destinations > deployments > destination
   let destination: string | undefined;
   let accountId: string | undefined;
 
-  const raw = args["destinations"] ?? args["deployments"] ?? args["destination"];
+  const deliverTo = args["deliver_to"] as Record<string, unknown> | undefined;
+  const raw = deliverTo?.["deployments"] ?? args["destinations"] ?? args["deployments"] ?? args["destination"];
 
   if (Array.isArray(raw) && raw.length > 0) {
     const first = raw[0] as Record<string, unknown>;

@@ -305,7 +305,7 @@ describe("Request validation", () => {
 
 // ── Mapper tests ──────────────────────────────────────────────────────────────
 
-import { toSignalSummary } from "../src/mappers/signalMapper";
+import { toSignalSummary, toSignalSummaries, buildDtsLabel } from "../src/mappers/signalMapper";
 
 describe("Signal mapper", () => {
   it("maps canonical signal to summary without internal fields", () => {
@@ -321,3 +321,125 @@ describe("Signal mapper", () => {
     expect((summary as Record<string, unknown>)["signalId"]).toBeUndefined();
   });
 });
+
+// ── DTS v1.2 label tests ──────────────────────────────────────────────────────
+
+describe("buildDtsLabel", () => {
+  const baseSignal = {
+    signalId: "sig_test",
+    name: "Test Signal",
+    description: "A test signal",
+    taxonomySystem: "iab_audience_1_1" as const,
+    categoryType: "demographic" as const,
+    sourceSystems: ["demographics"],
+    destinations: ["mock_dsp"],
+    activationSupported: true,
+    estimatedAudienceSize: 1_200_000,
+    accessPolicy: "public_demo" as const,
+    generationMode: "seeded" as const,
+    status: "available" as const,
+    pricing: { model: "mock_cpm" as const, value: 2.5, currency: "USD" as const },
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: "2026-01-01T00:00:00Z",
+  };
+
+  it("returns dts_version 1.2", () => {
+    const dts = buildDtsLabel(baseSignal);
+    expect(dts.dts_version).toBe("1.2");
+  });
+
+  it("sets provider fields correctly", () => {
+    const dts = buildDtsLabel(baseSignal);
+    expect(dts.provider_name).toBe("AdCP Signals Adaptor - Demo Provider (Evgeny)");
+    expect(dts.provider_domain).toBe("adcp-signals-adaptor.evgeny-193.workers.dev");
+    expect(dts.provider_email).toBe("evgeny@samba.tv");
+  });
+
+  it("mirrors signal identity fields", () => {
+    const dts = buildDtsLabel(baseSignal);
+    expect(dts.audience_id).toBe("sig_test");
+    expect(dts.audience_name).toBe("Test Signal");
+    expect(dts.audience_size).toBe(1_200_000);
+  });
+
+  it("seeded demographic signals are Modeled + Online Survey + Static", () => {
+    const dts = buildDtsLabel(baseSignal);
+    expect(dts.audience_inclusion_methodology).toBe("Modeled");
+    expect(dts.data_sources).toContain("Online Survey");
+    expect(dts.audience_refresh).toBe("Static");
+    expect(dts.lookback_window).toBe("N/A");
+  });
+
+  it("Census ACS signals are Derived + Public Record: Census + Annually", () => {
+    const censusSignal = {
+      ...baseSignal,
+      signalId: "sig_acs_test",
+      sourceSystems: ["census_acs"],
+      rawSourceRefs: ["ACS_B19001", "ACS_B01001"],
+      generationMode: "seeded" as const,
+    };
+    const dts = buildDtsLabel(censusSignal);
+    expect(dts.audience_inclusion_methodology).toBe("Derived");
+    expect(dts.data_sources).toContain("Public Record: Census");
+    expect(dts.audience_refresh).toBe("Annually");
+  });
+
+  it("Nielsen DMA signals are Observed/Known + Geo Location + Annually", () => {
+    const dmaSignal = {
+      ...baseSignal,
+      signalId: "sig_dma_test",
+      sourceSystems: ["nielsen_dma"],
+      rawSourceRefs: ["DMA-501"],
+      categoryType: "geo" as const,
+    };
+    const dts = buildDtsLabel(dmaSignal);
+    expect(dts.audience_inclusion_methodology).toBe("Observed/Known");
+    expect(dts.data_sources).toContain("Geo Location");
+    expect(dts.audience_refresh).toBe("Annually");
+    expect(dts.geocode_list).toContain("DMA-501");
+  });
+
+  it("geo category signals get Geography precision level", () => {
+    const geoSignal = { ...baseSignal, categoryType: "geo" as const };
+    const dts = buildDtsLabel(geoSignal);
+    expect(dts.audience_precision_levels).toContain("Geography");
+  });
+
+  it("non-geo signals get Household precision level", () => {
+    const dts = buildDtsLabel(baseSignal);
+    expect(dts.audience_precision_levels).toContain("Household");
+  });
+
+  it("includes privacy fields", () => {
+    const dts = buildDtsLabel(baseSignal);
+    expect(dts.privacy_compliance_mechanisms).toContain("GPP");
+    expect(dts.privacy_compliance_mechanisms).toContain("MSPA");
+    expect(dts.privacy_policy_url).toContain("adcp-signals-adaptor");
+    expect(dts.iab_techlab_compliant).toBe("No");
+  });
+
+  it("non-offline signals have N/A onboarder fields", () => {
+    const dts = buildDtsLabel(baseSignal);
+    expect(dts.onboarder_match_keys).toBe("N/A");
+    expect(dts.onboarder_audience_expansion).toBe("N/A");
+    expect(dts.onboarder_device_expansion).toBe("N/A");
+    expect(dts.onboarder_audience_precision_level).toBe("N/A");
+  });
+
+  it("Census signals populate onboarder fields (Public Record is offline-like)", () => {
+    const censusSignal = {
+      ...baseSignal,
+      sourceSystems: ["census_acs"],
+      rawSourceRefs: ["ACS_B19001"],
+    };
+    const dts = buildDtsLabel(censusSignal);
+    expect(dts.onboarder_match_keys).not.toBe("N/A");
+  });
+
+  it("toSignalSummary includes x_dts on every signal", () => {
+    const summary = toSignalSummary(baseSignal);
+    expect(summary.x_dts).toBeDefined();
+    expect(summary.x_dts?.dts_version).toBe("1.2");
+  });
+});
+

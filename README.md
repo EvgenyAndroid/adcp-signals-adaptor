@@ -1,6 +1,6 @@
 # AdCP Signals Adaptor
 
-A production-structured, AdCP 2.6-compliant Signals Provider built on Cloudflare Workers. Implements the full AdCP Signals Activation Protocol: signal discovery, brief-driven custom segment proposals, async activation with webhook support, task polling, and IAB Data Transparency Standard v1.2 labeling via the AdCP `x_dts` extension field.
+A production-structured, AdCP 2.6-compliant Signals Provider built on Cloudflare Workers. Implements the full AdCP Signals Activation Protocol: signal discovery with relevance ranking, brief-driven custom segment proposals, async activation with webhook support, task polling, and IAB Data Transparency Standard v1.2 labeling via the AdCP `x_dts` extension field.
 
 **Live:** `https://adcp-signals-adaptor.evgeny-193.workers.dev`  
 **MCP:** `https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp`  
@@ -10,115 +10,67 @@ A production-structured, AdCP 2.6-compliant Signals Provider built on Cloudflare
 
 ## Protocol Compliance
 
-Implements AdCP Signals Activation Protocol v2.6 — 4 tools:
+Implements AdCP Signals Activation Protocol v2.6 — 4 tools with canonical spec parameter names:
 
 | Tool | Status | Notes |
 |---|---|---|
 | `get_adcp_capabilities` | ✅ | `adcp.major_versions: [2, 3]` + `supported_protocols` envelope |
-| `get_signals` | ✅ | Catalog + inline custom proposals via `brief` param + `x_dts` on every signal |
-| `activate_signal` | ✅ | Async — returns `task_id + pending` immediately |
-| `get_operation_status` | ✅ | Lazy state machine + webhook firing |
+| `get_signals` | ✅ | `signal_spec` + `deliver_to` (required) + relevance ranking + DTS v1.2 on every signal |
+| `activate_signal` | ✅ | `deliver_to` required. Async — returns `task_id + pending` immediately |
+| `get_operation_status` | ✅ | Also accepts `get_task_status` / `get_signal_status` aliases. `destinations` field. |
 
-`generate_custom_signal` was intentionally not implemented — proposals surface via `get_signals` brief parameter per protocol spec. Passes the AdCP conformance test suite: health, discovery, capability_discovery, signals_flow.
+`generate_custom_signal` not implemented — proposals surface inline via `get_signals` `signal_spec` parameter per protocol spec. Passes the AdCP conformance test suite: health, discovery, capability_discovery, signals_flow.
+
+---
+
+## Key Design Decisions
+
+**`signal_spec` not `brief`** — canonical AdCP spec parameter name. `brief` accepted as alias for backward compatibility.
+
+**`deliver_to` required on `get_signals` and `activate_signal`** — spec-compliant object with `deployments[]` and `countries[]`. The `destinations` alias also accepted.
+
+**Relevance ranking** — when `signal_spec` is present, fetches up to 200 signals from D1, scores each by keyword overlap with the brief (name match +4, description +2, category hint +3, derived/dynamic bonus), then sorts before applying `max_results`. Alphabetical fallback when no brief.
+
+**Deterministic dynamic IDs** — `sig_dyn_{slug}_{djb2hash}`. Same rules always produce the same segment ID. Repeated brief calls upsert the same row — no duplicates accumulate.
+
+**`destinations` not `deployments`** — response field name aligned to spec in both `activate_signal` and `get_operation_status` responses.
 
 ---
 
 ## Data Transparency Standard v1.2
 
-Every signal returned by `get_signals` carries an `x_dts` object — a full IAB Tech Lab Data Transparency Standard v1.2 ("Privacy Update", April 2024) label. This is generated automatically in `src/mappers/signalMapper.ts` via `buildDtsLabel()` and embedded using the AdCP v2.5+ `x_` extension field mechanism.
+Every signal returned by `get_signals` carries an `x_dts` object — a full IAB Tech Lab Data Transparency Standard v1.2 ("Privacy Update", April 2024) label. Generated automatically in `src/mappers/signalMapper.ts` via `buildDtsLabel()`. Uses the AdCP v2.5+ `x_` extension field mechanism — non-breaking to conformance tests.
 
-DTS v1.2 is the "nutrition label" for audience data: standardized disclosure of segment provenance, inclusion methodology, refresh cadence, geographic coverage, and privacy compliance posture.
+### DTS by signal type
 
-### Why `x_dts` and why non-breaking
+| Signal type | `data_sources` | `audience_inclusion_methodology` | `audience_refresh` | Onboarder |
+|---|---|---|---|---|
+| Seeded demographic/interest | `["Online Survey"]` | `"Modeled"` | `"Static"` | N/A |
+| Derived composite | `["Online Survey"]` | `"Derived"` | `"Static"` | N/A |
+| Dynamic (brief proposal) | `["Online Survey"]` | `"Modeled"` | `"Static"` | N/A |
+| Census ACS-derived | `["Public Record: Census"]` | `"Derived"` | `"Annually"` | Populated |
+| Nielsen DMA-derived | `["Geo Location"]` | `"Observed/Known"` | `"Annually"` | N/A |
+| Cross-taxonomy bridge | `["Web Usage", "App Behavior"]` | `"Derived"` | `"Static"` | N/A |
+| CTV/ACR (future) | `["TV OTT or STB Device"]` | `"Observed/Known"` | `"Weekly"` | N/A |
 
-The AdCP schema explicitly supports `x_` prefixed fields as extension fields since v2.5.0. The conformance test suite validates only required fields — extra fields are ignored. Embedding DTS v1.2 here bridges two IAB Tech Lab standards with no current formal linkage: AdCP Signals Activation Protocol and DTS v1.2. This implementation is the basis for a proposed contribution to the AdCP working group.
-
-### DTS v1.2 fields implemented
-
-**Core section — always present:**
-
-| DTS 1.2 field | Description | Derived from |
-|---|---|---|
-| `dts_version` | Spec version | `"1.2"` (hardcoded) |
-| `provider_name` | Business entity name | Constant |
-| `provider_domain` | Provider domain | Constant |
-| `provider_email` | Contact email | Constant |
-| `audience_name` | Segment name | `signal.name` |
-| `audience_id` | Provider's internal ID | `signal.signalId` |
-| `taxonomy_id_list` | IAB AT 1.1 node IDs, comma-separated | `signal.externalTaxonomyId` + `rawSourceRefs` |
-| `audience_criteria` | Inclusion logic, 500 char max | `signal.rules` or `signal.description` + source refs |
-| `audience_precision_levels` | Granularity multiselect | `"Geography"` for geo signals, `"Household"` otherwise |
-| `audience_scope` | Collection context | `"Cross-domain outside O&O"` |
-| `originating_domain` | Source domain | `"N/A (Cross-domain)"` |
-| `audience_size` | Estimated addressable units | `signal.estimatedAudienceSize` |
-| `id_types` | ID currencies | `["Platform ID"]` |
-| `geocode_list` | ISO-3166-1-alpha-3, pipe-separated | `"USA"` + DMA codes from `rawSourceRefs` |
-| `privacy_compliance_mechanisms` | Consent/opt-out tools | `["GPP", "MSPA"]` |
-| `privacy_policy_url` | Privacy policy link | `https://{provider_domain}/privacy` |
-| `iab_techlab_compliant` | Compliance audit status | `"No"` (demo) |
-
-**Audience Details section — always present:**
-
-| DTS 1.2 field | Description | Derived from |
-|---|---|---|
-| `data_sources` | Raw data origin(s) | `signal.sourceSystems` + `rawSourceRefs` (see mapping table below) |
-| `audience_inclusion_methodology` | How attributes determined | `signal.sourceSystems` + `generationMode` |
-| `audience_expansion` | Look-alike modeling used | `"No"` |
-| `device_expansion` | Cross-device expansion | `"No"` |
-| `audience_refresh` | Refresh cadence | Inferred from source systems |
-| `lookback_window` | Qualifying event lookback | Matches `audience_refresh`, `"N/A"` if `Static` |
-
-**Onboarder Details section — conditional:**
-
-Present with real values when `data_sources` includes `"Public Record: Census"` or other offline-adjacent sources. `"N/A"` otherwise.
-
-| DTS 1.2 field | Offline-adjacent signals | All others |
-|---|---|---|
-| `onboarder_match_keys` | `"Postal / Geographic Code"` | `"N/A"` |
-| `onboarder_audience_expansion` | `"No"` | `"N/A"` |
-| `onboarder_device_expansion` | `"No"` | `"N/A"` |
-| `onboarder_audience_precision_level` | `"Geography"` | `"N/A"` |
-
-### DTS values by signal type
-
-| Signal type | `data_sources` | `audience_inclusion_methodology` | `audience_refresh` |
-|---|---|---|---|
-| Seeded demographic/interest | `["Online Survey"]` | `"Modeled"` | `"Static"` |
-| Derived composite | `["Online Survey"]` | `"Derived"` | `"Static"` |
-| Dynamic (brief proposal) | `["Online Survey"]` | `"Modeled"` | `"Static"` |
-| Census ACS-derived | `["Public Record: Census"]` | `"Derived"` | `"Annually"` |
-| Nielsen DMA-derived | `["Geo Location"]` | `"Observed/Known"` | `"Annually"` |
-| Cross-taxonomy bridge | `["Web Usage", "App Behavior"]` | `"Derived"` | `"Static"` |
-| CTV/ACR (future) | `["TV OTT or STB Device"]` | `"Observed/Known"` | `"Weekly"` |
-
-### Full `x_dts` example — Census ACS signal
+### Example `x_dts` (Census ACS signal)
 
 ```json
 {
-  "signal_agent_segment_id": "sig_acs_high_income_educated_hh",
-  "name": "ACS: High Income + College Educated Households",
-  "signal_type": "marketplace",
-  "coverage_percentage": 0.8,
-  "deployments": [...],
-  "pricing_options": [...],
-
   "x_dts": {
     "dts_version": "1.2",
     "provider_name": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
     "provider_domain": "adcp-signals-adaptor.evgeny-193.workers.dev",
     "provider_email": "evgeny@samba.tv",
-    "audience_name": "ACS: High Income + College Educated Households",
-    "audience_id": "sig_acs_high_income_educated_hh",
-    "taxonomy_id_list": "17,10",
-    "audience_criteria": "Derived: census_acs. Source refs: ACS_B19001, ACS_B01001. HHI > $100K AND bachelor's or graduate degree.",
+    "audience_id": "sig_acs_graduate_high_income",
+    "taxonomy_id_list": "11",
+    "audience_criteria": "Households with graduate degree and HHI $150K+. Source: ACS 2022 B15003 × B19001.",
     "audience_precision_levels": ["Household"],
     "audience_scope": "Cross-domain outside O&O",
-    "originating_domain": "N/A (Cross-domain)",
-    "audience_size": 1960000,
+    "audience_size": 1290000,
     "id_types": ["Platform ID"],
     "geocode_list": "USA",
     "privacy_compliance_mechanisms": ["GPP", "MSPA"],
-    "privacy_policy_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/privacy",
     "iab_techlab_compliant": "No",
     "data_sources": ["Public Record: Census"],
     "audience_inclusion_methodology": "Derived",
@@ -134,9 +86,9 @@ Present with real values when `data_sources` includes `"Public Record: Census"` 
 }
 ```
 
-### Spec contribution note
+### Spec contribution
 
-This implementation bridges three IAB Tech Lab standards with no current formal linkage: AdCP Signals Activation Protocol, DTS v1.2, and IAB Audience Taxonomy 1.1. The author serves as Principal Spec Editor at IAB Tech Lab (UCP/Agentic Audiences) and Samba TV is a named AdCP launch member. The `x_dts` implementation is the reference basis for a formal extension proposal to the AdCP working group, which would add `x_dts` as a documented optional field to `static/schemas/signals/signal.json` in the `adcontextprotocol/adcp` repo.
+This implementation bridges three IAB Tech Lab standards with no current formal linkage: AdCP Signals Activation Protocol, DTS v1.2, and IAB Audience Taxonomy 1.1. Intended as the reference basis for a formal `x_dts` extension proposal to the AdCP working group (`adcontextprotocol/adcp`).
 
 ---
 
@@ -146,27 +98,27 @@ This implementation bridges three IAB Tech Lab standards with no current formal 
 Cloudflare Worker (src/index.ts)
   │
   ├── /mcp              MCP Streamable HTTP (JSON-RPC 2.0)
-  │     src/mcp/server.ts    — 4-tool protocol handler
-  │     src/mcp/tools.ts     — tool definitions + JSON schemas
+  │     src/mcp/server.ts    — 4-tool protocol handler + alias resolution
+  │     src/mcp/tools.ts     — canonical AdCP spec tool definitions
   │
   ├── /capabilities     AdCP capabilities envelope
-  ├── /signals/search   Signal discovery + brief proposals
+  ├── /signals/search   Signal discovery + relevance ranking + brief proposals
   ├── /signals/activate Signal activation (REST)
   ├── /operations/:id   Task status polling (REST)
-  └── /seed             Force re-seed
+  └── /seed             Force re-seed (auth-gated)
 
 Domain Layer (src/domain/)
-  signalService.ts        — search, brief parsing, proposal generation + D1 persistence
+  signalService.ts        — search, relevance ranking, brief parsing, proposals + D1 persistence
   activationService.ts    — async activate, lazy state machine, webhook firing
   capabilityService.ts    — capabilities (KV-cached 1hr)
-  ruleEngine.ts           — rule validation + segment generation
+  ruleEngine.ts           — rule validation + deterministic segment generation
   signalModel.ts          — base seeded + derived catalog (33 signals)
   enrichedSignalModel.ts  — Census ACS + Nielsen DMA + cross-taxonomy (16 signals)
-  seedPipeline.ts         — D1 ingestion pipeline (all catalogs, idempotent)
+  seedPipeline.ts         — D1 ingestion pipeline (4-phase, idempotent)
 
 Mappers
   signalMapper.ts         — CanonicalSignal → AdCP response shape
-                            buildDtsLabel() → x_dts DTS v1.2 object on every signal
+                            buildDtsLabel() → x_dts DTS v1.2 on every signal
 
 Connectors (src/connectors/)
   iabTaxonomyLoader.ts    — IAB Audience Taxonomy 1.1 TSV parser
@@ -189,49 +141,47 @@ Storage (Cloudflare D1 + KV)
 
 **Derived (6):** Multi-dimensional composites — High Income Entertainment Enthusiasts, Urban Young Professionals, Affluent Families, Metro Sci-Fi Fans, College Educated Heavy Streamers, Affluent Urban Entertainment Fans.
 
-**Dynamic:** Unlimited — generated on-demand via `get_signals` brief parameter, persisted to D1 on first request.
+**Dynamic:** Unlimited — generated on-demand via `signal_spec`, persisted to D1 with deterministic IDs.
 
 ### Enriched Catalog — 16 signals
 
-**Census ACS-Derived (5)** — US Census ACS 2022 5-yr estimates (B01001 × B19001 × B15003 × B11001). DTS: `data_sources: ["Public Record: Census"]`, `audience_inclusion_methodology: "Derived"`, `audience_refresh: "Annually"`.
+**Census ACS-Derived (5)** — US Census ACS 2022 5-yr estimates. DTS: `data_sources: ["Public Record: Census"]`, `methodology: "Derived"`, `refresh: "Annually"`, onboarder section populated.
 
-**Nielsen DMA-Derived (6)** — Nielsen 2023-24 DMA universe. Proper DMA codes (DMA-501 etc.), TV household counts. DTS: `data_sources: ["Geo Location"]`, `audience_inclusion_methodology: "Observed/Known"`, `geocode_list` includes `DMA-{code}`.
+**Nielsen DMA-Derived (6)** — Nielsen 2023-24 DMA universe. DMA codes in `geocode_list` (e.g. `"USA|DMA-501"`). DTS: `data_sources: ["Geo Location"]`, `methodology: "Observed/Known"`.
 
-**Cross-Taxonomy Bridge (5)** — IAB Audience 1.1 × Content Taxonomy 3.0. CPMs $2.80–$5.00. DTS: `data_sources: ["Web Usage", "App Behavior"]`, `taxonomy_id_list` carries both taxonomy node IDs.
+**Cross-Taxonomy Bridge (5)** — IAB Audience 1.1 × Content Taxonomy 3.0. CPMs $2.80–$5.00.
 
 ---
 
 ## Key Protocol Flows
 
-### Natural Language Brief → Custom Proposal
+### `get_signals` with relevance ranking
 
 ```
-get_signals(brief: "affluent parents in top metros who love sci-fi")
-  → signals: [...catalog results, each with x_dts...]
-  → proposals: [{
-      signal_agent_segment_id: "sig_dyn_...",
-      name: "High Income $150K+, Families w/ Children, Sci-Fi Fans",
-      signal_type: "custom",
-      is_live: false,
-      estimated_audience_size: 1393920,
-      x_dts: {
-        dts_version: "1.2",
-        data_sources: ["Online Survey"],
-        audience_inclusion_methodology: "Modeled",
-        audience_criteria: "Rule-based: income_band=150k_plus ∩ household_type=family_with_kids ∩ content_genre=sci_fi. Modeled estimate.",
-        audience_refresh: "Static"
-      }
-    }]
+get_signals(
+  signal_spec: "high income households interested in luxury goods",
+  max_results: 3,
+  deliver_to: { deployments: [{type: "platform", platform: "mock_dsp"}], countries: ["US"] }
+)
+→ signals: [
+    "Graduate Educated High Income Households (ACS)",  ← scores: "high"×4 + "income"×4 + "luxury"×2
+    "High Income Households",                           ← scores: "high"×4 + "income"×4
+    "High Income Entertainment Enthusiasts"             ← scores: "high"×4 + "income"×4 + derived bonus
+  ]
+→ proposals: [{
+    signal_agent_segment_id: "sig_dyn_high_income_150k_{deterministic_hash}",
+    signal_type: "custom", is_live: false, cpm: $4.00
+  }]
 ```
 
 ### Async Activation Flow
 
 ```
-activate_signal(signal_agent_segment_id, destinations)
-  → { task_id: "op_...", status: "pending", is_live: false }
+activate_signal(signal_agent_segment_id, deliver_to)
+  → { task_id: "op_...", status: "pending", destinations: [{is_live: false}] }
 
-get_operation_status(task_id)
-  → { status: "completed", is_live: true, activation_key: { segment_id: "..." } }
+get_operation_status(task_id)  OR  get_task_status(task_id)
+  → { status: "completed", destinations: [{is_live: true, activation_key: {...}}] }
 ```
 
 Status lifecycle: `submitted → working → completed` (aligned with `@adcp/client` `ADCP_STATUS`).
@@ -242,49 +192,23 @@ Optional `webhook_url` — POST callback fires on first completed poll.
 
 ## AdCP Response Shapes
 
-### `get_signals` (with DTS v1.2)
+### `get_signals`
 
 ```json
 {
-  "message": "Found 20 signal(s)...",
+  "message": "Found 3 signal(s) matching brief...",
   "context_id": "req_...",
-  "signals": [
-    {
-      "signal_agent_segment_id": "sig_high_income_households",
-      "signal_type": "marketplace",
-      "data_provider": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
-      "coverage_percentage": 0.5,
-      "deployments": [{
-        "type": "platform", "platform": "mock_dsp", "is_live": true,
-        "activation_key": { "type": "segment_id", "segment_id": "mock_dsp_sig_high_income_households" },
-        "activation_supported": true
-      }],
-      "pricing_options": [{ "pricing_model": "cpm", "cpm": 2.5, "currency": "USD" }],
-      "category_type": "demographic",
-      "estimated_audience_size": 1200000,
-      "x_dts": {
-        "dts_version": "1.2",
-        "provider_name": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
-        "audience_id": "sig_high_income_households",
-        "taxonomy_id_list": "17",
-        "audience_precision_levels": ["Household"],
-        "audience_size": 1200000,
-        "geocode_list": "USA",
-        "privacy_compliance_mechanisms": ["GPP", "MSPA"],
-        "iab_techlab_compliant": "No",
-        "data_sources": ["Public Record: Census"],
-        "audience_inclusion_methodology": "Derived",
-        "audience_expansion": "No",
-        "device_expansion": "No",
-        "audience_refresh": "Annually",
-        "lookback_window": "Annually",
-        "onboarder_match_keys": "Postal / Geographic Code",
-        "onboarder_audience_expansion": "No",
-        "onboarder_device_expansion": "No",
-        "onboarder_audience_precision_level": "Geography"
-      }
-    }
-  ]
+  "signals": [{
+    "signal_agent_segment_id": "sig_acs_graduate_high_income",
+    "signal_type": "marketplace",
+    "data_provider": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+    "coverage_percentage": 0.5,
+    "deployments": [{ "type": "platform", "platform": "mock_dsp", "is_live": true,
+      "activation_key": { "type": "segment_id", "segment_id": "mock_dsp_sig_acs_graduate_high_income" } }],
+    "pricing_options": [{ "pricing_model": "cpm", "cpm": 2.5, "currency": "USD" }],
+    "x_dts": { "dts_version": "1.2", "data_sources": ["Public Record: Census"], ... }
+  }],
+  "proposals": [{ "signal_type": "custom", "is_live": false, ... }]
 }
 ```
 
@@ -292,33 +216,27 @@ Optional `webhook_url` — POST callback fires on first completed poll.
 
 ```json
 {
-  "task_id": "op_1772905632696_6d0bpy12o",
+  "task_id": "op_1772919012588_xpjdlzmag",
   "status": "pending",
-  "signal_agent_segment_id": "sig_high_income_households",
-  "deployments": [{
-    "type": "platform", "platform": "mock_dsp",
-    "is_live": false,
-    "activation_key": { "type": "segment_id", "segment_id": "mock_dsp_sig_high_income_households" },
-    "estimated_activation_duration_minutes": 1
-  }]
+  "signal_agent_segment_id": "sig_acs_graduate_high_income",
+  "destinations": [{ "type": "platform", "platform": "mock_dsp", "is_live": false,
+    "activation_key": { "type": "segment_id", "segment_id": "mock_dsp_sig_acs_graduate_high_income" },
+    "estimated_activation_duration_minutes": 1 }]
 }
 ```
 
-### `get_operation_status`
+### `get_operation_status` / `get_task_status`
 
 ```json
 {
-  "task_id": "op_1772905632696_6d0bpy12o",
+  "task_id": "op_1772919012588_xpjdlzmag",
   "status": "completed",
-  "signal_agent_segment_id": "sig_high_income_households",
-  "deployments": [{
-    "type": "platform", "platform": "mock_dsp",
-    "is_live": true,
-    "activation_key": { "type": "segment_id", "segment_id": "mock_dsp_sig_high_income_households" },
-    "estimated_activation_duration_minutes": 0
-  }],
-  "submittedAt": "2026-03-07T17:47:12.696Z",
-  "completedAt": "2026-03-07T17:54:27.994Z"
+  "signal_agent_segment_id": "sig_acs_graduate_high_income",
+  "destinations": [{ "type": "platform", "platform": "mock_dsp", "is_live": true,
+    "activation_key": { "type": "segment_id", "segment_id": "mock_dsp_sig_acs_graduate_high_income" },
+    "estimated_activation_duration_minutes": 0 }],
+  "submittedAt": "2026-03-07T21:30:12.588Z",
+  "completedAt": "2026-03-07T21:49:12.945Z"
 }
 ```
 
@@ -328,17 +246,45 @@ Optional `webhook_url` — POST callback fires on first completed poll.
 {
   "adcp": { "major_versions": [2, 3] },
   "supported_protocols": ["signals"],
-  "signals": {
-    "signal_categories": ["demographic", "interest", "purchase_intent", "geo", "composite"],
-    "dynamic_segment_generation": true,
-    "activation_mode": "async"
-  }
+  "signals": { "signal_categories": [...], "dynamic_segment_generation": true, "activation_mode": "async" }
 }
 ```
 
 ---
 
-## Dynamic Segment Generation (via brief)
+## Parameter Reference
+
+### `get_signals`
+
+| Parameter | Required | Type | Notes |
+|---|---|---|---|
+| `signal_spec` | Yes* | string | Natural language brief. `brief` accepted as alias. |
+| `deliver_to` | Yes | object | `{ deployments: [...], countries: ["US"] }` |
+| `max_results` | No | number | Default 20, max 100. `limit` accepted as alias. |
+| `filters` | No | object | `{ category_type, generation_mode, taxonomy_id, query }` |
+| `pagination` | No | object | `{ offset }` |
+| `signal_ids` | No | string[] | Retrieve specific signals by ID. |
+
+*`signal_spec` or `signal_ids` required.
+
+### `activate_signal`
+
+| Parameter | Required | Type | Notes |
+|---|---|---|---|
+| `signal_agent_segment_id` | Yes | string | Also accepts `signal_id` (SDK alias). |
+| `deliver_to` | Yes | object | `{ deployments: [...], countries: ["US"] }` |
+| `webhook_url` | No | string | POST callback on completion. |
+| `pricing_option_id` | No | string | From signal's `pricing_options` array. |
+
+### `get_operation_status`
+
+| Parameter | Required | Notes |
+|---|---|---|
+| `task_id` | Yes | Also accepts `operationId`. Tool name aliases: `get_task_status`, `get_signal_status`. |
+
+---
+
+## Dynamic Segment Generation (via signal_spec)
 
 | Dimension | Example phrases |
 |---|---|
@@ -350,7 +296,7 @@ Optional `webhook_url` — POST callback fires on first completed poll.
 | `content_genre` | "sci-fi", "action", "documentary", "comedy" |
 | `streaming_affinity` | "streaming", "cord cutters", "CTV", "OTT" |
 
-Up to 6 dimensions. Audience size uses heuristic intersection against 240M US adult baseline, 50K floor.
+Up to 6 dimensions. Audience size: heuristic intersection against 240M US adult baseline, 50K floor.
 
 ---
 
@@ -370,22 +316,22 @@ Up to 6 dimensions. Audience size uses heuristic intersection against 240M US ad
 
 ## SDK Integration (@adcp/client)
 
-`@adcp/client@^4.5.2` is a dev dependency (client-only — no server framework).
+`@adcp/client@^4.5.2` dev dependency — client-only, no server framework.
 
-| What | Where | Why |
+| What | Where | Notes |
 |---|---|---|
 | `createOperationId()` | `src/utils/ids.ts` | Spec-compliant op ID: `op_{timestamp}_{nanoid}` |
-| `ADCP_STATUS` | `src/domain/activationService.ts` | `submitted → working → completed` |
-| `COMPATIBLE_ADCP_VERSIONS` | `src/domain/capabilityService.ts` | `major_versions: [2, 3]` |
-| `SIGNALS_TOOLS` | `src/mcp/tools.ts` | Core protocol tool name reference |
+| `ADCP_STATUS` | `activationService.ts` | `submitted → working → completed` |
+| `COMPATIBLE_ADCP_VERSIONS` | `capabilityService.ts` | `major_versions: [2, 3]` |
+| `SIGNALS_TOOLS` | `mcp/tools.ts` | Core tool name reference |
 
-**Field normalization** — SDK test suite compatibility:
+**Field normalization — SDK test suite compatibility:**
 
-| SDK sends | Normalized to |
+| SDK sends | Accepted via |
 |---|---|
-| `signal_id` | `signal_agent_segment_id` |
-| `destination: {platform}` | `destinations: [{type, platform}]` |
-| `dv360`, `trade-desk`, `meta`, `ttd` | Internal destination IDs via `PLATFORM_MAP` |
+| `signal_id` | Alias for `signal_agent_segment_id` |
+| `destination: {platform}` | Singular object normalized to array |
+| `dv360`, `trade-desk`, `meta`, `ttd` | `PLATFORM_MAP` → internal destination IDs |
 
 ---
 
@@ -396,9 +342,8 @@ npm install
 wrangler login
 wrangler d1 migrations apply adcp-signals-db --remote
 npm run dev
+curl https://adcp-signals-adaptor.evgeny-193.workers.dev/health
 ```
-
----
 
 ## Deploying
 
@@ -407,7 +352,11 @@ npm run deploy
 wrangler d1 migrations apply adcp-signals-db --remote  # if schema changed
 ```
 
-`wrangler.toml` bindings required: D1 `DB` → `adcp-signals-db`, KV `SIGNALS_CACHE`.
+After a fresh deploy or schema change, trigger auto-seed:
+```bash
+npx wrangler d1 execute adcp-signals-db --remote --command "DELETE FROM signals"
+curl https://adcp-signals-adaptor.evgeny-193.workers.dev/health
+```
 
 ---
 
@@ -424,19 +373,29 @@ GET  /operations/:id
 POST /mcp
 ```
 
-**Brief discovery with DTS labels:**
+**Relevance-ranked discovery:**
 ```bash
-npx @adcp/client https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp \
-  get_signals '{"brief":"affluent parents in top metros who love sci-fi"}'
+curl -s -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp \
+  -H "Content-Type: application/json" \
+  -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"get_signals\",\"arguments\":{\"signal_spec\":\"high income households interested in luxury goods\",\"max_results\":3,\"deliver_to\":{\"deployments\":[{\"type\":\"platform\",\"platform\":\"mock_dsp\"}],\"countries\":[\"US\"]}}}}"
 ```
 
-**Verify DTS on geo signal:**
+**Activate + poll:**
 ```bash
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp \
+curl -s -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_signals","arguments":{"categoryType":"geo","limit":1}}}'
+  -d "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"activate_signal\",\"arguments\":{\"signal_agent_segment_id\":\"sig_acs_graduate_high_income\",\"deliver_to\":{\"deployments\":[{\"type\":\"platform\",\"platform\":\"mock_dsp\"}],\"countries\":[\"US\"]}}}}"
+
+curl -s -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp \
+  -H "Content-Type: application/json" \
+  -d "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"get_task_status\",\"arguments\":{\"task_id\":\"PASTE_TASK_ID\"}}}"
 ```
-Look for `x_dts.data_sources: ["Geo Location"]` and `x_dts.geocode_list` containing `DMA-{code}` on Nielsen signals.
+
+**SDK CLI:**
+```bash
+npx @adcp/client https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp \
+  get_signals '{"signal_spec":"high income streaming fans","deliver_to":{"deployments":[{"type":"platform","platform":"mock_dsp"}],"countries":["US"]}}'
+```
 
 ---
 
@@ -455,7 +414,7 @@ https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp
 npm test
 ```
 
-57 tests: ID utilities, estimation, taxonomy loader, demographic loader, rule engine validation + generation, signal catalog integrity, request validation, signal mapper, MCP tool definitions, **DTS v1.2 label generation** (12 tests covering all signal types, field derivation logic, onboarder conditional fields, and `x_dts` presence on `toSignalSummary`).
+**57 tests** across: ID utilities (deterministic hash), estimation, taxonomy loader, demographic loader, rule engine validation + generation, signal catalog integrity, request validation, signal mapper, MCP tool definitions, **DTS v1.2 label generation** (12 tests covering all signal types, field derivation, onboarder conditional fields, `x_dts` presence on every signal).
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## Design Philosophy
 
-Thin protocol-compliant orchestration layer. Routes validate and dispatch — all business logic in domain services. Both HTTP and MCP surfaces call the same domain functions. DTS v1.2 labels are generated centrally in the mapper, not scattered across domain services.
+Thin protocol-compliant orchestration layer. Routes validate and dispatch — all business logic in domain services. Both HTTP and MCP surfaces call the same domain functions. DTS v1.2 labels generated centrally in the mapper. No logic duplication.
 
 ---
 
@@ -12,26 +12,27 @@ Thin protocol-compliant orchestration layer. Routes validate and dispatch — al
 HTTP / MCP request
        │
        ▼
-src/index.ts                   Router + auth + CORS + auto-seed
+src/index.ts                    Router + auth + CORS + auto-seed
        │
-       ├── src/routes/              HTTP handlers (validate → domain → respond)
-       └── src/mcp/server.ts        JSON-RPC 2.0 dispatcher (4 tools)
+       ├── src/routes/               HTTP handlers (validate → domain → respond)
+       └── src/mcp/server.ts         JSON-RPC 2.0 dispatcher
+                                     Tool alias resolution (get_task_status → get_operation_status)
                 │
                 ▼
        src/domain/
-         signalService.ts           search, brief parsing, proposal gen + D1 persistence
-         activationService.ts       async activate, lazy state machine, webhook
-         capabilityService.ts       capabilities (KV-cached 1hr)
-         ruleEngine.ts              rule validation + segment generation
-         signalModel.ts             base seeded + derived catalog (33 signals)
-         enrichedSignalModel.ts     Census ACS + DMA + cross-taxonomy (16 signals)
-         seedPipeline.ts            D1 ingestion — 4-phase, idempotent
+         signalService.ts            search, relevance ranking, brief parsing, proposals + D1
+         activationService.ts        async activate, lazy state machine, webhook
+         capabilityService.ts        capabilities (KV-cached 1hr)
+         ruleEngine.ts               rule validation + deterministic segment generation
+         signalModel.ts              base seeded + derived catalog (33 signals)
+         enrichedSignalModel.ts      Census ACS + DMA + cross-taxonomy (16 signals)
+         seedPipeline.ts             D1 ingestion — 4-phase, idempotent
                 │
                 ├── src/connectors/       Raw data parsers
                 │
                 ├── src/mappers/
                 │     signalMapper.ts     CanonicalSignal → AdCP response shape
-                │                        buildDtsLabel()  → x_dts DTS v1.2 object
+                │                        buildDtsLabel()  → x_dts DTS v1.2 label
                 │
                 └── src/storage/
                       signalRepo.ts       signal CRUD + search
@@ -42,139 +43,132 @@ src/index.ts                   Router + auth + CORS + auto-seed
 
 ## Tool Surface (4 tools — AdCP spec compliant)
 
-`generate_custom_signal` was deliberately not implemented. The correct AdCP pattern:
+`generate_custom_signal` deliberately not implemented. Correct AdCP pattern:
 
-1. `get_signals(brief)` — brief drives inline custom segment proposals, persisted to D1 on generation. Every signal in the response carries `x_dts`.
-2. `activate_signal` — if ID belongs to an unactivated proposal, segment is created on activation.
+1. `get_signals(signal_spec)` — brief generates proposals inline, persisted to D1 on generation
+2. `activate_signal` — creates unactivated proposals lazily on activation
+
+### Parameter name alignment
+
+All tools use canonical AdCP spec parameter names. Aliases accepted for backward compatibility:
+
+| Spec name | Alias(es) accepted |
+|---|---|
+| `signal_spec` | `brief` |
+| `deliver_to` | `destinations`, `deployments`, `destination` |
+| `max_results` | `limit` |
+| `signal_agent_segment_id` | `signal_id`, `signalId` |
+| `task_id` | `operationId` |
+
+### Tool name aliases
+
+`get_operation_status` is the canonical tool name. `get_task_status` and `get_signal_status` are resolved via `TOOL_ALIASES` map in `handleToolCall()` before `getToolByName()` validation.
+
+---
+
+## Relevance Ranking
+
+When `signal_spec` is present, `signalService.ts` fetches up to 200 signals (4× `max_results`), scores each via `rankByRelevance()`, then slices to `max_results`.
+
+### Scoring (`rankByRelevance`)
+
+```
++4  per brief keyword found in signal name
++2  per brief keyword found in signal description
++3  category bonus (if brief implies a category matching signal.categoryType)
++1  if generationMode === "derived"
++2  if generationMode === "dynamic"
+tie-break: larger estimatedAudienceSize first
+```
+
+Stop words filtered. Keywords extracted from brief after lowercasing and stripping punctuation.
+
+Category hints:
+
+| Category | Brief keywords that trigger bonus |
+|---|---|
+| `demographic` | age, income, education, household, family, senior, adult... |
+| `interest` | fan, viewer, streaming, content, genre, movie, gaming... |
+| `purchase_intent` | buy, purchase, intent, shopping, luxury, goods, brand... |
+| `geo` | dma, city, metro, market, area, region, national... |
+| `composite` | affluent, high income, premium, professional, educated... |
+
+### Example: "high income households interested in luxury goods"
+
+Keywords: `high`, `income`, `households`, `interested`, `luxury`, `goods`
+
+| Signal | Score | Why |
+|---|---|---|
+| Graduate Educated High Income Households (ACS) | 18 | name: high+4, income+4, households+4; desc: luxury+2; derived+1 |
+| High Income Households | 12 | name: high+4, income+4, households+4 |
+| High Income Entertainment Enthusiasts | 9 | name: high+4, income+4; derived+1 |
+| Action Movie Fans | 0 | no keyword overlap |
+
+---
+
+## Deterministic Dynamic Signal IDs
+
+`dynamicSignalId(name, rulesKey)` in `src/utils/ids.ts`:
+
+```typescript
+// rulesKey = JSON.stringify(rules sorted by dimension)
+// Hash = djb2-style 32-bit → 8-char hex
+function deterministicHash(content: string): string {
+  let hash = 5381;
+  for (let i = 0; i < content.length; i++) {
+    hash = ((hash << 5) + hash) ^ content.charCodeAt(i);
+    hash = hash >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0").slice(0, 8);
+}
+```
+
+Same brief → same rules → same hash → same `signal_agent_segment_id`. Upsert hits existing row, no duplicates.
 
 ---
 
 ## DTS v1.2 Implementation
 
-### Overview
+### What is DTS v1.2
 
-IAB Tech Lab Data Transparency Standard v1.2 (April 2024 "Privacy Update") defines ~25 standardized disclosure fields across four sections: Core, Audience Details, Onboarder Details (conditional), and Privacy (new in 1.2). All signals returned by `get_signals` carry a complete `x_dts` label generated by `buildDtsLabel()` in `src/mappers/signalMapper.ts`.
+IAB Tech Lab Data Transparency Standard v1.2 (April 2024 "Privacy Update") — ~25 standardized fields across four sections: Core, Audience Details, Onboarder Details (conditional), Privacy.
 
 ### Extension mechanism
 
-AdCP v2.5+ explicitly permits `x_` prefixed fields on all protocol objects. The conformance test suite validates required fields only — additional fields pass through. `x_dts` is fully non-breaking.
+AdCP v2.5+ explicitly supports `x_` prefixed fields. `x_dts` is non-breaking — conformance tests validate only required fields.
 
-### TypeScript types (`src/types/api.ts`)
+### `buildDtsLabel()` derivation logic
 
-```typescript
-// All DTS 1.2 enum types
-type DtsRefreshCadence = "Intra-day" | "Daily" | "Weekly" | "Monthly" |
-  "Bi-Monthly" | "Quarterly" | "Bi-Annually" | "Annually" | "Static" | "N/A";
+**`inferDataSources(signal)`** — maps `signal.sourceSystems` + `rawSourceRefs`:
 
-type DtsDataSource =
-  | "App Behavior" | "App Usage" | "Web Usage" | "Geo Location"
-  | "Email" | "TV OTT or STB Device" | "Online Ecommerce"
-  | "Credit Data" | "Loyalty Card" | "Transaction"
-  | "Online Survey" | "Offline Survey"
-  | "Public Record: Census" | "Public Record: Voter File" | "Public Record: Other"
-  | "Offline Transaction";
-
-type DtsInclusionMethodology =
-  | "Observed/Known" | "Declared" | "Inferred" | "Derived" | "Modeled";
-
-type DtsPrecisionLevel =
-  | "Individual" | "Household" | "Business" | "Device" | "Browser" | "Geography";
-
-type DtsPrivacyMechanism =
-  | "TCF (Europe)" | "GPP" | "MSPA" | "USPrivacy"
-  | "NAI Opt Out" | "DAA" | "EDAA" | "DAAC" | "GPC"
-  | "Other (Not Listed)" | "None";
-
-type DtsAudienceScope =
-  | "Single domain / App" | "Cross-domain within O&O"
-  | "Cross-domain outside O&O" | "N/A (Offline)";
-
-interface DtsV12Label {
-  dts_version: "1.2";
-  // Core
-  provider_name: string; provider_domain: string; provider_email: string;
-  audience_name: string; audience_id: string;
-  taxonomy_id_list: string;       // IAB AT 1.1 node IDs, comma-separated
-  audience_criteria: string;      // 500 char max
-  audience_precision_levels: DtsPrecisionLevel[];
-  audience_scope: DtsAudienceScope;
-  originating_domain: string;
-  audience_size: number;
-  id_types: DtsIdType[];
-  geocode_list: string;           // ISO-3166-1-alpha-3 pipe-separated
-  privacy_compliance_mechanisms: DtsPrivacyMechanism[];
-  privacy_policy_url: string;
-  iab_techlab_compliant: "Yes" | "No";
-  // Audience Details
-  data_sources: DtsDataSource[];
-  audience_inclusion_methodology: DtsInclusionMethodology;
-  audience_expansion: "Yes" | "No";
-  device_expansion: "Yes" | "No";
-  audience_refresh: DtsRefreshCadence;
-  lookback_window: DtsRefreshCadence;
-  // Onboarder Details (conditional)
-  onboarder_match_keys: string;
-  onboarder_audience_expansion: "Yes" | "No" | "N/A";
-  onboarder_device_expansion: "Yes" | "No" | "N/A";
-  onboarder_audience_precision_level: string;
-}
-```
-
-`SignalSummary` in `api.ts` carries `x_dts?: DtsV12Label`.
-
-### `buildDtsLabel()` derivation logic (`src/mappers/signalMapper.ts`)
-
-**`inferDataSources(signal)`** — maps `signal.sourceSystems` and `rawSourceRefs` to DTS enum values:
-
-| `sourceSystems` / `rawSourceRefs` | DTS `data_sources` |
+| Source systems / rawSourceRefs | DTS `data_sources` |
 |---|---|
-| `"census"` or `rawSourceRefs` starts with `"ACS_"` | `["Public Record: Census"]` |
+| `"census"` / `rawSourceRefs` starts with `"ACS_"` | `["Public Record: Census"]` |
 | `"dma"`, `"geo"`, `"nielsen"` | `["Geo Location"]` |
 | `"taxonomy_bridge"`, `"content"` | `["Web Usage", "App Behavior"]` |
 | `"acr"`, `"ctv"`, `"stb"` | `["TV OTT or STB Device"]` |
 | `"demographics"`, `"interests"`, `"rule_engine"`, `"brief_generator"` | `["Online Survey"]` |
-| fallback | `["Online Survey"]` |
 
 **`inferInclusionMethodology(signal)`**:
 
 | Condition | Methodology |
 |---|---|
-| ACR/CTV source | `"Observed/Known"` |
-| `rawSourceRefs` has `ACS_` prefix | `"Derived"` |
+| ACR/CTV | `"Observed/Known"` |
+| `rawSourceRefs` has `ACS_` | `"Derived"` |
 | DMA/Nielsen source | `"Observed/Known"` |
-| Taxonomy bridge source | `"Derived"` |
+| Taxonomy bridge | `"Derived"` |
 | `generationMode === "derived"` | `"Derived"` |
-| All others (seeded, dynamic) | `"Modeled"` |
+| Fallback | `"Modeled"` |
 
-**`inferRefreshCadence(signal)`**:
+**`inferRefreshCadence(signal)`**: ACR → `"Weekly"`, Census/DMA → `"Annually"`, all others → `"Static"`.
 
-| Condition | Cadence |
-|---|---|
-| ACR/CTV | `"Weekly"` |
-| Census ACS (`ACS_` refs) | `"Annually"` |
-| DMA/Nielsen | `"Annually"` |
-| All others | `"Static"` |
+**`buildGeocodeList(signal)`**: Always starts `"USA"`. DMA codes appended from `rawSourceRefs` AND `signal.geography` (e.g. `"USA|DMA-501"`).
 
-**`buildTaxonomyIdList(signal)`** — combines `signal.externalTaxonomyId` with any numeric `rawSourceRefs` (taxonomy bridge signals carry both IAB AT 1.1 and CT3 node IDs). Result: comma-separated string per DTS spec.
+**Onboarder section**: Populated with `"Postal / Geographic Code"` / `"Geography"` when `data_sources` includes `"Public Record: Census"`. `"N/A"` otherwise.
 
-**`buildGeocodeList(signal)`** — always starts with `"USA"`. For DMA signals, appends `DMA-{code}` values found in `rawSourceRefs`. Result: pipe-separated per DTS spec.
+### TypeScript types (`src/types/api.ts`)
 
-**`buildAudienceCriteria(signal)`** — max 500 chars. Uses `signal.rules` for rule-engine signals (formats as `dim=val ∩ dim=val`), falls back to `signal.description`. Appends source refs and a modeling disclaimer when applicable.
-
-**Onboarder section** — populated with real values when `data_sources` includes `"Public Record: Census"` or other offline-adjacent sources; `"N/A"` otherwise.
-
-### DTS label coverage per signal type
-
-| Signal type | `data_sources` | `methodology` | `refresh` | Onboarder |
-|---|---|---|---|---|
-| Seeded demographic | `["Online Survey"]` | `"Modeled"` | `"Static"` | N/A |
-| Seeded interest | `["Online Survey"]` | `"Modeled"` | `"Static"` | N/A |
-| Derived composite | `["Online Survey"]` | `"Derived"` | `"Static"` | N/A |
-| Dynamic (brief) | `["Online Survey"]` | `"Modeled"` | `"Static"` | N/A |
-| Census ACS | `["Public Record: Census"]` | `"Derived"` | `"Annually"` | Populated |
-| Nielsen DMA | `["Geo Location"]` | `"Observed/Known"` | `"Annually"` | N/A |
-| Cross-taxonomy | `["Web Usage", "App Behavior"]` | `"Derived"` | `"Static"` | N/A |
-| CTV/ACR (future) | `["TV OTT or STB Device"]` | `"Observed/Known"` | `"Weekly"` | N/A |
+Full `DtsV12Label` interface with all DTS 1.2 enum types: `DtsRefreshCadence`, `DtsDataSource`, `DtsInclusionMethodology`, `DtsPrecisionLevel`, `DtsPrivacyMechanism`, `DtsAudienceScope`, `DtsIdType`. `SignalSummary` carries `x_dts?: DtsV12Label`.
 
 ---
 
@@ -182,47 +176,31 @@ interface DtsV12Label {
 
 ```
 activate_signal()
-  1. Validate signal exists (catalog or persisted proposal)
+  1. Validate signal (catalog or persisted proposal)
   2. Create activation_jobs row (status: "submitted")
-  3. Return { task_id, status: "pending" } immediately
+  3. Return { task_id, status: "pending", destinations: [{is_live: false}] }
 
-get_operation_status(task_id) — first poll
+get_operation_status(task_id)  ←  first poll
   1. Load job row
   2. Lazy state machine:
-     "submitted"   → updateJobStatus("working")
-     "working"     → updateJobStatus("completed")
-     "processing"  → alias for "working" (legacy rows)
-  3. If webhook_url present and not yet fired: POST payload, mark webhook_fired = 1
-  4. Return { status: "completed", deployments[is_live: true] }
+     "submitted"   → "working"
+     "working"     → "completed"
+     "processing"  → treated as "working" (legacy alias)
+  3. If webhook_url set and not yet fired: POST payload, mark webhook_fired = 1
+  4. Return { status: "completed", destinations: [{is_live: true, activation_key: {...}}] }
 ```
 
-Status aligned with `@adcp/client` `ADCP_STATUS`: `submitted → working → completed`.
+Status aligned with `@adcp/client` `ADCP_STATUS`. `destinations` field name in response (not `deployments`).
 
 ---
 
-## Brief Parsing → Proposal Generation
+## @adcp/client SDK
 
-`signalService.ts` extracts targeting dimensions from free-form text via keyword detection:
-
-```
-"affluent parents in top metros who love sci-fi"
-  → income_band: 150k_plus          (affluent)
-  → household_type: family_with_kids (parents)
-  → metro_tier: top_10, top_25      (top metros)
-  → content_genre: sci_fi           (sci-fi)
-```
-
-`ruleEngine.ts` validates rules and generates a `CanonicalSignal` with `sourceSystems: ["rule_engine", "brief_generator"]` — which maps to `data_sources: ["Online Survey"]` and `audience_inclusion_methodology: "Modeled"` in the DTS label. Signal upserted to D1 on generation — proposal ID is immediately activatable.
-
----
-
-## @adcp/client SDK Integration
-
-`@adcp/client@^4.5.2` dev dependency — client-only, no server framework.
+`@adcp/client@^4.5.2` dev dependency — client-only.
 
 | Import | Usage |
 |---|---|
-| `createOperationId()` | `ids.ts` — op ID format `op_{timestamp}_{nanoid}`, local fallback |
+| `createOperationId()` | `ids.ts` — `op_{timestamp}_{nanoid}` format, local fallback |
 | `ADCP_STATUS` | `activationService.ts` — `"working"` not `"processing"` |
 | `COMPATIBLE_ADCP_VERSIONS` | `capabilityService.ts` — `major_versions: [2, 3]` |
 | `SIGNALS_TOOLS` | `mcp/tools.ts` — core tool name reference |
@@ -233,25 +211,24 @@ Status aligned with `@adcp/client` `ADCP_STATUS`: `submitted → working → com
 
 ```sql
 taxonomy_nodes      -- IAB Audience Taxonomy 1.1 tree
-signals             -- 50 rows (49 catalog + test-signal-001 fixture)
+signals             -- 49 rows catalog + test-signal-001 fixture = 50
 signal_rules        -- rules for derived/dynamic signals
 source_records      -- raw loader reference records
 activation_jobs     -- async tasks + webhook_url + webhook_fired
 activation_events   -- audit log per status transition
 ```
 
-Migrations: `0001_initial_schema.sql`, `0002_webhook_taskid.sql`.
+Migrations: `0001_initial_schema.sql`, `0002_webhook_taskid.sql` (webhook_url, webhook_fired columns).
 
 ---
 
 ## Extensibility
 
-| Feature | Files | DTS impact |
+| Feature | Files | Notes |
 |---|---|---|
-| Real DTS labels from live data | `signalMapper.ts` → `buildDtsLabel()` | Update `inferDataSources()` / `inferInclusionMethodology()` per provider |
-| CTV/ACR signal type (Samba core) | `enrichedSignalModel.ts` + `sourceSystems: ["acr"]` | Auto-maps to `["TV OTT or STB Device"]` + `"Observed/Known"` + `"Weekly"` |
+| CTV/ACR signals (Samba core) | `enrichedSignalModel.ts` + `sourceSystems: ["acr"]` | Auto-maps to `TV OTT or STB Device` + `Observed/Known` + `Weekly` |
 | Exclusion/negative targeting | `ruleEngine.ts` — add `exclude` operator | No DTS change |
-| Cross-provider signal composition | New `compose_signals` route | Merge `taxonomy_id_list` from both parents |
-| Performance feedback loop | `POST /signals/:id/feedback` + D1 column | No DTS change |
-| `iab_techlab_compliant: "Yes"` | `signalMapper.ts` constant | Complete `datalabel.org` audit program first |
-| Formal AdCP `x_dts` spec contribution | PR to `adcontextprotocol/adcp` | Add `x_dts` to `static/schemas/signals/signal.json` + docs |
+| Cross-provider composition | New `compose_signals` route | Merge `taxonomy_id_list` from both parents |
+| Performance feedback | `POST /signals/:id/feedback` + D1 column | Closes activation → optimization loop |
+| `iab_techlab_compliant: "Yes"` | `signalMapper.ts` constant | Complete `datalabel.org` audit program |
+| Formal AdCP `x_dts` spec PR | `adcontextprotocol/adcp` repo | Add to `static/schemas/signals/signal.json` |

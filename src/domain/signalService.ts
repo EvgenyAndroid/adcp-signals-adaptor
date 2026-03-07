@@ -56,10 +56,36 @@ export async function searchSignalsService(
     }
   }
 
-  // Generate proposals from natural language brief
-  const proposals = req.brief
-    ? generateProposalsFromBrief(req.brief)
-    : undefined;
+  // Generate proposals from natural language brief and persist them to D1
+  // so activate_signal can find them by ID
+  let proposals: CustomSignalProposal[] | undefined;
+  if (req.brief) {
+    const generated = generateProposalsFromBrief(req.brief);
+    if (generated.length > 0) {
+      const now = new Date().toISOString();
+      for (const proposal of generated) {
+        const canonical: CanonicalSignal = {
+          signalId: proposal.signal_agent_segment_id,
+          taxonomySystem: "iab_audience_1_1",
+          name: proposal.name,
+          description: proposal.description,
+          categoryType: proposal.category_type as CanonicalSignal["categoryType"],
+          sourceSystems: ["rule_engine", "brief_generator"],
+          destinations: ["mock_dsp", "mock_cleanroom", "mock_cdp", "mock_measurement"],
+          activationSupported: true,
+          estimatedAudienceSize: proposal.estimated_audience_size,
+          accessPolicy: "public_demo",
+          generationMode: "dynamic",
+          status: "available",
+          pricing: { model: "mock_cpm", value: 4.0, currency: "USD" },
+          createdAt: now,
+          updatedAt: now,
+        };
+        await upsertSignal(db, canonical);
+      }
+      proposals = generated;
+    }
+  }
 
   const filterDesc = req.brief
     ? `matching brief "${req.brief.slice(0, 50)}"`

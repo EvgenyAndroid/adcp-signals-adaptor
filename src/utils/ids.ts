@@ -27,9 +27,18 @@ export function dynamicSignalId(prefix: string): string {
 
 /**
  * Generate a unique operation ID.
+ * Uses @adcp/client createOperationId for spec-compliant format,
+ * falls back to local implementation if unavailable (e.g. test env).
  */
 export function operationId(): string {
-  return `op_${Date.now()}_${randomHex(8)}`;
+  try {
+    // @adcp/client is a dev dep — dynamic import guards against Worker bundle issues
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { createOperationId } = require("@adcp/client") as { createOperationId: () => string };
+    return createOperationId();
+  } catch {
+    return `op_${Date.now()}_${randomHex(8)}`;
+  }
 }
 
 /**

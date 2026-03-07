@@ -2,6 +2,10 @@
 // Proper async activation: returns task_id + "pending" immediately.
 // Status transitions happen lazily on first poll (demo pattern — no Queues needed).
 // Fires webhook on completion if webhook_url was provided.
+//
+// Status values aligned with @adcp/client ADCP_STATUS:
+//   submitted → working → completed | failed
+// (AdCP uses "working" not "processing" per SDK constants)
 
 import type {
   ActivateSignalRequest,
@@ -100,11 +104,11 @@ export async function getOperationService(
   let currentStatus = operation.status;
 
   if (currentStatus === "submitted") {
-    await updateJobStatus(db, opId, "processing");
+    await updateJobStatus(db, opId, "working");  // ADCP_STATUS.WORKING
     currentStatus = "processing";
   }
 
-  if (currentStatus === "processing") {
+  if (currentStatus === "working") {  // ADCP_STATUS.WORKING
     await updateJobStatus(db, opId, "completed");
     currentStatus = "completed";
   }

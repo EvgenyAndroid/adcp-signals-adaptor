@@ -241,10 +241,14 @@ async function callActivateSignal(
     "trade-desk": "mock_dsp", "the-trade-desk": "mock_dsp", ttd: "mock_dsp",
     dv360: "mock_dsp", xandr: "mock_dsp", pubmatic: "mock_dsp",
     "index-exchange": "mock_dsp", liveramp: "mock_cleanroom",
+    // @adcp/client test suite platforms
+    meta: "mock_dsp", facebook: "mock_dsp", amazon: "mock_dsp", yahoo: "mock_dsp",
+    "amazon-dsp": "mock_dsp", "amazon-ads": "mock_dsp",
   };
   const resolvedDestination = PLATFORM_MAP[destination.toLowerCase()] ?? "mock_dsp";
 
-  const signalId = (args["signal_agent_segment_id"] ?? args["signalId"]) as string;
+  // Accept all field name variants: spec (signal_agent_segment_id), SDK test suite (signal_id), legacy (signalId)
+  const signalId = (args["signal_agent_segment_id"] ?? args["signal_id"] ?? args["signalId"]) as string;
   const webhookUrl = args["webhook_url"] as string | undefined;
   const pricingOptionId = args["pricing_option_id"] as string | undefined;
 

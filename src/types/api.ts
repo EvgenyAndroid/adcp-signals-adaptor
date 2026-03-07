@@ -162,7 +162,7 @@ export interface GetOperationResponse {
   task_id: string;
   status: OperationStatus;
   signal_agent_segment_id: string;
-  deployments?: Array<{
+  destinations?: Array<{
     type: string;
     platform?: string;
     is_live: boolean;

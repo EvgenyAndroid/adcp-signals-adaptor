@@ -1,4 +1,4 @@
-// src/domain/signalService.ts
+﻿// src/domain/signalService.ts
 
 import type { CanonicalSignal } from "../types/signal";
 import type {
@@ -26,6 +26,9 @@ export async function searchSignalsService(
   const limit = Math.min(req.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
   const offset = req.offset ?? 0;
 
+  // When a brief is present, fetch a larger window so we can re-rank by relevance
+  const fetchLimit = req.brief ? Math.min(200, MAX_LIMIT * 4) : limit;
+
   const { signals, totalCount } = await searchSignals(db, {
     query: req.query,
     categoryType: req.categoryType,
@@ -33,11 +36,15 @@ export async function searchSignalsService(
     taxonomyId: req.taxonomyId,
     destination: req.destination,
     activationSupported: req.activationSupported,
-    limit,
-    offset,
+    limit: fetchLimit,
+    offset: req.brief ? 0 : offset,  // always fetch from top when re-ranking
   });
 
-  let summaries = toSignalSummaries(signals);
+  // If brief/signal_spec present, re-rank catalog results by relevance to brief
+  // Fetch broader window, score, sort, then slice to limit
+  let summaries = toSignalSummaries(
+    req.brief ? rankByRelevance(signals, req.brief).slice(0, limit) : signals
+  );
 
   // Filter deployments by requested destinations array
   if (req.destinations && req.destinations.length > 0) {
@@ -117,7 +124,7 @@ export async function getSignalByIdService(
 /**
  * Parse a natural language brief into custom segment proposals.
  * Uses keyword extraction to infer relevant dimensions and values.
- * Proposals are NOT persisted � they are created lazily when activated.
+ * Proposals are NOT persisted — they are created lazily when activated.
  */
 function generateProposalsFromBrief(brief: string): CustomSignalProposal[] {
   const lower = brief.toLowerCase();
@@ -188,7 +195,7 @@ function generateProposalsFromBrief(brief: string): CustomSignalProposal[] {
   }
 
   if (rules.length === 0) {
-    // No recognizable dimensions � return empty, let catalog results stand
+    // No recognizable dimensions — return empty, let catalog results stand
     return [];
   }
 
@@ -225,7 +232,7 @@ function generateProposalsFromBrief(brief: string): CustomSignalProposal[] {
     deployments: ["mock_dsp", "mock_cleanroom", "mock_cdp", "mock_measurement"].map((dest) => ({
       type: "platform" as const,
       platform: dest,
-      is_live: false, // not yet created � will be live after activation
+      is_live: false, // not yet created — will be live after activation
       decisioning_platform_segment_id: `${dest}_${result.signalId}`,
       activation_supported: dest !== "mock_measurement",
     })),
@@ -234,4 +241,77 @@ function generateProposalsFromBrief(brief: string): CustomSignalProposal[] {
 
   proposals.push(proposal);
   return proposals;
+}
+
+// ── Relevance ranking ─────────────────────────────────────────────────────────
+
+/**
+ * Score each signal by keyword overlap with the brief.
+ * Returns signals sorted by score descending (most relevant first).
+ *
+ * Scoring:
+ *   +4 per brief keyword found in signal name
+ *   +2 per brief keyword found in signal description
+ *   +3 bonus if signal category_type matches a brief category hint
+ *   +2 bonus if signal generation_mode = "derived" or "dynamic" (richer composites)
+ *   tie-break: larger estimatedAudienceSize first
+ */
+function rankByRelevance(signals: CanonicalSignal[], brief: string): CanonicalSignal[] {
+  const lower = brief.toLowerCase();
+
+  // Extract meaningful keywords (skip stop words)
+  const STOP_WORDS = new Set([
+    "a","an","the","and","or","in","on","of","to","for","with","by",
+    "at","from","as","is","are","who","that","this","be","have","do",
+    "not","but","so","if","its","it","my","we","our","they","their",
+    "me","us","you","your","he","she","him","her","i","am","was","were",
+    "will","would","could","should","may","might","can",
+  ]);
+
+  const keywords = lower
+    .replace(/[^a-z0-9\s$]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
+
+  // Category hints from brief text
+  const categoryHints: Record<string, string> = {
+    demographic: ["age","income","education","household","family","senior","adult","young","boomer","millennial"],
+    interest: ["fan","viewer","streaming","content","genre","movie","show","music","gaming","sports"],
+    purchase_intent: ["buy","purchase","intent","shopping","luxury","goods","product","brand","market"],
+    geo: ["dma","city","metro","market","area","region","state","zip","national","local"],
+    composite: ["affluent","high income","premium","professional","educated","urban"],
+  };
+
+  const scored = signals.map((signal) => {
+    const nameLower = signal.name.toLowerCase();
+    const descLower = signal.description.toLowerCase();
+    let score = 0;
+
+    for (const kw of keywords) {
+      if (nameLower.includes(kw)) score += 4;
+      if (descLower.includes(kw)) score += 2;
+    }
+
+    // Category bonus
+    for (const [cat, hints] of Object.entries(categoryHints)) {
+      if (hints.some((h) => lower.includes(h)) && signal.categoryType === cat) {
+        score += 3;
+        break;
+      }
+    }
+
+    // Prefer richer segments
+    if (signal.generationMode === "derived") score += 1;
+    if (signal.generationMode === "dynamic") score += 2;
+
+    return { signal, score };
+  });
+
+  return scored
+    .sort((a, b) =>
+      b.score !== a.score
+        ? b.score - a.score
+        : (b.signal.estimatedAudienceSize ?? 0) - (a.signal.estimatedAudienceSize ?? 0)
+    )
+    .map((s) => s.signal);
 }

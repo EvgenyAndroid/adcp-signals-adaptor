@@ -1,20 +1,22 @@
 // src/mcp/server.ts
-// MCP server implementing the Streamable HTTP transport (JSON-RPC 2.0).
-// Exposes AdCP Signals tools to any MCP-compatible AI agent (Claude, etc.).
-// All tool handlers delegate to the same domain services used by the HTTP routes.
+// MCP server — Streamable HTTP transport (JSON-RPC 2.0).
+// 4 tools: get_adcp_capabilities, get_signals, activate_signal, get_operation_status.
+// generate_custom_signal removed — proposals surface via get_signals brief param.
+// activate_signal is now properly async: returns task_id + "pending" immediately.
 
 import type { Env } from "../types/env";
 import type { Logger } from "../utils/logger";
 import { ADCP_TOOLS, getToolByName } from "./tools";
 import { getCapabilities } from "../domain/capabilityService";
-import { searchSignalsService, generateSignalService } from "../domain/signalService";
-import { activateSignalService, getOperationService, NotFoundError, ValidationError } from "../domain/activationService";
-import { getDb } from "../storage/db";
+import { searchSignalsService } from "../domain/signalService";
 import {
-  validateSearchRequest,
-  validateActivateRequest,
-  validateGenerateRequest,
-} from "../utils/validation";
+  activateSignalService,
+  getOperationService,
+  NotFoundError,
+  ValidationError,
+} from "../domain/activationService";
+import { getDb } from "../storage/db";
+import { validateSearchRequest, validateActivateRequest } from "../utils/validation";
 
 // ── JSON-RPC 2.0 types ────────────────────────────────────────────────────────
 
@@ -34,26 +36,16 @@ interface JsonRpcSuccess {
 interface JsonRpcError {
   jsonrpc: "2.0";
   id: string | number | null;
-  error: {
-    code: number;
-    message: string;
-    data?: unknown;
-  };
+  error: { code: number; message: string; data?: unknown };
 }
 
 type JsonRpcResponse = JsonRpcSuccess | JsonRpcError;
 
-// JSON-RPC error codes
 const RPC_PARSE_ERROR = -32700;
 const RPC_INVALID_REQUEST = -32600;
 const RPC_METHOD_NOT_FOUND = -32601;
-const RPC_INVALID_PARAMS = -32602;
 const RPC_INTERNAL_ERROR = -32603;
-
-// MCP-specific error codes
 const MCP_TOOL_ERROR = -32000;
-
-// ── MCP message types ─────────────────────────────────────────────────────────
 
 interface McpInitializeParams {
   protocolVersion: string;
@@ -73,7 +65,6 @@ export async function handleMcpRequest(
   env: Env,
   logger: Logger
 ): Promise<Response> {
-  // MCP Streamable HTTP: POST only for JSON-RPC messages
   if (request.method !== "POST") {
     return new Response("Method Not Allowed", { status: 405 });
   }
@@ -85,19 +76,15 @@ export async function handleMcpRequest(
     return rpcErrorResponse(null, RPC_PARSE_ERROR, "Parse error: invalid JSON");
   }
 
-  // Support both single requests and batches
   if (Array.isArray(body)) {
     const responses = await Promise.all(
       body.map((msg) => handleSingleMessage(msg, env, logger))
     );
-    // Filter out notifications (null responses)
-    const filtered = responses.filter(Boolean);
-    return jsonResponse(filtered);
+    return jsonResponse(responses.filter(Boolean));
   }
 
   const response = await handleSingleMessage(body, env, logger);
   if (response === null) {
-    // Notification - no response body
     return new Response(null, { status: 202 });
   }
   return jsonResponse(response);
@@ -113,41 +100,29 @@ async function handleSingleMessage(
   }
 
   const { id = null, method, params } = msg;
-
-  // Notifications (no id) - process but don't respond
-  const isNotification = id === undefined || id === null;
-
   logger.info("mcp_request", { method, id });
 
   try {
     switch (method) {
       case "initialize":
         return rpcSuccess(id, await handleInitialize(params as McpInitializeParams, env));
-
       case "notifications/initialized":
-        // Client signals ready - no response needed
         return null;
-
       case "ping":
         return rpcSuccess(id, {});
-
       case "tools/list":
         return rpcSuccess(id, { tools: ADCP_TOOLS });
-
       case "tools/call":
         return rpcSuccess(id, await handleToolCall(params as McpCallToolParams, env, logger));
-
       default:
-        if (isNotification) return null;
+        if (id === undefined || id === null) return null;
         return rpcError(id, RPC_METHOD_NOT_FOUND, `Method not found: ${method}`);
     }
   } catch (err) {
-    if (isNotification) return null;
-
+    if (id === undefined || id === null) return null;
     if (err instanceof McpToolError) {
       return rpcError(id, MCP_TOOL_ERROR, err.message, err.details);
     }
-
     logger.error("mcp_unhandled_error", { method, error: String(err) });
     return rpcError(id, RPC_INTERNAL_ERROR, "Internal error");
   }
@@ -159,22 +134,15 @@ async function handleInitialize(
   params: McpInitializeParams,
   env: Env
 ): Promise<unknown> {
-  const clientVersion = params?.protocolVersion ?? "unknown";
-  const clientName = params?.clientInfo?.name ?? "unknown";
-
   return {
     protocolVersion: "2024-11-05",
-    capabilities: {
-      tools: {
-        listChanged: false,
-      },
-    },
+    capabilities: { tools: { listChanged: false } },
     serverInfo: {
       name: "adcp-signals-adaptor",
-      version: env.API_VERSION ?? "3.0-rc",
+      version: env.API_VERSION ?? "2.6",
       description:
         "AdCP Signals Provider — IAB Audience Taxonomy 1.1 aligned signal discovery, " +
-        "dynamic segment generation, and mock activation for agentic advertising workflows.",
+        "brief-driven custom segment proposals, and async activation with webhook support.",
     },
   };
 }
@@ -187,28 +155,19 @@ async function handleToolCall(
   const { name, arguments: args = {} } = params;
 
   const toolDef = getToolByName(name);
-  if (!toolDef) {
-    throw new McpToolError(`Unknown tool: ${name}`);
-  }
+  if (!toolDef) throw new McpToolError(`Unknown tool: ${name}`);
 
-  logger.info("mcp_tool_call", { tool: name, args });
+  logger.info("mcp_tool_call", { tool: name });
 
   switch (name) {
     case "get_adcp_capabilities":
       return callGetCapabilities(env);
-
     case "get_signals":
       return callGetSignals(args, env);
-
     case "activate_signal":
       return callActivateSignal(args, env, logger);
-
-    case "generate_custom_signal":
-      return callGenerateSignal(args, env);
-
     case "get_operation_status":
-      return callGetOperation(args, env);
-
+      return callGetOperation(args, env, logger);
     default:
       throw new McpToolError(`Tool not implemented: ${name}`);
   }
@@ -226,6 +185,7 @@ async function callGetSignals(
   env: Env
 ): Promise<unknown> {
   const req = {
+    brief: args["brief"] as string | undefined,
     query: args["query"] as string | undefined,
     categoryType: args["categoryType"] as string | undefined,
     generationMode: args["generationMode"] as string | undefined,
@@ -233,7 +193,7 @@ async function callGetSignals(
     taxonomyId: args["taxonomyId"] as string | undefined,
     limit: args["limit"] ? Number(args["limit"]) : 20,
     offset: args["offset"] ? Number(args["offset"]) : 0,
-    destinations: args["destinations"] as Array<{type: string; platform?: string; agent_url?: string}> | undefined,
+    destinations: args["destinations"] as Array<{ type: string; platform?: string; agent_url?: string }> | undefined,
   };
 
   const validation = validateSearchRequest(req);
@@ -243,7 +203,6 @@ async function callGetSignals(
 
   const db = getDb(env);
   const result = await searchSignalsService(db, req as Parameters<typeof searchSignalsService>[1]);
-
   return toolResult(JSON.stringify(result, null, 2));
 }
 
@@ -252,11 +211,7 @@ async function callActivateSignal(
   env: Env,
   logger: Logger
 ): Promise<unknown> {
-  // Normalize all destination variants the spec or test runners may send:
-  //   destinations: [{ type, platform, account_id }]  — spec array (plural)
-  //   deployments:  [{ type, platform }]               — our MCP schema
-  //   destination:  { platform, account_id }           — singular object (test runner)
-  //   destination:  "mock_dsp"                         — legacy string
+  // Normalize all destination field variants
   let destination: string | undefined;
   let accountId: string | undefined;
 
@@ -280,17 +235,17 @@ async function callActivateSignal(
     );
   }
 
-  // Map any external platform names to our internal destination IDs
   const PLATFORM_MAP: Record<string, string> = {
-    "mock_dsp": "mock_dsp", "mock_cleanroom": "mock_cleanroom",
-    "mock_cdp": "mock_cdp", "mock_measurement": "mock_measurement",
-    "trade-desk": "mock_dsp", "the-trade-desk": "mock_dsp", "ttd": "mock_dsp",
-    "dv360": "mock_dsp", "xandr": "mock_dsp", "pubmatic": "mock_dsp",
-    "index-exchange": "mock_dsp", "liveramp": "mock_cleanroom",
+    mock_dsp: "mock_dsp", mock_cleanroom: "mock_cleanroom",
+    mock_cdp: "mock_cdp", mock_measurement: "mock_measurement",
+    "trade-desk": "mock_dsp", "the-trade-desk": "mock_dsp", ttd: "mock_dsp",
+    dv360: "mock_dsp", xandr: "mock_dsp", pubmatic: "mock_dsp",
+    "index-exchange": "mock_dsp", liveramp: "mock_cleanroom",
   };
   const resolvedDestination = PLATFORM_MAP[destination.toLowerCase()] ?? "mock_dsp";
 
   const signalId = (args["signal_agent_segment_id"] ?? args["signalId"]) as string;
+  const webhookUrl = args["webhook_url"] as string | undefined;
   const pricingOptionId = args["pricing_option_id"] as string | undefined;
 
   const req = {
@@ -299,6 +254,7 @@ async function callActivateSignal(
     accountId: (args["accountId"] ?? accountId) as string | undefined,
     campaignId: args["campaignId"] as string | undefined,
     notes: args["notes"] as string | undefined,
+    webhookUrl,
   };
 
   const validation = validateActivateRequest(req);
@@ -309,46 +265,41 @@ async function callActivateSignal(
   try {
     const db = getDb(env);
     const result = await activateSignalService(db, req, logger);
-    // Build response deployments preserving type: "agent" vs "platform"
-    const inputDeployments = Array.isArray(args["destinations"] ?? args["deployments"])
-      ? (args["destinations"] ?? args["deployments"]) as Array<Record<string, unknown>>
+
+    // Build input deployments for response echo
+    const inputDeployments = Array.isArray(raw)
+      ? (raw as Array<Record<string, unknown>>)
       : [{ type: "platform", platform: destination }];
 
     const responseDeployments = inputDeployments.map((dep) => {
       const depType = dep["type"] as string;
       if (depType === "agent") {
-        const agentUrl = dep["agent_url"] as string;
         return {
           type: "agent",
-          agent_url: agentUrl,
-          is_live: true,
-          activation_key: {
-            type: "segment_id",
-            segment_id: `adcp_${signalId}`,
-          },
-          estimated_activation_duration_minutes: 0,
-        };
-      } else {
-        const platform = (dep["platform"] as string) ?? resolvedDestination;
-        const platformSegmentId = `${platform}_${signalId}`;
-        return {
-          type: "platform",
-          platform,
-          is_live: true,
-          ...(req.accountId ? { account: req.accountId } : {}),
-          activation_key: {
-            type: "segment_id",
-            segment_id: platformSegmentId,
-          },
-          estimated_activation_duration_minutes: 0,
+          agent_url: dep["agent_url"] as string,
+          is_live: false,    // pending — not live until completed
+          activation_key: { type: "segment_id", segment_id: `adcp_${signalId}` },
+          estimated_activation_duration_minutes: 1,
         };
       }
+      const platform = (dep["platform"] as string) ?? resolvedDestination;
+      return {
+        type: "platform",
+        platform,
+        is_live: false,    // pending
+        activation_key: { type: "segment_id", segment_id: `${platform}_${signalId}` },
+        estimated_activation_duration_minutes: 1,
+      };
     });
 
+    // Return pending response immediately — caller polls task_id
     const specResponse = {
-      message: `Signal ${signalId} successfully activated on ${responseDeployments.length} platform(s).`,
-      context_id: `ctx_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+      task_id: result.task_id,
+      status: "pending",
+      signal_agent_segment_id: signalId,
       deployments: responseDeployments,
+      ...(webhookUrl ? { webhook_url: webhookUrl } : {}),
+      ...(pricingOptionId ? { pricing_option_id: pricingOptionId } : {}),
     };
 
     return toolResult(JSON.stringify(specResponse, null, 2));
@@ -360,38 +311,19 @@ async function callActivateSignal(
   }
 }
 
-async function callGenerateSignal(
-  args: Record<string, unknown>,
-  env: Env
-): Promise<unknown> {
-  const req = {
-    name: args["name"] as string | undefined,
-    description: args["description"] as string | undefined,
-    rules: args["rules"] as Array<{ dimension: string; operator: string; value: unknown }>,
-  };
-
-  const validation = validateGenerateRequest(req);
-  if (!validation.ok) {
-    throw new McpToolError(validation.error!.message, { code: validation.error!.code });
-  }
-
-  const db = getDb(env);
-  const result = await generateSignalService(db, req as Parameters<typeof generateSignalService>[1]);
-  return toolResult(JSON.stringify(result, null, 2));
-}
-
 async function callGetOperation(
   args: Record<string, unknown>,
-  env: Env
+  env: Env,
+  logger: Logger
 ): Promise<unknown> {
-  const operationId = args["operationId"] as string;
-  if (!operationId) {
-    throw new McpToolError("operationId is required");
+  const taskId = (args["task_id"] ?? args["operationId"]) as string;
+  if (!taskId) {
+    throw new McpToolError("task_id is required");
   }
 
   try {
     const db = getDb(env);
-    const result = await getOperationService(db, operationId);
+    const result = await getOperationService(db, taskId, logger);
     return toolResult(JSON.stringify(result, null, 2));
   } catch (err) {
     if (err instanceof NotFoundError) {
@@ -403,20 +335,8 @@ async function callGetOperation(
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/**
- * Wraps a string result in the MCP tool result envelope.
- * Using text/plain content type - most compatible with all MCP clients.
- */
 function toolResult(text: string): unknown {
-  return {
-    content: [
-      {
-        type: "text",
-        text,
-      },
-    ],
-    isError: false,
-  };
+  return { content: [{ type: "text", text }], isError: false };
 }
 
 function rpcSuccess(id: string | number | null, result: unknown): JsonRpcSuccess {
@@ -436,11 +356,7 @@ function rpcError(
   };
 }
 
-function rpcErrorResponse(
-  id: string | number | null,
-  code: number,
-  message: string
-): Response {
+function rpcErrorResponse(id: string | number | null, code: number, message: string): Response {
   return jsonResponse(rpcError(id, code, message));
 }
 

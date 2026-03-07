@@ -5,6 +5,7 @@
 import type { DB } from "../storage/db";
 import { upsertSignal, countSignals } from "../storage/signalRepo";
 import { SEEDED_SIGNALS, DERIVED_SIGNALS } from "./signalModel";
+import { ALL_ENRICHED_SIGNALS } from "./enrichedSignalModel";
 import { execute } from "../storage/db";
 import type { IabTaxonomyNode } from "../types/signal";
 import { parseTaxonomyTsv } from "../connectors/iabTaxonomyLoader";
@@ -61,6 +62,13 @@ export async function runSeedPipeline(
     count++;
   }
   logger.info("derived_signals_loaded", { count: DERIVED_SIGNALS.length });
+
+  // 4. Insert enriched signals (Census ACS, Nielsen DMA, cross-taxonomy)
+  for (const signal of ALL_ENRICHED_SIGNALS) {
+    await upsertSignal(db, signal);
+    count++;
+  }
+  logger.info("enriched_signals_loaded", { count: ALL_ENRICHED_SIGNALS.length });
 
   logger.info("seed_complete", { total: count });
 

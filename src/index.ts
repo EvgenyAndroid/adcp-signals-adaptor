@@ -5,7 +5,6 @@ import type { Env } from "./types/env";
 import { handleGetCapabilities } from "./routes/capabilities";
 import { handleSearchSignals } from "./routes/searchSignals";
 import { handleActivateSignal } from "./routes/activateSignal";
-import { handleGenerateSignal } from "./routes/generateSignal";
 import { handleGetOperation } from "./routes/getOperation";
 import { handleMcpRequest } from "./mcp/server";
 import { jsonResponse, errorResponse, requireAuth } from "./routes/shared";
@@ -14,7 +13,12 @@ import { requestId } from "./utils/ids";
 import { runSeedPipeline } from "./domain/seedPipeline";
 import { getDb } from "./storage/db";
 
-import { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv } from "./seedData";
+// Seed data imported as text modules via wrangler assets
+// These will be bundled at deploy time
+import taxonomyTsv from "../seed/iab-audience-1.1.tsv";
+import demographicsCsv from "../seed/demographics-sample.csv";
+import interestsCsv from "../seed/interests-sample.csv";
+import geoCsv from "../seed/geo-sample.csv";
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -32,7 +36,7 @@ export default {
       });
     }
 
-    // Auth check - /mcp, /capabilities, /health are public
+    // Auth check - MCP uses its own auth header check, public paths skip auth
     const publicPaths = ["/capabilities", "/health", "/mcp"];
     const isPublic = publicPaths.some((p) => path === p || path.startsWith(p + "/"));
 
@@ -67,8 +71,8 @@ export default {
         response = await handleGetCapabilities(env, logger);
       } else if (method === "GET" && path === "/health") {
         response = jsonResponse({ status: "ok", provider: "adcp-signals-adaptor" });
-      } else if (path === "/mcp" || path.startsWith("/mcp/")) {
-        // MCP Streamable HTTP endpoint - no auth, protocol handles sessions
+      } else if (path === "/mcp" || path.startsWith("/mcp")) {
+        // MCP Streamable HTTP endpoint - handles OPTIONS inline
         if (method === "OPTIONS") {
           response = new Response(null, {
             status: 204,
@@ -88,9 +92,8 @@ export default {
         response = await handleSearchSignals(request, env, logger);
       } else if (method === "POST" && path === "/signals/activate") {
         response = await handleActivateSignal(request, env, logger);
-      } else if (method === "POST" && path === "/signals/generate") {
-        response = await handleGenerateSignal(request, env, logger);
-      } else if (method === "POST" && path === "/seed") {
+      } else if (method === "POST" && path === "/seed" && env.ENVIRONMENT === "development") {
+        // Development-only seed force endpoint
         const result = await runSeedPipeline(
           getDb(env),
           { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv },
@@ -123,7 +126,7 @@ function corsHeaders(): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, Mcp-Session-Id",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Max-Age": "86400",
   };
 }

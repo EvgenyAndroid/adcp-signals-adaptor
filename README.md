@@ -18,7 +18,7 @@ Implements AdCP Signals Activation Protocol v2.6:
 | `activate_signal` | ✅ |
 | `generate_custom_signal` | ✅ (extension) |
 
-Response shapes are validated against the AdCP JSON schemas. Passes the AdCP conformance test suite (health, discovery, capability_discovery, signals_flow).
+Passes the AdCP conformance test suite: health, discovery, capability_discovery, signals_flow.
 
 ---
 
@@ -36,15 +36,25 @@ Cloudflare Worker (src/index.ts)
   ├── /signals/activate Signal activation
   ├── /signals/generate Dynamic segment generation
   ├── /operations/:id   Activation status
-  └── /seed             Force re-seed (dev)
+  └── /seed             Force re-seed
 
 Domain Layer (src/domain/)
-  signalService.ts      — search, generate
-  activationService.ts  — activate, status
-  capabilityService.ts  — capabilities (KV-cached)
-  ruleEngine.ts         — dynamic segment rule engine
-  signalModel.ts        — seeded + derived signal catalog
-  seedPipeline.ts       — D1 ingestion pipeline
+  signalService.ts        — search, generate, destinations filter
+  activationService.ts    — activate, get operation status
+  capabilityService.ts    — capabilities (KV-cached 1hr)
+  ruleEngine.ts           — dynamic segment rule engine
+  signalModel.ts          — base seeded + derived signal catalog
+  enrichedSignalModel.ts  — Census ACS, Nielsen DMA, cross-taxonomy signals
+  seedPipeline.ts         — D1 ingestion pipeline (all catalogs)
+
+Connectors (src/connectors/)
+  iabTaxonomyLoader.ts    — IAB Audience Taxonomy 1.1 TSV parser
+  demographicLoader.ts    — US demographics CSV parser
+  interestLoader.ts       — Entertainment affinity CSV parser
+  geoLoader.ts            — US city/metro CSV parser
+  censusLoader.ts         — Census ACS 5-year estimates parser
+  dmaLoader.ts            — Nielsen DMA parser
+  taxonomyBridgeLoader.ts — IAB Audience 1.1 × Content Taxonomy 3.0 bridge
 
 Storage (Cloudflare D1 + KV)
   signalRepo.ts         — signal CRUD + search
@@ -53,20 +63,67 @@ Storage (Cloudflare D1 + KV)
 
 ---
 
-## Signal Catalog
+## Signal Catalog (49 signals)
 
-33 signals across 3 generation modes:
+### Base Catalog — 33 signals
 
-**Seeded (static catalog)** — 25 signals
-Age bands, income brackets, education, household types, entertainment genres, purchase intent, geo segments, urban professionals, plus one conformance test fixture (`test-signal-001`).
+**Seeded (25)** — Age bands, income brackets, education, household types, entertainment genres, purchase intent, geo segments, urban professionals, conformance fixture.
 
-**Derived (pre-built combinations)** — 6 signals
-Multi-dimensional composites: High Income Entertainment Enthusiasts, Urban Young Professionals, Affluent Families, Metro Sci-Fi Fans, College Educated Heavy Streamers, Affluent Urban Entertainment Fans.
+**Derived (6)** — Pre-built multi-dimensional composites: High Income Entertainment Enthusiasts, Urban Young Professionals, Affluent Families, Metro Sci-Fi Fans, College Educated Heavy Streamers, Affluent Urban Entertainment Fans.
 
-**Dynamic** — unlimited
-Generated on-demand via `generate_custom_signal` using the rule engine. Persisted to D1.
+**Dynamic** — Unlimited, generated on-demand via `generate_custom_signal`.
 
-All signals are IAB Audience Taxonomy 1.1 aligned with `signal_agent_segment_id`, `signal_type`, `coverage_percentage`, `deployments[]`, and `pricing_options[]`.
+### Enriched Catalog — 16 signals (3 new data sources)
+
+**Census ACS-Derived (5)**
+Source: US Census Bureau ACS 2022 5-year estimates (tables B01001 × B19001 × B15003 × B11001). Each signal tagged with ACS table references and margin of error at 90% confidence.
+
+| Signal | ACS Tables | Size |
+|---|---|---|
+| Affluent College Educated Households | B19001 × B15003 | 3.85M |
+| Middle Income Families with Children | B11001 × B19001 | 5.24M |
+| Young Single Adults 18-34 | B01001 × B11001 | 4.51M |
+| Graduate Educated High Income | B15003 × B19001 | 1.29M |
+| Senior Households with Income | B01001 × B11001 × B19001 | 2.10M |
+
+**Nielsen DMA-Derived (6)**
+Source: Nielsen 2023-24 DMA universe estimates. Proper DMA codes (501, 802, 602...) with TV household counts. Geography field carries real `DMA-501` style codes.
+
+| Signal | DMA Codes | TV HH |
+|---|---|---|
+| New York DMA (501) | DMA-501 | 7.5M |
+| Top 5 US DMA Markets | DMA-501,802,602,504,618 | 24.7M |
+| Top 10 US DMA Markets | DMAs 1-10 | 37.5M |
+| Top 25 US DMA Markets | DMAs 1-25 | 59.9M |
+| Sunbelt Growth Markets | DMA-618,623,561,753,527,539,543,616 | 17.5M |
+| Midwest DMA Markets | DMA-602,637,641,517,609,619,545,558 | 9.9M |
+
+**Cross-Taxonomy Bridge (5)**
+Source: IAB Audience Taxonomy 1.1 × IAB Content Taxonomy 3.0 semantic bridge. Bidirectional mappings where content consumption validates audience membership. Premium CPMs ($3–$5) reflecting composite signal value.
+
+| Signal | Audience Node | Content Nodes | CPM |
+|---|---|---|---|
+| Sci-Fi & Tech Content Audience | IAB AUD 104 | IAB1-7, IAB19 | $3.00 |
+| Affluent Travel Content Audience | IAB AUD 17 | IAB23, IAB21 | $4.00 |
+| Families + Education Content | IAB AUD 20 | IAB5, IAB4 | $2.80 |
+| BDM + Business News Content | IAB AUD 401 | IAB3, IAB12 | $5.00 |
+| Streaming + Entertainment Content | IAB AUD 109 | IAB1-5, IAB1-1, IAB1-7 | $3.20 |
+
+All signals are AdCP spec-compliant with `signal_agent_segment_id`, `signal_type`, `coverage_percentage`, `deployments[]`, and `pricing_options[]`.
+
+---
+
+## Datasets
+
+| File | Source | Use |
+|---|---|---|
+| `seed/iab-audience-1.1.tsv` | IAB Tech Lab | Audience Taxonomy 1.1 — semantic classification backbone |
+| `seed/demographics-sample.csv` | Hand-curated | Age, income, education, household, geography buckets |
+| `seed/interests-sample.csv` | MovieLens genre structure | Genre affinity scores |
+| `seed/geo-sample.csv` | US Census city data | Top 50 US cities with metro tier |
+| `seed/census-acs-sample.csv` | US Census ACS 2022 5-yr | Cross-tabulated household estimates with MOE |
+| `seed/dma-nielsen.csv` | Nielsen 2023-24 | DMA codes, ranks, TV household universe |
+| `seed/taxonomy-bridge.csv` | IAB Tech Lab | Audience Taxonomy 1.1 × Content Taxonomy 3.0 mappings |
 
 ---
 
@@ -80,29 +137,29 @@ All signals are IAB Audience Taxonomy 1.1 aligned with `signal_agent_segment_id`
   "context_id": "req_...",
   "signals": [
     {
-      "signal_agent_segment_id": "sig_high_income_households",
-      "name": "High Income Households",
+      "signal_agent_segment_id": "sig_acs_affluent_college_educated",
+      "name": "Affluent College Educated Households (ACS)",
       "signal_type": "marketplace",
       "data_provider": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
-      "coverage_percentage": 0.5,
+      "coverage_percentage": 1.6,
       "deployments": [
         {
           "type": "platform",
           "platform": "mock_dsp",
           "is_live": true,
-          "activation_key": { "type": "segment_id", "segment_id": "mock_dsp_sig_high_income_households" },
+          "activation_key": { "type": "segment_id", "segment_id": "mock_dsp_sig_acs_affluent_college_educated" },
           "activation_supported": true
         }
       ],
       "pricing_options": [
-        { "pricing_option_id": "opt-mock_cpm-sig_high_income_households", "pricing_model": "cpm", "cpm": 2.5, "currency": "USD" }
+        { "pricing_option_id": "opt-mock_cpm-...", "pricing_model": "cpm", "cpm": 2.5, "currency": "USD" }
       ],
       "category_type": "demographic",
-      "estimated_audience_size": 1200000
+      "estimated_audience_size": 3850000
     }
   ],
   "count": 5,
-  "totalCount": 33,
+  "totalCount": 49,
   "hasMore": true
 }
 ```
@@ -111,14 +168,14 @@ All signals are IAB Audience Taxonomy 1.1 aligned with `signal_agent_segment_id`
 
 ```json
 {
-  "message": "Signal sig_high_income_households successfully activated on 1 platform(s).",
+  "message": "Signal sig_dma_top_10_markets successfully activated on 1 platform(s).",
   "context_id": "ctx_...",
   "deployments": [
     {
       "type": "platform",
       "platform": "mock_dsp",
       "is_live": true,
-      "activation_key": { "type": "segment_id", "segment_id": "mock_dsp_sig_high_income_households" },
+      "activation_key": { "type": "segment_id", "segment_id": "mock_dsp_sig_dma_top_10_markets" },
       "estimated_activation_duration_minutes": 0
     }
   ]
@@ -156,20 +213,7 @@ The rule engine supports 7 dimensions:
 | `content_genre` | `action`, `sci_fi`, `drama`, `comedy`, `documentary`, `thriller`, `animation`, `romance` |
 | `streaming_affinity` | `high`, `medium`, `low` |
 
-Up to 6 rules per segment. Audience size uses heuristic intersection against a 240M US adult baseline with a 50K floor.
-
----
-
-## Datasets
-
-| File | Use |
-|---|---|
-| `seed/iab-audience-1.1.tsv` | IAB Audience Taxonomy 1.1 — semantic classification backbone |
-| `seed/demographics-sample.csv` | Age, income, education, household, geography buckets |
-| `seed/interests-sample.csv` | Genre affinity scores (MovieLens genre taxonomy structure) |
-| `seed/geo-sample.csv` | Top 50 US cities with metro tier |
-
-All are small curated samples (~200 rows total). Not real user data.
+Up to 6 rules per segment. Audience size uses heuristic intersection against 240M US adult baseline with 50K floor.
 
 ---
 
@@ -179,21 +223,15 @@ All are small curated samples (~200 rows total). Not real user data.
 npm install
 wrangler login
 
-# Create D1 database
+# Create D1 and KV (or reuse existing)
 wrangler d1 create adcp-signals-db
-# Update wrangler.toml with the returned database_id
-
-# Create KV namespace (or use existing)
 wrangler kv namespace list
-# Update wrangler.toml with your KV namespace id
 
-# Run migrations
+# Update wrangler.toml with IDs, then:
 wrangler d1 migrations apply adcp-signals-db --remote
-
-# Start dev server
 npm run dev
 
-# Force seed
+# Seed (auto-runs on first request, or force:)
 curl -X POST http://localhost:8787/seed -H "Authorization: Bearer demo-key-adcp-signals-v1"
 ```
 
@@ -203,19 +241,17 @@ curl -X POST http://localhost:8787/seed -H "Authorization: Bearer demo-key-adcp-
 
 ```bash
 npm run deploy
-# Then apply migrations if schema changed:
-wrangler d1 migrations apply adcp-signals-db --remote
-```
+wrangler d1 migrations apply adcp-signals-db --remote  # only if schema changed
 
-Bindings (set in Cloudflare dashboard or wrangler.toml):
-- D1: `DB` → `adcp-signals-db`
-- KV: `SIGNALS_CACHE` → your KV namespace
+# Force re-seed after deploy (if new signals added):
+curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/seed -H "Authorization: Bearer demo-key-adcp-signals-v1"
+```
 
 ---
 
 ## API Quick Reference
 
-All write endpoints require `Authorization: Bearer demo-key-adcp-signals-v1`
+Auth required: `Authorization: Bearer demo-key-adcp-signals-v1`
 
 ```
 GET  /health
@@ -224,35 +260,35 @@ POST /signals/search
 POST /signals/activate
 POST /signals/generate
 GET  /operations/:id
-POST /mcp                    (MCP Streamable HTTP)
-POST /seed                   (force re-seed)
+POST /mcp
+POST /seed
 ```
 
-### Curl examples
+### Example curls
 
-Search demographics:
+Search DMA signals:
 ```
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/search -H "Authorization: Bearer demo-key-adcp-signals-v1" -H "Content-Type: application/json" -d "{\"categoryType\":\"demographic\",\"limit\":5}"
-```
-
-Generate custom segment:
-```
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/generate -H "Authorization: Bearer demo-key-adcp-signals-v1" -H "Content-Type: application/json" -d "{\"name\":\"Urban Sci-Fi Adults 25-34\",\"rules\":[{\"dimension\":\"age_band\",\"operator\":\"eq\",\"value\":\"25-34\"},{\"dimension\":\"metro_tier\",\"operator\":\"eq\",\"value\":\"top_10\"},{\"dimension\":\"content_genre\",\"operator\":\"eq\",\"value\":\"sci_fi\"}]}"
+curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/search -H "Authorization: Bearer demo-key-adcp-signals-v1" -H "Content-Type: application/json" -d "{\"query\":\"DMA\",\"categoryType\":\"geo\"}"
 ```
 
-MCP tools list:
+Search Census ACS signals:
 ```
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}"
-```
-
-MCP get_signals:
-```
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"get_signals\",\"arguments\":{\"categoryType\":\"interest\",\"limit\":3}}}"
+curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/search -H "Authorization: Bearer demo-key-adcp-signals-v1" -H "Content-Type: application/json" -d "{\"query\":\"ACS\"}"
 ```
 
-MCP activate_signal:
+Search cross-taxonomy signals:
 ```
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"activate_signal\",\"arguments\":{\"signal_agent_segment_id\":\"sig_high_income_households\",\"destinations\":[{\"type\":\"platform\",\"platform\":\"mock_dsp\"}]}}}"
+curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/search -H "Authorization: Bearer demo-key-adcp-signals-v1" -H "Content-Type: application/json" -d "{\"query\":\"Cross-Taxonomy\",\"categoryType\":\"composite\"}"
+```
+
+MCP get_signals (interest category):
+```
+curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"get_signals\",\"arguments\":{\"categoryType\":\"interest\",\"limit\":5}}}"
+```
+
+MCP activate Top 10 DMA signal:
+```
+curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"activate_signal\",\"arguments\":{\"signal_agent_segment_id\":\"sig_dma_top_10_markets\",\"destinations\":[{\"type\":\"platform\",\"platform\":\"mock_dsp\"}]}}}"
 ```
 
 ---
@@ -264,7 +300,7 @@ Settings → Integrations → Add MCP Server:
 https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp
 ```
 
-Once connected, Claude can call all 5 tools natively in conversation.
+Claude can then use all 5 tools natively: `get_adcp_capabilities`, `get_signals`, `activate_signal`, `generate_custom_signal`, `get_operation_status`.
 
 ---
 
@@ -274,7 +310,7 @@ Once connected, Claude can call all 5 tools natively in conversation.
 npm test
 ```
 
-44 tests covering: ID utilities, estimation, taxonomy loader, demographic loader, rule engine validation, rule engine generation, signal catalog integrity, request validation, signal mapper, MCP tool definitions.
+44 tests: ID utilities, estimation, taxonomy loader, demographic loader, rule engine, signal catalog integrity, request validation, signal mapper, MCP tool definitions.
 
 ---
 

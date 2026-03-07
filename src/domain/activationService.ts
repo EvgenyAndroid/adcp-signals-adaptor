@@ -1,32 +1,46 @@
-// src/domain/activationService.ts
+﻿// src/domain/activationService.ts
+// Proper async activation: returns task_id + "pending" immediately.
+// Status transitions happen lazily on first poll (demo pattern — no Queues needed).
+// Fires webhook on completion if webhook_url was provided.
 
 import type {
   ActivateSignalRequest,
   ActivateSignalResponse,
   GetOperationResponse,
+  OperationStatus,
 } from "../types/api";
 import type { DB } from "../storage/db";
 import {
   createActivationJob,
   findOperationById,
   updateJobStatus,
+  markWebhookFired,
 } from "../storage/activationRepo";
-import { findSignalById } from "../storage/signalRepo";
-import { toSignalSummary } from "../mappers/signalMapper";
+import { findSignalById, upsertSignal } from "../storage/signalRepo";
 import { operationId } from "../utils/ids";
 import type { Logger } from "../utils/logger";
-
-const DEMO_COMPLETION_MS = 3000;
+import type { CanonicalSignal } from "../types/signal";
 
 export async function activateSignalService(
   db: DB,
   req: ActivateSignalRequest,
   logger: Logger
 ): Promise<ActivateSignalResponse> {
-  const signal = await findSignalById(db, req.signalId);
+  // Attempt to find signal — if not found, it may be a custom proposal ID that
+  // needs lazy creation. Callers should pass signal metadata in that case.
+  let signal = await findSignalById(db, req.signalId);
+
   if (!signal) {
-    throw new NotFoundError(`Signal not found: ${req.signalId}`);
+    // Check if caller passed signal data for lazy creation (custom proposals)
+    if (req.proposalData) {
+      signal = req.proposalData;
+      await upsertSignal(db, signal);
+      logger.info("proposal_created_on_activation", { signalId: req.signalId });
+    } else {
+      throw new NotFoundError(`Signal not found: ${req.signalId}`);
+    }
   }
+
   if (!signal.activationSupported) {
     throw new ValidationError(`Signal ${req.signalId} does not support activation`);
   }
@@ -38,9 +52,6 @@ export async function activateSignalService(
 
   const opId = operationId();
   const now = new Date().toISOString();
-  const platformSegmentId = `${req.destination}_${req.signalId}`;
-  // Opaque activation key as required by spec
-  const activationKey = `ak_${opId}`;
 
   await createActivationJob(db, {
     operationId: opId,
@@ -49,64 +60,136 @@ export async function activateSignalService(
     accountId: req.accountId,
     campaignId: req.campaignId,
     notes: req.notes,
+    webhookUrl: req.webhookUrl,
   });
 
   logger.info("activation_submitted", {
     operationId: opId,
     signalId: req.signalId,
     destination: req.destination,
+    hasWebhook: !!req.webhookUrl,
   });
 
-  await updateJobStatus(db, opId, "processing");
-  await updateJobStatus(db, opId, "completed");
-
-  logger.info("activation_completed", { operationId: opId });
-
+  // Return pending immediately — caller polls task_id or receives webhook
   return {
-    operationId: opId,
-    // AdCP spec required fields
+    task_id: opId,
+    status: "pending",
     signal_agent_segment_id: req.signalId,
-    deployment_status: "active",
-    activation_key: activationKey,
-    platform: req.destination,
-    decisioning_platform_segment_id: platformSegmentId,
-    // Extended fields
-    status: "completed",
-    signalId: req.signalId,
-    destination: req.destination,
+    ...(req.webhookUrl ? { webhook_url: req.webhookUrl } : {}),
+    operationId: opId,
     submittedAt: now,
-    estimatedCompletionMs: DEMO_COMPLETION_MS,
   };
 }
 
+/**
+ * Poll for task status.
+ * Implements lazy state machine: on first poll, advance submitted → processing → completed.
+ * Fires webhook on completion if configured and not already fired.
+ */
 export async function getOperationService(
   db: DB,
-  opId: string
+  opId: string,
+  logger: Logger
 ): Promise<GetOperationResponse> {
   const operation = await findOperationById(db, opId);
   if (!operation) {
-    throw new NotFoundError(`Operation not found: ${opId}`);
+    throw new NotFoundError(`Task not found: ${opId}`);
   }
 
-  const signal = await findSignalById(db, operation.signalId);
+  // Lazy state machine — advance status on poll
+  let currentStatus = operation.status;
+
+  if (currentStatus === "submitted") {
+    await updateJobStatus(db, opId, "processing");
+    currentStatus = "processing";
+  }
+
+  if (currentStatus === "processing") {
+    await updateJobStatus(db, opId, "completed");
+    currentStatus = "completed";
+  }
+
+  // Fire webhook if URL provided and not yet fired
+  if (
+    currentStatus === "completed" &&
+    operation.webhookUrl &&
+    !operation.webhookFired
+  ) {
+    await fireWebhook(db, opId, operation.signalId, operation.destination, operation.webhookUrl, logger);
+  }
+
   const platformSegmentId = `${operation.destination}_${operation.signalId}`;
 
   return {
-    operationId: operation.operationId,
-    status: operation.status,
-    signalId: operation.signalId,
+    task_id: opId,
+    status: currentStatus,
     signal_agent_segment_id: operation.signalId,
-    deployment_status: operation.status === "completed" ? "active" : "pending",
-    activation_key: `ak_${operation.operationId}`,
-    platform: operation.destination,
-    decisioning_platform_segment_id: platformSegmentId,
-    destination: operation.destination,
+    ...(currentStatus === "completed"
+      ? {
+          deployments: [
+            {
+              type: "platform",
+              platform: operation.destination,
+              is_live: true,
+              activation_key: {
+                type: "segment_id",
+                segment_id: platformSegmentId,
+              },
+              estimated_activation_duration_minutes: 0,
+            },
+          ],
+        }
+      : {}),
     submittedAt: operation.submittedAt,
-    updatedAt: operation.updatedAt,
-    ...(operation.completedAt ? { completedAt: operation.completedAt } : {}),
-    ...(operation.errorMessage ? { errorMessage: operation.errorMessage } : {}),
-    ...(signal ? { signal: toSignalSummary(signal) } : {}),
+    updatedAt: new Date().toISOString(),
+    ...(currentStatus === "completed"
+      ? { completedAt: new Date().toISOString() }
+      : {}),
   };
+}
+
+/**
+ * Fire webhook with activation completion payload.
+ * Non-fatal: logs error but doesn't throw.
+ */
+async function fireWebhook(
+  db: DB,
+  opId: string,
+  signalId: string,
+  destination: string,
+  webhookUrl: string,
+  logger: Logger
+): Promise<void> {
+  try {
+    const platformSegmentId = `${destination}_${signalId}`;
+    const payload = {
+      task_id: opId,
+      status: "completed",
+      signal_agent_segment_id: signalId,
+      deployments: [
+        {
+          type: "platform",
+          platform: destination,
+          is_live: true,
+          activation_key: { type: "segment_id", segment_id: platformSegmentId },
+          estimated_activation_duration_minutes: 0,
+        },
+      ],
+      completed_at: new Date().toISOString(),
+    };
+
+    const res = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "User-Agent": "adcp-signals-adaptor/1.0" },
+      body: JSON.stringify(payload),
+    });
+
+    await markWebhookFired(db, opId);
+    logger.info("webhook_fired", { operationId: opId, webhookUrl, statusCode: res.status });
+  } catch (err) {
+    logger.error("webhook_failed", { operationId: opId, webhookUrl, error: String(err) });
+    // Non-fatal — caller can re-poll
+  }
 }
 
 export class NotFoundError extends Error {

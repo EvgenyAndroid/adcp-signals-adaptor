@@ -175,7 +175,11 @@ export function generateSegment(
 
   const sizeEstimate = estimateAudienceSize(rules);
 
-  const signalId = dynamicSignalId(name);
+  // Deterministic ID: hash of sorted rules ensures same targeting = same segment
+  const rulesKey = JSON.stringify(
+    [...rules].sort((a, b) => a.dimension.localeCompare(b.dimension))
+  );
+  const signalId = dynamicSignalId(name, rulesKey);
 
   const ruleCount = rules.length;
   const generationNotes = [

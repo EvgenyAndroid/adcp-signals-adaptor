@@ -159,7 +159,10 @@ export class QueryResolver {
       confidence: leaf.confidence * c.weight,
     }));
 
-    // Aggregate: each constituent produces matches; deduplicate and weight by constituent weight
+    // Aggregate: each constituent produces matches; deduplicate and weight by constituent weight.
+    // pseudoLeaf.confidence = 1.0 — weighting applied once only via constituent.weight below.
+    // Bug fixed: previously set confidence: constituent.weight which caused double-multiplication
+    // (scoreSignalForLeaf multiplies by leaf.confidence, then we multiplied again by weight).
     const scoreMap = new Map<string, { signal: CatalogSignal; score: number }>();
     for (const constituent of entry.constituents) {
       const pseudoLeaf: AudienceQueryLeaf = {
@@ -167,13 +170,13 @@ export class QueryResolver {
         dimension: constituent.dimension,
         value: constituent.value,
         description: constituent.description,
-        confidence: constituent.weight,
+        confidence: 1.0,  // weight applied once below, not twice
       };
       const matches = this.scoreAgainstCatalog(pseudoLeaf);
       for (const m of matches) {
         const id = m.signal.signal_agent_segment_id;
         const existing = scoreMap.get(id);
-        const weighted = m.match_score * constituent.weight;
+        const weighted = m.match_score * constituent.weight;  // single weight application
         scoreMap.set(id, {
           signal: m.signal,
           score: (existing?.score ?? 0) + weighted,

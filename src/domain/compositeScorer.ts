@@ -183,7 +183,10 @@ export class CompositeScorer {
     return {
       signals: resolution.matches,
       estimated_size: size,
-      confidence: topMatch.match_score * leaf.confidence,
+      // When a catalog match exists, don't let the LLM's self-assessed leaf.confidence
+      // (often low for archetypes like "soccer_mom") collapse the node below 0.5.
+      // The catalog match itself is the evidence — use it as a floor.
+      confidence: Math.max(topMatch.match_score * leaf.confidence, topMatch.match_score * 0.55),
       exclude_signals: [],
     };
   }

@@ -256,7 +256,7 @@ export class QueryResolver {
   private pass1ExactRule(leaf: AudienceQueryLeaf): LeafMatch[] {
     const matches: LeafMatch[] = [];
     for (const signal of this.catalog) {
-      const rule = inferRulesFromSignalId(signal.id);
+      const rule = inferRulesFromSignalId(signal.id ?? (signal as any).signal_agent_segment_id);
       if (!rule) continue;
       if (rule.dimension === leaf.dimension && rule.value === leaf.value) {
         matches.push({

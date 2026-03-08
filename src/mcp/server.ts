@@ -19,7 +19,8 @@ import { getDb } from "../storage/db";
 import { validateSearchRequest, validateActivateRequest } from "../utils/validation";
 import { requestId } from "../utils/ids";
 import { findSignalById, searchSignals } from "../storage/signalRepo";
-import { createEmbeddingEngine, cosineSimilarity } from "../ucp/embeddingEngine";
+import { createEmbeddingEngine } from "../ucp/embeddingEngine";
+import { cosineSimilarity } from "../domain/semanticResolver";
 import { toSignalSummary } from "../mappers/signalMapper";
 
 // ── JSON-RPC 2.0 types ────────────────────────────────────────────────────────

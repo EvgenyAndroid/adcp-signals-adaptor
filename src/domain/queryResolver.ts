@@ -376,7 +376,7 @@ export class QueryResolver {
     });
 
     return scored
-      .filter(({ score }) => score > 0.05)
+      .filter(({ score }) => score > 0.15)
       .sort((a, b) => b.score - a.score)
       .slice(0, 5)
       .map(({ signal, score }) => ({

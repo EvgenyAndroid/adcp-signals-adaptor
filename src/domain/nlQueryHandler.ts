@@ -55,7 +55,7 @@ export async function handleNLQuery(
     if (!anthropicKey) {
       return jsonError('ANTHROPIC_API_KEY not configured', 500);
     }
-    const ast = await parseNLQuery(body.query, anthropicKey);
+    const ast = await parseNLQuery(body.query, { apiKey: anthropicKey });
 
     // ── Step 2: Engine selection — ONE instance per request ─────────────────
     //

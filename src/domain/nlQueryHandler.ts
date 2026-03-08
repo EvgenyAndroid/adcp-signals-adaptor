@@ -15,8 +15,7 @@ import { parseNLQuery } from './queryParser';
 import { QueryResolver } from './queryResolver';
 import { CompositeScorer, buildResolutionMap } from './compositeScorer';
 import { createEmbeddingEngine, type EmbeddingEngineEnv } from '../ucp/embeddingEngine';
-import type { CatalogSignal } from './queryResolver';
-import type { LeafResolution, ResolvedSignal } from './queryResolver';
+import type { CatalogSignal, ResolvedLeaf } from './queryResolver';
 
 // ─── Request / Response types ─────────────────────────────────────────────────
 
@@ -63,10 +62,15 @@ export async function handleNLQuery(
     const { resolvedLeaves, pseudoEmbeddingWarning } = await resolver.resolveAST(ast.root);
 
     // ── Step 4: Adapt new resolver output → old scorer input ─────────────────
-    // QueryResolver returns ResolvedLeaf[] with flat LeafMatch[].
-    // CompositeScorer expects Map<string, LeafResolution> with nested ResolvedSignal[]
-    // that carry full CatalogSignal objects (needed for coverage_percentage, audience_size).
-    const catalogById = new Map(catalog.map(s => [s.id, s]));
+    // CatalogSignal.id may be undefined if the DB returns signal_agent_segment_id instead.
+    // Build the map using whichever field is populated.
+    const catalogById = new Map(
+      catalog.map(s => [
+        s.id ?? (s as any).signal_agent_segment_id,
+        s,
+      ])
+    );
+
     const leafResolutions = adaptToLeafResolutions(resolvedLeaves, catalogById);
     const resolutionMap = buildResolutionMap(leafResolutions);
 
@@ -106,23 +110,24 @@ export async function handleNLQuery(
  * LeafResolution[] (old scorer shape).
  *
  * The old scorer needs ResolvedSignal objects that contain:
- *   - signal: full CatalogSignal (for coverage_percentage, estimated_audience_size)
+ *   - signal: full catalog signal with coverage_percentage, estimated_audience_size
  *   - match_score, match_method, is_exclusion, temporal_scope
  *
  * We look up the full CatalogSignal by ID from the catalog map.
- * If a signal ID is not found in the catalog (shouldn't happen), we build
- * a minimal stub so the scorer doesn't crash.
+ * If a signal ID is not found in the catalog we build a minimal stub
+ * so the scorer does not crash.
  */
 function adaptToLeafResolutions(
-  resolvedLeaves: import('./queryResolver').ResolvedLeaf[],
+  resolvedLeaves: ResolvedLeaf[],
   catalogById: Map<string, CatalogSignal>,
-): LeafResolution[] {
+): any[] {
   return resolvedLeaves.map(rl => {
-    const resolvedSignals: ResolvedSignal[] = rl.matches.map(match => {
-      const catalogSignal = catalogById.get(match.signal_agent_segment_id);
+    const resolvedSignals = rl.matches.map(match => {
+      const signalId = match.signal_agent_segment_id;
+      const catalogSignal = catalogById.get(signalId);
       const signal = catalogSignal
-        ? toCatalogSignalForScorer(catalogSignal)
-        : stubSignal(match.signal_agent_segment_id, match.name);
+        ? toCatalogSignalForScorer(signalId, catalogSignal)
+        : stubSignal(signalId, match.name);
 
       return {
         signal,
@@ -142,22 +147,25 @@ function adaptToLeafResolutions(
 }
 
 /**
- * Convert CatalogSignal (domain shape) to the nested signal shape
- * that CompositeScorer expects inside ResolvedSignal.signal.
+ * Convert a CatalogSignal to the nested signal shape CompositeScorer expects
+ * inside ResolvedSignal.signal.
  */
-function toCatalogSignalForScorer(s: CatalogSignal): ResolvedSignal['signal'] {
+function toCatalogSignalForScorer(signalId: string, s: CatalogSignal): any {
+  const coverage = (s as any).coverage_percentage ?? defaultCoverage(signalId);
   return {
-    signal_agent_segment_id: s.id,
+    signal_agent_segment_id: signalId,
     name: s.name,
     description: s.description ?? '',
-    coverage_percentage: (s as any).coverage_percentage ?? defaultCoverage(s.id),
-    estimated_audience_size: (s as any).estimated_size ?? Math.round(defaultCoverage(s.id) * 240_000_000),
+    coverage_percentage: coverage,
+    estimated_audience_size: (s as any).estimated_size
+      ?? (s as any).estimated_audience_size
+      ?? Math.round(coverage * 240_000_000),
     iab_taxonomy_ids: (s as any).taxonomy_id ? [(s as any).taxonomy_id] : [],
     category: s.category ?? 'unknown',
   };
 }
 
-function stubSignal(id: string, name: string): ResolvedSignal['signal'] {
+function stubSignal(id: string, name: string): any {
   return {
     signal_agent_segment_id: id,
     name,
@@ -170,32 +178,32 @@ function stubSignal(id: string, name: string): ResolvedSignal['signal'] {
 }
 
 /**
- * Default coverage percentages for known signals when coverage_percentage
- * is not stored on the CatalogSignal (it may be on the full DB signal).
- * These match the values seeded in signalModel.ts.
+ * defaultCoverage — fallback coverage percentages for known signals when
+ * coverage_percentage is not present on the CatalogSignal object.
+ * Values match those seeded in signalModel.ts.
  */
 function defaultCoverage(signalId: string): number {
   const coverageMap: Record<string, number> = {
-    sig_age_18_24:               0.12,
-    sig_age_25_34:               0.17,
-    sig_age_35_44:               0.17,
-    sig_age_45_54:               0.16,
-    sig_age_55_64:               0.14,
-    sig_age_65_plus:             0.17,
-    sig_high_income_households:  0.09,
-    sig_upper_middle_income:     0.14,
-    sig_middle_income_households:0.28,
-    sig_college_educated_adults: 0.36,
-    sig_graduate_educated_adults:0.14,
-    sig_families_with_children:  0.29,
-    sig_senior_households:       0.28,
-    sig_urban_professionals:     0.08,
-    sig_streaming_enthusiasts:   0.45,
-    sig_drama_viewers:           0.22,
-    sig_comedy_fans:             0.28,
-    sig_action_movie_fans:       0.19,
-    sig_documentary_viewers:     0.12,
-    sig_sci_fi_enthusiasts:      0.11,
+    sig_age_18_24:                     0.12,
+    sig_age_25_34:                     0.17,
+    sig_age_35_44:                     0.17,
+    sig_age_45_54:                     0.16,
+    sig_age_55_64:                     0.14,
+    sig_age_65_plus:                   0.17,
+    sig_high_income_households:        0.09,
+    sig_upper_middle_income:           0.14,
+    sig_middle_income_households:      0.28,
+    sig_college_educated_adults:       0.36,
+    sig_graduate_educated_adults:      0.14,
+    sig_families_with_children:        0.29,
+    sig_senior_households:             0.28,
+    sig_urban_professionals:           0.08,
+    sig_streaming_enthusiasts:         0.45,
+    sig_drama_viewers:                 0.22,
+    sig_comedy_fans:                   0.28,
+    sig_action_movie_fans:             0.19,
+    sig_documentary_viewers:           0.12,
+    sig_sci_fi_enthusiasts:            0.11,
     sig_acs_affluent_college_educated: 0.08,
     sig_acs_graduate_high_income:      0.05,
     sig_acs_middle_income_families:    0.18,

@@ -5,7 +5,7 @@
  *
  * Pass 1 — Exact rule match (deterministic, zero latency, no embeddings)
  * Pass 2 — Embedding similarity via SemanticResolver (semantic, engine-scoped)
- * Pass 3 — Lexical fallback (Jaccard token overlap, only when Pass 2 is unavailable)
+ * Pass 3 — Lexical fallback (Jaccard token overlap, only when Pass 2 unavailable)
  *
  * Archetype expansion runs as a pre-processing step: archetype leafs are expanded
  * into constituent dimension leaves (from ARCHETYPE_TABLE), each resolved independently
@@ -23,7 +23,11 @@
 
 import type { AudienceQueryAST, AudienceQueryLeaf, AudienceQueryBranch } from './queryParser';
 import type { EmbeddingEngine } from '../ucp/embeddingEngine';
-import { SemanticResolver, buildSignalSemanticText, type CatalogSignalForSemantic } from './semanticResolver';
+import {
+  SemanticResolver,
+  buildSignalSemanticText,
+  type CatalogSignalForSemantic,
+} from './semanticResolver';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -52,15 +56,25 @@ export interface ResolvedLeaf {
 
 export interface ResolvedAST {
   resolvedLeaves: ResolvedLeaf[];
-  /** true if at least one Pass 2 embedding comparison used pseudo vectors (not semantically valid) */
+  /** true if at least one Pass 2 embedding comparison used pseudo vectors */
   pseudoEmbeddingWarning: boolean;
 }
 
-// ─── Catalog signal shape (what QueryResolver expects from signalService) ─────
+// ─── Catalog signal shape ─────────────────────────────────────────────────────
 
 export interface CatalogSignal extends CatalogSignalForSemantic {
   estimated_size?: number;
   coverage_percentage?: number;
+}
+
+// ─── Helpers — get the stable signal ID regardless of field name ──────────────
+
+function getSignalId(signal: CatalogSignal): string {
+  return signal.id ?? (signal as any).signal_agent_segment_id ?? '';
+}
+
+function getSignalName(signal: CatalogSignal): string {
+  return signal.name ?? (signal as any).signal_name ?? '';
 }
 
 // ─── Dimension rule map (Pass 1) ──────────────────────────────────────────────
@@ -68,31 +82,50 @@ export interface CatalogSignal extends CatalogSignalForSemantic {
 /**
  * inferRulesFromSignalId — maps actual D1 signal IDs → {dimension, value} pairs.
  * Used for Pass 1 exact rule matching.
+ * Includes common value aliases to handle variation in Claude's output
+ * (e.g. "150k+" vs "150k_plus", "50k-100k" vs "50k_100k").
  */
-export function inferRulesFromSignalId(signalId: string): { dimension: string; value: string } | null {
+export function inferRulesFromSignalId(
+  signalId: string,
+): { dimension: string; value: string } | null {
   const map: Record<string, { dimension: string; value: string }> = {
-    sig_age_18_24:              { dimension: 'age_band',           value: '18-24' },
-    sig_age_25_34:              { dimension: 'age_band',           value: '25-34' },
-    sig_age_35_44:              { dimension: 'age_band',           value: '35-44' },
-    sig_age_45_54:              { dimension: 'age_band',           value: '45-54' },
-    sig_age_55_64:              { dimension: 'age_band',           value: '55-64' },
-    sig_age_65_plus:            { dimension: 'age_band',           value: '65+' },
-    sig_high_income_households: { dimension: 'income_band',        value: '150k+' },
-    sig_upper_middle_income:    { dimension: 'income_band',        value: '100k-150k' },
-    sig_middle_income_households:{ dimension: 'income_band',       value: '50k-100k' },
-    sig_college_educated_adults:{ dimension: 'education',          value: 'college' },
-    sig_graduate_educated_adults:{ dimension: 'education',         value: 'graduate' },
-    sig_families_with_children: { dimension: 'household_type',     value: 'family_with_kids' },
-    sig_senior_households:      { dimension: 'household_type',     value: 'senior' },
-    sig_urban_professionals:    { dimension: 'household_type',     value: 'urban_professional' },
-    sig_streaming_enthusiasts:  { dimension: 'streaming_affinity', value: 'high' },
-    sig_drama_viewers:          { dimension: 'content_genre',      value: 'drama' },
-    sig_comedy_fans:            { dimension: 'content_genre',      value: 'comedy' },
-    sig_action_movie_fans:      { dimension: 'content_genre',      value: 'action' },
-    sig_documentary_viewers:    { dimension: 'content_genre',      value: 'documentary' },
-    sig_sci_fi_enthusiasts:     { dimension: 'content_genre',      value: 'sci_fi' },
+    sig_age_18_24:               { dimension: 'age_band',           value: '18-24' },
+    sig_age_25_34:               { dimension: 'age_band',           value: '25-34' },
+    sig_age_35_44:               { dimension: 'age_band',           value: '35-44' },
+    sig_age_45_54:               { dimension: 'age_band',           value: '45-54' },
+    sig_age_55_64:               { dimension: 'age_band',           value: '55-64' },
+    sig_age_65_plus:             { dimension: 'age_band',           value: '65+' },
+    sig_high_income_households:  { dimension: 'income_band',        value: '150k+' },
+    sig_upper_middle_income:     { dimension: 'income_band',        value: '100k-150k' },
+    sig_middle_income_households:{ dimension: 'income_band',        value: '50k-100k' },
+    sig_college_educated_adults: { dimension: 'education',          value: 'college' },
+    sig_graduate_educated_adults:{ dimension: 'education',          value: 'graduate' },
+    sig_families_with_children:  { dimension: 'household_type',     value: 'family_with_kids' },
+    sig_senior_households:       { dimension: 'household_type',     value: 'senior' },
+    sig_urban_professionals:     { dimension: 'household_type',     value: 'urban_professional' },
+    sig_streaming_enthusiasts:   { dimension: 'streaming_affinity', value: 'high' },
+    sig_drama_viewers:           { dimension: 'content_genre',      value: 'drama' },
+    sig_comedy_fans:             { dimension: 'content_genre',      value: 'comedy' },
+    sig_action_movie_fans:       { dimension: 'content_genre',      value: 'action' },
+    sig_documentary_viewers:     { dimension: 'content_genre',      value: 'documentary' },
+    sig_sci_fi_enthusiasts:      { dimension: 'content_genre',      value: 'sci_fi' },
   };
   return map[signalId] ?? null;
+}
+
+/**
+ * normalizeValue — canonicalize dimension values for fuzzy comparison.
+ * Handles common variations in Claude output:
+ *   "150k+" → "150k_plus"
+ *   "50k-100k" → "50k_100k"
+ *   "family_with_kids" → "family_with_kids"
+ */
+function normalizeValue(v: string): string {
+  return v
+    .toLowerCase()
+    .replace(/\+/g, '_plus')
+    .replace(/[-\s]/g, '_')
+    .replace(/__+/g, '_');
 }
 
 // ─── Title → Genre map (Pass 2 title_genre_inference) ────────────────────────
@@ -140,25 +173,25 @@ interface ArchetypeConstituent {
 
 const ARCHETYPE_TABLE: Record<string, ArchetypeConstituent[]> = {
   soccer_mom: [
-    { dimension: 'age_band',           value: '35-44',          weight: 0.35 },
-    { dimension: 'household_type',     value: 'family_with_kids',weight: 0.40 },
-    { dimension: 'income_band',        value: '50k-100k',        weight: 0.15 },
-    { dimension: 'interest',           value: 'youth_sports',    weight: 0.10 },
+    { dimension: 'age_band',           value: '35-44',           weight: 0.35 },
+    { dimension: 'household_type',     value: 'family_with_kids', weight: 0.40 },
+    { dimension: 'income_band',        value: '50k-100k',         weight: 0.15 },
+    { dimension: 'interest',           value: 'youth_sports',     weight: 0.10 },
   ],
   urban_professional: [
-    { dimension: 'education',          value: 'college',         weight: 0.30 },
+    { dimension: 'education',          value: 'college',          weight: 0.30 },
     { dimension: 'household_type',     value: 'urban_professional',weight: 0.35 },
-    { dimension: 'income_band',        value: '100k+',           weight: 0.35 },
+    { dimension: 'income_band',        value: '100k-150k',         weight: 0.35 },
   ],
   affluent_family: [
-    { dimension: 'income_band',        value: '150k+',           weight: 0.40 },
-    { dimension: 'household_type',     value: 'family_with_kids',weight: 0.35 },
-    { dimension: 'education',          value: 'graduate',        weight: 0.25 },
+    { dimension: 'income_band',        value: '150k+',            weight: 0.40 },
+    { dimension: 'household_type',     value: 'family_with_kids', weight: 0.35 },
+    { dimension: 'education',          value: 'graduate',         weight: 0.25 },
   ],
   affluent_families: [
-    { dimension: 'income_band',        value: '150k+',           weight: 0.40 },
-    { dimension: 'household_type',     value: 'family_with_kids',weight: 0.35 },
-    { dimension: 'education',          value: 'graduate',        weight: 0.25 },
+    { dimension: 'income_band',        value: '150k+',            weight: 0.40 },
+    { dimension: 'household_type',     value: 'family_with_kids', weight: 0.35 },
+    { dimension: 'education',          value: 'graduate',         weight: 0.25 },
   ],
 };
 
@@ -190,10 +223,10 @@ export class QueryResolver {
   private pseudoWarning = false;
 
   /**
-   * @param catalog      All catalog signals from signalService.getAllSignalsForCatalog()
-   * @param engine       Optional EmbeddingEngine injected by nlQueryHandler.
-   *                     When provided, Pass 2 uses embedding cosine similarity.
-   *                     When omitted, Pass 2 skips and falls through to Pass 3 (lexical).
+   * @param catalog  All catalog signals from signalService.getAllSignalsForCatalog()
+   * @param engine   Optional EmbeddingEngine injected by nlQueryHandler.
+   *                 When provided, Pass 2 uses embedding cosine similarity.
+   *                 When omitted, Pass 2 is skipped (lexical-only mode).
    */
   constructor(
     private readonly catalog: CatalogSignal[],
@@ -208,10 +241,12 @@ export class QueryResolver {
 
   // ── Public entry point ──────────────────────────────────────────────────────
 
-  async resolveAST(ast: AudienceQueryAST): Promise<ResolvedAST> {
+  async resolveAST(ast: AudienceQueryAST | AudienceQueryLeaf | AudienceQueryBranch): Promise<ResolvedAST> {
     this.pseudoWarning = false;
     const resolvedLeaves: ResolvedLeaf[] = [];
-    await this.walkNode(ast, resolvedLeaves);
+    // Handle both full AST wrapper and bare node
+    const root = (ast as any).root ?? ast;
+    await this.walkNode(root, resolvedLeaves);
     return {
       resolvedLeaves,
       pseudoEmbeddingWarning: this.pseudoWarning,
@@ -221,7 +256,7 @@ export class QueryResolver {
   // ── Tree walk ───────────────────────────────────────────────────────────────
 
   private async walkNode(
-    node: AudienceQueryAST,
+    node: AudienceQueryLeaf | AudienceQueryBranch,
     out: ResolvedLeaf[],
   ): Promise<void> {
     if (node.op === 'LEAF') {
@@ -231,23 +266,19 @@ export class QueryResolver {
     }
     const branch = node as AudienceQueryBranch;
     for (const child of branch.children) {
-      await this.walkNode(child, out);
+      await this.walkNode(child as any, out);
     }
   }
 
   // ── Leaf dispatch ───────────────────────────────────────────────────────────
 
   private async resolveLeaf(leaf: AudienceQueryLeaf): Promise<ResolvedLeaf> {
-    // Archetype dimension: expand then aggregate
     if (leaf.dimension === 'archetype') {
       return this.resolveArchetype(leaf);
     }
-
-    // content_title: TITLE_GENRE_MAP → treat as content_genre leaf
     if (leaf.dimension === 'content_title') {
       return this.resolveContentTitle(leaf);
     }
-
     return this.resolveDimensionLeaf(leaf);
   }
 
@@ -255,13 +286,23 @@ export class QueryResolver {
 
   private pass1ExactRule(leaf: AudienceQueryLeaf): LeafMatch[] {
     const matches: LeafMatch[] = [];
+    const normalizedLeafValue = normalizeValue(leaf.value);
+
     for (const signal of this.catalog) {
-      const rule = inferRulesFromSignalId(signal.id ?? (signal as any).signal_agent_segment_id);
+      const signalId = getSignalId(signal);
+      if (!signalId) continue;
+
+      const rule = inferRulesFromSignalId(signalId);
       if (!rule) continue;
-      if (rule.dimension === leaf.dimension && rule.value === leaf.value) {
+
+      // Match on dimension AND value — with normalization to handle Claude output variation
+      if (
+        rule.dimension === leaf.dimension &&
+        (rule.value === leaf.value || normalizeValue(rule.value) === normalizedLeafValue)
+      ) {
         matches.push({
-          signal_agent_segment_id: signal.id,
-          name: signal.name,
+          signal_agent_segment_id: signalId,
+          name: getSignalName(signal),
           match_score: 0.95,
           match_method: 'exact_rule',
           is_exclusion: leaf.is_exclusion ?? false,
@@ -277,7 +318,6 @@ export class QueryResolver {
   private async pass2Embedding(leaf: AudienceQueryLeaf): Promise<LeafMatch[]> {
     if (!this.semantic) return [];
 
-    // Track if pseudo engine is in use — signals semantically invalid comparison
     if (this.engine?.phase === 'pseudo-v1') {
       this.pseudoWarning = true;
     }
@@ -285,7 +325,7 @@ export class QueryResolver {
     try {
       const results = await this.semantic.resolve(leaf, this.catalog);
       return results
-        .filter(r => r.score > 0.3) // minimum meaningful cosine for llm; pseudo will be noisy
+        .filter(r => r.score > 0.3)
         .map(r => ({
           signal_agent_segment_id: r.signalId,
           name: r.signalName,
@@ -295,7 +335,6 @@ export class QueryResolver {
           concept_id: leaf.concept_id,
         }));
     } catch {
-      // embedding API unavailable — fall through to Pass 3
       return [];
     }
   }
@@ -304,6 +343,7 @@ export class QueryResolver {
 
   private pass3Lexical(leaf: AudienceQueryLeaf): LeafMatch[] {
     const query = [leaf.description, leaf.value, leaf.dimension].filter(Boolean).join(' ');
+
     const scored = this.catalog.map(signal => {
       const candidateText = buildSignalSemanticText(signal);
       const score = jaccardSimilarity(query, candidateText);
@@ -315,9 +355,9 @@ export class QueryResolver {
       .sort((a, b) => b.score - a.score)
       .slice(0, 5)
       .map(({ signal, score }) => ({
-        signal_agent_segment_id: signal.id,
-        name: signal.name,
-        match_score: Math.min(score * 1.5, 0.75), // scale Jaccard up; cap below exact_rule
+        signal_agent_segment_id: getSignalId(signal),
+        name: getSignalName(signal),
+        match_score: Math.min(score * 1.5, 0.75),
         match_method: 'lexical_fallback' as MatchMethod,
         is_exclusion: leaf.is_exclusion ?? false,
         concept_id: leaf.concept_id,
@@ -327,25 +367,21 @@ export class QueryResolver {
   // ── Three-pass pipeline for a single dimension leaf ─────────────────────────
 
   private async resolveDimensionLeaf(leaf: AudienceQueryLeaf): Promise<ResolvedLeaf> {
-    // Pass 1 — exact rule
     const pass1 = this.pass1ExactRule(leaf);
     if (pass1.length > 0) {
       return { leaf, matches: pass1, unresolved: false };
     }
 
-    // Pass 2 — embedding similarity (only if engine available)
     const pass2 = await this.pass2Embedding(leaf);
     if (pass2.length > 0) {
       return { leaf, matches: pass2, unresolved: false };
     }
 
-    // Pass 3 — lexical fallback
     const pass3 = this.pass3Lexical(leaf);
     if (pass3.length > 0) {
       return { leaf, matches: pass3, unresolved: false };
     }
 
-    // Unresolved — no catalog signal matches
     return { leaf, matches: [], unresolved: true };
   }
 
@@ -356,7 +392,6 @@ export class QueryResolver {
     const genre = TITLE_GENRE_MAP[key];
 
     if (genre) {
-      // Synthesize a genre leaf and run through the full three-pass pipeline
       const genreLeaf: AudienceQueryLeaf = {
         ...leaf,
         dimension: 'content_genre',
@@ -364,20 +399,17 @@ export class QueryResolver {
         description: `${genre} content viewers — inferred from title: ${leaf.value}`,
       };
       const resolved = await this.resolveDimensionLeaf(genreLeaf);
-      // Relabel match_method so the caller knows title inference was used
       return {
         leaf,
         unresolved: resolved.unresolved,
         matches: resolved.matches.map(m => ({
           ...m,
           match_method: 'title_genre_inference' as MatchMethod,
-          match_score: m.match_score * 0.90, // slight discount for indirect inference
+          match_score: m.match_score * 0.90,
         })),
       };
     }
 
-    // No title mapping — fall through to regular dimension resolver
-    // (embedding may still find something based on leaf.description)
     return this.resolveDimensionLeaf(leaf);
   }
 
@@ -417,7 +449,7 @@ export class QueryResolver {
           dimension: c.dimension as AudienceQueryLeaf['dimension'],
           value: c.value,
           description: `${c.dimension}: ${c.value} (constituent of archetype ${leaf.value})`,
-          confidence: 1.0, // spec: confidence=1.0 before weighting
+          confidence: 1.0,
           is_exclusion: leaf.is_exclusion ?? false,
         };
         const resolved = await this.resolveDimensionLeaf(pseudoLeaf);
@@ -426,8 +458,8 @@ export class QueryResolver {
     );
 
     // Aggregate: weighted average of top match score per constituent
-    // Weight is applied exactly once here (never in resolveDimensionLeaf)
-    const aggregated = new Map<string, { score: number; name: string; count: number }>();
+    // Weight is applied exactly ONCE here — never in resolveDimensionLeaf
+    const aggregated = new Map<string, { score: number; name: string }>();
 
     for (const { resolved, weight } of constituentResults) {
       const top = resolved.matches[0];
@@ -437,12 +469,10 @@ export class QueryResolver {
       const existing = aggregated.get(top.signal_agent_segment_id);
       if (existing) {
         existing.score += weightedScore;
-        existing.count++;
       } else {
         aggregated.set(top.signal_agent_segment_id, {
           score: weightedScore,
           name: top.name,
-          count: 1,
         });
       }
     }

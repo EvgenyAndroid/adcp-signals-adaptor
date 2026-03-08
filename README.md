@@ -68,6 +68,90 @@ Every signal carries an `x_dts` object — IAB DTS v1.2 ("Privacy Update", April
 | Cross-taxonomy bridge | `["Web Usage", "App Behavior"]` | `"Derived"` | `"Static"` | N/A |
 | CTV/ACR (future) | `["TV OTT or STB Device"]` | `"Observed/Known"` | `"Weekly"` | N/A |
 
+### Example `x_dts` (Census ACS signal)
+
+```json
+{
+  "x_dts": {
+    "dts_version": "1.2",
+    "provider_name": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+    "provider_domain": "adcp-signals-adaptor.evgeny-193.workers.dev",
+    "provider_email": "evgeny@samba.tv",
+    "audience_id": "sig_acs_graduate_high_income",
+    "taxonomy_id_list": "11",
+    "audience_criteria": "Households with graduate degree and HHI $150K+. Source: ACS 2022 B15003 × B19001.",
+    "audience_precision_levels": ["Household"],
+    "audience_scope": "Cross-domain outside O&O",
+    "audience_size": 1290000,
+    "id_types": ["Platform ID"],
+    "geocode_list": "USA",
+    "privacy_compliance_mechanisms": ["GPP", "MSPA"],
+    "iab_techlab_compliant": "No",
+    "data_sources": ["Public Record: Census"],
+    "audience_inclusion_methodology": "Derived",
+    "audience_expansion": "No",
+    "device_expansion": "No",
+    "audience_refresh": "Annually",
+    "lookback_window": "Annually",
+    "onboarder_match_keys": "Postal / Geographic Code",
+    "onboarder_audience_expansion": "No",
+    "onboarder_device_expansion": "No",
+    "onboarder_audience_precision_level": "Geography"
+  }
+}
+```
+
+### Example `x_ucp` (same signal)
+
+```json
+{
+  "x_ucp": {
+    "schema_version": "ucp-1.0",
+    "embedding": {
+      "model_id": "adcp-ucp-bridge-pseudo-v1.0",
+      "space_id": "adcp-bridge-space-v1.0",
+      "dimensions": 512,
+      "encoding": "float32",
+      "normalization": "l2",
+      "distance_metric": "cosine",
+      "phase": "pseudo-v1",
+      "vector_endpoint": "/signals/sig_acs_graduate_high_income/embedding"
+    },
+    "legacy_fallback": {
+      "signal_agent_segment_id": "sig_acs_graduate_high_income",
+      "segment_ids": ["11"],
+      "taxonomy_version": "iab_audience_1.1"
+    },
+    "privacy": {
+      "privacy_compliance_mechanisms": ["GPP", "MSPA"],
+      "permitted_uses": ["audience_matching", "frequency_capping", "measurement"],
+      "ttl_seconds": 31536000,
+      "gpp_applicable": true,
+      "tcf_applicable": false
+    },
+    "signal_type": "identity",
+    "signal_strength": "medium",
+    "classification_rationale": "signal_type=identity derived from data_sources=[Public Record: Census]. signal_strength=medium derived from audience_inclusion_methodology=\"Derived\"."
+  }
+}
+```
+
+Both `x_dts` and `x_ucp` travel on every signal. Non-breaking `x_` extensions — conformance tests ignore them, UCP-aware consumers use them.
+
+### DTS → UCP normative field mappings (AdCP-UCP Bridge Profile)
+
+| DTS field | Value | UCP field | Mapped value |
+|---|---|---|---|
+| `data_sources` | `["Public Record: Census"]` | `signal_type` | `"identity"` |
+| `data_sources` | `["TV OTT or STB Device"]` | `signal_type` | `"reinforcement"` |
+| `data_sources` | `["Web Usage", "App Behavior"]` | `signal_type` | `"contextual"` |
+| `audience_inclusion_methodology` | `"Observed/Known"` | `signal_strength` | `"high"` |
+| `audience_inclusion_methodology` | `"Derived"` | `signal_strength` | `"medium"` |
+| `audience_inclusion_methodology` | `"Modeled"` | `signal_strength` | `"low"` |
+| `taxonomy_id_list` | `"11"` | `legacy_fallback.segment_ids` | `["11"]` |
+| `privacy_compliance_mechanisms` | `["GPP","MSPA"]` | `privacy.privacy_compliance_mechanisms` | `["GPP","MSPA"]` |
+| `audience_refresh` | `"Annually"` | `privacy.ttl_seconds` | `31536000` |
+
 ---
 
 ## UCP Embedding Bridge

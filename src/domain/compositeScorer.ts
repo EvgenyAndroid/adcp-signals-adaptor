@@ -192,13 +192,21 @@ export class CompositeScorer {
     const children = branch.children.map((c) => this.scoreNode(c));
     if (children.length === 0) return emptyNode(1);
 
+    // Split into resolved children (have catalog matches) vs unresolved (nothing found).
+    // Unresolved leaves — "Nashville", "desperate_housewives", "coffee" when those signals
+    // don't exist in the catalog — must NOT collapse confidence via Math.min to near-zero.
+    // They are noted via unresolvedPenalty below but excluded from size/confidence math.
+    const resolved   = children.filter(c => c.signals.length > 0 || (c.exclude_signals?.length ?? 0) > 0);
+    const unresolved = children.filter(c => c.signals.length === 0 && (c.exclude_signals?.length ?? 0) === 0);
+    const workingSet = resolved.length > 0 ? resolved : children;
+
     // Probabilistic intersection: ∏(coverage_i) × baseline × overlap_factor^(n-1)
     let coverageProduct = 1.0;
     let minConfidence = 1.0;
     const allSignals: ResolvedSignal[] = [];
     const allExcludes: ResolvedSignal[] = [];
 
-    for (const child of children) {
+    for (const child of workingSet) {
       const childCoverage = child.estimated_size / US_ADULT_BASELINE;
       coverageProduct *= childCoverage;
       minConfidence = Math.min(minConfidence, child.confidence);
@@ -206,15 +214,19 @@ export class CompositeScorer {
       allExcludes.push(...(child.exclude_signals ?? []));
     }
 
-    // Apply overlap discount for n > 1 dimensions
-    const n = children.length;
+    // Apply overlap discount for n > 1 resolved dimensions
+    const n = workingSet.length;
     const overlapFactor = Math.pow(DEFAULT_OVERLAP_FACTOR, n - 1);
     const estimatedSize = Math.round(coverageProduct * US_ADULT_BASELINE * overlapFactor);
+
+    // Penalise confidence proportionally for unresolved leaves — each one
+    // represents a dimension we couldn't satisfy from the catalog.
+    const unresolvedPenalty = Math.pow(0.85, unresolved.length);
 
     return {
       signals: allSignals,
       estimated_size: Math.max(estimatedSize, AUDIENCE_FLOOR),
-      confidence: minConfidence,
+      confidence: minConfidence * unresolvedPenalty,
       exclude_signals: allExcludes,
     };
   }

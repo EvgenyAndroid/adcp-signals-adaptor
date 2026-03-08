@@ -360,47 +360,36 @@ function inferRulesFromSignalId(
   signalId: string
 ): Array<{ dimension: string; operator: string; value: string }> {
   const SIGNAL_RULE_MAP: Record<string, { dimension: string; value: string }> = {
-    // Age bands
-    sig_age_18_24:        { dimension: "age_band", value: "18-24" },
-    sig_age_25_34:        { dimension: "age_band", value: "25-34" },
-    sig_age_35_44:        { dimension: "age_band", value: "35-44" },
-    sig_age_45_54:        { dimension: "age_band", value: "45-54" },
-    sig_age_55_64:        { dimension: "age_band", value: "55-64" },
-    sig_age_65_plus:      { dimension: "age_band", value: "65+" },
-    // Income bands
-    sig_income_under_50k: { dimension: "income_band", value: "under_50k" },
-    sig_income_50k_100k:  { dimension: "income_band", value: "50k_100k" },
-    sig_income_100k_150k: { dimension: "income_band", value: "100k_150k" },
-    sig_income_150k_plus: { dimension: "income_band", value: "150k_plus" },
-    sig_high_income_households: { dimension: "income_band", value: "150k_plus" },
-    // Education
-    sig_edu_high_school:  { dimension: "education", value: "high_school" },
-    sig_edu_some_college: { dimension: "education", value: "some_college" },
-    sig_edu_bachelors:    { dimension: "education", value: "bachelors" },
-    sig_edu_graduate:     { dimension: "education", value: "graduate" },
-    // Household
-    sig_hh_single:             { dimension: "household_type", value: "single" },
-    sig_hh_couple_no_kids:     { dimension: "household_type", value: "couple_no_kids" },
-    sig_hh_family_with_kids:   { dimension: "household_type", value: "family_with_kids" },
-    sig_hh_senior:             { dimension: "household_type", value: "senior_household" },
-    // Metro tier
-    sig_metro_top_10:    { dimension: "metro_tier", value: "top_10" },
-    sig_metro_top_25:    { dimension: "metro_tier", value: "top_25" },
-    sig_metro_top_50:    { dimension: "metro_tier", value: "top_50" },
-    sig_metro_other:     { dimension: "metro_tier", value: "other" },
-    // Content genre
-    sig_genre_action:      { dimension: "content_genre", value: "action" },
-    sig_genre_sci_fi:      { dimension: "content_genre", value: "sci_fi" },
-    sig_genre_drama:       { dimension: "content_genre", value: "drama" },
-    sig_genre_comedy:      { dimension: "content_genre", value: "comedy" },
-    sig_genre_documentary: { dimension: "content_genre", value: "documentary" },
-    sig_genre_thriller:    { dimension: "content_genre", value: "thriller" },
-    sig_genre_animation:   { dimension: "content_genre", value: "animation" },
-    sig_genre_romance:     { dimension: "content_genre", value: "romance" },
-    // Streaming affinity
-    sig_streaming_high:   { dimension: "streaming_affinity", value: "high" },
-    sig_streaming_medium: { dimension: "streaming_affinity", value: "medium" },
-    sig_streaming_low:    { dimension: "streaming_affinity", value: "low" },
+    // ── Age bands (actual D1 IDs) ────────────────────────────────────────────
+    sig_age_18_24:   { dimension: "age_band", value: "18-24" },
+    sig_age_25_34:   { dimension: "age_band", value: "25-34" },
+    sig_age_35_44:   { dimension: "age_band", value: "35-44" },
+    sig_age_45_54:   { dimension: "age_band", value: "45-54" },
+    sig_age_55_64:   { dimension: "age_band", value: "55-64" },
+    sig_age_65_plus: { dimension: "age_band", value: "65+" },
+
+    // ── Income (actual D1 IDs) ───────────────────────────────────────────────
+    sig_high_income_households:  { dimension: "income_band", value: "150k_plus" },
+    sig_upper_middle_income:     { dimension: "income_band", value: "100k_150k" },
+    sig_middle_income_households:{ dimension: "income_band", value: "50k_100k" },
+
+    // ── Education (actual D1 IDs) ────────────────────────────────────────────
+    sig_college_educated_adults:  { dimension: "education", value: "bachelors" },
+    sig_graduate_educated_adults: { dimension: "education", value: "graduate" },
+
+    // ── Household (actual D1 IDs) ────────────────────────────────────────────
+    sig_families_with_children: { dimension: "household_type", value: "family_with_kids" },
+    sig_senior_households:      { dimension: "household_type", value: "senior_household" },
+
+    // ── Composite / archetype signals ────────────────────────────────────────
+    // These map to the closest single dimension for Pass 1; description
+    // similarity (Pass 2) handles the richer multi-dimension matching.
+    sig_urban_professionals:          { dimension: "metro_tier",    value: "top_10" },
+    sig_acs_affluent_college_educated:{ dimension: "income_band",   value: "100k_150k" },
+    sig_acs_graduate_high_income:     { dimension: "income_band",   value: "150k_plus" },
+    sig_acs_middle_income_families:   { dimension: "household_type",value: "family_with_kids" },
+    sig_acs_senior_households_income: { dimension: "household_type",value: "senior_household" },
+    sig_acs_young_single_adults:      { dimension: "age_band",      value: "18-24" },
   };
 
   const mapped = SIGNAL_RULE_MAP[signalId];

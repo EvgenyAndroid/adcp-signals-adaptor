@@ -238,11 +238,46 @@ export class QueryResolver {
     }
     if (leaf.dimension === "content_title") {
       if (signal.category_type === "interest") {
+        // Pass A: description similarity against leaf description
         const descMatch = tokenOverlap(
           (signal.description ?? signal.name).toLowerCase(),
           leaf.description.toLowerCase()
         );
         best = Math.max(best, descMatch * 0.75 * leaf.confidence);
+
+        // Pass B: genre inference — map well-known titles to their primary genre
+        // so e.g. "desperate_housewives" resolves to sig_drama_viewers even with
+        // no direct title signal in the catalog.
+        const TITLE_GENRE_MAP: Record<string, string> = {
+          desperate_housewives: "drama",
+          grey_s_anatomy:       "drama",
+          the_crown:            "drama",
+          succession:           "drama",
+          breaking_bad:         "drama",
+          the_office:           "comedy",
+          friends:              "comedy",
+          seinfeld:             "comedy",
+          star_wars:            "sci_fi",
+          the_mandalorian:      "sci_fi",
+          stranger_things:      "sci_fi",
+          planet_earth:         "documentary",
+          the_last_dance:       "documentary",
+        };
+        const titleKey = leaf.value.toLowerCase().replace(/[\s-]+/g, "_");
+        const inferredGenre = TITLE_GENRE_MAP[titleKey];
+        if (inferredGenre && signal.rules) {
+          const genreRule = signal.rules.find(
+            r => r.dimension === "content_genre" && r.value === inferredGenre
+          );
+          if (genreRule) {
+            best = Math.max(best, 0.80 * leaf.confidence);
+          }
+        }
+        // Also match by genre keyword in signal name
+        if (inferredGenre) {
+          const genreInName = signal.name.toLowerCase().includes(inferredGenre);
+          if (genreInName) best = Math.max(best, 0.78 * leaf.confidence);
+        }
       }
     }
     if (leaf.dimension === "geo") {

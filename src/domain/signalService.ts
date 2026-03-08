@@ -381,9 +381,17 @@ function inferRulesFromSignalId(
     sig_families_with_children: { dimension: "household_type", value: "family_with_kids" },
     sig_senior_households:      { dimension: "household_type", value: "senior_household" },
 
+    // ── Interest / content genre (actual D1 IDs) ────────────────────────────
+    sig_action_movie_fans:    { dimension: "content_genre",      value: "action" },
+    sig_comedy_fans:          { dimension: "content_genre",      value: "comedy" },
+    sig_documentary_viewers:  { dimension: "content_genre",      value: "documentary" },
+    sig_drama_viewers:        { dimension: "content_genre",      value: "drama" },
+    sig_sci_fi_enthusiasts:   { dimension: "content_genre",      value: "sci_fi" },
+    sig_streaming_enthusiasts:{ dimension: "streaming_affinity", value: "high" },
+
     // ── Composite / archetype signals ────────────────────────────────────────
-    // These map to the closest single dimension for Pass 1; description
-    // similarity (Pass 2) handles the richer multi-dimension matching.
+    // Map to closest single dimension for Pass 1; description similarity
+    // handles richer multi-dimension matching in Pass 2.
     sig_urban_professionals:          { dimension: "metro_tier",    value: "top_10" },
     sig_acs_affluent_college_educated:{ dimension: "income_band",   value: "100k_150k" },
     sig_acs_graduate_high_income:     { dimension: "income_band",   value: "150k_plus" },

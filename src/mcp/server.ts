@@ -17,6 +17,10 @@ import {
 } from "../domain/activationService";
 import { getDb } from "../storage/db";
 import { validateSearchRequest, validateActivateRequest } from "../utils/validation";
+import { requestId } from "../utils/ids";
+import { findSignalById, searchSignals } from "../storage/signalRepo";
+import { createEmbeddingEngine, cosineSimilarity } from "../ucp/embeddingEngine";
+import { toSignalSummary } from "../mappers/signalMapper";
 
 // ── JSON-RPC 2.0 types ────────────────────────────────────────────────────────
 
@@ -176,6 +180,8 @@ async function handleToolCall(
     case "get_task_status":        // spec alias — both accepted
     case "get_signal_status":      // legacy alias
       return callGetOperation(args, env, logger);
+    case "get_similar_signals":
+      return callGetSimilarSignals(args, env, logger);
     default:
       throw new McpToolError(`Tool not implemented: ${name}`);
   }
@@ -357,6 +363,58 @@ async function callGetOperation(
     }
     throw err;
   }
+}
+
+
+async function callGetSimilarSignals(
+  args: Record<string, unknown>,
+  env: Env,
+  logger: Logger
+): Promise<unknown> {
+  const signalId = (args["signal_agent_segment_id"] ?? args["signal_id"]) as string;
+  if (!signalId) throw new McpToolError("signal_agent_segment_id is required");
+
+  const topK = Math.min(args["top_k"] ? Number(args["top_k"]) : 5, 20);
+  const minSimilarity = args["min_similarity"] ? Number(args["min_similarity"]) : 0.7;
+
+  const db = getDb(env);
+
+  // Load reference signal
+  const refSignal = await findSignalById(db, signalId);
+  if (!refSignal) throw new McpToolError(`Signal not found: ${signalId}`);
+
+  // Load all catalog signals
+  const { signals: allSignals } = await searchSignals(db, { limit: 200, offset: 0 });
+
+  // Generate embeddings
+  const engine = createEmbeddingEngine(env as unknown as Record<string, string>);
+  const refVec = await engine.generate(refSignal);
+  const candidates = allSignals.filter((s) => s.signalId !== signalId);
+  const candidateVecs = await engine.batchGenerate(candidates);
+
+  // Score and rank
+  const scored = candidates
+    .map((s, i) => ({
+      signal: s,
+      similarity: cosineSimilarity(refVec, candidateVecs[i]),
+    }))
+    .filter((x) => x.similarity >= minSimilarity)
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, topK);
+
+  const result = {
+    reference_signal_id: signalId,
+    model_id: engine.modelId,
+    space_id: "adcp-bridge-space-v1.0",
+    results: scored.map((x) => ({
+      ...toSignalSummary(x.signal),
+      cosine_similarity: Math.round(x.similarity * 1000) / 1000,
+    })),
+    context_id: requestId(),
+    count: scored.length,
+  };
+
+  return toolResult(JSON.stringify(result, null, 2));
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

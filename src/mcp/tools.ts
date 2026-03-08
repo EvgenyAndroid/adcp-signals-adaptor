@@ -1,4 +1,4 @@
-﻿// src/mcp/tools.ts
+// src/mcp/tools.ts
 // MCP tool definitions — 4 tools matching the AdCP Signals protocol.
 // Parameter names match the canonical AdCP spec:
 //   get_signals:    signal_spec (brief), deliver_to (required), max_results, filters, pagination
@@ -206,6 +206,41 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
         },
       },
       required: ["task_id"],
+    },
+  },
+
+  {
+    name: "get_similar_signals",
+    description:
+      "Find audience signals semantically similar to a reference signal using UCP embedding cosine similarity. " +
+      "Returns ranked signals with similarity scores. " +
+      "Demonstrates UCP vector search vs keyword search — related signals cluster by taxonomy, category, and data source quality.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        signal_agent_segment_id: {
+          type: "string",
+          description: "Reference signal ID. Similar signals will be ranked by cosine similarity to this signal.",
+        },
+        top_k: {
+          type: "number",
+          description: "Number of similar signals to return. Default 5, max 20.",
+        },
+        min_similarity: {
+          type: "number",
+          description: "Minimum cosine similarity threshold (0–1). Default 0.7.",
+        },
+        deliver_to: {
+          type: "object",
+          description: "Required. Specifies target deployments and countries.",
+          properties: {
+            deployments: { type: "array", items: { type: "object" } },
+            countries: { type: "array", items: { type: "string" } },
+          },
+          required: ["deployments", "countries"],
+        },
+      },
+      required: ["signal_agent_segment_id", "deliver_to"],
     },
   },
 ];

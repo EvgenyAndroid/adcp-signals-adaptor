@@ -1,4 +1,5 @@
-﻿// src/mappers/signalMapper.ts
+// src/mappers/signalMapper.ts
+import { toUcpHybridPayload } from "../ucp/ucpMapper";
 // Maps CanonicalSignal → AdCP spec response shape.
 // Includes buildDtsLabel() which generates a full DTS v1.2 label
 // embedded as x_dts — the AdCP v2.5+ extension field mechanism.
@@ -273,6 +274,7 @@ export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
     ...(signal.geography ? { geography: signal.geography } : {}),
     status: signal.status,
     x_dts: buildDtsLabel(signal),
+    x_ucp: toUcpHybridPayload(signal, buildDtsLabel(signal)),
   };
 }
 

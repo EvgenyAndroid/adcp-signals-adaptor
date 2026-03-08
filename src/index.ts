@@ -6,6 +6,7 @@ import { handleGetCapabilities } from "./routes/capabilities";
 import { handleSearchSignals } from "./routes/searchSignals";
 import { handleActivateSignal } from "./routes/activateSignal";
 import { handleGetOperation } from "./routes/getOperation";
+import { handleGetEmbedding } from "./routes/getEmbedding";
 import { handleMcpRequest } from "./mcp/server";
 import { jsonResponse, errorResponse, requireAuth } from "./routes/shared";
 import { createLogger } from "./utils/logger";
@@ -15,7 +16,10 @@ import { getDb } from "./storage/db";
 
 // Seed data imported as text modules via wrangler assets
 // These will be bundled at deploy time
-import { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv } from "./seedData";
+import taxonomyTsv from "../seed/iab-audience-1.1.tsv";
+import demographicsCsv from "../seed/demographics-sample.csv";
+import interestsCsv from "../seed/interests-sample.csv";
+import geoCsv from "../seed/geo-sample.csv";
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -98,6 +102,9 @@ export default {
           true
         );
         response = jsonResponse({ message: "Seed complete", ...result });
+      } else if (method === "GET" && path.match(/^\/signals\/[^/]+\/embedding$/)) {
+        const signalId = path.split("/")[2];
+        response = await handleGetEmbedding(signalId, env, logger);
       } else if (method === "GET" && path.startsWith("/operations/")) {
         const opId = path.replace("/operations/", "");
         response = await handleGetOperation(opId, env, logger);

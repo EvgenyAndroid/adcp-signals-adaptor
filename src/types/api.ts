@@ -101,6 +101,7 @@ export interface SignalSummary {
   geography?: string[];
   status: string;
   x_dts?: DtsV12Label;
+  x_ucp?: import("./ucp").UcpHybridPayload;
 }
 
 // Spec: discriminated union - type "platform" or "agent"

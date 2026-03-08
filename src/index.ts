@@ -13,6 +13,9 @@ import { createLogger } from "./utils/logger";
 import { requestId } from "./utils/ids";
 import { runSeedPipeline } from "./domain/seedPipeline";
 import { getDb } from "./storage/db";
+import { getAllSignalsForCatalog } from "./domain/signalService";
+import { handleConceptRoute } from "./domain/conceptHandler";
+import { handleNLQuery } from "./domain/nlQueryHandler";
 
 // Seed data imported as text modules via wrangler assets
 // These will be bundled at deploy time
@@ -35,7 +38,7 @@ export default {
     }
 
     // Auth check - MCP uses its own auth header check, public paths skip auth
-    const publicPaths = ["/capabilities", "/health", "/mcp"];
+    const publicPaths = ["/capabilities", "/health", "/mcp", "/ucp/concepts"];
     const isPublic = publicPaths.some((p) => path === p || path.startsWith(p + "/"));
 
     if (!isPublic && !requireAuth(request, env.DEMO_API_KEY)) {
@@ -69,6 +72,18 @@ export default {
         response = await handleGetCapabilities(env, logger);
       } else if (method === "GET" && path === "/health") {
         response = jsonResponse({ status: "ok", provider: "adcp-signals-adaptor" });
+
+      // ── UCP Concept Registry ─────────────────────────────────────────────────
+      } else if (path.startsWith("/ucp/concepts")) {
+        response = await handleConceptRoute(request, env, path);
+
+      // ── NL Audience Query ────────────────────────────────────────────────────
+      } else if (method === "POST" && path === "/signals/query") {
+        const body = await request.json() as { query: string; limit?: number };
+        const catalog = await getAllSignalsForCatalog(getDb(env));
+        const result = await handleNLQuery(body, catalog, env.ANTHROPIC_API_KEY);
+        response = jsonResponse(result, result.success ? 200 : 400);
+
       } else if (path === "/mcp" || path.startsWith("/mcp")) {
         // MCP Streamable HTTP endpoint - handles OPTIONS inline
         if (method === "OPTIONS") {

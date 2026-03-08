@@ -13,6 +13,7 @@ import { validateRules, generateSegment } from "./ruleEngine";
 import { estimateAudienceSize } from "../utils/estimation";
 import { dynamicSignalId } from "../utils/ids";
 import { requestId } from "../utils/ids";
+import type { CatalogSignal } from "./queryResolver";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -275,7 +276,7 @@ function rankByRelevance(signals: CanonicalSignal[], brief: string): CanonicalSi
     .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
 
   // Category hints from brief text
-  const categoryHints: Record<string, string> = {
+  const categoryHints: Record<string, string[]> = {
     demographic: ["age","income","education","household","family","senior","adult","young","boomer","millennial"],
     interest: ["fan","viewer","streaming","content","genre","movie","show","music","gaming","sports"],
     purchase_intent: ["buy","purchase","intent","shopping","luxury","goods","product","brand","market"],
@@ -315,4 +316,30 @@ function rankByRelevance(signals: CanonicalSignal[], brief: string): CanonicalSi
         : (b.signal.estimatedAudienceSize ?? 0) - (a.signal.estimatedAudienceSize ?? 0)
     )
     .map((s) => s.signal);
+}
+
+// ── NL Query catalog adapter ──────────────────────────────────────────────────
+
+/**
+ * Returns the full signal catalog as a flat CatalogSignal[] for use by the
+ * NL query resolver (queryResolver.ts). Fetches all available signals from D1
+ * with no filters, up to 500.
+ *
+ * CatalogSignal is a leaner shape than CanonicalSignal — just the fields the
+ * resolver needs for matching and audience size estimation.
+ */
+export async function getAllSignalsForCatalog(db: DB): Promise<CatalogSignal[]> {
+  const { signals } = await searchSignals(db, { limit: 500, offset: 0 });
+
+  return signals.map((s): CatalogSignal => ({
+    signal_agent_segment_id: s.signalId,
+    name: s.name,
+    category_type: s.categoryType,
+    estimated_audience_size: s.estimatedAudienceSize ?? 0,
+    coverage_percentage: s.estimatedAudienceSize
+      ? s.estimatedAudienceSize / TOTAL_ADDRESSABLE
+      : 0,
+    description: s.description,
+    iab_taxonomy_ids: s.taxonomyId ? [s.taxonomyId] : undefined,
+  }));
 }

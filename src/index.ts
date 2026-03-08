@@ -16,10 +16,7 @@ import { getDb } from "./storage/db";
 
 // Seed data imported as text modules via wrangler assets
 // These will be bundled at deploy time
-import taxonomyTsv from "../seed/iab-audience-1.1.tsv";
-import demographicsCsv from "../seed/demographics-sample.csv";
-import interestsCsv from "../seed/interests-sample.csv";
-import geoCsv from "../seed/geo-sample.csv";
+import { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv } from "./seedData";
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {

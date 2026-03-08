@@ -1,61 +1,112 @@
-// src/routes/getEmbedding.ts
-// GET /signals/:id/embedding
-// Returns the full VAC-compliant float32 vector for a single signal.
-// Cached in KV. Falls back to pseudo-embedding engine.
+﻿/**
+ * src/routes/getEmbedding.ts  (replace existing file)
+ *
+ * Serves real OpenAI text-embedding-3-small vectors for each signal.
+ * Falls back to pseudo-hash for signals not yet in the store.
+ *
+ * GET /signals/:id/embedding
+ *
+ * Response shape (UCP v5.2 §2, VAC-compliant):
+ * {
+ *   signal_agent_segment_id: string,
+ *   embedding: {
+ *     model_id:        "text-embedding-3-small",
+ *     model_family:    "openai/text-embedding-3",
+ *     space_id:        "openai-te3-small-d512-v1",
+ *     dimensions:      512,
+ *     encoding:        "float32",
+ *     normalization:   "l2",
+ *     distance_metric: "cosine",
+ *     phase:           "v1",               ← was "pseudo-v1"
+ *     vector:          number[],
+ *     vector_endpoint: "/signals/{id}/embedding"
+ *   }
+ * }
+ */
 
-import type { Env } from "../types/env";
-import { findSignalById } from "../storage/signalRepo";
-import { getDb } from "../storage/db";
-import { createEmbeddingEngine, vectorToBase64 } from "../ucp/embeddingEngine";
-import { buildVacDeclaration } from "../ucp/vacDeclaration";
+import type { Env }          from "../types/env";
+import type { Logger }       from "../utils/logger";
 import { jsonResponse, errorResponse } from "./shared";
-import type { Logger } from "../utils/logger";
-import type { UcpEmbeddingVector } from "../types/ucp";
-
-const KV_PREFIX = "ucp_embedding_v1:";
-const KV_TTL_SECONDS = 86_400; // 24hr cache
+import { getSignalEmbedding, EMBEDDING_MODEL_ID, EMBEDDING_SPACE_ID, EMBEDDING_DIMENSIONS }
+  from "../domain/embeddingStore";
+import { findSignalById }    from "../storage/signalRepo";
+import { getDb }             from "../storage/db";
 
 export async function handleGetEmbedding(
   signalId: string,
   env: Env,
   logger: Logger
 ): Promise<Response> {
-  if (!signalId) {
-    return errorResponse("INVALID_SIGNAL_ID", "Signal ID is required", 400);
-  }
+  logger.info("get_embedding", { signalId });
 
-  // Check KV cache first
-  const cacheKey = `${KV_PREFIX}${signalId}`;
-  const cached = await env.SIGNALS_CACHE.get(cacheKey);
-  if (cached) {
-    logger.info("embedding_cache_hit", { signalId });
-    return jsonResponse(JSON.parse(cached));
-  }
-
-  // Load signal from D1
-  const db = getDb(env);
+  // Verify signal exists in D1
+  const db     = getDb(env);
   const signal = await findSignalById(db, signalId);
   if (!signal) {
-    return errorResponse("NOT_FOUND", `Signal not found: ${signalId}`, 404);
+    return errorResponse("NOT_FOUND", `Signal '${signalId}' not found`, 404);
   }
 
-  // Generate embedding
-  const engine = createEmbeddingEngine(env as unknown as Record<string, string>);
-  const vector = await engine.generate(signal);
-  const vac = buildVacDeclaration(signalId);
+  // Try real embedding store first
+  const stored = getSignalEmbedding(signalId);
 
-  const response: UcpEmbeddingVector = {
-    ...vac,
-    vector: vectorToBase64(vector),
-    generated_at: new Date().toISOString(),
-    cache_ttl_seconds: KV_TTL_SECONDS,
-  };
+  if (stored) {
+    // Real vector — space_id is semantically valid
+    return jsonResponse({
+      signal_agent_segment_id: signalId,
+      embedding: {
+        model_id:        stored.model_id,
+        model_family:    "openai/text-embedding-3",
+        space_id:        stored.space_id,
+        dimensions:      stored.dimensions,
+        encoding:        "float32",
+        normalization:   "l2",
+        distance_metric: "cosine",
+        phase:           "v1",
+        vector:          stored.vector,
+        vector_endpoint: `/signals/${signalId}/embedding`,
+      },
+    });
+  }
 
-  // Cache in KV
-  await env.SIGNALS_CACHE.put(cacheKey, JSON.stringify(response), {
-    expirationTtl: KV_TTL_SECONDS,
+  // Fallback: pseudo-hash for signals not yet in the store
+  // (dynamic segments generated after the embedding run)
+  logger.info("embedding_fallback_pseudo", { signalId });
+  const pseudoVector = generatePseudoVector(signalId, signal.description);
+
+  return jsonResponse({
+    signal_agent_segment_id: signalId,
+    embedding: {
+      model_id:        "adcp-ucp-bridge-pseudo-v1.0",
+      model_family:    "adcp-bridge/deterministic-taxonomy-v1",
+      space_id:        "adcp-bridge-space-v1.0",
+      dimensions:      512,
+      encoding:        "float32",
+      normalization:   "l2",
+      distance_metric: "cosine",
+      phase:           "pseudo-v1",
+      vector:          pseudoVector,
+      vector_endpoint: `/signals/${signalId}/embedding`,
+      _note:           "Pseudo-hash vector. Re-run embed-signals.html to upgrade to real embeddings.",
+    },
   });
+}
 
-  logger.info("embedding_generated", { signalId, engine: engine.modelId });
-  return jsonResponse(response);
+// ─── Pseudo-hash fallback (unchanged from original) ──────────────────────────
+
+function generatePseudoVector(signalId: string, description: string): number[] {
+  const seed   = signalId + (description ?? "");
+  const vector = new Array(512).fill(0);
+  let   hash   = 5381;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) + hash) ^ seed.charCodeAt(i);
+    hash = hash & hash; // 32-bit
+  }
+  for (let i = 0; i < 512; i++) {
+    hash = ((hash << 5) + hash) ^ i;
+    hash = hash & hash;
+    vector[i] = (hash % 10000) / 10000 - 0.5;
+  }
+  // L2 normalise
+  const norm = Math.sqrt(vector.reduce((s, v) => s + v * v, 0));
+  return vector.map((v) => (norm === 0 ? 0 : v / norm));
 }

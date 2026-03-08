@@ -7,6 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 ENVIRONMENT = "production"
 API_VERSION = "3.0-rc"
 DEMO_API_KEY = "demo-key-adcp-signals-v1"
+EMBEDDING_ENGINE = "llm"
 
 [[d1_databases]]
 binding = "DB"

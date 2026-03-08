@@ -67,11 +67,11 @@ export async function handleNLQuery(
 
     // ── Step 3: Resolve — AST leaves → ranked signal matches ────────────────
     const resolver = new QueryResolver(catalog, engine);
-    const { resolvedLeaves, pseudoEmbeddingWarning } = await resolver.resolveAST(ast);
+    const { resolvedLeaves, pseudoEmbeddingWarning } = await resolver.resolveAST(ast.root);
 
     // ── Step 4: Score — boolean set arithmetic → CompositeAudienceResult ────
     const scorer = new CompositeScorer(resolvedLeaves, limit);
-    const result = scorer.score(ast);
+    const result = scorer.score(ast.root);
 
     // Append pseudo warning if embedding engine was in pseudo mode
     if (pseudoEmbeddingWarning) {

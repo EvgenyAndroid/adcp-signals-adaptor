@@ -71,7 +71,7 @@ export async function handleNLQuery(
 
     // ── Step 4: Score — boolean set arithmetic → CompositeAudienceResult ────
     const scorer = new CompositeScorer(resolvedLeaves, limit);
-    const result = scorer.score(ast.root);
+    const result = scorer.score(ast);
 
     // Append pseudo warning if embedding engine was in pseudo mode
     if (pseudoEmbeddingWarning) {

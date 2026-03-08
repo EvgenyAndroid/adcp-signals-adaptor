@@ -81,8 +81,7 @@ export default {
       } else if (method === "POST" && path === "/signals/query") {
         const body = await request.json() as { query: string; limit?: number };
         const catalog = await getAllSignalsForCatalog(getDb(env));
-        const result = await handleNLQuery(body, catalog, env);
-        response = jsonResponse(result, result.success ? 200 : 400);
+        response = await handleNLQuery(body, catalog, env);
 
       } else if (path === "/mcp" || path.startsWith("/mcp")) {
         // MCP Streamable HTTP endpoint - handles OPTIONS inline

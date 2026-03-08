@@ -70,8 +70,9 @@ export interface CustomSignalProposal {
   pricing_options: Array<{
     pricing_option_id: string;
     pricing_model: string;
-    cpm?: number;
+    rate?: number;
     currency?: string;
+    is_fixed?: boolean;
   }>;
   deployments: SignalDeployment[];
   generation_rationale: string;      // why this segment matches the brief
@@ -89,9 +90,10 @@ export interface SignalSummary {
   pricing_options: Array<{
     pricing_option_id: string;
     pricing_model: string;
-    cpm?: number;
+    rate?: number;
     flat_fee?: number;
     currency?: string;
+    is_fixed?: boolean;
   }>;
   category_type: SignalCategoryType;
   taxonomy_system: string;

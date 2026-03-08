@@ -5,8 +5,8 @@ import { describe, it, expect } from "vitest";
 import { ADCP_TOOLS, getToolByName } from "../src/mcp/tools";
 
 describe("MCP tool definitions", () => {
-  it("exposes exactly 4 tools", () => {
-    expect(ADCP_TOOLS).toHaveLength(4);
+  it("exposes exactly 5 tools (4 AdCP + get_similar_signals UCP bridge)", () => {
+    expect(ADCP_TOOLS).toHaveLength(5);
   });
 
   it("all tools have required fields", () => {

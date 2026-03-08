@@ -249,8 +249,9 @@ export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
         {
           pricing_option_id: pricingOptionId,
           pricing_model: signal.pricing.model === "mock_cpm" ? "cpm" : "flat_fee",
-          ...(pricingCpm !== undefined ? { cpm: pricingCpm } : {}),
+          ...(pricingCpm !== undefined ? { rate: pricingCpm } : {}),
           currency: pricingCurrency,
+          is_fixed: true,
         },
       ]
     : [];

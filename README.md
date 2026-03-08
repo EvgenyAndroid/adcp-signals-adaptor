@@ -18,18 +18,16 @@ Implements AdCP Signals Activation Protocol v2.6 — 8 MCP tools:
 | `get_signals` | ✅ | `signal_spec` + `deliver_to` (required) + relevance ranking + `x_dts` + `x_ucp` on every signal |
 | `activate_signal` | ✅ | `deliver_to` required. Async — returns `task_id + pending` immediately |
 | `get_operation_status` | ✅ | Aliases: `get_task_status`, `get_signal_status`. `destinations` field. |
-| `get_similar_signals` | ✅ | UCP vector cosine similarity search. New in v1.1. |
-| `query_signals_nl` | ✅ | NL audience query → AudienceQueryAST → scored signals. New in v2.0. |
-| `get_concept` | ✅ | Concept registry lookup by concept_id. New in v2.0. |
-| `search_concepts` | ✅ | Semantic search over concept registry. New in v2.0. |
+| `get_similar_signals` | ✅ | UCP vector cosine similarity search. |
+| `query_signals_nl` | ✅ | Hybrid NL audience query — exact_rule → embedding_similarity → lexical_fallback. v2.1. |
+| `get_concept` | ✅ | Concept registry lookup by concept_id. v2.0. |
+| `search_concepts` | ✅ | Semantic search over concept registry. v2.0. |
 
 Passes the AdCP conformance test suite: health, discovery, capability_discovery, signals_flow.
 
 ---
 
 ## Standards Coverage
-
-Three IAB Tech Lab standards bridged in a single implementation:
 
 | Standard | Coverage |
 |---|---|
@@ -39,12 +37,21 @@ Three IAB Tech Lab standards bridged in a single implementation:
 
 ---
 
+## What's New in v2.1
+
+- **Hybrid resolver** — `POST /signals/query` now runs a true three-pass pipeline: `exact_rule` → `embedding_similarity` (OpenAI cosine, threshold 0.45) → `lexical_fallback` (Jaccard). Pass 2 is semantically valid with real vectors.
+- **MIN_EMBEDDING_SCORE = 0.45** — weak embedding matches (e.g. "coffee" → "College Educated Streamers" at 0.30) are rejected as noise; leaf falls through to unresolved rather than producing misleading results.
+- **`cord_cutter` archetype** — added to ARCHETYPE_TABLE; resolves to `streaming_affinity:high` via embedding similarity.
+- **Age band Rule 7** — "35+" in queryParser maps to `age_band: "35-44"` only. No multi-band expansion unless the query explicitly names a range.
+- **Lexical threshold raised** — Pass 3 Jaccard threshold raised from 0.05 to 0.15 to reduce token-noise matches on unrelated dimensions.
+- **`_embedding_mode` + `_embedding_space`** in every `/signals/query` response for operational transparency.
+
 ## What's New in v2.0
 
-- **Real embedding vectors** — all catalog signals carry genuine OpenAI `text-embedding-3-small` (512-dim) vectors. `space_id: openai-te3-small-d512-v1` is semantically valid. VAC handshake is no longer pseudo.
-- **`POST /signals/query`** — natural language audience query. Decomposes via Claude into a boolean AST, resolves against the catalog, returns ranked matches with `exclude_signals[]` for NOT nodes.
-- **`GET /ucp/concepts`** — concept-level VAC registry. 19 canonical advertising concepts with cross-taxonomy member node mappings to IAB, LiveRamp, TradeDesk, Experian, and Samba.
-- **3 new MCP tools** — `query_signals_nl`, `get_concept`, `search_concepts` — callable natively from Claude.ai.
+- **Real embedding vectors** — all catalog signals carry genuine OpenAI `text-embedding-3-small` (512-dim) vectors. `space_id: openai-te3-small-d512-v1` is semantically valid.
+- **`POST /signals/query`** — natural language audience query with boolean AST decomposition.
+- **`GET /ucp/concepts`** — concept-level VAC registry, 19 concepts, 7 categories, 5 vendor cross-taxonomy maps.
+- **3 new MCP tools** — `query_signals_nl`, `get_concept`, `search_concepts`.
 
 ---
 
@@ -61,6 +68,8 @@ Three IAB Tech Lab standards bridged in a single implementation:
 **`destinations` not `deployments`** — spec-aligned response field name in both `activate_signal` and `get_operation_status`.
 
 **`x_dts` + `x_ucp`** — every signal carries both extension fields. Non-breaking to conformance tests via AdCP `x_` extension mechanism.
+
+**Request-scoped embedding engine** — `createEmbeddingEngine(env)` called once per NLAQ request. Query vectors and candidate vectors always use the same model instance. No mixed-space comparisons.
 
 ---
 
@@ -113,40 +122,25 @@ Every signal carries an `x_dts` object — IAB DTS v1.2 ("Privacy Update", April
 }
 ```
 
-### Example `x_ucp` (same signal — pseudo-v1 / pre-v2.0)
+### DTS → UCP normative field mappings (AdCP-UCP Bridge Profile)
 
-```json
-{
-  "x_ucp": {
-    "schema_version": "ucp-1.0",
-    "embedding": {
-      "model_id": "adcp-ucp-bridge-pseudo-v1.0",
-      "space_id": "adcp-bridge-space-v1.0",
-      "dimensions": 512,
-      "encoding": "float32",
-      "normalization": "l2",
-      "distance_metric": "cosine",
-      "phase": "pseudo-v1",
-      "vector_endpoint": "/signals/sig_acs_graduate_high_income/embedding"
-    },
-    "legacy_fallback": {
-      "signal_agent_segment_id": "sig_acs_graduate_high_income",
-      "segment_ids": ["11"],
-      "taxonomy_version": "iab_audience_1.1"
-    },
-    "privacy": {
-      "privacy_compliance_mechanisms": ["GPP", "MSPA"],
-      "permitted_uses": ["audience_matching", "frequency_capping", "measurement"],
-      "ttl_seconds": 31536000,
-      "gpp_applicable": true,
-      "tcf_applicable": false
-    },
-    "signal_type": "identity",
-    "signal_strength": "medium",
-    "classification_rationale": "signal_type=identity derived from data_sources=[Public Record: Census]. signal_strength=medium derived from audience_inclusion_methodology=\"Derived\"."
-  }
-}
-```
+| DTS field | Value | UCP field | Mapped value |
+|---|---|---|---|
+| `data_sources` | `["Public Record: Census"]` | `signal_type` | `"identity"` |
+| `data_sources` | `["TV OTT or STB Device"]` | `signal_type` | `"reinforcement"` |
+| `data_sources` | `["Web Usage", "App Behavior"]` | `signal_type` | `"contextual"` |
+| `audience_inclusion_methodology` | `"Observed/Known"` | `signal_strength` | `"high"` |
+| `audience_inclusion_methodology` | `"Derived"` | `signal_strength` | `"medium"` |
+| `audience_inclusion_methodology` | `"Modeled"` | `signal_strength` | `"low"` |
+| `taxonomy_id_list` | `"11"` | `legacy_fallback.segment_ids` | `["11"]` |
+| `privacy_compliance_mechanisms` | `["GPP","MSPA"]` | `privacy.privacy_compliance_mechanisms` | `["GPP","MSPA"]` |
+| `audience_refresh` | `"Annually"` | `privacy.ttl_seconds` | `31536000` |
+
+---
+
+## UCP Embedding Bridge
+
+Every signal carries an `x_ucp` object — UCP HybridPayload per the AdCP-UCP Bridge Profile.
 
 ### Example `x_ucp` (v2.0 — real OpenAI vector)
 
@@ -178,122 +172,28 @@ Every signal carries an `x_dts` object — IAB DTS v1.2 ("Privacy Update", April
       "tcf_applicable": false
     },
     "signal_type": "identity",
-    "signal_strength": "low",
-    "classification_rationale": "signal_type=identity derived from data_sources=[Online Survey]. signal_strength=low derived from audience_inclusion_methodology=\"Modeled\"."
+    "signal_strength": "low"
   }
 }
 ```
-
-Both `x_dts` and `x_ucp` travel on every signal. Non-breaking `x_` extensions — conformance tests ignore them, UCP-aware consumers use them.
-
-### DTS → UCP normative field mappings (AdCP-UCP Bridge Profile)
-
-| DTS field | Value | UCP field | Mapped value |
-|---|---|---|---|
-| `data_sources` | `["Public Record: Census"]` | `signal_type` | `"identity"` |
-| `data_sources` | `["TV OTT or STB Device"]` | `signal_type` | `"reinforcement"` |
-| `data_sources` | `["Web Usage", "App Behavior"]` | `signal_type` | `"contextual"` |
-| `audience_inclusion_methodology` | `"Observed/Known"` | `signal_strength` | `"high"` |
-| `audience_inclusion_methodology` | `"Derived"` | `signal_strength` | `"medium"` |
-| `audience_inclusion_methodology` | `"Modeled"` | `signal_strength` | `"low"` |
-| `taxonomy_id_list` | `"11"` | `legacy_fallback.segment_ids` | `["11"]` |
-| `privacy_compliance_mechanisms` | `["GPP","MSPA"]` | `privacy.privacy_compliance_mechanisms` | `["GPP","MSPA"]` |
-| `audience_refresh` | `"Annually"` | `privacy.ttl_seconds` | `31536000` |
-
----
-
-## UCP Embedding Bridge
-
-Every signal also carries an `x_ucp` object — UCP HybridPayload per the AdCP-UCP Bridge Profile. This is the first working reference implementation of the bridge between AdCP and UCP.
-
-### What `x_ucp` contains
-
-```json
-{
-  "x_ucp": {
-    "schema_version": "ucp-1.0",
-    "embedding": {
-      "model_id": "adcp-ucp-bridge-pseudo-v1.0",
-      "space_id": "adcp-bridge-space-v1.0",
-      "dimensions": 512,
-      "encoding": "float32",
-      "normalization": "l2",
-      "distance_metric": "cosine",
-      "phase": "pseudo-v1",
-      "vector_endpoint": "/signals/sig_acs_graduate_high_income/embedding"
-    },
-    "legacy_fallback": {
-      "signal_agent_segment_id": "sig_acs_graduate_high_income",
-      "segment_ids": ["11"],
-      "taxonomy_version": "iab_audience_1.1"
-    },
-    "privacy": {
-      "privacy_compliance_mechanisms": ["GPP", "MSPA"],
-      "permitted_uses": ["audience_matching", "frequency_capping", "measurement"],
-      "ttl_seconds": 31536000,
-      "gpp_applicable": true,
-      "tcf_applicable": false
-    },
-    "signal_type": "identity",
-    "signal_strength": "medium",
-    "classification_rationale": "signal_type=identity derived from data_sources=[Public Record: Census]. signal_strength=medium derived from audience_inclusion_methodology=\"Derived\"."
-  }
-}
-```
-
-### DTS → UCP normative mappings (AdCP-UCP Bridge Profile)
-
-| DTS field | UCP field | Mapping |
-|---|---|---|
-| `data_sources: ["TV OTT or STB Device"]` | `signal_type` | `"reinforcement"` |
-| `data_sources: ["Web Usage", "App Behavior"]` | `signal_type` | `"contextual"` |
-| `data_sources: ["Public Record: Census"]` | `signal_type` | `"identity"` |
-| `audience_inclusion_methodology: "Observed/Known"` | `signal_strength` | `"high"` |
-| `audience_inclusion_methodology: "Derived"` | `signal_strength` | `"medium"` |
-| `audience_inclusion_methodology: "Modeled"` | `signal_strength` | `"low"` |
-| `taxonomy_id_list` | `legacy_fallback.segment_ids` | direct |
-| `privacy_compliance_mechanisms` | `privacy.privacy_compliance_mechanisms` | direct |
-| `audience_refresh` | `privacy.ttl_seconds` | cadence → seconds |
 
 ### Embedding engine phases
 
 | Phase | `space_id` | Model | Notes |
 |---|---|---|---|
-| `pseudo-v1` | `adcp-bridge-space-v1.0` | deterministic taxonomy hash | No external deps. Pre-v2.0 default. |
-| `v1` (current) | `openai-te3-small-d512-v1` | `text-embedding-3-small` 512d | Real semantic vectors. Hardcoded at build time. Ships in v2.0. |
-| `llm-v1` | `openai-te3-small-d512-v1` | `text-embedding-3-small` (512d) | Live API call per request. Activate via `EMBEDDING_ENGINE=llm`. |
-| `llm-v1` | TBD | Claude embeddings | Scaffolded, activate when Anthropic API ships. |
+| `v1` (current) | `openai-te3-small-d512-v1` | `text-embedding-3-small` 512d | Real semantic vectors. Active when `EMBEDDING_ENGINE=llm`. |
+| `pseudo-v1` (fallback) | `adcp-bridge-space-v1.0` | DJB2 hash | Dynamic segments or missing OPENAI_API_KEY. Not semantically valid. |
 | Phase 2b | `ucp-space-v1.0` | IAB reference model (TBD) | Procrustes/SVD projector at `/ucp/projector`. |
-
-To upgrade to live LLM embeddings (no code change):
-```bash
-# wrangler.toml: EMBEDDING_ENGINE = "llm"
-wrangler secret put OPENAI_API_KEY
-npm run deploy
-```
 
 ### GET /signals/:id/embedding
 
-Returns the full VAC-compliant float32 vector. KV-cached 24hr.
-
 ```bash
-curl https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/sig_acs_graduate_high_income/embedding \
-  -H "Authorization: Bearer demo-key-adcp-signals-v1"
-```
-
-### get_similar_signals (MCP tool)
-
-Vector cosine similarity search — finds semantically related signals:
-
-```bash
-curl -s -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp \
-  -H "Content-Type: application/json" \
-  -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"get_similar_signals\",\"arguments\":{\"signal_agent_segment_id\":\"sig_acs_graduate_high_income\",\"top_k\":5,\"deliver_to\":{\"deployments\":[{\"type\":\"platform\",\"platform\":\"mock_dsp\"}],\"countries\":[\"US\"]}}}}"
+curl https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/sig_drama_viewers/embedding -H "Authorization: Bearer demo-key-adcp-signals-v1"
 ```
 
 ---
 
-## Natural Language Audience Query
+## Natural Language Audience Query (v2.1 — Hybrid Resolver)
 
 ```
 POST /signals/query
@@ -306,11 +206,27 @@ Content-Type: application/json
 }
 ```
 
-**Pipeline:** Claude API → `AudienceQueryAST` (AND/OR/NOT/LEAF boolean tree) → catalog resolver (exact rule match → archetype expansion → description similarity) → compositional scorer (probabilistic set arithmetic) → `CompositeAudienceResult`
+**Pipeline:**  
+Claude API → `AudienceQueryAST` → `QueryResolver` (Pass 1: exact_rule → Pass 2: embedding_similarity → Pass 3: lexical_fallback) → `CompositeScorer` (AND/OR/NOT set arithmetic) → `CompositeAudienceResult`
 
-**Supports:** archetypes ("soccer moms"), negation → `exclude_signals[]` for DSP suppression, geo → DMA resolution, content title → genre inference, temporal daypart, confidence tiers (`high` / `medium` / `low` / `narrow`).
+**Match methods (v2.1):**
+- `exact_rule` — dimension+value directly maps to catalog rule (score: 0.95)
+- `embedding_similarity` — OpenAI cosine similarity ≥ 0.45 (semantically valid with real vectors)
+- `lexical_fallback` — Jaccard token overlap ≥ 0.15 (structural fallback, used when no embedding available)
+- `title_genre_inference` — content title → TITLE_GENRE_MAP → genre signal (score: ~0.855)
+- `archetype_expansion` — weighted constituent dimension aggregation
 
-**Spec:** Implements UCP v5.2-draft Appendix D (NLAQ) — first normative NL audience query definition in the AdCP/UCP ecosystem.
+**Confidence tiers:** `high` / `medium` / `low` / `narrow`
+
+**Production-verified examples:**
+
+| Query | confidence | tier |
+|---|---|---|
+| "affluent families 35-44 who stream heavily" | 0.76 | `medium` |
+| "streaming heavy watchers cord cutters" | 0.568 | `medium` |
+| "soccer moms 35+ Nashville no coffee Desperate H." | 0.051–0.206 | `narrow` |
+
+**Spec:** Implements UCP v5.2-draft Appendix D (NLAQ).
 
 ---
 
@@ -320,14 +236,10 @@ Content-Type: application/json
 GET /ucp/concepts/SOCCER_MOM_US
 GET /ucp/concepts?q=afternoon+drama
 GET /ucp/concepts?category=archetype
-POST /ucp/concepts/seed    (auth required — re-seeds KV)
+POST /ucp/concepts/seed    (auth required)
 ```
 
-19 concepts across 7 categories: `demographic`, `interest`, `behavioral`, `geo`, `archetype`, `content`, `purchase_intent`.
-
-Each concept carries `constituent_dimensions` (weighted breakdown for archetype expansion in the NL query resolver) and `member_nodes` (cross-taxonomy equivalents: IAB, LiveRamp, TradeDesk, Experian, Samba).
-
-**Spec:** Implements UCP v5.2-draft §4 (Concept-Level VAC) — cross-taxonomy alignment without bilateral crosswalk agreements.
+19 concepts, 7 categories, 5-vendor cross-taxonomy member_nodes (IAB, LiveRamp, TradeDesk, Experian, Samba). **Spec:** UCP v5.2-draft §4 (Concept-Level VAC).
 
 ---
 
@@ -342,7 +254,7 @@ Cloudflare Worker (src/index.ts)
   │
   ├── /capabilities           AdCP capabilities + UCP capability block
   ├── /signals/search         Signal discovery + relevance ranking + brief proposals
-  ├── /signals/query          NL audience query (v2.0)
+  ├── /signals/query          Hybrid NL audience query (v2.1)
   ├── /signals/:id/embedding  UCP VAC-compliant float32 vector (KV-cached)
   ├── /signals/activate       Signal activation (REST)
   ├── /ucp/concepts           Concept-level VAC registry (v2.0)
@@ -350,18 +262,19 @@ Cloudflare Worker (src/index.ts)
   └── /seed                   Force re-seed (auth-gated)
 
 Domain Layer (src/domain/)
-  signalService.ts        — search, relevance ranking, brief parsing, proposals
+  signalService.ts        — search, relevance ranking, brief parsing, catalog adapter
   activationService.ts    — async activate, lazy state machine, webhook
   capabilityService.ts    — capabilities + UCP block (KV-cached 1hr)
   ruleEngine.ts           — deterministic segment generation
   signalModel.ts          — base seeded + derived catalog (33 signals)
   enrichedSignalModel.ts  — Census ACS + Nielsen DMA + cross-taxonomy (16 signals)
-  seedPipeline.ts         — D1 ingestion pipeline (4-phase, idempotent)
-  queryParser.ts          — NL → AudienceQueryAST via Claude API (v2.0)
-  queryResolver.ts        — AST leaves → catalog signal matches (v2.0)
-  compositeScorer.ts      — AND/OR/NOT set arithmetic + audience estimation (v2.0)
-  nlQueryHandler.ts       — /signals/query route + MCP tool (v2.0)
-  embeddingStore.ts       — real OpenAI text-embedding-3-small vectors 512d (v2.0)
+  seedPipeline.ts         — D1 ingestion pipeline
+  queryParser.ts          — NL → AudienceQueryAST via Claude API (v2.0; Rule 7 in v2.1)
+  queryResolver.ts        — Hybrid Pass 1→2→3 resolver with SemanticResolver (v2.1)
+  semanticResolver.ts     — Embedding-based Pass 2: SemanticResolver class (v2.1 NEW)
+  compositeScorer.ts      — AND/OR/NOT set arithmetic + audience estimation
+  nlQueryHandler.ts       — Route handler + engine injection + shape adapter
+  embeddingStore.ts       — 26 real OpenAI text-embedding-3-small vectors (v2.0)
   conceptRegistry.ts      — 19-concept VAC registry with cross-taxonomy maps (v2.0)
   conceptHandler.ts       — /ucp/concepts routes + MCP tool handlers (v2.0)
 
@@ -371,9 +284,9 @@ Mappers
                             toUcpHybridPayload()  → x_ucp (UCP bridge)
 
 UCP Layer (src/ucp/)
-  vacDeclaration.ts       — VAC constants: model_id, space_id, dimension slots
-  embeddingEngine.ts      — Phase 1: PseudoEmbeddingEngine (512d deterministic)
-                            Phase 2: LlmEmbeddingAdapter (OpenAI / Anthropic)
+  vacDeclaration.ts       — VAC constants: model_id, space_id, dimensions
+  embeddingEngine.ts      — PseudoEmbeddingEngine + LlmEmbeddingEngine
+                            embedText() added in v2.1 for query leaf embedding
                             createEmbeddingEngine() factory (env-config driven)
   ucpMapper.ts            — assembles UCP HybridPayload
   privacyBridge.ts        — DTS privacy fields → UCP privacy object
@@ -382,12 +295,12 @@ UCP Layer (src/ucp/)
 Storage (Cloudflare D1 + KV)
   signalRepo.ts           — signal CRUD + search
   activationRepo.ts       — activation jobs + webhook state
-  KV: capabilities cache, embedding vector cache (24hr TTL), concept registry (24hr TTL)
+  KV: capabilities cache, embedding vector cache (24hr), concept registry (24hr)
 ```
 
 ---
 
-## Signal Catalog (49 signals)
+## Signal Catalog (49+ signals)
 
 **Base — 33 signals:** 25 seeded (age, income, education, household, genre, purchase intent, geo) + 6 derived composites + conformance fixture.
 
@@ -396,66 +309,7 @@ Storage (Cloudflare D1 + KV)
 - Nielsen DMA-Derived (6): DTS `Geo Location` + `Observed/Known` + `Annually`. `geocode_list: "USA|DMA-{code}"`
 - Cross-Taxonomy Bridge (5): IAB AT 1.1 × CT 3.0. DTS `Web Usage` + `App Behavior`
 
-**Dynamic:** Unlimited via `signal_spec` brief. Deterministic IDs — same brief = same segment.
-
----
-
-## Key Protocol Flows
-
-### `get_signals` with `x_dts` + `x_ucp`
-
-Every signal in the response carries both extension objects:
-
-```
-get_signals(signal_spec: "graduate educated high income", deliver_to: {...})
-→ signals[0]:
-    x_dts.data_sources: ["Public Record: Census"]
-    x_dts.audience_inclusion_methodology: "Derived"
-    x_ucp.signal_type: "identity"
-    x_ucp.signal_strength: "medium"
-    x_ucp.embedding.space_id: "openai-te3-small-d512-v1"
-    x_ucp.embedding.phase: "v1"
-    x_ucp.embedding.vector_endpoint: "/signals/sig_acs_graduate_high_income/embedding"
-    x_ucp.legacy_fallback.segment_ids: ["11"]
-```
-
-### Async Activation
-
-```
-activate_signal(signal_agent_segment_id, deliver_to)
-  → { task_id, status: "pending", destinations: [{is_live: false}] }
-
-get_task_status(task_id)
-  → { status: "completed", destinations: [{is_live: true, activation_key: {...}}] }
-```
-
-### Similarity Search
-
-```
-get_similar_signals(signal_agent_segment_id: "sig_acs_graduate_high_income", top_k: 5)
-  → [
-      { name: "High Income Households", cosine_similarity: 0.923 },
-      { name: "Affluent College Educated Households (ACS)", cosine_similarity: 0.891 },
-      ...
-    ]
-```
-
-### NL Query
-
-```
-POST /signals/query  {"query": "affluent families 35-44 who stream heavily", "limit": 10}
-→ {
-    confidence_tier: "medium",
-    matched_signals: [
-      { name: "Adults 35-44",           match_score: 0.95,  match_method: "exact_rule" },
-      { name: "Families with Children", match_score: 0.90,  match_method: "exact_rule" },
-      { name: "Streaming Enthusiasts",  match_score: 0.855, match_method: "exact_rule" },
-      { name: "High Income Households", match_score: 0.807, match_method: "description_similarity" }
-    ],
-    exclude_signals: [],
-    warnings: []
-  }
-```
+**Dynamic:** Unlimited via `signal_spec` brief. Deterministic IDs.
 
 ---
 
@@ -463,13 +317,19 @@ POST /signals/query  {"query": "affluent families 35-44 who stream heavily", "li
 
 ### `get_signals`
 
-| Parameter | Required | Type | Notes |
-|---|---|---|---|
-| `signal_spec` | Yes* | string | Natural language brief. `brief` alias accepted. |
-| `deliver_to` | Yes | object | `{ deployments: [...], countries: ["US"] }` |
-| `max_results` | No | number | Default 20, max 100. `limit` alias accepted. |
-| `filters` | No | object | `{ category_type, generation_mode, taxonomy_id, query }` |
-| `pagination` | No | object | `{ offset }` |
+| Parameter | Required | Notes |
+|---|---|---|
+| `signal_spec` | Yes* | Natural language brief. `brief` alias accepted. |
+| `deliver_to` | Yes | `{ deployments: [...], countries: ["US"] }` |
+| `max_results` | No | Default 20, max 100. `limit` alias accepted. |
+| `filters` | No | `{ category_type, generation_mode, taxonomy_id, query }` |
+
+### `query_signals_nl`
+
+| Parameter | Required | Notes |
+|---|---|---|
+| `query` | Yes | Free-form audience description. Max 2000 chars. |
+| `limit` | No | Max matched signals returned (1–50, default 10). |
 
 ### `get_similar_signals`
 
@@ -487,26 +347,12 @@ POST /signals/query  {"query": "affluent families 35-44 who stream heavily", "li
 | `signal_agent_segment_id` | Yes | Also accepts `signal_id`. |
 | `deliver_to` | Yes | `{ deployments, countries }` |
 | `webhook_url` | No | POST callback on completion. |
-| `pricing_option_id` | No | From signal's `pricing_options`. |
-
-### `get_operation_status`
-
-| Parameter | Required | Notes |
-|---|---|---|
-| `task_id` | Yes | Tool name aliases: `get_task_status`, `get_signal_status`. |
-
-### `query_signals_nl`
-
-| Parameter | Required | Notes |
-|---|---|---|
-| `query` | Yes | Free-form audience description. Max 2000 chars. |
-| `limit` | No | Max matched signals returned (1–50, default 10). |
 
 ### `get_concept` / `search_concepts`
 
 | Parameter | Required | Notes |
 |---|---|---|
-| `concept_id` | Yes (get) | e.g. `SOCCER_MOM_US`, `HIGH_INCOME_HOUSEHOLD_US` |
+| `concept_id` | Yes (get) | e.g. `SOCCER_MOM_US` |
 | `q` | Yes (search) | Free text. e.g. `"afternoon drama viewer"` |
 | `category` | No | `demographic` / `interest` / `behavioral` / `geo` / `archetype` / `content` / `purchase_intent` |
 | `limit` | No | 1–50, default 10 |
@@ -520,46 +366,35 @@ npm install
 wrangler login
 wrangler d1 migrations apply adcp-signals-db --remote
 npm run dev
+
+# Seed concept registry
+curl -X POST http://localhost:8787/ucp/concepts/seed -H "Authorization: Bearer demo-key-adcp-signals-v1"
 ```
 
 ## Deploying
 
 ```bash
 npm run deploy
-```
 
-After fresh deploy, trigger seed:
-```bash
-npx wrangler d1 execute adcp-signals-db --remote --command "DELETE FROM signals"
-curl https://adcp-signals-adaptor.evgeny-193.workers.dev/health
-```
-
-Seed concept registry to KV:
-```bash
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/concepts/seed \
-  -H "Authorization: Bearer demo-key-adcp-signals-v1"
-```
-
-## Upgrading to LLM Embeddings
-
-```bash
-# 1. Set in wrangler.toml:
-#    EMBEDDING_ENGINE = "llm"
-# 2. Add secret:
+# Required secrets
+wrangler secret put ANTHROPIC_API_KEY
 wrangler secret put OPENAI_API_KEY
-# 3. Deploy
-npm run deploy
+
+# Required wrangler.toml var for real embeddings
+# [vars]
+# EMBEDDING_ENGINE = "llm"
+
+# Seed concept registry after deploy
+curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/concepts/seed -H "Authorization: Bearer demo-key-adcp-signals-v1"
 ```
 
-## Regenerating Hardcoded Embedding Vectors (v2.0)
+## Regenerating Embedding Vectors
 
 ```bash
-# 1. Open scripts/embed-signals.html in browser, paste OpenAI key, click Embed
+# 1. Open scripts/embed-signals.html in browser, paste OpenAI key, run
 # 2. Copy JSON output → scripts/embeddings.json (wrap in { } if needed)
-# 3. Generate TypeScript store:
-node scripts/generate-embedding-store.js scripts/embeddings.json > src/domain/embeddingStore.ts
-# 4. Deploy
-npm run deploy
+# 3. node scripts/generate-embedding-store.js scripts/embeddings.json > src/domain/embeddingStore.ts
+# 4. wrangler deploy
 ```
 
 ---
@@ -567,21 +402,21 @@ npm run deploy
 ## Tests
 
 ```bash
-npm test
+npm test                                                # unit (no API key)
+ANTHROPIC_API_KEY=sk-ant-... npm run test:integration  # integration
+bash test-nlaq-live.sh                                 # live smoke tests
 ```
 
-**57 tests** — ID utilities, estimation, taxonomy loader, demographic loader, rule engine, signal catalog, request validation, signal mapper, DTS v1.2 (12 tests), MCP tool definitions (8 tools), async activation, NL query AST, resolver, scorer, confidence tiers.
+57 unit tests + NLAQ test suite: ID utilities, estimation, taxonomy loader, rule engine, signal catalog, DTS v1.2, MCP tool definitions, NL query AST, three-pass resolver, archetype expansion, title inference, unresolved handling, cosine similarity, mixed-space detection.
 
 ---
 
 ## Spec Contributions
 
-This implementation is the reference basis for four pending IAB Tech Lab contributions:
-
 1. **`x_dts` extension field** — PR to `adcontextprotocol/adcp`: add `x_dts` to `static/schemas/signals/signal.json`
 2. **`x_ucp` extension field** — PR to `adcontextprotocol/adcp`: add `x_ucp` alongside `x_dts`
-3. **AdCP-UCP Bridge Profile** — Appendix to UCP v5.2: normative mappings between DTS fields and UCP HybridPayload, `legacy_fallback.signal_agent_segment_id` pattern, taxonomy node embedding endpoint spec
-4. **NLAQ (Natural Language Audience Query)** — UCP v5.2 Appendix D: `AudienceQueryAST`, `POST /signals/query`, Concept-Level VAC (`/ucp/concepts`), temporal behavioral signal definition
+3. **AdCP-UCP Bridge Profile** — Appendix to UCP v5.2: normative DTS→UCP field mappings, `legacy_fallback.signal_agent_segment_id` pattern, taxonomy node embedding endpoint spec
+4. **NLAQ (Natural Language Audience Query)** — UCP v5.2 Appendix D: `AudienceQueryAST`, `POST /signals/query`, hybrid three-pass resolver, MIN_EMBEDDING_SCORE threshold, Concept-Level VAC, temporal behavioral signal definition
 
 Full spec draft: `ucp-v5.2-nlaq-spec.md`
 
@@ -589,4 +424,5 @@ Full spec draft: `ucp-v5.2-nlaq-spec.md`
 
 ## License
 
-MIT — Reference implementation for AdCP protocol development, IAB DTS v1.2 integration, and UCP embedding bridge.
+MIT — Reference implementation for AdCP protocol development, IAB DTS v1.2 integration, and UCP embedding bridge.  
+Samba TV is a founding member of AgenticAdvertising.org (AdCP) and IAB Tech Lab UCP working group.

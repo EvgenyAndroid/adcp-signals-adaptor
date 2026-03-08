@@ -75,13 +75,15 @@ sig_documentary_viewers    → { dimension: "content_genre",      value: "docume
 sig_sci_fi_enthusiasts     → { dimension: "content_genre",      value: "sci_fi" }
 ```
 
+Value normalization: `normalizeValue()` canonicalizes Claude output variants (e.g. `"150k+"` ↔ `"150k_plus"`, `"50k-100k"` ↔ `"50k_100k"`) so Pass 1 matches regardless of which form the LLM produces.
+
 #### `getAllSignalsForCatalog()` — D1 CanonicalSignal[] → CatalogSignal[]
 
-Adapter that transforms the full D1 catalog into the flat `CatalogSignal[]` shape consumed by `queryResolver.ts`. Called once per NL query request; result is passed through the resolver pipeline without re-fetching.
+Adapter that transforms the full D1 catalog into the flat `CatalogSignal[]` shape consumed by `queryResolver.ts`. Handles both `signal.id` and `signal.signal_agent_segment_id` field variants from D1.
 
 ---
 
-### NL Query Pipeline (v2.0)
+### NL Query Pipeline (v2.1 — Hybrid Resolver)
 
 ```
 POST /signals/query
@@ -91,70 +93,166 @@ POST /signals/query
   │     Output: AudienceQueryAST (boolean tree)
   │     Model:  Claude API (claude-sonnet-4-20250514)
   │     Handles: archetypes, negation, geo, temporal scope, content titles
+  │     Key rule (v2.1): "35+" maps to age_band "35-44" only — no multi-band expansion
   │
-  ├── queryResolver.ts
-  │     Input:  AudienceQueryAST + CatalogSignal[]
-  │     Output: LeafResolution[] (one per LEAF node)
+  ├── queryResolver.ts  ← HYBRID three-pass pipeline
+  │     Input:  AudienceQueryAST root + CatalogSignal[] + EmbeddingEngine (injected)
+  │     Output: ResolvedLeaf[] + pseudoEmbeddingWarning flag
   │
-  │     Pass 1 — Exact rule match
-  │       inferRulesFromSignalId() map → direct dimension/value hit
-  │       match_method: "exact_rule", match_score: 0.808–0.95
+  │     PASS 1 — Exact rule match (always runs first, zero latency)
+  │       inferRulesFromSignalId() map + normalizeValue() → direct dimension/value hit
+  │       match_method: "exact_rule", match_score: 0.95
+  │       If Pass 1 hits → Pass 2 and 3 are SKIPPED for this leaf
   │
-  │     Pass 2 — Description similarity
-  │       Jaccard token overlap between leaf description and signal description
-  │       match_method: "description_similarity"
-  │       TITLE_GENRE_MAP: content title → genre inference
-  │         desperate_housewives → drama → sig_drama_viewers (0.78)
-  │         grey_s_anatomy       → drama
-  │         the_crown            → drama
-  │         succession           → drama
-  │         the_office           → comedy
-  │         friends              → comedy
-  │         star_wars            → sci_fi
-  │         (+ 20 more titles)
+  │     PASS 2 — Embedding similarity (runs if Pass 1 misses, engine available)
+  │       SemanticResolver embeds leaf.description via EmbeddingEngine.embedText()
+  │       Embeds all catalog signals via EmbeddingEngine.embedSignal() (parallel Promise.all)
+  │       Ranks by cosine similarity; filters at MIN_EMBEDDING_SCORE = 0.45
+  │       match_method: "embedding_similarity"
+  │       Threshold rationale: scores < 0.45 are noise not signal (e.g. "coffee" →
+  │       "College Educated Streamers" at 0.30 — semantically wrong, correctly rejected)
+  │       If Pass 2 hits → Pass 3 is SKIPPED
   │
-  │     Pass 3 — Archetype expansion
-  │       ARCHETYPE_TABLE maps concept → constituent dimension leaves:
-  │         soccer_mom         → [age_band:35-44, household_type:family_with_kids,
-  │                               income_band:50k-100k, interest:sports/family]
-  │         urban_professional → [education:college, household_type:urban_professional,
-  │                               income_band:100k+]
-  │         affluent_family    → [income_band:150k+, household_type:family_with_kids,
-  │                               education:graduate]
-  │       Each archetype pseudo-leaf: confidence=1.0, weight applied once
-  │       (Bug fixed: prior double-weight where archetype confidence was multiplied twice)
+  │     PASS 3 — Lexical fallback (runs if Pass 1+2 both miss)
+  │       Jaccard token overlap between leaf description/value and signal semantic text
+  │       buildSignalSemanticText(): description → name → category → taxonomy_id (priority)
+  │       Lexical score threshold: 0.15 (raised from 0.05 to reduce noise on unrelated dims)
+  │       match_method: "lexical_fallback", score: Jaccard × 1.5 capped at 0.75
   │
-  │     Unresolved leaves (geo:Nashville, interest:coffee, content_title without map entry):
-  │       match_score: 0 → flagged as unresolved
-  │       NOT leaves with unresolved signals → exclude_signals: [] (empty, honest)
+  │     TITLE_GENRE_MAP (content_title leaves, pre-Pass 1):
+  │       desperate_housewives → drama → sig_drama_viewers (score × 0.90 discount)
+  │       grey_s_anatomy / the_crown / succession / breaking_bad → drama
+  │       the_office / friends / seinfeld → comedy
+  │       star_wars / the_mandalorian / stranger_things → sci_fi
+  │       planet_earth / free_solo → documentary
+  │       avengers / john_wick → action
+  │       match_method: "title_genre_inference"
   │
-  ├── compositeScorer.ts
-  │     Input:  AudienceQueryAST + LeafResolution[]
-  │     Output: CompositeAudienceResult
+  │     ARCHETYPE_TABLE (archetype leaves, runs all 3 passes per constituent):
+  │       soccer_mom:
+  │         age_band:35-44 (w=0.35), household_type:family_with_kids (w=0.40),
+  │         income_band:50k-100k (w=0.15), interest:youth_sports (w=0.10)
+  │       urban_professional:
+  │         education:college (w=0.30), household_type:urban_professional (w=0.35),
+  │         income_band:100k-150k (w=0.35)
+  │       affluent_family / affluent_families:
+  │         income_band:150k+ (w=0.40), household_type:family_with_kids (w=0.35),
+  │         education:graduate (w=0.25)
+  │       cord_cutter:
+  │         streaming_affinity:high (w=0.60), age_band:25-34 (w=0.25),
+  │         income_band:50k-100k (w=0.15)
+  │       Weight applied ONCE in aggregation loop (double-weight bug fixed in v2.0)
+  │       match_method: "archetype_expansion"
   │
-  │     scoreAND():
-  │       Splits resolved vs unresolved children before scoring
-  │       Resolved:   confidence = Math.min(scores) × ∏(coverage_i) × 0.70^(n-1)
-  │       Unresolved: apply 0.85^n penalty per unresolved leaf (additive, not chained)
-  │       Unresolved leaves EXCLUDED from Math.min chain (avoids vetoing resolved dims)
-  │       Confidence floor: Math.max(topMatch.match_score × leaf.confidence,
-  │                                   topMatch.match_score × 0.55)
+  │     REQUEST-SCOPED ENGINE:
+  │       EmbeddingEngine injected by nlQueryHandler — ONE instance per request
+  │       Query vectors and candidate vectors always use same model/space
+  │       Never mix pseudo↔llm spaces within one request
+  │       pseudoEmbeddingWarning flag set if pseudo engine is active
   │
-  │     scoreOR():
-  │       Union with pairwise overlap deduction
-  │       coverage = Σ(coverage_i) - Σ(overlap_pairs)
+  │     UNRESOLVED LEAF HANDLING:
+  │       Pass 1+2+3 all miss → unresolved: true, matches: []
+  │       Examples: geo:Nashville (no DMA signal), interest:coffee (no beverage signal)
+  │       Excluded from Math.min confidence chain in scoreAND()
+  │       Apply 0.85^n penalty per unresolved leaf
+  │       NOT leaves with unresolved child → exclude_signals: [] (no fabrication)
   │
-  │     scoreNOT():
-  │       Produces exclude_signals[] list for DSP-side suppression
-  │       Applies 0.80 confidence penalty to AND parent
-  │       If referenced signal unresolved → exclude_signals: [], warning appended
+  ├── nlQueryHandler.ts
+  │     Orchestrates the full pipeline
+  │     Instantiates ONE EmbeddingEngine per request via createEmbeddingEngine(env)
+  │     Adapts ResolvedLeaf[] (new shape) → LeafResolution[] (CompositeScorer shape)
+  │     via adaptToLeafResolutions() + toCatalogSignalForScorer()
+  │     defaultCoverage() provides fallback coverage_percentage by signal ID
+  │     Surfaces pseudoEmbeddingWarning in warnings[]
+  │     Adds _embedding_mode and _embedding_space to response for transparency
   │
-  └── nlQueryHandler.ts
-        Route handler wiring all three layers
-        Exports QUERY_SIGNALS_NL_TOOL MCP tool definition
-        Returns CompositeAudienceResult:
-          matched_signals[], exclude_signals[], estimated_size,
-          confidence_tier, warnings[], query_ast (debug)
+  └── compositeScorer.ts
+        Input:  Map<string, LeafResolution> + AudienceQueryAST
+        Output: CompositeAudienceResult
+
+        scoreAND():
+          Splits resolved vs unresolved children before scoring
+          Resolved:   confidence = Math.min(scores) × ∏(coverage_i) × 0.70^(n-1)
+          Unresolved: apply 0.85^n penalty (excluded from Math.min chain)
+          Confidence floor: Math.max(topMatch.match_score × leaf.confidence,
+                                      topMatch.match_score × 0.55)
+
+        scoreOR():
+          Union with pairwise overlap deduction
+          coverage = Σ(coverage_i) - Σ(overlap_pairs)
+
+        scoreNOT():
+          Produces exclude_signals[] for DSP-side suppression
+          Applies 0.80 confidence penalty to AND parent
+          Unresolved NOT child → exclude_signals: [], warning appended
+```
+
+---
+
+### Semantic Resolver (v2.1 — new module)
+
+```
+semanticResolver.ts
+  Class: SemanticResolver
+  Purpose: embedding-based Pass 2 for NLAQ leaf resolution
+
+  Constructor:
+    engine: EmbeddingEngine   — injected, same instance for entire request
+    topN:   number            — max candidates to return (default 5)
+    minScore: number          — minimum cosine to include (default 0.0, filtered by caller)
+
+  resolve(leaf, catalog) → SemanticMatch[]
+    1. Embed leaf query text via engine.embedText(buildQueryText(leaf))
+    2. Embed all catalog signals via engine.embedSignal(id, semanticText) — parallel Promise.all
+    3. Compute cosine similarity for each candidate
+    4. Return top-N sorted descending by score
+
+  buildQueryText(leaf):
+    Priority: leaf.description (>10 chars) → "dimension: value" → dimension
+
+  buildSignalSemanticText(signal):  [exported pure function]
+    Priority: description → name → "Category: X" → "Taxonomy: X" → id
+    Deterministic: same inputs → same string → same embedding → testable
+
+  cosineSimilarity(a, b):  [exported pure function]
+    Dot product of l2-normalized vectors (both engines return l2-normalized)
+    Clamps to [-1, 1] for float precision safety
+
+  SemanticMatch:
+    { signalId, signalName, score, match_method: "embedding_similarity" }
+```
+
+---
+
+### Embedding Engine (v2.1 — extended)
+
+```
+src/ucp/embeddingEngine.ts
+
+  Interface EmbeddingEngine:
+    spaceId: string
+    phase:   "v1" | "pseudo-v1"
+    embedSignal(signalId, description) → Promise<number[]>
+    embedText(text)                    → Promise<number[]>   ← NEW in v2.1
+
+  PseudoEmbeddingEngine (phase: "pseudo-v1", spaceId: "adcp-bridge-space-v1.0"):
+    embedSignal: DJB2 hash of description → 512-dim pseudo-vector, l2-normalized
+    embedText:   DJB2 hash of text → same process
+    No external deps. Cosine similarity is NOT semantically meaningful.
+    Triggers pseudoEmbeddingWarning in response when used for Pass 2.
+
+  LlmEmbeddingEngine (phase: "v1", spaceId: "openai-te3-small-d512-v1"):
+    embedSignal: checks embeddingStore first (stored vectors for 26 catalog signals)
+                 Falls back to OpenAI API for dynamic/unknown signals
+    embedText:   Always calls OpenAI API (leaf descriptions are unique per query)
+    Requires: OPENAI_API_KEY secret + EMBEDDING_ENGINE=llm in wrangler.toml
+
+  createEmbeddingEngine(env):
+    EMBEDDING_ENGINE=llm + OPENAI_API_KEY → LlmEmbeddingEngine
+    Otherwise                             → PseudoEmbeddingEngine
+
+  Re-exports cosineSimilarity from semanticResolver.ts for backward compatibility
+  with server.ts imports.
 ```
 
 ---
@@ -166,15 +264,14 @@ embeddingStore.ts
   Source:     OpenAI text-embedding-3-small API
   Generation: scripts/embed-signals.html (browser tool) → scripts/embeddings.json
               → scripts/generate-embedding-store.js → src/domain/embeddingStore.ts
-  Storage:    hardcoded TypeScript at build time (no runtime API calls)
+  Storage:    hardcoded TypeScript at build time (no runtime API calls for catalog signals)
 
   model_id:   "text-embedding-3-small"
   model_family: "openai/text-embedding-3"
-  space_id:   "openai-te3-small-d512-v1"   ← semantically valid VAC declaration
-  dimensions: 512
-  encoding:   float32, l2-normalized, cosine distance
+  space_id:   "openai-te3-small-d512-v1"
+  dimensions: 512, float32, l2-normalized, cosine distance
 
-  Coverage (19 signals with real vectors):
+  Coverage (26 signals with real vectors):
     sig_age_18_24, sig_age_25_34, sig_age_35_44, sig_age_45_54,
     sig_age_55_64, sig_age_65_plus, sig_high_income_households,
     sig_upper_middle_income, sig_middle_income_households,
@@ -182,19 +279,12 @@ embeddingStore.ts
     sig_families_with_children, sig_senior_households, sig_urban_professionals,
     sig_acs_affluent_college_educated, sig_acs_graduate_high_income,
     sig_acs_middle_income_families, sig_acs_senior_households_income,
-    sig_acs_young_single_adults,
-    sig_action_movie_fans, sig_comedy_fans, sig_documentary_viewers,
-    sig_drama_viewers, sig_sci_fi_enthusiasts, sig_streaming_enthusiasts,
-    test-signal-001
+    sig_acs_young_single_adults, sig_action_movie_fans, sig_comedy_fans,
+    sig_documentary_viewers, sig_drama_viewers, sig_sci_fi_enthusiasts,
+    sig_streaming_enthusiasts, test-signal-001
 
-  Fallback:   Dynamic signals and non-stored IDs → deterministic pseudo-hash
+  Fallback:   Dynamic signals → deterministic pseudo-hash
               phase: "pseudo-v1", space_id: "adcp-bridge-space-v1.0"
-
-  Exports:
-    SIGNAL_EMBEDDINGS: Record<string, SignalEmbedding>
-    getSignalEmbedding(id)    → SignalEmbedding | null
-    cosineSimilarity(a, b)    → number (-1 to 1)
-    findSimilarSignals(id, n) → { id, similarity }[] top-N ranked
 
   Phase 2b (pending):
     /ucp/projector — Procrustes/SVD alignment matrix
@@ -212,47 +302,20 @@ conceptRegistry.ts
   Categories: demographic | interest | behavioral | geo | archetype | content | purchase_intent
 
   Schema per concept:
-    concept_id:             string   — stable anchor (e.g. SOCCER_MOM_US)
-    label:                  string   — human-readable display name
-    category:               string   — one of 7 categories above
-    concept_description:    string   — rich text for semantic search / similarity
-    constituent_dimensions: Array<{  — weighted breakdown (used by archetype expander)
-      dimension: string
-      value:     string
-      weight:    number              — sum to 1.0
-    }>
-    member_nodes: Array<{            — cross-taxonomy equivalents
-      vendor:     "iab"|"liveramp"|"tradedesk"|"experian"|"samba"
-      node_id:    string
-      label:      string
-      similarity: number             — 0.0–1.0 semantic match to concept
-      source:     "exact"|"mapped"|"inferred"
+    concept_id, label, category, concept_description
+    constituent_dimensions: Array<{ dimension, value, weight }>  — for archetype expansion
+    member_nodes: Array<{                                         — cross-taxonomy equivalents
+      vendor: "iab"|"liveramp"|"tradedesk"|"experian"|"samba"
+      node_id, label, similarity, source: "exact"|"mapped"|"inferred"
     }>
 
-  Example — SOCCER_MOM_US:
-    constituent_dimensions:
-      { dimension: "age_band",       value: "35-44",          weight: 0.35 }
-      { dimension: "household_type", value: "family_with_kids",weight: 0.40 }
-      { dimension: "income_band",    value: "50k-100k",        weight: 0.15 }
-      { dimension: "interest",       value: "youth_sports",    weight: 0.10 }
-    member_nodes:
-      { vendor: "iab",       node_id: "IAB_AUD_1_1_123", similarity: 0.88 }
-      { vendor: "liveramp",  node_id: "LR_SEG_45892",    similarity: 0.82 }
-      { vendor: "samba",     node_id: "sig_families_with_children", similarity: 0.91 }
-
-  Storage:
-    Cold start: in-memory from conceptRegistry.ts static data
-    After /ucp/concepts/seed: written to KV under concept:{concept_id}, TTL 24h
-    Index stored at concept:__index__ (array of all concept_ids)
+  Storage: in-memory on cold start; KV (TTL 24h) after /ucp/concepts/seed
 
 conceptHandler.ts
-  Routes:
-    GET  /ucp/concepts                — list all; ?q= search; ?category= filter; ?limit=
-    GET  /ucp/concepts/:concept_id    — exact lookup by ID
-    POST /ucp/concepts/seed           — auth required; writes all 19 to KV
-  MCP tools:
-    get_concept      { concept_id }
-    search_concepts  { q, category?, limit? }
+  GET  /ucp/concepts                  — list / search / filter
+  GET  /ucp/concepts/:concept_id      — exact lookup
+  POST /ucp/concepts/seed             — auth required; writes all 19 to KV
+  MCP  get_concept, search_concepts
 ```
 
 ---
@@ -281,7 +344,7 @@ Tools:
 
 ```
 Cloudflare D1 (SQLite)
-  signals table      — canonical signal catalog (49 signals post-seed)
+  signals table      — canonical signal catalog (49+ signals post-seed)
   activations table  — job lifecycle
 
   Actual D1 catalog (21 demographic + 6 interest + dynamic):
@@ -314,16 +377,15 @@ Buyer agent                    AdCP Signals Adaptor
      │                                │
      │  POST /mcp (initialize)        │
      │ ─────────────────────────────► │
-     │                                │  capabilities include:
-     │                                │    space_id: openai-te3-small-d512-v1
-     │                                │    projector_available: false (Phase 2b)
+     │                                │  declare space_id: openai-te3-small-d512-v1
+     │                                │  phase: "v1"
+     │                                │  projector_available: false (Phase 2b)
      │ ◄───────────────────────────── │
      │                                │
      │  GET /signals/X/embedding      │
      │ ─────────────────────────────► │
      │ ◄───────────────────────────── │  512-dim float32 vector
      │                                │  phase: "v1" (real) or "pseudo-v1" (dynamic)
-     │                                │  space_id: openai-te3-small-d512-v1
      │                                │
      │  cosine_similarity(q, v)       │  VALID: same model, same space
      │  — OR —                        │
@@ -338,17 +400,16 @@ Buyer agent                    AdCP Signals Adaptor
 type AudienceQueryNode = AudienceQueryLeaf | AudienceQueryBranch;
 
 interface AudienceQueryLeaf {
-  op:          "LEAF";
-  dimension:   "age_band" | "income_band" | "education" | "household_type" |
-               "metro_tier" | "content_genre" | "streaming_affinity" | "geo" |
-               "interest" | "archetype" | "content_title" | "behavioral_absence";
-  value:       string;
-  description: string;       // rich text passed to Pass 2 similarity matching
-  concept_id?: string;       // concept registry anchor for Pass 3 archetype expansion
-  temporal?:   TemporalScope;// { daypart?: "morning"|"afternoon"|"evening"|"night",
-                             //   hours_utc?: [number, number] }
-  confidence:  number;       // 0.0–1.0, set by Claude parser
-  is_exclusion?: boolean;    // true when leaf is inside NOT branch
+  op:           "LEAF";
+  dimension:    "age_band" | "income_band" | "education" | "household_type" |
+                "metro_tier" | "content_genre" | "streaming_affinity" | "geo" |
+                "interest" | "archetype" | "content_title" | "behavioral_absence";
+  value:        string;
+  description:  string;        // rich text for Pass 2 embedding matching
+  concept_id?:  string;        // concept registry anchor
+  temporal?:    TemporalScope;
+  confidence:   number;        // 0.0–1.0, Claude-assessed
+  is_exclusion?: boolean;      // true when inside NOT branch
 }
 
 interface AudienceQueryBranch {
@@ -357,35 +418,34 @@ interface AudienceQueryBranch {
 }
 ```
 
-Example — "soccer moms 35+ in Nashville, don't like coffee, watch Desperate Housewives afternoon":
+Example AST — "soccer moms 35+ in Nashville, don't like coffee, watch Desperate Housewives afternoon":
 ```json
 {
   "op": "AND",
   "children": [
-    { "op": "LEAF", "dimension": "archetype",      "value": "soccer_mom",
+    { "op": "LEAF", "dimension": "archetype",     "value": "soccer_mom",
       "concept_id": "SOCCER_MOM_US" },
-    { "op": "LEAF", "dimension": "age_band",       "value": "35+" },
-    { "op": "LEAF", "dimension": "geo",            "value": "Nashville",
+    { "op": "LEAF", "dimension": "age_band",      "value": "35-44" },
+    { "op": "LEAF", "dimension": "geo",           "value": "nashville",
       "description": "Nashville Tennessee DMA-659" },
-    { "op": "LEAF", "dimension": "content_title",  "value": "desperate_housewives",
-      "temporal": { "daypart": "afternoon" } },
+    { "op": "LEAF", "dimension": "content_title", "value": "desperate_housewives",
+      "temporal": { "daypart": "afternoon", "timezone_inference": "geo" } },
     { "op": "NOT", "children": [
-      { "op": "LEAF", "dimension": "interest", "value": "coffee",
-        "is_exclusion": true }
+      { "op": "LEAF", "dimension": "interest", "value": "coffee", "is_exclusion": true }
     ]}
   ]
 }
 ```
 
-Resolution outcome for this query (production-verified):
+Production-verified resolution (v2.1 with LLM embeddings):
 ```
-sig_age_35_44:              exact_rule    0.808   resolved ✓
-sig_age_45_54:              exact_rule    0.808   resolved ✓
-sig_families_with_children: archetype     0.285   resolved ✓  (was 0.085 before double-weight fix)
-sig_drama_viewers:          similarity    0.760   resolved ✓  (desperate_housewives → drama)
-Nashville:                  unresolved    0.000   no DMA signals in catalog
-coffee:                     unresolved    0.000   no beverage signal → exclude_signals: []
-confidence_tier: "narrow"  ← correct: 3 unresolved dimensions
+sig_age_35_44:              exact_rule           0.95    resolved ✓ (single band — Rule 7 fix)
+sig_drama_viewers:          title_genre_inference 0.855  resolved ✓ (desperate_housewives → drama)
+sig_families_with_children: archetype_expansion  0.38   resolved ✓
+sig_middle_income_households:archetype_expansion 0.1425  resolved ✓ (soccer_mom constituent)
+Nashville geo:              lexical_fallback → urban proxy  honest proxy (no DMA signal)
+coffee interest:            unresolved (< 0.45 threshold)  exclude_signals: [] ✓
+confidence: 0.051–0.206     tier: narrow                   correct: 2–3 dims unresolved
 ```
 
 ---
@@ -400,17 +460,32 @@ confidence_tier: "narrow"  ← correct: 3 unresolved dimensions
 | `narrow` | estimated_size < 50,000 OR confidence < 0.40 |
 
 **Unresolved dimension handling:**
-- Unresolved leaves are excluded from the `Math.min` confidence chain in `scoreAND()`
-- Each unresolved leaf applies `× 0.85` penalty to the final composite score
-- Multiple unresolved leaves: `composite × 0.85^n` (n = unresolved count)
-- This prevents a single unresolvable dimension (e.g. a geo with no catalog signal) from zeroing out an otherwise high-confidence match
+- Unresolved leaves excluded from `Math.min` confidence chain in `scoreAND()`
+- Each unresolved leaf: `composite × 0.85` penalty
+- Multiple: `composite × 0.85^n`
 - Confidence floor per leaf: `Math.max(topMatch.match_score × leaf.confidence, topMatch.match_score × 0.55)`
 
-**Production confidence examples:**
+**Production confidence examples (v2.1):**
 ```
-"affluent families 35-44 who stream heavily"  → 0.686  tier: medium  (all 4 dims resolved)
-"soccer moms in Nashville..."                  → 0.195  tier: narrow  (3 dims unresolved)
+"affluent families 35-44 who stream heavily"           → 0.76   tier: medium  (4 dims exact_rule)
+"streaming heavy watchers cord cutters"                → 0.568  tier: medium  (embedding_similarity active)
+"soccer moms 35+ Nashville no coffee Desperate H."    → 0.051  tier: narrow  (3+ unresolved)
 ```
+
+---
+
+## Match Method Vocabulary (v2.1)
+
+| Value | Description | Score range |
+|---|---|---|
+| `exact_rule` | dimension+value maps directly to signal rule | 0.95 |
+| `embedding_similarity` | cosine similarity ≥ 0.45 via OpenAI vectors | 0.45–1.0 |
+| `lexical_fallback` | Jaccard token overlap ≥ 0.15, score × 1.5 capped at 0.75 | 0.075–0.75 |
+| `title_genre_inference` | content title → genre via TITLE_GENRE_MAP, then exact_rule × 0.90 | ~0.855 |
+| `archetype_expansion` | weighted constituent dimension aggregation | 0.10–0.95 |
+| `category_fallback` | broad category match | 0.3–0.5 |
+
+Note: `description_similarity` (v1.0) is retired. All semantic matching is now `embedding_similarity` or `lexical_fallback`.
 
 ---
 
@@ -423,21 +498,21 @@ confidence_tier: "narrow"  ← correct: 3 unresolved dimensions
 | `seed/interests-sample.csv` | Genre affinity scores |
 | `seed/geo-sample.csv` | Top 50 US cities with metro tier |
 | `scripts/embed-signals.html` | Browser tool: calls OpenAI API, outputs embeddings JSON |
-| `scripts/embeddings.json` | Raw OpenAI vectors (must wrap in `{}` if copied from browser) |
+| `scripts/embeddings.json` | Raw OpenAI vectors (wrap in `{}` if copied from browser) |
 | `scripts/generate-embedding-store.js` | Transforms embeddings.json → src/domain/embeddingStore.ts |
 
 **Regenerating vectors:**
 ```bash
 # 1. Open embed-signals.html in browser, enter OpenAI key, click Embed All
-# 2. Copy output JSON, wrap in { } if missing outer braces, save as scripts/embeddings.json
+# 2. Copy output JSON, wrap in { } if missing outer braces → save as scripts/embeddings.json
 # 3. node scripts/generate-embedding-store.js scripts/embeddings.json > src/domain/embeddingStore.ts
 # 4. wrangler deploy
 ```
 
 **Known catalog gaps (cause narrow tier on some queries):**
 - No DMA/geo signals (Nashville, Chicago, etc.) — add to seed/geo-sample.csv
-- No beverage/lifestyle interest signals (coffee, wine, etc.)
-- No content title signals (resolved via TITLE_GENRE_MAP inference only)
+- No beverage/lifestyle interest signals (coffee, wine, etc.) — no catalog signal → unresolved
+- No content title signals — resolved via TITLE_GENRE_MAP inference only
 
 ---
 
@@ -446,15 +521,19 @@ confidence_tier: "narrow"  ← correct: 3 unresolved dimensions
 | Contribution | Location |
 |---|---|
 | NLAQ — AudienceQueryAST normative schema | `ucp-v5.2-nlaq-spec.md` §3.1 |
-| NLAQ — Three-pass leaf resolution algorithm | `ucp-v5.2-nlaq-spec.md` §3.2 |
+| NLAQ — Three-pass hybrid leaf resolution | `ucp-v5.2-nlaq-spec.md` §3.2 |
+| NLAQ — Embedding similarity threshold (MIN_EMBEDDING_SCORE=0.45) | `ucp-v5.2-nlaq-spec.md` §3.2.2 |
+| NLAQ — TITLE_GENRE_MAP normative mechanism | `ucp-v5.2-nlaq-spec.md` §3.2.2 |
+| NLAQ — ARCHETYPE_TABLE + double-weight prohibition | `ucp-v5.2-nlaq-spec.md` §3.2.3 |
+| NLAQ — Unresolved dimension penalty model | `ucp-v5.2-nlaq-spec.md` §3.2.4 |
 | NLAQ — Compositional AND/OR/NOT scoring formulas | `ucp-v5.2-nlaq-spec.md` §3.3 |
-| NLAQ — Unresolved dimension penalty model | `ucp-v5.2-nlaq-spec.md` §3.4 |
 | NLAQ — Confidence tier definitions | `ucp-v5.2-nlaq-spec.md` §3.5 |
+| NLAQ — Age band lower-bound parsing rule | `ucp-v5.2-nlaq-spec.md` §3.1 R7 |
 | Concept-Level VAC — registry schema | `ucp-v5.2-nlaq-spec.md` §4 |
 | Concept-Level VAC — cross-taxonomy member_nodes | `ucp-v5.2-nlaq-spec.md` §4.2 |
 | Temporal behavioral signals — daypart + hours_utc | `ucp-v5.2-nlaq-spec.md` §4.4 |
-| VAC space_id declaration in MCP initialize | `ucp-v5.2-nlaq-spec.md` §5.1 |
-| MCP tool schemas for NLAQ + concept registry | `ucp-v5.2-nlaq-spec.md` §5.2 |
+| VAC space_id + phase declaration in MCP initialize | `ucp-v5.2-nlaq-spec.md` §5.2 |
+| MCP tool schemas for NLAQ + concept registry | `ucp-v5.2-nlaq-spec.md` §5.1 |
 | DTS 1.2 gaps — "Derived" methodology undocumented | IAB DTS issue log |
 | DTS 1.2 gaps — temporal_scope field missing | IAB DTS issue log |
 | DTS 1.2 gaps — "Public Record: Census" not in data_sources enum | IAB DTS issue log |

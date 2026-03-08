@@ -1,138 +1,146 @@
 /**
- * nlQueryHandler.ts
- * Wires parseNLQuery → QueryResolver → CompositeScorer into a single
- * request handler used by both the REST route and the MCP tool.
+ * src/domain/nlQueryHandler.ts
  *
- * REST:  POST /signals/query
- * MCP:   tools/call → query_signals_nl
+ * NLAQ route handler and MCP tool definition.
  *
- * Request body:
- * {
- *   "query": "soccer moms in Nashville who watch drama in the afternoon",
- *   "limit": 10         // optional, max matched_signals returned (default 10)
- * }
+ * Change from v1: createEmbeddingEngine(env) is called once per request and
+ * injected into QueryResolver. This is the ONLY place the engine is instantiated
+ * for a given NLAQ request — guaranteeing request-scoped, single-space semantics.
  *
- * Response: CompositeAudienceResult (see compositeScorer.ts)
+ * Public contract unchanged:
+ *   handleNLQuery(body, catalog, env) → NLQueryResponse
+ *   route:  POST /signals/query
+ *   shape:  { success, result, error, duration_ms }
  */
 
-import { parseNLQuery } from "./queryParser.js";
-import { QueryResolver } from "./queryResolver.js";
-import { CompositeScorer, buildResolutionMap } from "./compositeScorer.js";
-import type { CatalogSignal } from "./queryResolver.js";
-import type { CompositeAudienceResult } from "./compositeScorer.js";
+import { parseNLQuery } from './queryParser';
+import { QueryResolver } from './queryResolver';
+import { CompositeScorer } from './compositeScorer';
+import { createEmbeddingEngine, type EmbeddingEngineEnv } from '../ucp/embeddingEngine';
+import type { CatalogSignal } from './queryResolver';
+
+// ─── Request / Response types ─────────────────────────────────────────────────
 
 export interface NLQueryRequest {
   query: string;
   limit?: number;
 }
 
-export interface NLQueryResponse {
-  success: boolean;
-  result?: CompositeAudienceResult;
-  error?: string;
-  /** Total wall-clock time in milliseconds */
-  duration_ms?: number;
+// Full env shape expected from Cloudflare Worker env
+export interface NLQueryEnv extends EmbeddingEngineEnv {
+  ANTHROPIC_API_KEY?: string;
 }
 
-/**
- * Main handler — call from your Worker route or MCP tool dispatcher.
- *
- * @param req          Parsed request body
- * @param catalog      Signals loaded from D1 / signalModel (pass all available)
- * @param anthropicKey Anthropic API key from env (ANTHROPIC_API_KEY binding)
- */
+// ─── Handler ─────────────────────────────────────────────────────────────────
+
 export async function handleNLQuery(
-  req: NLQueryRequest,
+  body: NLQueryRequest,
   catalog: CatalogSignal[],
-  anthropicKey?: string
-): Promise<NLQueryResponse> {
+  env: NLQueryEnv,
+): Promise<Response> {
   const start = Date.now();
 
-  if (!req.query?.trim()) {
-    return { success: false, error: "query is required" };
-  }
-  if (req.query.length > 2000) {
-    return { success: false, error: "query exceeds 2000 character limit" };
-  }
-
   try {
-    // Step 1: NL → AST
-    const ast = await parseNLQuery(req.query, { apiKey: anthropicKey });
+    if (!body.query || typeof body.query !== 'string' || body.query.trim().length === 0) {
+      return jsonError('query is required', 400);
+    }
+    if (body.query.length > 2000) {
+      return jsonError('query exceeds maximum length of 2000 characters', 400);
+    }
 
-    // Step 2: resolve each leaf against catalog
-    const resolver = new QueryResolver(catalog);
-    const resolutions = resolver.resolveAST(ast);
+    const limit = Math.min(Math.max(body.limit ?? 10, 1), 50);
 
-    // Step 3: composite scoring
-    const resMap = buildResolutionMap(resolutions);
-    const scorer = new CompositeScorer(resMap);
-    let result = scorer.score(ast, ast.unresolved_hints);
+    // ── Step 1: Parse — NL text → AudienceQueryAST via Claude ──────────────
+    const anthropicKey = env.ANTHROPIC_API_KEY;
+    if (!anthropicKey) {
+      return jsonError('ANTHROPIC_API_KEY not configured', 500);
+    }
+    const ast = await parseNLQuery(body.query, anthropicKey);
 
-    // Apply limit
-    const limit = Math.min(Math.max(req.limit ?? 10, 1), 50);
-    result = {
-      ...result,
-      matched_signals: result.matched_signals.slice(0, limit),
-    };
+    // ── Step 2: Engine selection — ONE instance per request ─────────────────
+    //
+    // createEmbeddingEngine inspects env.EMBEDDING_ENGINE + env.OPENAI_API_KEY.
+    // The same instance is passed to QueryResolver so query vectors and candidate
+    // vectors always use the same model/space. Never instantiate a second engine
+    // in this request lifecycle.
+    const engine = createEmbeddingEngine(env);
 
-    return { success: true, result, duration_ms: Date.now() - start };
-  } catch (e) {
-    return {
-      success: false,
-      error: (e as Error).message,
-      duration_ms: Date.now() - start,
-    };
+    // ── Step 3: Resolve — AST leaves → ranked signal matches ────────────────
+    const resolver = new QueryResolver(catalog, engine);
+    const { resolvedLeaves, pseudoEmbeddingWarning } = await resolver.resolveAST(ast);
+
+    // ── Step 4: Score — boolean set arithmetic → CompositeAudienceResult ────
+    const scorer = new CompositeScorer(resolvedLeaves, limit);
+    const result = scorer.score(ast);
+
+    // Append pseudo warning if embedding engine was in pseudo mode
+    if (pseudoEmbeddingWarning) {
+      result.warnings = result.warnings ?? [];
+      result.warnings.push(
+        'Semantic similarity used pseudo embedding vectors (adcp-bridge-space-v1.0). ' +
+        'Results are structurally valid but embedding scores are not semantically meaningful. ' +
+        'Set EMBEDDING_ENGINE=llm and OPENAI_API_KEY for real semantic matching.',
+      );
+    }
+
+    // Append engine mode to response metadata for transparency
+    result._embedding_mode = engine.phase;
+    result._embedding_space = engine.spaceId;
+
+    return json({ success: true, result, duration_ms: Date.now() - start });
+
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return json(
+      { success: false, error: message, duration_ms: Date.now() - start },
+      500,
+    );
   }
 }
 
 // ─── MCP tool definition ──────────────────────────────────────────────────────
-// Add this to your tools.ts alongside the existing tool definitions.
 
 export const QUERY_SIGNALS_NL_TOOL = {
-  name: "query_signals_nl",
+  name: 'query_signals_nl',
   description:
-    "Find audience signals matching a natural language description. " +
-    "Supports complex compositional queries with boolean logic (AND/OR/NOT), " +
-    "archetypes (e.g. 'soccer moms'), negation ('don't like coffee'), " +
-    "geo specificity, temporal context ('afternoon viewers'), and content affinity. " +
-    "Returns ranked matching signals with estimated audience size and activation payloads.",
+    'Find audience signals matching a natural language description. ' +
+    'Decomposes the query into a boolean AST (AND/OR/NOT), resolves each dimension ' +
+    'against the signal catalog using hybrid rule+embedding+lexical matching, ' +
+    'and returns ranked matches with a compositional audience size estimate. ' +
+    'Use when the user describes a target audience in free-form language.',
   inputSchema: {
-    type: "object",
+    type: 'object',
     properties: {
       query: {
-        type: "string",
+        type: 'string',
         description:
-          "Natural language audience description. Examples: " +
-          "'women 35+ in Nashville who watch drama in the afternoon', " +
-          "'high-income households interested in luxury goods but not coffee', " +
-          "'urban professionals aged 25-34 who stream sci-fi'",
+          "Natural language audience description. " +
+          "Examples: 'soccer moms 35+ who stream heavily', " +
+          "'urban professionals without children who watch sci-fi', " +
+          "'affluent families 35-44 in top DMAs'.",
+        maxLength: 2000,
       },
       limit: {
-        type: "number",
-        description: "Maximum number of matched signals to return (1–50, default 10)",
+        type: 'number',
+        description: 'Maximum number of matched signals to return. Range 1–50.',
+        minimum: 1,
+        maximum: 50,
+        default: 10,
       },
     },
-    required: ["query"],
+    required: ['query'],
   },
-} as const;
+};
 
-// ─── Route fragment for src/index.ts ─────────────────────────────────────────
-// Drop this into your fetch() handler after your existing /signals/generate route:
-//
-//   if (pathname === "/signals/query" && request.method === "POST") {
-//     const body = await request.json() as NLQueryRequest;
-//     const catalog = await getAllSignals(env);          // your existing catalog loader
-//     const resp = await handleNLQuery(body, catalog, env.ANTHROPIC_API_KEY);
-//     return new Response(JSON.stringify(resp), {
-//       status: resp.success ? 200 : 400,
-//       headers: { "Content-Type": "application/json", ...corsHeaders },
-//     });
-//   }
-//
-// In mcp/server.ts, add to your tools/call handler:
-//   case "query_signals_nl": {
-//     const body = params.arguments as NLQueryRequest;
-//     const catalog = await getAllSignals(env);
-//     const resp = await handleNLQuery(body, catalog, env.ANTHROPIC_API_KEY);
-//     return mcpResult(resp);
-//   }
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function jsonError(message: string, status: number): Response {
+  return json({ success: false, error: message }, status);
+}

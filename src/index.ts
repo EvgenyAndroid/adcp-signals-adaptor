@@ -81,7 +81,7 @@ export default {
       } else if (method === "POST" && path === "/signals/query") {
         const body = await request.json() as { query: string; limit?: number };
         const catalog = await getAllSignalsForCatalog(getDb(env));
-        const result = await handleNLQuery(body, catalog, env.ANTHROPIC_API_KEY);
+        const result = await handleNLQuery(body, catalog, env);
         response = jsonResponse(result, result.success ? 200 : 400);
 
       } else if (path === "/mcp" || path.startsWith("/mcp")) {

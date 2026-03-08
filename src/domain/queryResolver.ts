@@ -1,328 +1,467 @@
 /**
- * queryResolver.ts
- * AudienceQueryAST → ranked signal matches from the catalog.
+ * src/domain/queryResolver.ts
  *
- * UCP v5.2 NLAQ §3.2 — Leaf Resolution Layer
+ * Hybrid three-pass NLAQ leaf resolver.
  *
- * Each LEAF in the AST is resolved to one or more candidate signals using
- * a three-pass strategy:
+ * Pass 1 — Exact rule match (deterministic, zero latency, no embeddings)
+ * Pass 2 — Embedding similarity via SemanticResolver (semantic, engine-scoped)
+ * Pass 3 — Lexical fallback (Jaccard token overlap, only when Pass 2 is unavailable)
  *
- *   Pass 1 — Exact rule match: if dimension+value maps directly to a signal's
- *             generation rule (age_band=35-44, content_genre=drama, etc.)
+ * Archetype expansion runs as a pre-processing step: archetype leafs are expanded
+ * into constituent dimension leaves (from ARCHETYPE_TABLE), each resolved independently
+ * through the same three-pass pipeline, then aggregated by weighted average.
  *
- *   Pass 2 — Description similarity: cosine similarity between leaf description
- *             and signal name+description fields (TF-IDF / Jaccard fallback when
- *             no vector store is available — upgradeable to embedding in Phase 2b)
+ * Request-scoped engine: the EmbeddingEngine instance is injected at construction time
+ * and used for ALL leaf resolutions in that request. This guarantees that query vectors
+ * and candidate vectors come from the same space. Never mix pseudo↔llm within one request.
  *
- *   Pass 3 — Archetype expansion: archetype LEAFs are expanded into constituent
- *             dimensions and each re-resolved (recursive, depth-capped at 2)
- *
- * ARCHETYPE EXPANSION TABLE
- * Defined inline here for v5.2 reference implementation. Phase 3: move to
- * concept registry endpoint (/ucp/concepts) as described in spec §4.
+ * Public surface unchanged from v1:
+ *   new QueryResolver(catalog, engine).resolveAST(ast) → ResolvedAST
+ * The engine parameter is optional; when omitted the resolver uses lexical-only mode
+ * (backward-compatible with callers that don't pass an engine).
  */
 
-import type { AudienceQueryLeaf, AudienceQueryNode, AudienceQueryBranch, AudienceQueryAST } from "./queryParser.js";
-import { flattenLeafs, extractExclusions } from "./queryParser.js";
+import type { AudienceQueryAST, AudienceQueryLeaf, AudienceQueryBranch } from './queryParser';
+import type { EmbeddingEngine } from '../ucp/embeddingEngine';
+import { SemanticResolver, buildSignalSemanticText, type CatalogSignalForSemantic } from './semanticResolver';
 
-// ─── Archetype Expansion Table ────────────────────────────────────────────────
-// Each archetype maps to weighted constituent leaf nodes.
-// concept_id anchors to the future IAB Tech Lab concept registry.
+// ─── Public types ─────────────────────────────────────────────────────────────
 
-interface ArchetypeConstituent {
-  dimension: AudienceQueryLeaf["dimension"];
-  value: string;
-  weight: number; // 0–1 relative importance for audience intersection math
-  description: string;
-}
+export type MatchMethod =
+  | 'exact_rule'
+  | 'embedding_similarity'
+  | 'lexical_fallback'
+  | 'archetype_expansion'
+  | 'title_genre_inference'
+  | 'category_fallback';
 
-const ARCHETYPE_TABLE: Record<string, { concept_id: string; constituents: ArchetypeConstituent[] }> = {
-  soccer_mom: {
-    concept_id: "SOCCER_MOM_US",
-    constituents: [
-      { dimension: "household_type", value: "family_with_kids", weight: 0.30, description: "household with school-age children" },
-      { dimension: "age_band", value: "35-44", weight: 0.25, description: "adult female aged 35 to 44" },
-      { dimension: "age_band", value: "45-54", weight: 0.15, description: "adult female aged 45 to 54" },
-      { dimension: "metro_tier", value: "top_50", weight: 0.15, description: "suburban or mid-size metro resident" },
-      { dimension: "streaming_affinity", value: "medium", weight: 0.15, description: "moderate streaming consumption" },
-    ],
-  },
-  urban_professional: {
-    concept_id: "URBAN_PROFESSIONAL_US",
-    constituents: [
-      { dimension: "age_band", value: "25-34", weight: 0.35, description: "young adult professional aged 25 to 34" },
-      { dimension: "metro_tier", value: "top_10", weight: 0.30, description: "resident of top-10 US metro area" },
-      { dimension: "education", value: "bachelors", weight: 0.20, description: "bachelor's degree holder" },
-      { dimension: "income_band", value: "100k_150k", weight: 0.15, description: "household income 100K to 150K" },
-    ],
-  },
-  affluent_family: {
-    concept_id: "AFFLUENT_FAMILY_US",
-    constituents: [
-      { dimension: "household_type", value: "family_with_kids", weight: 0.35, description: "household with children" },
-      { dimension: "income_band", value: "150k_plus", weight: 0.35, description: "high income household above 150K" },
-      { dimension: "education", value: "graduate", weight: 0.30, description: "graduate degree holder" },
-    ],
-  },
-};
-
-// ─── Signal shape (minimal, matches catalog) ─────────────────────────────────
-
-export interface CatalogSignal {
+export interface LeafMatch {
   signal_agent_segment_id: string;
   name: string;
-  category_type: string;
-  estimated_audience_size: number;
-  coverage_percentage: number;
-  /** Rules if available (from dynamic/derived signals) */
-  rules?: Array<{ dimension: string; operator: string; value: string }>;
-  /** Free-text description for similarity matching */
-  description?: string;
-  iab_taxonomy_ids?: string[];
-}
-
-// ─── Resolution result per leaf ───────────────────────────────────────────────
-
-export interface LeafResolution {
-  leaf: AudienceQueryLeaf;
-  /** Matched signals ranked by match_score descending */
-  matches: ResolvedSignal[];
-  /** True if this leaf came from NOT node — signals go to exclude list */
+  match_score: number;
+  match_method: MatchMethod;
   is_exclusion: boolean;
-  /** Expanded archetype constituents (if applicable) */
-  archetype_expansion?: AudienceQueryLeaf[];
+  concept_id?: string;
 }
 
-export interface ResolvedSignal {
-  signal: CatalogSignal;
-  match_score: number; // 0–1
-  match_method: "exact_rule" | "description_similarity" | "archetype_expansion" | "category_fallback";
-  temporal_scope?: AudienceQueryLeaf["temporal"];
+export interface ResolvedLeaf {
+  leaf: AudienceQueryLeaf;
+  matches: LeafMatch[];
+  unresolved: boolean;
 }
 
-// ─── Main resolver ────────────────────────────────────────────────────────────
+export interface ResolvedAST {
+  resolvedLeaves: ResolvedLeaf[];
+  /** true if at least one Pass 2 embedding comparison used pseudo vectors (not semantically valid) */
+  pseudoEmbeddingWarning: boolean;
+}
+
+// ─── Catalog signal shape (what QueryResolver expects from signalService) ─────
+
+export interface CatalogSignal extends CatalogSignalForSemantic {
+  estimated_size?: number;
+  coverage_percentage?: number;
+}
+
+// ─── Dimension rule map (Pass 1) ──────────────────────────────────────────────
+
+/**
+ * inferRulesFromSignalId — maps actual D1 signal IDs → {dimension, value} pairs.
+ * Used for Pass 1 exact rule matching.
+ */
+export function inferRulesFromSignalId(signalId: string): { dimension: string; value: string } | null {
+  const map: Record<string, { dimension: string; value: string }> = {
+    sig_age_18_24:              { dimension: 'age_band',           value: '18-24' },
+    sig_age_25_34:              { dimension: 'age_band',           value: '25-34' },
+    sig_age_35_44:              { dimension: 'age_band',           value: '35-44' },
+    sig_age_45_54:              { dimension: 'age_band',           value: '45-54' },
+    sig_age_55_64:              { dimension: 'age_band',           value: '55-64' },
+    sig_age_65_plus:            { dimension: 'age_band',           value: '65+' },
+    sig_high_income_households: { dimension: 'income_band',        value: '150k+' },
+    sig_upper_middle_income:    { dimension: 'income_band',        value: '100k-150k' },
+    sig_middle_income_households:{ dimension: 'income_band',       value: '50k-100k' },
+    sig_college_educated_adults:{ dimension: 'education',          value: 'college' },
+    sig_graduate_educated_adults:{ dimension: 'education',         value: 'graduate' },
+    sig_families_with_children: { dimension: 'household_type',     value: 'family_with_kids' },
+    sig_senior_households:      { dimension: 'household_type',     value: 'senior' },
+    sig_urban_professionals:    { dimension: 'household_type',     value: 'urban_professional' },
+    sig_streaming_enthusiasts:  { dimension: 'streaming_affinity', value: 'high' },
+    sig_drama_viewers:          { dimension: 'content_genre',      value: 'drama' },
+    sig_comedy_fans:            { dimension: 'content_genre',      value: 'comedy' },
+    sig_action_movie_fans:      { dimension: 'content_genre',      value: 'action' },
+    sig_documentary_viewers:    { dimension: 'content_genre',      value: 'documentary' },
+    sig_sci_fi_enthusiasts:     { dimension: 'content_genre',      value: 'sci_fi' },
+  };
+  return map[signalId] ?? null;
+}
+
+// ─── Title → Genre map (Pass 2 title_genre_inference) ────────────────────────
+
+const TITLE_GENRE_MAP: Record<string, string> = {
+  desperate_housewives:   'drama',
+  grey_s_anatomy:         'drama',
+  greys_anatomy:          'drama',
+  the_crown:              'drama',
+  succession:             'drama',
+  breaking_bad:           'drama',
+  better_call_saul:       'drama',
+  mad_men:                'drama',
+  downton_abbey:          'drama',
+  the_office:             'comedy',
+  friends:                'comedy',
+  seinfeld:               'comedy',
+  parks_and_recreation:   'comedy',
+  brooklyn_nine_nine:     'comedy',
+  star_wars:              'sci_fi',
+  the_mandalorian:        'sci_fi',
+  stranger_things:        'sci_fi',
+  the_expanse:            'sci_fi',
+  black_mirror:           'sci_fi',
+  planet_earth:           'documentary',
+  march_of_the_penguins:  'documentary',
+  free_solo:              'documentary',
+  the_last_dance:         'documentary',
+  avengers:               'action',
+  john_wick:              'action',
+  mission_impossible:     'action',
+};
+
+function normalizeTitleKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+}
+
+// ─── Archetype table ─────────────────────────────────────────────────────────
+
+interface ArchetypeConstituent {
+  dimension: string;
+  value: string;
+  weight: number;
+}
+
+const ARCHETYPE_TABLE: Record<string, ArchetypeConstituent[]> = {
+  soccer_mom: [
+    { dimension: 'age_band',           value: '35-44',          weight: 0.35 },
+    { dimension: 'household_type',     value: 'family_with_kids',weight: 0.40 },
+    { dimension: 'income_band',        value: '50k-100k',        weight: 0.15 },
+    { dimension: 'interest',           value: 'youth_sports',    weight: 0.10 },
+  ],
+  urban_professional: [
+    { dimension: 'education',          value: 'college',         weight: 0.30 },
+    { dimension: 'household_type',     value: 'urban_professional',weight: 0.35 },
+    { dimension: 'income_band',        value: '100k+',           weight: 0.35 },
+  ],
+  affluent_family: [
+    { dimension: 'income_band',        value: '150k+',           weight: 0.40 },
+    { dimension: 'household_type',     value: 'family_with_kids',weight: 0.35 },
+    { dimension: 'education',          value: 'graduate',        weight: 0.25 },
+  ],
+  affluent_families: [
+    { dimension: 'income_band',        value: '150k+',           weight: 0.40 },
+    { dimension: 'household_type',     value: 'family_with_kids',weight: 0.35 },
+    { dimension: 'education',          value: 'graduate',        weight: 0.25 },
+  ],
+};
+
+// ─── Jaccard lexical fallback (Pass 3) ───────────────────────────────────────
+
+function tokenize(s: string): Set<string> {
+  return new Set(
+    s.toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(t => t.length > 2),
+  );
+}
+
+function jaccardSimilarity(a: string, b: string): number {
+  const ta = tokenize(a);
+  const tb = tokenize(b);
+  if (ta.size === 0 && tb.size === 0) return 0;
+  let inter = 0;
+  for (const t of ta) if (tb.has(t)) inter++;
+  const union = ta.size + tb.size - inter;
+  return union === 0 ? 0 : inter / union;
+}
+
+// ─── QueryResolver ────────────────────────────────────────────────────────────
 
 export class QueryResolver {
-  constructor(private readonly catalog: CatalogSignal[]) {}
+  private readonly semantic: SemanticResolver | null;
+  private pseudoWarning = false;
 
   /**
-   * Resolve all leaf nodes in the AST against the catalog.
-   * Returns per-leaf resolution results. The compositeScorer then handles
-   * set arithmetic across the AND/OR/NOT tree.
+   * @param catalog      All catalog signals from signalService.getAllSignalsForCatalog()
+   * @param engine       Optional EmbeddingEngine injected by nlQueryHandler.
+   *                     When provided, Pass 2 uses embedding cosine similarity.
+   *                     When omitted, Pass 2 skips and falls through to Pass 3 (lexical).
    */
-  resolveAST(ast: AudienceQueryAST): LeafResolution[] {
-    const exclusionLeafs = new Set(
-      extractExclusions(ast.root).map((l) => JSON.stringify({ d: l.dimension, v: l.value }))
-    );
-
-    const allLeafs = flattenLeafs(ast.root);
-    return allLeafs.map((leaf) => {
-      const key = JSON.stringify({ d: leaf.dimension, v: leaf.value });
-      return this.resolveLeaf(leaf, exclusionLeafs.has(key));
-    });
+  constructor(
+    private readonly catalog: CatalogSignal[],
+    private readonly engine?: EmbeddingEngine,
+  ) {
+    if (engine) {
+      this.semantic = new SemanticResolver(engine, { topN: 5, minScore: 0.0 });
+    } else {
+      this.semantic = null;
+    }
   }
 
-  resolveLeaf(leaf: AudienceQueryLeaf, is_exclusion: boolean): LeafResolution {
-    // Archetype path — expand then resolve each constituent
-    if (leaf.dimension === "archetype") {
-      return this.resolveArchetype(leaf, is_exclusion);
-    }
+  // ── Public entry point ──────────────────────────────────────────────────────
 
-    const matches = this.scoreAgainstCatalog(leaf);
+  async resolveAST(ast: AudienceQueryAST): Promise<ResolvedAST> {
+    this.pseudoWarning = false;
+    const resolvedLeaves: ResolvedLeaf[] = [];
+    await this.walkNode(ast, resolvedLeaves);
     return {
-      leaf,
-      matches: matches.slice(0, 5), // top-5 per leaf
-      is_exclusion,
+      resolvedLeaves,
+      pseudoEmbeddingWarning: this.pseudoWarning,
     };
   }
 
-  private resolveArchetype(leaf: AudienceQueryLeaf, is_exclusion: boolean): LeafResolution {
-    const key = normaliseArchetypeKey(leaf.value);
-    const entry = ARCHETYPE_TABLE[key];
+  // ── Tree walk ───────────────────────────────────────────────────────────────
 
-    if (!entry) {
-      // Unknown archetype — fall back to description similarity
-      return {
-        leaf,
-        matches: this.scoreAgainstCatalog(leaf).slice(0, 5),
-        is_exclusion,
-      };
+  private async walkNode(
+    node: AudienceQueryAST,
+    out: ResolvedLeaf[],
+  ): Promise<void> {
+    if (node.op === 'LEAF') {
+      const resolved = await this.resolveLeaf(node as AudienceQueryLeaf);
+      out.push(resolved);
+      return;
+    }
+    const branch = node as AudienceQueryBranch;
+    for (const child of branch.children) {
+      await this.walkNode(child, out);
+    }
+  }
+
+  // ── Leaf dispatch ───────────────────────────────────────────────────────────
+
+  private async resolveLeaf(leaf: AudienceQueryLeaf): Promise<ResolvedLeaf> {
+    // Archetype dimension: expand then aggregate
+    if (leaf.dimension === 'archetype') {
+      return this.resolveArchetype(leaf);
     }
 
-    // Expand into constituent pseudo-leafs and resolve each
-    const expanded: AudienceQueryLeaf[] = entry.constituents.map((c) => ({
-      op: "LEAF" as const,
-      dimension: c.dimension,
-      value: c.value,
-      description: c.description,
-      concept_id: entry.concept_id,
-      confidence: leaf.confidence * c.weight,
-    }));
+    // content_title: TITLE_GENRE_MAP → treat as content_genre leaf
+    if (leaf.dimension === 'content_title') {
+      return this.resolveContentTitle(leaf);
+    }
 
-    // Aggregate: each constituent produces matches; deduplicate and weight by constituent weight.
-    // pseudoLeaf.confidence = 1.0 — weighting applied once only via constituent.weight below.
-    // Bug fixed: previously set confidence: constituent.weight which caused double-multiplication
-    // (scoreSignalForLeaf multiplies by leaf.confidence, then we multiplied again by weight).
-    const scoreMap = new Map<string, { signal: CatalogSignal; score: number }>();
-    for (const constituent of entry.constituents) {
-      const pseudoLeaf: AudienceQueryLeaf = {
-        op: "LEAF",
-        dimension: constituent.dimension,
-        value: constituent.value,
-        description: constituent.description,
-        confidence: 1.0,  // weight applied once below, not twice
-      };
-      const matches = this.scoreAgainstCatalog(pseudoLeaf);
-      for (const m of matches) {
-        const id = m.signal.signal_agent_segment_id;
-        const existing = scoreMap.get(id);
-        const weighted = m.match_score * constituent.weight;  // single weight application
-        scoreMap.set(id, {
-          signal: m.signal,
-          score: (existing?.score ?? 0) + weighted,
+    return this.resolveDimensionLeaf(leaf);
+  }
+
+  // ── Pass 1: Exact rule match ────────────────────────────────────────────────
+
+  private pass1ExactRule(leaf: AudienceQueryLeaf): LeafMatch[] {
+    const matches: LeafMatch[] = [];
+    for (const signal of this.catalog) {
+      const rule = inferRulesFromSignalId(signal.id);
+      if (!rule) continue;
+      if (rule.dimension === leaf.dimension && rule.value === leaf.value) {
+        matches.push({
+          signal_agent_segment_id: signal.id,
+          name: signal.name,
+          match_score: 0.95,
+          match_method: 'exact_rule',
+          is_exclusion: leaf.is_exclusion ?? false,
+          concept_id: leaf.concept_id,
         });
       }
     }
+    return matches;
+  }
 
-    const aggregated: ResolvedSignal[] = Array.from(scoreMap.values())
+  // ── Pass 2: Embedding similarity ───────────────────────────────────────────
+
+  private async pass2Embedding(leaf: AudienceQueryLeaf): Promise<LeafMatch[]> {
+    if (!this.semantic) return [];
+
+    // Track if pseudo engine is in use — signals semantically invalid comparison
+    if (this.engine?.phase === 'pseudo-v1') {
+      this.pseudoWarning = true;
+    }
+
+    try {
+      const results = await this.semantic.resolve(leaf, this.catalog);
+      return results
+        .filter(r => r.score > 0.3) // minimum meaningful cosine for llm; pseudo will be noisy
+        .map(r => ({
+          signal_agent_segment_id: r.signalId,
+          name: r.signalName,
+          match_score: r.score,
+          match_method: 'embedding_similarity' as MatchMethod,
+          is_exclusion: leaf.is_exclusion ?? false,
+          concept_id: leaf.concept_id,
+        }));
+    } catch {
+      // embedding API unavailable — fall through to Pass 3
+      return [];
+    }
+  }
+
+  // ── Pass 3: Lexical fallback ────────────────────────────────────────────────
+
+  private pass3Lexical(leaf: AudienceQueryLeaf): LeafMatch[] {
+    const query = [leaf.description, leaf.value, leaf.dimension].filter(Boolean).join(' ');
+    const scored = this.catalog.map(signal => {
+      const candidateText = buildSignalSemanticText(signal);
+      const score = jaccardSimilarity(query, candidateText);
+      return { signal, score };
+    });
+
+    return scored
+      .filter(({ score }) => score > 0.05)
       .sort((a, b) => b.score - a.score)
       .slice(0, 5)
-      .map((e) => ({
-        signal: e.signal,
-        match_score: Math.min(e.score, 1.0),
-        match_method: "archetype_expansion",
+      .map(({ signal, score }) => ({
+        signal_agent_segment_id: signal.id,
+        name: signal.name,
+        match_score: Math.min(score * 1.5, 0.75), // scale Jaccard up; cap below exact_rule
+        match_method: 'lexical_fallback' as MatchMethod,
+        is_exclusion: leaf.is_exclusion ?? false,
+        concept_id: leaf.concept_id,
       }));
-
-    return {
-      leaf,
-      matches: aggregated,
-      is_exclusion,
-      archetype_expansion: expanded,
-    };
   }
 
-  private scoreAgainstCatalog(leaf: AudienceQueryLeaf): ResolvedSignal[] {
-    const results: ResolvedSignal[] = [];
+  // ── Three-pass pipeline for a single dimension leaf ─────────────────────────
 
-    for (const signal of this.catalog) {
-      const score = this.scoreSignalForLeaf(signal, leaf);
-      if (score > 0.1) {
-        results.push({
-          signal,
-          match_score: score,
-          match_method: score > 0.85 ? "exact_rule" : "description_similarity",
-          temporal_scope: leaf.temporal,
+  private async resolveDimensionLeaf(leaf: AudienceQueryLeaf): Promise<ResolvedLeaf> {
+    // Pass 1 — exact rule
+    const pass1 = this.pass1ExactRule(leaf);
+    if (pass1.length > 0) {
+      return { leaf, matches: pass1, unresolved: false };
+    }
+
+    // Pass 2 — embedding similarity (only if engine available)
+    const pass2 = await this.pass2Embedding(leaf);
+    if (pass2.length > 0) {
+      return { leaf, matches: pass2, unresolved: false };
+    }
+
+    // Pass 3 — lexical fallback
+    const pass3 = this.pass3Lexical(leaf);
+    if (pass3.length > 0) {
+      return { leaf, matches: pass3, unresolved: false };
+    }
+
+    // Unresolved — no catalog signal matches
+    return { leaf, matches: [], unresolved: true };
+  }
+
+  // ── Content title resolution ─────────────────────────────────────────────────
+
+  private async resolveContentTitle(leaf: AudienceQueryLeaf): Promise<ResolvedLeaf> {
+    const key = normalizeTitleKey(leaf.value);
+    const genre = TITLE_GENRE_MAP[key];
+
+    if (genre) {
+      // Synthesize a genre leaf and run through the full three-pass pipeline
+      const genreLeaf: AudienceQueryLeaf = {
+        ...leaf,
+        dimension: 'content_genre',
+        value: genre,
+        description: `${genre} content viewers — inferred from title: ${leaf.value}`,
+      };
+      const resolved = await this.resolveDimensionLeaf(genreLeaf);
+      // Relabel match_method so the caller knows title inference was used
+      return {
+        leaf,
+        unresolved: resolved.unresolved,
+        matches: resolved.matches.map(m => ({
+          ...m,
+          match_method: 'title_genre_inference' as MatchMethod,
+          match_score: m.match_score * 0.90, // slight discount for indirect inference
+        })),
+      };
+    }
+
+    // No title mapping — fall through to regular dimension resolver
+    // (embedding may still find something based on leaf.description)
+    return this.resolveDimensionLeaf(leaf);
+  }
+
+  // ── Archetype expansion ──────────────────────────────────────────────────────
+
+  /**
+   * Archetype expansion runs the three-pass pipeline on each constituent dimension
+   * independently, then aggregates results by weighted average.
+   *
+   * Key invariants (per spec §3.2.3):
+   *   - constituent weight is applied ONCE (no double-weight)
+   *   - constituent pseudo-leaf confidence is set to 1.0 before weighting
+   *   - unresolved constituents reduce the composite score but don't veto it
+   */
+  private async resolveArchetype(leaf: AudienceQueryLeaf): Promise<ResolvedLeaf> {
+    const key = leaf.value.toLowerCase().replace(/\s+/g, '_');
+    const constituents = ARCHETYPE_TABLE[key];
+
+    if (!constituents) {
+      // Unknown archetype — fall back to embedding/lexical on the archetype description
+      const fallback = await this.resolveDimensionLeaf(leaf);
+      return {
+        leaf,
+        unresolved: fallback.unresolved,
+        matches: fallback.matches.map(m => ({
+          ...m,
+          match_method: 'archetype_expansion' as MatchMethod,
+        })),
+      };
+    }
+
+    // Resolve each constituent independently
+    const constituentResults = await Promise.all(
+      constituents.map(async c => {
+        const pseudoLeaf: AudienceQueryLeaf = {
+          op: 'LEAF',
+          dimension: c.dimension as AudienceQueryLeaf['dimension'],
+          value: c.value,
+          description: `${c.dimension}: ${c.value} (constituent of archetype ${leaf.value})`,
+          confidence: 1.0, // spec: confidence=1.0 before weighting
+          is_exclusion: leaf.is_exclusion ?? false,
+        };
+        const resolved = await this.resolveDimensionLeaf(pseudoLeaf);
+        return { resolved, weight: c.weight };
+      }),
+    );
+
+    // Aggregate: weighted average of top match score per constituent
+    // Weight is applied exactly once here (never in resolveDimensionLeaf)
+    const aggregated = new Map<string, { score: number; name: string; count: number }>();
+
+    for (const { resolved, weight } of constituentResults) {
+      const top = resolved.matches[0];
+      if (!top) continue;
+
+      const weightedScore = top.match_score * weight; // weight applied ONCE
+      const existing = aggregated.get(top.signal_agent_segment_id);
+      if (existing) {
+        existing.score += weightedScore;
+        existing.count++;
+      } else {
+        aggregated.set(top.signal_agent_segment_id, {
+          score: weightedScore,
+          name: top.name,
+          count: 1,
         });
       }
     }
 
-    return results.sort((a, b) => b.match_score - a.match_score);
+    const matches: LeafMatch[] = Array.from(aggregated.entries())
+      .map(([id, { score, name }]) => ({
+        signal_agent_segment_id: id,
+        name,
+        match_score: Math.min(score, 1.0),
+        match_method: 'archetype_expansion' as MatchMethod,
+        is_exclusion: leaf.is_exclusion ?? false,
+        concept_id: leaf.concept_id,
+      }))
+      .sort((a, b) => b.match_score - a.match_score);
+
+    return {
+      leaf,
+      matches,
+      unresolved: matches.length === 0,
+    };
   }
-
-  private scoreSignalForLeaf(signal: CatalogSignal, leaf: AudienceQueryLeaf): number {
-    let best = 0;
-
-    // Pass 1: exact rule match
-    if (signal.rules) {
-      for (const rule of signal.rules) {
-        if (rule.dimension === leaf.dimension && rule.value === leaf.value) {
-          best = Math.max(best, 0.95 * leaf.confidence);
-        }
-      }
-    }
-
-    // Pass 1b: category-level match for content/geo
-    if (leaf.dimension === "content_genre" && signal.category_type === "interest") {
-      const nameMatch = tokenOverlap(signal.name.toLowerCase(), leaf.value.toLowerCase());
-      best = Math.max(best, nameMatch * 0.8 * leaf.confidence);
-    }
-    if (leaf.dimension === "content_title") {
-      if (signal.category_type === "interest") {
-        // Pass A: description similarity against leaf description
-        const descMatch = tokenOverlap(
-          (signal.description ?? signal.name).toLowerCase(),
-          leaf.description.toLowerCase()
-        );
-        best = Math.max(best, descMatch * 0.75 * leaf.confidence);
-
-        // Pass B: genre inference — map well-known titles to their primary genre
-        // so e.g. "desperate_housewives" resolves to sig_drama_viewers even with
-        // no direct title signal in the catalog.
-        const TITLE_GENRE_MAP: Record<string, string> = {
-          desperate_housewives: "drama",
-          grey_s_anatomy:       "drama",
-          the_crown:            "drama",
-          succession:           "drama",
-          breaking_bad:         "drama",
-          the_office:           "comedy",
-          friends:              "comedy",
-          seinfeld:             "comedy",
-          star_wars:            "sci_fi",
-          the_mandalorian:      "sci_fi",
-          stranger_things:      "sci_fi",
-          planet_earth:         "documentary",
-          the_last_dance:       "documentary",
-        };
-        const titleKey = leaf.value.toLowerCase().replace(/[\s-]+/g, "_");
-        const inferredGenre = TITLE_GENRE_MAP[titleKey];
-        if (inferredGenre && signal.rules) {
-          const genreRule = signal.rules.find(
-            r => r.dimension === "content_genre" && r.value === inferredGenre
-          );
-          if (genreRule) {
-            best = Math.max(best, 0.80 * leaf.confidence);
-          }
-        }
-        // Also match by genre keyword in signal name
-        if (inferredGenre) {
-          const genreInName = signal.name.toLowerCase().includes(inferredGenre);
-          if (genreInName) best = Math.max(best, 0.78 * leaf.confidence);
-        }
-      }
-    }
-    if (leaf.dimension === "geo") {
-      if (signal.category_type === "geo") {
-        const nameMatch = tokenOverlap(signal.name.toLowerCase(), leaf.description.toLowerCase());
-        best = Math.max(best, nameMatch * 0.85 * leaf.confidence);
-      }
-    }
-
-    // Pass 2: description similarity (token overlap as embedding proxy)
-    const leafText = `${leaf.dimension} ${leaf.value} ${leaf.description}`.toLowerCase();
-    const signalText = `${signal.name} ${signal.description ?? ""} ${signal.category_type}`.toLowerCase();
-    const simScore = tokenOverlap(leafText, signalText);
-    best = Math.max(best, simScore * 0.7 * leaf.confidence);
-
-    // Pass 3: category bucket match for demographics
-    if (
-      leaf.dimension === "age_band" ||
-      leaf.dimension === "income_band" ||
-      leaf.dimension === "education" ||
-      leaf.dimension === "household_type"
-    ) {
-      if (signal.category_type === "demographic") {
-        const nameHit = signal.name.toLowerCase().includes(leaf.value.replace(/_/g, " "));
-        if (nameHit) best = Math.max(best, 0.80 * leaf.confidence);
-      }
-    }
-
-    return best;
-  }
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Jaccard token overlap — cheap embedding proxy for Pass 2 */
-function tokenOverlap(a: string, b: string): number {
-  const tokA = new Set(a.split(/\W+/).filter((t) => t.length > 2));
-  const tokB = new Set(b.split(/\W+/).filter((t) => t.length > 2));
-  if (tokA.size === 0 || tokB.size === 0) return 0;
-  let intersection = 0;
-  for (const t of tokA) if (tokB.has(t)) intersection++;
-  const union = tokA.size + tokB.size - intersection;
-  return intersection / union;
-}
-
-function normaliseArchetypeKey(value: string): string {
-  return value.toLowerCase().replace(/[\s-]+/g, "_");
 }

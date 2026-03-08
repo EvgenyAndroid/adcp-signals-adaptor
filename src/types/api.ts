@@ -38,7 +38,7 @@ export interface SearchSignalsRequest {
   taxonomyId?: string;
   geography?: string[];
   destination?: string;
-  destinations?: Array<{ type: string; platform?: string; agent_url?: string }>;
+  deployments?: Array<{ type: string; platform?: string; agent_url?: string }>;
   activationSupported?: boolean;
   limit?: number;
   offset?: number;
@@ -165,7 +165,7 @@ export interface GetOperationResponse {
   task_id: string;
   status: OperationStatus;
   signal_agent_segment_id: string;
-  destinations?: Array<{
+  deployments?: Array<{
     type: string;
     platform?: string;
     is_live: boolean;

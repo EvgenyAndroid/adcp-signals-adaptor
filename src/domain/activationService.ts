@@ -130,7 +130,7 @@ export async function getOperationService(
     signal_agent_segment_id: operation.signalId,
     ...(currentStatus === "completed"
       ? {
-          destinations: [
+          deployments: [
             {
               type: "platform",
               platform: operation.destination,

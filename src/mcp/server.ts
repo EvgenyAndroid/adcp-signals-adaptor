@@ -329,7 +329,7 @@ async function callActivateSignal(
       task_id: result.task_id,
       status: "pending",
       signal_agent_segment_id: signalId,
-      destinations: responseDeployments,  // spec uses destinations (not deployments)
+      deployments: responseDeployments,
       ...(webhookUrl ? { webhook_url: webhookUrl } : {}),
       ...(pricingOptionId ? { pricing_option_id: pricingOptionId } : {}),
     };

@@ -58,6 +58,7 @@ export interface AudienceQueryLeaf {
   concept_id?: string;
   temporal?: TemporalScope;
   confidence: number; // 0–1, LLM self-assessed
+  is_exclusion?: boolean;
 }
 
 export interface AudienceQueryBranch {
@@ -90,13 +91,13 @@ DIMENSION VOCABULARY (use exact strings):
 - age_band: "18-24" | "25-34" | "35-44" | "45-54" | "55-64" | "65+"
 - income_band: "under_50k" | "50k_100k" | "100k_150k" | "150k_plus"
 - education: "high_school" | "some_college" | "bachelors" | "graduate"
-- household_type: "single" | "couple_no_kids" | "family_with_kids" | "senior_household"
+- household_type: "single" | "couple_no_kids" | "family_with_kids" | "senior_household" | "urban_professional"
 - metro_tier: "top_10" | "top_25" | "top_50" | "other"
 - content_genre: "action" | "sci_fi" | "drama" | "comedy" | "documentary" | "thriller" | "animation" | "romance"
 - streaming_affinity: "high" | "medium" | "low"
 - geo: DMA code or city name normalised (e.g. "DMA-659" for Nashville)
 - interest: free label (e.g. "coffee", "luxury_goods", "sports")
-- archetype: cultural shorthand (e.g. "soccer_mom", "urban_professional")
+- archetype: cultural shorthand (e.g. "soccer_mom", "urban_professional", "cord_cutter")
 - content_title: specific TV/film title (e.g. "desperate_housewives")
 - behavioral_absence: signal indicating NON-consumption (e.g. "non_coffee_drinker")
 
@@ -107,7 +108,8 @@ RULES:
 4. Temporal qualifiers ("in the afternoon") attach as temporal scope on the relevant LEAF, not as a separate node.
 5. confidence: your estimate 0.0–1.0 for each LEAF. Use lower values for ambiguous or inferred dimensions.
 6. unresolved_hints: list any phrases you could not map to a known dimension.
-7. description: write a rich 1-sentence description of each LEAF for semantic embedding search.
+7. Age lower bounds: "35+" or "over 35" means ONLY age_band "35-44". Do NOT expand a lower-bound expression into multiple older bands (45-54, 55-64, 65+). Only add additional age bands if the query explicitly names them (e.g. "35 to 54" → two bands: "35-44" and "45-54").
+8. description: write a rich 1-sentence description of each LEAF for semantic embedding search.
 
 OUTPUT FORMAT: respond ONLY with valid JSON matching the AudienceQueryAST schema. No markdown. No preamble.
 
@@ -139,8 +141,6 @@ export async function parseNLQuery(
   const model = options.model ?? "claude-sonnet-4-20250514";
   const maxTokens = options.maxTokens ?? 2000;
 
-  // Build the API request — no API key header needed in Workers with binding,
-  // but we support explicit key for local dev / unit tests.
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "anthropic-version": "2023-06-01",

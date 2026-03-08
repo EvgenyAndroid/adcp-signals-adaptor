@@ -118,7 +118,6 @@ export function inferRulesFromSignalId(
  * Handles common variations in Claude output:
  *   "150k+" → "150k_plus"
  *   "50k-100k" → "50k_100k"
- *   "family_with_kids" → "family_with_kids"
  */
 function normalizeValue(v: string): string {
   return v
@@ -173,7 +172,7 @@ interface ArchetypeConstituent {
 
 const ARCHETYPE_TABLE: Record<string, ArchetypeConstituent[]> = {
   soccer_mom: [
-    { dimension: 'age_band',           value: '35-44',           weight: 0.35 },
+    { dimension: 'age_band',           value: '35-44',            weight: 0.35 },
     { dimension: 'household_type',     value: 'family_with_kids', weight: 0.40 },
     { dimension: 'income_band',        value: '50k-100k',         weight: 0.15 },
     { dimension: 'interest',           value: 'youth_sports',     weight: 0.10 },
@@ -181,7 +180,7 @@ const ARCHETYPE_TABLE: Record<string, ArchetypeConstituent[]> = {
   urban_professional: [
     { dimension: 'education',          value: 'college',          weight: 0.30 },
     { dimension: 'household_type',     value: 'urban_professional',weight: 0.35 },
-    { dimension: 'income_band',        value: '100k-150k',         weight: 0.35 },
+    { dimension: 'income_band',        value: '100k-150k',        weight: 0.35 },
   ],
   affluent_family: [
     { dimension: 'income_band',        value: '150k+',            weight: 0.40 },
@@ -192,6 +191,11 @@ const ARCHETYPE_TABLE: Record<string, ArchetypeConstituent[]> = {
     { dimension: 'income_band',        value: '150k+',            weight: 0.40 },
     { dimension: 'household_type',     value: 'family_with_kids', weight: 0.35 },
     { dimension: 'education',          value: 'graduate',         weight: 0.25 },
+  ],
+  cord_cutter: [
+    { dimension: 'streaming_affinity', value: 'high',             weight: 0.60 },
+    { dimension: 'age_band',           value: '25-34',            weight: 0.25 },
+    { dimension: 'income_band',        value: '50k-100k',         weight: 0.15 },
   ],
 };
 
@@ -215,6 +219,21 @@ function jaccardSimilarity(a: string, b: string): number {
   const union = ta.size + tb.size - inter;
   return union === 0 ? 0 : inter / union;
 }
+
+// ─── Embedding similarity threshold ──────────────────────────────────────────
+
+/**
+ * MIN_EMBEDDING_SCORE — minimum cosine similarity for Pass 2 to accept a match.
+ *
+ * Set to 0.45 for LLM embeddings (openai-te3-small-d512-v1).
+ * Below this threshold the semantic match is too weak to be trusted — e.g.
+ * "coffee" returning "College Educated Heavy Streamers" at 0.30 is noise,
+ * not a real semantic match. At < 0.45 we fall through to Pass 3 or unresolved.
+ *
+ * For pseudo embeddings the threshold is effectively moot since pseudo cosine
+ * is not semantically meaningful regardless — pseudoEmbeddingWarning is set instead.
+ */
+const MIN_EMBEDDING_SCORE = 0.45;
 
 // ─── QueryResolver ────────────────────────────────────────────────────────────
 
@@ -241,7 +260,9 @@ export class QueryResolver {
 
   // ── Public entry point ──────────────────────────────────────────────────────
 
-  async resolveAST(ast: AudienceQueryAST | AudienceQueryLeaf | AudienceQueryBranch): Promise<ResolvedAST> {
+  async resolveAST(
+    ast: AudienceQueryAST | AudienceQueryLeaf | AudienceQueryBranch,
+  ): Promise<ResolvedAST> {
     this.pseudoWarning = false;
     const resolvedLeaves: ResolvedLeaf[] = [];
     // Handle both full AST wrapper and bare node
@@ -295,7 +316,6 @@ export class QueryResolver {
       const rule = inferRulesFromSignalId(signalId);
       if (!rule) continue;
 
-      // Match on dimension AND value — with normalization to handle Claude output variation
       if (
         rule.dimension === leaf.dimension &&
         (rule.value === leaf.value || normalizeValue(rule.value) === normalizedLeafValue)
@@ -325,7 +345,11 @@ export class QueryResolver {
     try {
       const results = await this.semantic.resolve(leaf, this.catalog);
       return results
-        .filter(r => r.score > 0.3)
+        // MIN_EMBEDDING_SCORE = 0.45: prevents weak semantic matches (e.g. "coffee" →
+        // "College Educated Heavy Streamers" at 0.30) from polluting results.
+        // Signals below this threshold are better handled as unresolved than as
+        // misleading low-confidence matches.
+        .filter(r => r.score >= MIN_EMBEDDING_SCORE)
         .map(r => ({
           signal_agent_segment_id: r.signalId,
           name: r.signalName,
@@ -335,6 +359,7 @@ export class QueryResolver {
           concept_id: leaf.concept_id,
         }));
     } catch {
+      // Embedding API unavailable — fall through to Pass 3
       return [];
     }
   }

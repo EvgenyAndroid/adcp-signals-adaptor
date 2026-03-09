@@ -1,16 +1,11 @@
 /**
  * src/activations/adapters/linkedin/client.ts
  *
- * LinkedIn Marketing API v2 HTTP client.
+ * LinkedIn Marketing API HTTP client.
  * App ID: 239110166 — Development Tier — Advertising API
  *
- * Correct endpoint pattern (from official docs):
- *   POST https://api.linkedin.com/rest/adAccounts/{adAccountId}/adCampaigns
- *
- * Version header: LinkedIn-Version: 202501 (January 2025 — active stable)
- *
- * API reference:
- *   https://learn.microsoft.com/en-us/linkedin/marketing/integrations/ads/account-structure/create-and-manage-campaigns?view=li-lms-2026-02
+ * Endpoint base: https://api.linkedin.com/rest
+ * Version: 202503 (March 2025 — active stable)
  */
 
 import type { LinkedInCampaignPayload, LinkedInCampaignResponse } from '../../types/linkedin';
@@ -32,7 +27,6 @@ export async function createCampaign(
   accessToken: string,
   adAccountId: string,
 ): Promise<LinkedInCampaignResponse> {
-  // Correct path per LinkedIn docs: account ID in URL, not in body
   const url = `${BASE}/adAccounts/${adAccountId}/adCampaigns`;
 
   const res = await fetch(url, {
@@ -47,8 +41,6 @@ export async function createCampaign(
   }
 
   const json = await res.json() as Partial<LinkedInCampaignResponse>;
-
-  // LinkedIn returns campaign ID in X-RestLi-Id header AND in body
   const idHeader = res.headers.get('x-restli-id') ?? res.headers.get('X-RestLi-Id');
   const id = idHeader ? parseInt(idHeader, 10) : (json.id ?? 0);
 
@@ -76,6 +68,57 @@ export async function getCampaign(
   }
 
   return res.json() as Promise<LinkedInCampaignResponse>;
+}
+
+// ─── Campaign Groups ──────────────────────────────────────────────────────────
+
+export async function listCampaignGroups(
+  adAccountId: string,
+  accessToken: string,
+): Promise<Array<{ id: number; name: string; status: string }>> {
+  // Simple search without status filter — LinkedIn rejects search.status.values[] param
+  const url = `${BASE}/adAccounts/${adAccountId}/adCampaignGroups?q=search&count=10`;
+
+  const res = await fetch(url, {
+    headers: DEFAULT_HEADERS(accessToken),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new LinkedInApiError(res.status, body, `GET /rest/adAccounts/${adAccountId}/adCampaignGroups`);
+  }
+
+  const json = await res.json() as { elements?: Array<{ id: number; name: string; status: string }> };
+  return (json.elements ?? []).filter(g => g.status === 'ACTIVE' || g.status === 'DRAFT');
+}
+
+export async function createCampaignGroup(
+  adAccountId: string,
+  accessToken: string,
+  name = 'AdCP Signals',
+): Promise<string> {
+  const url = `${BASE}/adAccounts/${adAccountId}/adCampaignGroups`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: DEFAULT_HEADERS(accessToken),
+    body: JSON.stringify({
+      account: `urn:li:sponsoredAccount:${adAccountId}`,
+      name,
+      status: 'ACTIVE',
+      runSchedule: { start: Date.now() },
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new LinkedInApiError(res.status, body, `POST /rest/adAccounts/${adAccountId}/adCampaignGroups`);
+  }
+
+  const idHeader = res.headers.get('x-restli-id') ?? res.headers.get('X-RestLi-Id');
+  const json = await res.json() as { id?: number };
+  const id = idHeader ?? String(json.id ?? '');
+  return `urn:li:sponsoredCampaignGroup:${id}`;
 }
 
 // ─── Token validation ─────────────────────────────────────────────────────────
@@ -109,54 +152,4 @@ export class LinkedInApiError extends Error {
 
   get isAuthError(): boolean { return this.statusCode === 401 || this.statusCode === 403; }
   get isRateLimit(): boolean { return this.statusCode === 429; }
-}
-
-// ─── Campaign Groups ──────────────────────────────────────────────────────────
-
-export async function createCampaignGroup(
-  adAccountId: string,
-  accessToken: string,
-  name = 'AdCP Signals',
-): Promise<string> {
-  const url = `${BASE}/adAccounts/${adAccountId}/adCampaignGroups`;
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: DEFAULT_HEADERS(accessToken),
-    body: JSON.stringify({
-      account: `urn:li:sponsoredAccount:${adAccountId}`,
-      name,
-      status: 'ACTIVE',
-      runSchedule: { start: Date.now() },
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new LinkedInApiError(res.status, body, `POST /rest/adAccounts/${adAccountId}/adCampaignGroups`);
-  }
-
-  const idHeader = res.headers.get('x-restli-id') ?? res.headers.get('X-RestLi-Id');
-  const json = await res.json() as { id?: number };
-  const id = idHeader ?? String(json.id ?? '');
-  return `urn:li:sponsoredCampaignGroup:${id}`;
-}
-
-export async function listCampaignGroups(
-  adAccountId: string,
-  accessToken: string,
-): Promise<Array<{ id: number; name: string; status: string }>> {
-  const url = `${BASE}/adAccounts/${adAccountId}/adCampaignGroups?q=search&search.status.values[0]=ACTIVE&count=10`;
-
-  const res = await fetch(url, {
-    headers: DEFAULT_HEADERS(accessToken),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new LinkedInApiError(res.status, body, `GET /rest/adAccounts/${adAccountId}/adCampaignGroups`);
-  }
-
-  const json = await res.json() as { elements?: Array<{ id: number; name: string; status: string }> };
-  return json.elements ?? [];
 }

@@ -2,12 +2,8 @@
  * src/activations/adapters/linkedin/adapter.ts
  *
  * LinkedIn activation adapter — orchestrates mapper + client.
- * Uses getValidAccessToken() from auth module — handles auto-refresh transparently.
- *
- * Usage:
- *   const adapter = new LinkedInAdapter();
- *   const result = await adapter.activate(request, env);    // live
- *   const result = adapter.dryRun(request);                 // preview only
+ * Uses getValidAccessToken() for auto-refresh.
+ * Auto-creates or reuses campaign group via KV cache.
  */
 
 import { mapDimensionsToLinkedIn } from './mapper';
@@ -25,8 +21,9 @@ import type {
 import type { LinkedInAuthEnv } from '../../auth/linkedin';
 import type { SignalDimension } from '../../types/shared';
 
-// Adapter env extends auth env so auto-refresh works (needs KV + client credentials)
-export type LinkedInAdapterEnv = LinkedInEnv & LinkedInAuthEnv;
+export type LinkedInAdapterEnv = LinkedInEnv & LinkedInAuthEnv & { SIGNALS_CACHE: KVNamespace };
+
+const KV_GROUP_KEY = 'linkedin:campaign_group_urn';
 
 export class LinkedInAdapter {
   readonly platform = 'linkedin';
@@ -39,25 +36,21 @@ export class LinkedInAdapter {
   ): Promise<LinkedInActivationResult> {
 
     if (!env.LINKEDIN_AD_ACCOUNT_ID) {
-      return this.error('LINKEDIN_AD_ACCOUNT_ID not configured. Run: npx wrangler secret put LINKEDIN_AD_ACCOUNT_ID');
+      return this.error('LINKEDIN_AD_ACCOUNT_ID not configured.');
     }
 
-    // Get valid access token — auto-refreshes if expired, throws if not authorized
     let accessToken: string;
     try {
       accessToken = await getValidAccessToken(env);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return this.error(msg);
+      return this.error(err instanceof Error ? err.message : String(err));
     }
 
-    // Resolve dimensions
     const dimensions = this.resolveDimensions(request);
     if (dimensions.length === 0) {
       return this.error('No dimensions provided and could not infer from signal_agent_segment_id.');
     }
 
-    // Map dimensions to LinkedIn targeting
     const {
       criteria,
       dimensionResults,
@@ -85,22 +78,14 @@ export class LinkedInAdapter {
     }
 
     for (const dr of dimensionResults) {
-      if (dr.status === 'proxied')      warnings.push(`Proxy: ${dr.dimension}:${dr.value} — ${dr.note}`);
+      if (dr.status === 'proxied')       warnings.push(`Proxy: ${dr.dimension}:${dr.value} — ${dr.note}`);
       if (dr.status === 'not_supported') warnings.push(`Excluded: ${dr.dimension}:${dr.value} — ${dr.note}`);
     }
 
-    const campaignName = request.campaign_name
-      ?? `AdCP — ${request.signal_agent_segment_id ?? 'Custom'} — ${new Date().toISOString().slice(0,10)}`;
-
-    const objective: LinkedInObjectiveType = request.objective ?? 'BRAND_AWARENESS';
-    const accountUrn = `urn:li:sponsoredAccount:${env.LINKEDIN_AD_ACCOUNT_ID}`;
-
-    // Resolve campaign group — reuse cached URN from KV, or find/create one
-    const KV_GROUP_KEY = 'linkedin:campaign_group_urn';
-    let campaignGroupUrn = await env.SIGNALS_CACHE.get(KV_GROUP_KEY);
+    // ── Resolve campaign group — cache in KV, create if none exists ───────────
+    let campaignGroupUrn: string | null = await env.SIGNALS_CACHE.get(KV_GROUP_KEY);
 
     if (!campaignGroupUrn) {
-      // Try to find an existing active group first
       try {
         const groups = await listCampaignGroups(env.LINKEDIN_AD_ACCOUNT_ID, accessToken);
         if (groups.length > 0) {
@@ -108,19 +93,24 @@ export class LinkedInAdapter {
         } else {
           campaignGroupUrn = await createCampaignGroup(env.LINKEDIN_AD_ACCOUNT_ID, accessToken, 'AdCP Signals');
         }
-        // Cache for 30 days
         await env.SIGNALS_CACHE.put(KV_GROUP_KEY, campaignGroupUrn, { expirationTtl: 30 * 24 * 60 * 60 });
       } catch (err) {
+        // Non-fatal — campaign can be created without group in some account configs
         warnings.push(`Campaign group lookup failed: ${err instanceof Error ? err.message : String(err)}`);
         campaignGroupUrn = null;
       }
     }
 
-    // runSchedule.start is required — use today as start, no end date for DRAFT
+    // ── Build campaign payload ────────────────────────────────────────────────
+    const campaignName = request.campaign_name
+      ?? `AdCP — ${request.signal_agent_segment_id ?? 'Custom'} — ${new Date().toISOString().slice(0, 10)}`;
+
+    const objective: LinkedInObjectiveType = request.objective ?? 'BRAND_AWARENESS';
+    const accountUrn = `urn:li:sponsoredAccount:${env.LINKEDIN_AD_ACCOUNT_ID}`;
     const todayMs = Date.now();
-    const startDate = new Date(todayMs).toISOString().slice(0, 10).replace(/-/g, '/');
 
     const payload: LinkedInCampaignPayload = {
+      account: accountUrn,
       name: campaignName,
       status: 'DRAFT',
       type: 'SPONSORED_UPDATES',
@@ -167,7 +157,7 @@ export class LinkedInAdapter {
 
     } catch (err) {
       const msg = err instanceof LinkedInApiError
-        ? `${err.message}${err.isAuthError ? ' — token may have been revoked, visit /auth/linkedin/init' : ''}`
+        ? `${err.message}${err.isAuthError ? ' — visit /auth/linkedin/init to reauthorize' : ''}`
         : String(err);
       return {
         success: false,
@@ -184,7 +174,7 @@ export class LinkedInAdapter {
     }
   }
 
-  // ── Dry run — no API call ───────────────────────────────────────────────────
+  // ── Dry run ─────────────────────────────────────────────────────────────────
 
   dryRun(request: LinkedInActivationRequest): LinkedInActivationResult {
     const dimensions = this.resolveDimensions(request);
@@ -199,7 +189,7 @@ export class LinkedInAdapter {
 
     const warnings: string[] = [];
     for (const dr of dimensionResults) {
-      if (dr.status === 'proxied')      warnings.push(`Proxy: ${dr.dimension}:${dr.value} — ${dr.note}`);
+      if (dr.status === 'proxied')       warnings.push(`Proxy: ${dr.dimension}:${dr.value} — ${dr.note}`);
       if (dr.status === 'not_supported') warnings.push(`Excluded: ${dr.dimension}:${dr.value} — ${dr.note}`);
     }
     warnings.push('DRY RUN — no LinkedIn API call made. Set dry_run: false to create campaign.');

@@ -80,6 +80,10 @@ export default {
       if (method === "GET" && path === "/health") {
         response = jsonResponse({ status: "ok", provider: "adcp-signals-adaptor" });
 
+      } else if (method === 'GET' && path === '/auth/linkedin/token-debug') {
+          const token = await env.SIGNALS_CACHE.get('linkedin:access_token');
+          response = jsonResponse({ token });
+
       } else if (method === "GET" && path === "/capabilities") {
         response = await handleGetCapabilities(env, logger);
 

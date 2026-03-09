@@ -4,13 +4,12 @@
  * LinkedIn Marketing API v2 HTTP client.
  * App ID: 239110166 — Development Tier — Advertising API
  *
- * Handles:
- *   - Campaign creation (POST /adCampaigns)
- *   - Campaign read (GET /adCampaigns/{id})
- *   - Token validation (GET /userinfo)
+ * KEY: LinkedIn's versioned API requires the version in the URL path, not just
+ * the header. The error "adCampaigns.CREATE.NO_VERSION" means the request hit
+ * the unversioned endpoint. Use /rest/ base with LinkedIn-Version header.
  *
- * All requests use LinkedIn-Version: 202406 header (stable 2024 schema).
- * X-RestLi-Protocol-Version: 2.0.0 required for all REST.li endpoints.
+ * Correct base: https://api.linkedin.com/rest
+ * Header: LinkedIn-Version: 202406
  *
  * API reference:
  *   https://learn.microsoft.com/en-us/linkedin/marketing/integrations/ads/account-structure/create-and-manage-campaigns?view=li-lms-2026-02
@@ -18,7 +17,8 @@
 
 import type { LinkedInCampaignPayload, LinkedInCampaignResponse } from '../../types/linkedin';
 
-const BASE = 'https://api.linkedin.com/v2';
+// Use /rest base — the versioned Marketing API endpoint
+const BASE = 'https://api.linkedin.com/rest';
 const LI_VERSION = '202406';
 
 const DEFAULT_HEADERS = (token: string) => ({
@@ -42,7 +42,7 @@ export async function createCampaign(
 
   if (!res.ok) {
     const body = await res.text();
-    throw new LinkedInApiError(res.status, body, 'POST /adCampaigns');
+    throw new LinkedInApiError(res.status, body, 'POST /rest/adCampaigns');
   }
 
   const json = await res.json() as Partial<LinkedInCampaignResponse>;
@@ -70,7 +70,7 @@ export async function getCampaign(
 
   if (!res.ok) {
     const body = await res.text();
-    throw new LinkedInApiError(res.status, body, `GET /adCampaigns/${campaignId}`);
+    throw new LinkedInApiError(res.status, body, `GET /rest/adCampaigns/${campaignId}`);
   }
 
   return res.json() as Promise<LinkedInCampaignResponse>;
@@ -78,7 +78,9 @@ export async function getCampaign(
 
 // ─── Token validation ─────────────────────────────────────────────────────────
 
-export async function validateToken(accessToken: string): Promise<{ valid: boolean; sub?: string; name?: string }> {
+export async function validateToken(
+  accessToken: string,
+): Promise<{ valid: boolean; sub?: string; name?: string }> {
   try {
     const res = await fetch('https://api.linkedin.com/v2/userinfo', {
       headers: { 'Authorization': `Bearer ${accessToken}` },
@@ -104,11 +106,10 @@ export async function getAdAccount(
 
   if (!res.ok) {
     const body = await res.text();
-    throw new LinkedInApiError(res.status, body, `GET /adAccountsV2/${accountId}`);
+    throw new LinkedInApiError(res.status, body, `GET /rest/adAccountsV2/${accountId}`);
   }
 
-  const json = await res.json() as { id: string; name?: string; status?: string };
-  return json;
+  return res.json() as Promise<{ id: string; name?: string; status?: string }>;
 }
 
 // ─── Error type ───────────────────────────────────────────────────────────────

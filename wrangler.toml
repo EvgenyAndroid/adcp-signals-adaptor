@@ -8,7 +8,6 @@ ENVIRONMENT          = "production"
 API_VERSION          = "3.0-rc"
 DEMO_API_KEY         = "demo-key-adcp-signals-v1"
 EMBEDDING_ENGINE     = "llm"
-LINKEDIN_CLIENT_ID   = "77inotpjfq8k5s"
 LINKEDIN_REDIRECT_URI = "https://adcp-signals-adaptor.evgeny-193.workers.dev/auth/linkedin/callback"
 
 [[d1_databases]]

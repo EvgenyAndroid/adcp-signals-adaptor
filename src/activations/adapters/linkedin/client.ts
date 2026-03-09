@@ -16,7 +16,7 @@
 import type { LinkedInCampaignPayload, LinkedInCampaignResponse } from '../../types/linkedin';
 
 const BASE = 'https://api.linkedin.com/rest';
-const LI_VERSION = '202412';
+const LI_VERSION = '202503';
 
 const DEFAULT_HEADERS = (token: string) => ({
   'Authorization': `Bearer ${token}`,

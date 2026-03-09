@@ -4,20 +4,22 @@ compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
-ENVIRONMENT = "production"
-API_VERSION = "3.0-rc"
-DEMO_API_KEY = "demo-key-adcp-signals-v1"
-EMBEDDING_ENGINE = "llm"
+ENVIRONMENT          = "production"
+API_VERSION          = "3.0-rc"
+DEMO_API_KEY         = "demo-key-adcp-signals-v1"
+EMBEDDING_ENGINE     = "llm"
+LINKEDIN_CLIENT_ID   = "78khhkm6qxep5i"
+LINKEDIN_REDIRECT_URI = "https://adcp-signals-adaptor.evgeny-193.workers.dev/auth/linkedin/callback"
 
 [[d1_databases]]
-binding = "DB"
+binding       = "DB"
 database_name = "adcp-signals-db"
-database_id = "70b0049e-7012-4c3a-8bd2-0f0a9c74d79c"
+database_id   = "70b0049e-7012-4c3a-8bd2-0f0a9c74d79c"
 
 [[kv_namespaces]]
 binding = "SIGNALS_CACHE"
-id = "e17c4c99b649460a92016e1257436f22"
+id      = "e17c4c99b649460a92016e1257436f22"
 
 [dev]
-port = 8787
+port           = 8787
 local_protocol = "http"

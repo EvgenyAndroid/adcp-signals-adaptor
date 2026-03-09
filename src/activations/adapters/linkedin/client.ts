@@ -40,8 +40,15 @@ export async function createCampaign(
     throw new LinkedInApiError(res.status, body, `POST /rest/adAccounts/${adAccountId}/adCampaigns`);
   }
 
-  const json = await res.json() as Partial<LinkedInCampaignResponse>;
+  // LinkedIn returns 201 with empty body — ID is in X-RestLi-Id header
   const idHeader = res.headers.get('x-restli-id') ?? res.headers.get('X-RestLi-Id');
+
+  let json: Partial<LinkedInCampaignResponse> = {};
+  const text = await res.text();
+  if (text && text.trim().length > 0) {
+    try { json = JSON.parse(text); } catch { /* empty body is normal for 201 */ }
+  }
+
   const id = idHeader ? parseInt(idHeader, 10) : (json.id ?? 0);
 
   return {

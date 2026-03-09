@@ -16,6 +16,12 @@ import { getDb } from "./storage/db";
 import { getAllSignalsForCatalog } from "./domain/signalService";
 import { handleConceptRoute } from "./domain/conceptHandler";
 import { handleNLQuery } from "./domain/nlQueryHandler";
+import {
+  handleLinkedInAuthInit,
+  handleLinkedInAuthCallback,
+  handleLinkedInAuthStatus,
+} from "./activations/auth/linkedin";
+import { handleActivateDispatch } from "./activations/routes/activate";
 
 // Seed data imported as text modules via wrangler assets
 // These will be bundled at deploy time
@@ -37,8 +43,17 @@ export default {
       });
     }
 
-    // Auth check - MCP uses its own auth header check, public paths skip auth
-    const publicPaths = ["/capabilities", "/health", "/mcp", "/ucp/concepts"];
+    // Auth check — MCP uses its own auth header check, public paths skip auth
+    // LinkedIn auth routes must be public so OAuth flow works without a token
+    const publicPaths = [
+      "/capabilities",
+      "/health",
+      "/mcp",
+      "/ucp/concepts",
+      "/auth/linkedin/init",
+      "/auth/linkedin/callback",
+      "/auth/linkedin/status",
+    ];
     const isPublic = publicPaths.some((p) => path === p || path.startsWith(p + "/"));
 
     if (!isPublic && !requireAuth(request, env.DEMO_API_KEY)) {
@@ -70,8 +85,19 @@ export default {
 
       if (method === "GET" && path === "/capabilities") {
         response = await handleGetCapabilities(env, logger);
+
       } else if (method === "GET" && path === "/health") {
         response = jsonResponse({ status: "ok", provider: "adcp-signals-adaptor" });
+
+      // ── LinkedIn OAuth (public — no auth required) ───────────────────────────
+      } else if (method === "GET" && path === "/auth/linkedin/init") {
+        response = handleLinkedInAuthInit(env);
+
+      } else if (method === "GET" && path === "/auth/linkedin/callback") {
+        response = await handleLinkedInAuthCallback(request, env);
+
+      } else if (method === "GET" && path === "/auth/linkedin/status") {
+        response = await handleLinkedInAuthStatus(env);
 
       // ── UCP Concept Registry ─────────────────────────────────────────────────
       } else if (path.startsWith("/ucp/concepts")) {
@@ -83,8 +109,13 @@ export default {
         const catalog = await getAllSignalsForCatalog(getDb(env));
         response = await handleNLQuery(body, catalog, env);
 
+      // ── Platform Activation (auth required) ──────────────────────────────────
+      } else if (method === "POST" && path.startsWith("/signals/activate/")) {
+        const platform = path.replace("/signals/activate/", "").split("/")[0];
+        response = await handleActivateDispatch(request, env as any, platform);
+
+      // ── MCP ───────────────────────────────────────────────────────────────────
       } else if (path === "/mcp" || path.startsWith("/mcp")) {
-        // MCP Streamable HTTP endpoint - handles OPTIONS inline
         if (method === "OPTIONS") {
           response = new Response(null, {
             status: 204,
@@ -97,15 +128,21 @@ export default {
         } else {
           response = await handleMcpRequest(request, env, logger);
         }
+
       } else if (
         (method === "POST" || method === "GET") &&
         path === "/signals/search"
       ) {
         response = await handleSearchSignals(request, env, logger);
+
       } else if (method === "POST" && path === "/signals/activate") {
         response = await handleActivateSignal(request, env, logger);
-      } else if (method === "POST" && path === "/seed" && env.ENVIRONMENT === "development") {
-        // Development-only seed force endpoint
+
+      } else if (
+        method === "POST" &&
+        path === "/seed" &&
+        env.ENVIRONMENT === "development"
+      ) {
         const result = await runSeedPipeline(
           getDb(env),
           { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv },
@@ -113,12 +150,15 @@ export default {
           true
         );
         response = jsonResponse({ message: "Seed complete", ...result });
+
       } else if (method === "GET" && path.match(/^\/signals\/[^/]+\/embedding$/)) {
         const signalId = path.split("/")[2];
         response = await handleGetEmbedding(signalId, env, logger);
+
       } else if (method === "GET" && path.startsWith("/operations/")) {
         const opId = path.replace("/operations/", "");
         response = await handleGetOperation(opId, env, logger);
+
       } else {
         response = errorResponse(
           "NOT_FOUND",

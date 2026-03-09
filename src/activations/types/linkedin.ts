@@ -22,9 +22,9 @@ export interface LinkedInEnv {
 // ─── Targeting ────────────────────────────────────────────────────────────────
 
 export interface LinkedInTargetingCriteria {
-  include: {
-    and: Array<{ or: Record<string, string[]> }>;
-  };
+  include:
+    | { and: Array<{ or: Record<string, string[]> }> }  // multiple dimensions
+    | { or: Record<string, string[]> };                  // single dimension (flat)
   exclude?: {
     or: Record<string, string[]>;
   };

@@ -52,6 +52,7 @@ export default {
       "/auth/linkedin/init",
       "/auth/linkedin/callback",
       "/auth/linkedin/status",
+      '/auth/linkedin/token-debug',
     ];
     const isPublic = publicPaths.some((p) => path === p || path.startsWith(p + "/"));
 

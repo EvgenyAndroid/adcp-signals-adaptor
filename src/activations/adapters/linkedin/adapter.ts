@@ -119,7 +119,7 @@ export class LinkedInAdapter {
       // Required fields in LinkedIn REST API v202601
       runSchedule: { start: todayMs },
       offsiteDeliveryEnabled: false,
-      politicalIntent: false,
+      politicalIntent: "NONE",
     };
 
     try {

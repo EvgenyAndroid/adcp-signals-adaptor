@@ -57,7 +57,7 @@ export interface LinkedInCampaignPayload {
   // Required in LinkedIn REST API v202601+
   runSchedule: { start: number; end?: number };  // epoch ms
   offsiteDeliveryEnabled: boolean;
-  politicalIntent: boolean;
+  politicalIntent: "NONE" | "POLITICAL";
 }
 
 export interface LinkedInCampaignResponse {

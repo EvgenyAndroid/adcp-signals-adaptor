@@ -1,6 +1,6 @@
 # Architecture
 
-AdCP Signals Adaptor — Cloudflare Worker implementing AdCP 2.6 Signals Activation Protocol with UCP v5.1/v5.2-draft extensions.
+AdCP Signals Adaptor — Cloudflare Worker implementing AdCP 2.6 Signals Activation Protocol with UCP v0.1/v0.2-draft extensions.
 
 ---
 
@@ -520,20 +520,20 @@ Note: `description_similarity` (v1.0) is retired. All semantic matching is now `
 
 | Contribution | Location |
 |---|---|
-| NLAQ — AudienceQueryAST normative schema | `ucp-v5.2-nlaq-spec.md` §3.1 |
-| NLAQ — Three-pass hybrid leaf resolution | `ucp-v5.2-nlaq-spec.md` §3.2 |
-| NLAQ — Embedding similarity threshold (MIN_EMBEDDING_SCORE=0.45) | `ucp-v5.2-nlaq-spec.md` §3.2.2 |
-| NLAQ — TITLE_GENRE_MAP normative mechanism | `ucp-v5.2-nlaq-spec.md` §3.2.2 |
-| NLAQ — ARCHETYPE_TABLE + double-weight prohibition | `ucp-v5.2-nlaq-spec.md` §3.2.3 |
-| NLAQ — Unresolved dimension penalty model | `ucp-v5.2-nlaq-spec.md` §3.2.4 |
-| NLAQ — Compositional AND/OR/NOT scoring formulas | `ucp-v5.2-nlaq-spec.md` §3.3 |
-| NLAQ — Confidence tier definitions | `ucp-v5.2-nlaq-spec.md` §3.5 |
-| NLAQ — Age band lower-bound parsing rule | `ucp-v5.2-nlaq-spec.md` §3.1 R7 |
-| Concept-Level VAC — registry schema | `ucp-v5.2-nlaq-spec.md` §4 |
-| Concept-Level VAC — cross-taxonomy member_nodes | `ucp-v5.2-nlaq-spec.md` §4.2 |
-| Temporal behavioral signals — daypart + hours_utc | `ucp-v5.2-nlaq-spec.md` §4.4 |
-| VAC space_id + phase declaration in MCP initialize | `ucp-v5.2-nlaq-spec.md` §5.2 |
-| MCP tool schemas for NLAQ + concept registry | `ucp-v5.2-nlaq-spec.md` §5.1 |
+| NLAQ — AudienceQueryAST normative schema | `ucp-v0.2-nlaq-spec.md` §3.1 |
+| NLAQ — Three-pass hybrid leaf resolution | `ucp-v0.2-nlaq-spec.md` §3.2 |
+| NLAQ — Embedding similarity threshold (MIN_EMBEDDING_SCORE=0.45) | `ucp-v0.2-nlaq-spec.md` §3.2.2 |
+| NLAQ — TITLE_GENRE_MAP normative mechanism | `ucp-v0.2-nlaq-spec.md` §3.2.2 |
+| NLAQ — ARCHETYPE_TABLE + double-weight prohibition | `ucp-v0.2-nlaq-spec.md` §3.2.3 |
+| NLAQ — Unresolved dimension penalty model | `ucp-v0.2-nlaq-spec.md` §3.2.4 |
+| NLAQ — Compositional AND/OR/NOT scoring formulas | `ucp-v0.2-nlaq-spec.md` §3.3 |
+| NLAQ — Confidence tier definitions | `ucp-v0.2-nlaq-spec.md` §3.5 |
+| NLAQ — Age band lower-bound parsing rule | `ucp-v0.2-nlaq-spec.md` §3.1 R7 |
+| Concept-Level VAC — registry schema | `ucp-v0.2-nlaq-spec.md` §4 |
+| Concept-Level VAC — cross-taxonomy member_nodes | `ucp-v0.2-nlaq-spec.md` §4.2 |
+| Temporal behavioral signals — daypart + hours_utc | `ucp-v0.2-nlaq-spec.md` §4.4 |
+| VAC space_id + phase declaration in MCP initialize | `ucp-v0.2-nlaq-spec.md` §5.2 |
+| MCP tool schemas for NLAQ + concept registry | `ucp-v0.2-nlaq-spec.md` §5.1 |
 | DTS 1.2 gaps — "Derived" methodology undocumented | IAB DTS issue log |
 | DTS 1.2 gaps — temporal_scope field missing | IAB DTS issue log |
 | DTS 1.2 gaps — "Public Record: Census" not in data_sources enum | IAB DTS issue log |

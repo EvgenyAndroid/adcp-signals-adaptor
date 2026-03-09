@@ -2,7 +2,7 @@
 // UCP (User Context Protocol) TypeScript types.
 // Defines the HybridPayload — the bridge between AdCP signal objects and
 // UCP embedding exchange. Embedded in AdCP responses as x_ucp extension field.
-// Spec reference: IABTechLab/agentic-audiences v5.1
+// Spec reference: IABTechLab/agentic-audiences v0.1
 
 // ── VAC (Vector Alignment Contract) ──────────────────────────────────────────
 

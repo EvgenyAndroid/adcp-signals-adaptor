@@ -1,6 +1,6 @@
 # AdCP Signals Adaptor
 
-A production-structured, AdCP 2.6-compliant Signals Provider built on Cloudflare Workers. Implements the full AdCP Signals Activation Protocol with IAB Data Transparency Standard v1.2 labeling, a UCP (User Context Protocol) embedding bridge, real OpenAI embedding vectors, a concept-level cross-taxonomy registry, and natural language audience query — the first reference implementation combining the AdCP-UCP Bridge Profile with all four UCP v5.2-draft extensions.
+A production-structured, AdCP 2.6-compliant Signals Provider built on Cloudflare Workers. Implements the full AdCP Signals Activation Protocol with IAB Data Transparency Standard v1.2 labeling, a UCP (User Context Protocol) embedding bridge, real OpenAI embedding vectors, a concept-level cross-taxonomy registry, and natural language audience query — the first reference implementation combining the AdCP-UCP Bridge Profile with all four UCP v0.2-draft extensions.
 
 **Live:** `https://adcp-signals-adaptor.evgeny-193.workers.dev`  
 **MCP:** `https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp`  
@@ -33,7 +33,7 @@ Passes the AdCP conformance test suite: health, discovery, capability_discovery,
 |---|---|
 | AdCP Signals Activation Protocol v2.6 | Full — all 4 core tools + `get_similar_signals` + NL query + concept registry extensions |
 | IAB Data Transparency Standard v1.2 | Full — `x_dts` on every signal, all field types, onboarder section |
-| UCP (User Context Protocol) v5.1/v5.2-draft | `x_ucp` on every signal, real VAC embeddings, concept registry, NL query spec |
+| UCP (User Context Protocol) v0.1/v0.2-draft | `x_ucp` on every signal, real VAC embeddings, concept registry, NL query spec |
 
 ---
 
@@ -226,7 +226,7 @@ Claude API → `AudienceQueryAST` → `QueryResolver` (Pass 1: exact_rule → Pa
 | "streaming heavy watchers cord cutters" | 0.568 | `medium` |
 | "soccer moms 35+ Nashville no coffee Desperate H." | 0.051–0.206 | `narrow` |
 
-**Spec:** Implements UCP v5.2-draft Appendix D (NLAQ).
+**Spec:** Implements UCP v0.2-draft Appendix D (NLAQ).
 
 ---
 
@@ -239,7 +239,7 @@ GET /ucp/concepts?category=archetype
 POST /ucp/concepts/seed    (auth required)
 ```
 
-19 concepts, 7 categories, 5-vendor cross-taxonomy member_nodes (IAB, LiveRamp, TradeDesk, Experian, Samba). **Spec:** UCP v5.2-draft §4 (Concept-Level VAC).
+19 concepts, 7 categories, 5-vendor cross-taxonomy member_nodes (IAB, LiveRamp, TradeDesk, Experian, Samba). **Spec:** UCP v0.2-draft §4 (Concept-Level VAC).
 
 ---
 
@@ -415,10 +415,10 @@ bash test-nlaq-live.sh                                 # live smoke tests
 
 1. **`x_dts` extension field** — PR to `adcontextprotocol/adcp`: add `x_dts` to `static/schemas/signals/signal.json`
 2. **`x_ucp` extension field** — PR to `adcontextprotocol/adcp`: add `x_ucp` alongside `x_dts`
-3. **AdCP-UCP Bridge Profile** — Appendix to UCP v5.2: normative DTS→UCP field mappings, `legacy_fallback.signal_agent_segment_id` pattern, taxonomy node embedding endpoint spec
-4. **NLAQ (Natural Language Audience Query)** — UCP v5.2 Appendix D: `AudienceQueryAST`, `POST /signals/query`, hybrid three-pass resolver, MIN_EMBEDDING_SCORE threshold, Concept-Level VAC, temporal behavioral signal definition
+3. **AdCP-UCP Bridge Profile** — Appendix to UCP v0.2: normative DTS→UCP field mappings, `legacy_fallback.signal_agent_segment_id` pattern, taxonomy node embedding endpoint spec
+4. **NLAQ (Natural Language Audience Query)** — UCP v0.2 Appendix D: `AudienceQueryAST`, `POST /signals/query`, hybrid three-pass resolver, MIN_EMBEDDING_SCORE threshold, Concept-Level VAC, temporal behavioral signal definition
 
-Full spec draft: `ucp-v5.2-nlaq-spec.md`
+Full spec draft: `ucp-v0.2-nlaq-spec.md`
 
 ---
 

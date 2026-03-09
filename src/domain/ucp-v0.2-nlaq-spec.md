@@ -20,7 +20,7 @@
 
 ## Abstract
 
-UCP v5.1 defines signal discovery via structured queries (category, taxonomy ID, keyword filter).
+UCP v0.1 defines signal discovery via structured queries (category, taxonomy ID, keyword filter).
 This appendix specifies **Natural Language Audience Query (NLAQ)**: a mechanism by which a buyer
 agent may express a target audience as free-form text, and a signal provider MUST return ranked
 matching signals with compositional audience estimates.
@@ -441,7 +441,7 @@ Reference implementation results with `EMBEDDING_ENGINE=llm`, `openai-te3-small-
 
 ### 4.1 Motivation
 
-The model-level Vector Alignment Contract (UCP v5.1 §6) aligns embedding spaces between agents.
+The model-level Vector Alignment Contract (UCP v0.1 §6) aligns embedding spaces between agents.
 Taxonomy fragmentation requires a parallel alignment at the concept level: a shared registry that
 maps semantically equivalent nodes from different vendor taxonomies to a canonical concept with a
 stable ID and canonical embedding.
@@ -613,7 +613,7 @@ Pending IAB Tech Lab reference model publication.
 
 ## 6. Spec Gaps Closed by This Appendix
 
-| Gap | Status in v5.1 | Resolution |
+| Gap | Status in v0.1 | Resolution |
 |---|---|---|
 | Taxonomy-anchored fallback | Undefined | §3.2 three-pass leaf resolution |
 | Archetype resolution | Undefined | §3.2.3 ARCHETYPE_TABLE (4 archetypes), double-weight prohibition |

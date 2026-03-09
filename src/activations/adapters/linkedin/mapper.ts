@@ -221,6 +221,22 @@ export function mapDimensionsToLinkedIn(dimensions: SignalDimension[]): MapResul
     }
   }
 
+  // ── Development Tier limitation ─────────────────────────────────────────────
+  // LinkedIn Development Tier accounts auto-inject interfaceLocales as a third
+  // AND clause when 2+ facets are present, then reject it with INVALID_VALUE_FOR_FIELD.
+  // Workaround: keep only the location facet in targetingCriteria.
+  // All other dimensions (education, seniority, age) are recorded in dimension_results
+  // for transparency but not sent to LinkedIn until Standard Tier is approved.
+  // To enable multi-facet targeting: upgrade to Standard Tier via LinkedIn developer portal.
+  const DEV_TIER_LOCATION_ONLY = true;
+
+  if (DEV_TIER_LOCATION_ONLY) {
+    // Keep only location facets, drop everything else from facetMap
+    for (const key of Array.from(facetMap.keys())) {
+      if (key !== FACET.LOCATION) facetMap.delete(key);
+    }
+  }
+
   // LinkedIn REQUIRES at least one location in every targeting criteria.
   // Inject US as default if no geo dimension was mapped.
   if (!hasLocation) {

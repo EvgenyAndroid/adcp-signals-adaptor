@@ -54,6 +54,10 @@ export interface LinkedInCampaignPayload {
   dailyBudget?: { amount: string; currencyCode: string };
   targetingCriteria: LinkedInTargetingCriteria;
   locale: { country: string; language: string };
+  // Required in LinkedIn REST API v202601+
+  runSchedule: { start: number; end?: number };  // epoch ms
+  offsiteDeliveryEnabled: boolean;
+  politicalIntent: boolean;
 }
 
 export interface LinkedInCampaignResponse {

@@ -92,8 +92,12 @@ export class LinkedInAdapter {
     const campaignName = request.campaign_name
       ?? `AdCP — ${request.signal_agent_segment_id ?? 'Custom'} — ${new Date().toISOString().slice(0,10)}`;
 
-    const objective: LinkedInObjectiveType = request.objective ?? 'WEBSITE_VISITS';
+    const objective: LinkedInObjectiveType = request.objective ?? 'BRAND_AWARENESS';
     const accountUrn = `urn:li:sponsoredAccount:${env.LINKEDIN_AD_ACCOUNT_ID}`;
+
+    // runSchedule.start is required — use today as start, no end date for DRAFT
+    const todayMs = Date.now();
+    const startDate = new Date(todayMs).toISOString().slice(0, 10).replace(/-/g, '/');
 
     const payload: LinkedInCampaignPayload = {
       account: accountUrn,
@@ -112,6 +116,10 @@ export class LinkedInAdapter {
       },
       targetingCriteria: criteria,
       locale: { country: 'US', language: 'en' },
+      // Required fields in LinkedIn REST API v202601
+      runSchedule: { start: todayMs },
+      offsiteDeliveryEnabled: false,
+      politicalIntent: false,
     };
 
     try {

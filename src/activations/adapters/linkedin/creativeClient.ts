@@ -1,22 +1,23 @@
 /**
  * src/activations/adapters/linkedin/creativeClient.ts
  *
- * LinkedIn Ad Creative pipeline:
- *   Step 1: POST /rest/images?action=initializeUpload  → get uploadUrl + imageUrn
+ * LinkedIn Ad Creative pipeline — v202503 schema.
+ *
+ * LinkedIn Marketing API v202503 uses a new creative schema:
+ *   POST /rest/adCreatives  with content.contentEntities[] structure
+ *
+ * Pipeline:
+ *   Step 1: POST /rest/images?action=initializeUpload  → uploadUrl + imageUrn
  *   Step 2: PUT {uploadUrl} ← raw image bytes
- *   Step 3: POST /rest/adCreatives → create sponsored content creative
- *   Step 4: POST /rest/adCreativeAdAssociations → attach creative to campaign
+ *   Step 3: POST /rest/adCreatives → creativeUrn
  *
  * Image requirements:
- *   - Format: JPEG or PNG
- *   - Min size: 640×360 for Sponsored Content
- *   - Max file size: 5MB
- *   - Recommended: 1200×628 (1.91:1) or 1200×1000 (near-square)
+ *   Format: JPEG or PNG
+ *   Min: 640×360. Max: 5MB.
+ *   Recommended: 1200×628 (1.91:1) or 1200×1000 (near-square)
  *
- * Required: organizationUrn (LinkedIn Company Page URN)
- *   Find yours at: https://www.linkedin.com/company/{slug}/admin/
- *   URL shows: /company/12345678/ — that number is your org ID
- *   URN format: urn:li:organization:12345678
+ * organizationUrn: urn:li:organization:{id}
+ *   Find at: https://www.linkedin.com/company/{slug}/admin/
  *
  * API reference:
  *   https://learn.microsoft.com/en-us/linkedin/marketing/integrations/ads/creative-management
@@ -41,16 +42,6 @@ export interface LinkedInImageUploadResult {
   uploadUrl: string;
 }
 
-export interface LinkedInCreativeRequest {
-  campaignUrn: string;          // urn:li:sponsoredCampaign:{id}
-  organizationUrn: string;      // urn:li:organization:{id}
-  imageUrn: string;             // from uploadImage()
-  headline: string;             // max 70 chars
-  introductoryText: string;     // max 150 chars — shown above the image
-  destinationUrl: string;       // landing page URL
-  callToAction?: LinkedInCTA;
-}
-
 export type LinkedInCTA =
   | 'LEARN_MORE'
   | 'SIGN_UP'
@@ -62,29 +53,32 @@ export type LinkedInCTA =
   | 'CONTACT_US'
   | 'SEE_MORE';
 
-export interface LinkedInCreativeResult {
-  creativeUrn: string;
-  associationUrn: string;
-  status: 'ACTIVE' | 'PAUSED' | 'DRAFT';
+export interface LinkedInCreativeRequest {
+  campaignUrn: string;
+  organizationUrn: string;
+  imageUrn: string;
+  headline: string;
+  introductoryText: string;
+  destinationUrl: string;
+  callToAction?: LinkedInCTA;
+}
+
+export interface FullCreativeResult {
+  success: boolean;
+  imageUrn?: string;
+  creativeUrn?: string;
+  error?: string;
 }
 
 // ─── Step 1+2: Upload image ───────────────────────────────────────────────────
 
-/**
- * uploadImage — initializes upload and PUTs the raw bytes to LinkedIn's upload URL.
- * Returns the imageUrn to use when creating the creative.
- *
- * @param imageBytes  Raw image bytes (JPEG or PNG)
- * @param adAccountId LinkedIn ad account ID (numeric string)
- * @param accessToken Valid OAuth token
- */
 export async function uploadImage(
   imageBytes: ArrayBuffer,
   adAccountId: string,
   accessToken: string,
 ): Promise<LinkedInImageUploadResult> {
 
-  // Step 1: Initialize upload — get uploadUrl + imageUrn
+  // Initialize upload
   const initRes = await fetch(`${BASE}/images?action=initializeUpload`, {
     method: 'POST',
     headers: DEFAULT_HEADERS(accessToken),
@@ -106,7 +100,7 @@ export async function uploadImage(
 
   const { uploadUrl, image: imageUrn } = initData.value;
 
-  // Step 2: PUT raw bytes to the pre-signed upload URL
+  // PUT raw bytes to pre-signed URL
   const uploadRes = await fetch(uploadUrl, {
     method: 'PUT',
     headers: {
@@ -124,49 +118,47 @@ export async function uploadImage(
   return { imageUrn, uploadUrl };
 }
 
-// ─── Step 3: Create ad creative ───────────────────────────────────────────────
+// ─── Step 3: Create ad creative (v202503 schema) ──────────────────────────────
 
-/**
- * createAdCreative — creates a Sponsored Content Single Image creative.
- * Returns the creativeUrn to use in the campaign association.
- */
 export async function createAdCreative(
   request: LinkedInCreativeRequest,
   accessToken: string,
 ): Promise<string> {
 
+  // v202503 creative schema — uses content.contentEntities[] structure
   const body = {
-    account: `urn:li:sponsoredAccount:${request.campaignUrn.split(':').pop()}`,
+    account: request.campaignUrn.replace('sponsoredCampaign', 'sponsoredAccount').replace(/:\d+$/, `:${request.campaignUrn.split(':').pop()}`),
     campaign: request.campaignUrn,
-    type: 'SPONSORED_STATUS_UPDATE',
     status: 'ACTIVE',
-    variables: {
-      data: {
-        'com.linkedin.ads.SponsoredUpdateCreativeVariables': {
-          directSponsoredContent: 1,
-          text: request.introductoryText,
-          subject: request.headline,
-          landingPage: {
-            url: request.destinationUrl,
-          },
-          media: {
-            id: request.imageUrn,
-            title: {
-              text: request.headline,
-            },
-            description: {
-              text: request.introductoryText,
-            },
-            landingPage: {
-              landingPageUrls: [{ url: request.destinationUrl }],
-            },
-          },
-          callToAction: request.callToAction ?? 'LEARN_MORE',
-          shareMediaCategory: 'IMAGE',
-          author: request.organizationUrn,
+    type: 'SPONSORED_UPDATE_V2',
+    content: {
+      contentEntities: [
+        {
+          entityLocation: request.destinationUrl,
+          thumbnails: [
+            { resolvedUrl: request.imageUrn },
+          ],
+        },
+      ],
+      title: request.headline,
+      description: request.introductoryText,
+      landingPage: {
+        url: request.destinationUrl,
+      },
+      callToAction: {
+        callToActionType: request.callToAction ?? 'LEARN_MORE',
+        landingPage: {
+          url: request.destinationUrl,
         },
       },
+      shareMediaCategory: 'IMAGE',
+      media: {
+        id: request.imageUrn,
+        title: { text: request.headline },
+        description: { text: request.introductoryText },
+      },
     },
+    author: request.organizationUrn,
   };
 
   const res = await fetch(`${BASE}/adCreatives`, {
@@ -175,38 +167,28 @@ export async function createAdCreative(
     body: JSON.stringify(body),
   });
 
+  // Capture full error for debugging
+  const resText = await res.text();
+
   if (!res.ok) {
-    const text = await res.text();
-    throw new LinkedInApiError(res.status, text, 'POST /rest/adCreatives');
+    throw new LinkedInApiError(res.status, resText, 'POST /rest/adCreatives');
   }
 
   const idHeader = res.headers.get('x-restli-id') ?? res.headers.get('X-RestLi-Id');
-  const json = await res.json() as { id?: string };
-  const creativeId = idHeader ?? json.id ?? '';
+  let creativeId = idHeader ?? '';
+
+  if (!creativeId && resText && resText.trim().length > 0) {
+    try {
+      const json = JSON.parse(resText) as { id?: string };
+      creativeId = json.id ?? '';
+    } catch { /* empty body */ }
+  }
 
   return `urn:li:sponsoredCreative:${creativeId}`;
 }
 
-// ─── Full pipeline: upload + create + associate ───────────────────────────────
+// ─── Full pipeline ────────────────────────────────────────────────────────────
 
-export interface FullCreativeResult {
-  success: boolean;
-  imageUrn?: string;
-  creativeUrn?: string;
-  error?: string;
-}
-
-/**
- * createFullCreative — runs the complete pipeline:
- *   1. Upload image bytes → imageUrn
- *   2. Create ad creative with imageUrn → creativeUrn
- *
- * @param imageBytes     Raw JPEG/PNG bytes of the banner
- * @param adAccountId    LinkedIn ad account ID
- * @param campaignUrn    URN of the campaign to attach the creative to
- * @param organizationUrn LinkedIn company page URN
- * @param accessToken    Valid OAuth token
- */
 export async function createFullCreative(
   imageBytes: ArrayBuffer,
   adAccountId: string,
@@ -221,19 +203,16 @@ export async function createFullCreative(
   } = {},
 ): Promise<FullCreativeResult> {
   try {
-    // Upload image
     const { imageUrn } = await uploadImage(imageBytes, adAccountId, accessToken);
 
-    // Create creative
     const creativeUrn = await createAdCreative({
       campaignUrn,
       organizationUrn,
       imageUrn,
-      headline: options.headline ?? 'Agentic Audience Discovery',
-      introductoryText: options.introductoryText
-        ?? 'Three IAB standards. One MCP endpoint. Plain English targeting — open source.',
-      destinationUrl: options.destinationUrl ?? 'https://agenticadvertising.org/members/nofluff',
-      callToAction: options.callToAction ?? 'LEARN_MORE',
+      headline:         options.headline         ?? 'Agentic Audience Discovery',
+      introductoryText: options.introductoryText  ?? 'Three IAB standards. One MCP endpoint. Plain English targeting — open source.',
+      destinationUrl:   options.destinationUrl    ?? 'https://agenticadvertising.org/members/nofluff',
+      callToAction:     options.callToAction      ?? 'LEARN_MORE',
     }, accessToken);
 
     return { success: true, imageUrn, creativeUrn };

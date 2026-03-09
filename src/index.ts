@@ -22,9 +22,9 @@ import {
   handleLinkedInAuthStatus,
 } from "./activations/auth/linkedin";
 import { handleActivateDispatch } from "./activations/routes/activate";
+import { ADCP_BANNER_B64 } from "./bannerData";
 
 // Seed data imported as text modules via wrangler assets
-// These will be bundled at deploy time
 import { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv } from "./seedData";
 
 export default {
@@ -43,8 +43,9 @@ export default {
       });
     }
 
-    // Auth check — MCP uses its own auth header check, public paths skip auth
+    // Public paths — no auth required
     // LinkedIn auth routes must be public so OAuth flow works without a token
+    // Banner must be public so LinkedIn's upload server can fetch it
     const publicPaths = [
       "/capabilities",
       "/health",
@@ -53,6 +54,7 @@ export default {
       "/auth/linkedin/init",
       "/auth/linkedin/callback",
       "/auth/linkedin/status",
+      "/banner/300x250",
     ];
     const isPublic = publicPaths.some((p) => path === p || path.startsWith(p + "/"));
 
@@ -69,12 +71,7 @@ export default {
       ctx.waitUntil(
         runSeedPipeline(
           getDb(env),
-          {
-            taxonomyTsv,
-            demographicsCsv,
-            interestsCsv,
-            geoCsv,
-          },
+          { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv },
           logger
         ).catch((err) => logger.error("auto_seed_failed", { error: String(err) }))
       );
@@ -83,11 +80,22 @@ export default {
 
       // ── Route matching ───────────────────────────────────────────────────────
 
-      if (method === "GET" && path === "/capabilities") {
+      if (method === "GET" && path === "/health") {
+        response = jsonResponse({ status: "ok", provider: "adcp-signals-adaptor" });
+
+      } else if (method === "GET" && path === "/capabilities") {
         response = await handleGetCapabilities(env, logger);
 
-      } else if (method === "GET" && path === "/health") {
-        response = jsonResponse({ status: "ok", provider: "adcp-signals-adaptor" });
+      // ── AdCp banner — served publicly for LinkedIn creative upload ────────────
+      } else if (method === "GET" && path === "/banner/300x250") {
+        const bytes = Uint8Array.from(atob(ADCP_BANNER_B64), (c) => c.charCodeAt(0));
+        response = new Response(bytes, {
+          headers: {
+            "Content-Type": "image/jpeg",
+            "Cache-Control": "public, max-age=86400",
+            "Content-Length": String(bytes.length),
+          },
+        });
 
       // ── LinkedIn OAuth (public — no auth required) ───────────────────────────
       } else if (method === "GET" && path === "/auth/linkedin/init") {
@@ -129,15 +137,18 @@ export default {
           response = await handleMcpRequest(request, env, logger);
         }
 
+      // ── Signal search ────────────────────────────────────────────────────────
       } else if (
         (method === "POST" || method === "GET") &&
         path === "/signals/search"
       ) {
         response = await handleSearchSignals(request, env, logger);
 
+      // ── Signal activate (legacy AdCP flow) ───────────────────────────────────
       } else if (method === "POST" && path === "/signals/activate") {
         response = await handleActivateSignal(request, env, logger);
 
+      // ── Dev seed force endpoint ───────────────────────────────────────────────
       } else if (
         method === "POST" &&
         path === "/seed" &&
@@ -151,10 +162,12 @@ export default {
         );
         response = jsonResponse({ message: "Seed complete", ...result });
 
+      // ── Signal embedding ─────────────────────────────────────────────────────
       } else if (method === "GET" && path.match(/^\/signals\/[^/]+\/embedding$/)) {
         const signalId = path.split("/")[2];
         response = await handleGetEmbedding(signalId, env, logger);
 
+      // ── Operations polling ───────────────────────────────────────────────────
       } else if (method === "GET" && path.startsWith("/operations/")) {
         const opId = path.replace("/operations/", "");
         response = await handleGetOperation(opId, env, logger);

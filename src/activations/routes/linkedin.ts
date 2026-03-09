@@ -3,45 +3,55 @@
  *
  * Route handler for POST /signals/activate/linkedin
  *
- * ── Usage ──────────────────────────────────────────────────────────────────────
+ * ── Modes ──────────────────────────────────────────────────────────────────────
  *
- * 1. Dry run — preview targeting without creating a campaign:
+ * 1. Dry run — preview targeting without any API calls:
+ *   { "signal_agent_segment_id": "sig_graduate_educated_adults", "dry_run": true }
  *
- *   curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/activate/linkedin \
- *     -H "Authorization: Bearer demo-key-adcp-signals-v1" \
- *     -H "Content-Type: application/json" \
- *     -d "{\"signal_agent_segment_id\": \"sig_graduate_educated_adults\", \"dry_run\": true}"
+ * 2. Campaign only — creates DRAFT campaign, no creative:
+ *   { "signal_agent_segment_id": "sig_graduate_educated_adults", "dry_run": false }
  *
- * 2. Activate a single catalog signal as a LinkedIn DRAFT campaign:
+ * 3. Campaign + creative — creates DRAFT campaign AND attaches the AdCp banner:
+ *   {
+ *     "signal_agent_segment_id": "sig_graduate_educated_adults",
+ *     "dry_run": false,
+ *     "with_creative": true,
+ *     "organization_urn": "urn:li:organization:YOUR_COMPANY_PAGE_ID",
+ *     "creative": {
+ *       "headline": "Agentic Audience Discovery",
+ *       "introductory_text": "Three IAB standards. One MCP endpoint.",
+ *       "destination_url": "https://agenticadvertising.org/members/nofluff",
+ *       "call_to_action": "LEARN_MORE"
+ *     }
+ *   }
  *
- *   curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/activate/linkedin \
- *     -H "Authorization: Bearer demo-key-adcp-signals-v1" \
- *     -H "Content-Type: application/json" \
- *     -d "{\"signal_agent_segment_id\": \"sig_age_35_44\", \"dry_run\": false}"
- *
- * 3. Activate from NLAQ resolved dimensions:
- *
- *   curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/activate/linkedin \
- *     -H "Authorization: Bearer demo-key-adcp-signals-v1" \
- *     -H "Content-Type: application/json" \
- *     -d "{
- *       \"dimensions\": [
- *         {\"dimension\": \"age_band\",  \"value\": \"35-44\"},
- *         {\"dimension\": \"geo\",       \"value\": \"Nashville\"},
- *         {\"dimension\": \"education\", \"value\": \"graduate\"}
- *       ],
- *       \"campaign_name\": \"AdCP — Nashville Graduates — Q2 2026\",
- *       \"daily_budget_usd\": 50,
- *       \"bid_usd\": 10,
- *       \"dry_run\": false
- *     }"
+ * ── Finding your organization_urn ─────────────────────────────────────────────
+ *   Go to https://www.linkedin.com/company/agenticadvertising/admin/
+ *   The number in the URL is your org ID.
+ *   URN format: urn:li:organization:12345678
  */
 
 import { LinkedInAdapter } from '../adapters/linkedin';
+import { createFullCreative } from '../adapters/linkedin/creativeClient';
 import type { LinkedInEnv, LinkedInActivationRequest } from '../types/linkedin';
+import type { LinkedInAuthEnv } from '../auth/linkedin';
+import { getValidAccessToken } from '../auth/linkedin';
 
-export interface LinkedInRouteEnv extends LinkedInEnv {
+export interface LinkedInRouteEnv extends LinkedInEnv, LinkedInAuthEnv {
   DEMO_API_KEY: string;
+}
+
+export interface LinkedInRouteRequest extends LinkedInActivationRequest {
+  dry_run?: boolean;
+  with_creative?: boolean;
+  organization_urn?: string;
+  creative?: {
+    headline?: string;
+    introductory_text?: string;
+    destination_url?: string;
+    call_to_action?: string;
+    image_url?: string;
+  };
 }
 
 export async function handleLinkedInActivate(
@@ -51,7 +61,7 @@ export async function handleLinkedInActivate(
   const start = Date.now();
 
   try {
-    const body = await request.json() as LinkedInActivationRequest & { dry_run?: boolean };
+    const body = await request.json() as LinkedInRouteRequest;
 
     if (!body.signal_agent_segment_id && (!body.dimensions || body.dimensions.length === 0)) {
       return jsonResponse({
@@ -63,15 +73,74 @@ export async function handleLinkedInActivate(
 
     const adapter = new LinkedInAdapter();
 
-    const result = body.dry_run
-      ? adapter.dryRun(body)
-      : await adapter.activate(body, env);
+    // ── Dry run ────────────────────────────────────────────────────────────────
+    if (body.dry_run === true) {
+      const result = adapter.dryRun(body);
+      return jsonResponse({ success: result.success, result, duration_ms: Date.now() - start });
+    }
 
-    return jsonResponse({
-      success: result.success,
-      result,
-      duration_ms: Date.now() - start,
-    }, result.success ? 200 : 400);
+    // ── Live activation ────────────────────────────────────────────────────────
+    const result = await adapter.activate(body, env as any);
+
+    if (!result.success) {
+      return jsonResponse({ success: false, result, duration_ms: Date.now() - start }, 400);
+    }
+
+    // ── Optional: attach creative ──────────────────────────────────────────────
+    if (body.with_creative && result.campaign_urn) {
+      if (!body.organization_urn) {
+        result.warnings = result.warnings ?? [];
+        result.warnings.push(
+          'Creative skipped — organization_urn required. ' +
+          'Find yours at linkedin.com/company/YOUR_SLUG/admin/ then pass ' +
+          '"organization_urn": "urn:li:organization:12345678"',
+        );
+      } else {
+        try {
+          const accessToken = await getValidAccessToken(env);
+
+          // Fetch banner image — default to the uploaded AdCp 300x250 banner served from Worker
+          // or any public URL passed in creative.image_url
+          const imageUrl = body.creative?.image_url
+            ?? 'https://adcp-signals-adaptor.evgeny-193.workers.dev/banner/300x250';
+
+          const imageRes = await fetch(imageUrl);
+          if (!imageRes.ok) {
+            throw new Error(`Banner fetch failed: ${imageUrl} → ${imageRes.status}`);
+          }
+          const imageBytes = await imageRes.arrayBuffer();
+
+          const creativeResult = await createFullCreative(
+            imageBytes,
+            env.LINKEDIN_AD_ACCOUNT_ID,
+            result.campaign_urn,
+            body.organization_urn,
+            accessToken,
+            {
+              headline:         body.creative?.headline         ?? 'Agentic Audience Discovery',
+              introductoryText: body.creative?.introductory_text ?? 'Three IAB standards. One MCP endpoint. Plain English targeting — open source.',
+              destinationUrl:   body.creative?.destination_url   ?? 'https://agenticadvertising.org/members/nofluff',
+              callToAction:     (body.creative?.call_to_action as any) ?? 'LEARN_MORE',
+            },
+          );
+
+          result.warnings = result.warnings ?? [];
+          if (creativeResult.success) {
+            (result as any).creative_urn = creativeResult.creativeUrn;
+            (result as any).image_urn    = creativeResult.imageUrn;
+            result.warnings.push(`✓ Creative attached: ${creativeResult.creativeUrn}`);
+          } else {
+            result.warnings.push(`Creative failed (campaign still created): ${creativeResult.error}`);
+          }
+
+        } catch (err) {
+          result.warnings = result.warnings ?? [];
+          result.warnings.push(`Creative error: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+    }
+
+    return jsonResponse({ success: result.success, result, duration_ms: Date.now() - start });
 
   } catch (err) {
     return jsonResponse({

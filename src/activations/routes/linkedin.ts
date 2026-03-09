@@ -16,7 +16,7 @@
  *     "signal_agent_segment_id": "sig_graduate_educated_adults",
  *     "dry_run": false,
  *     "with_creative": true,
- *     "organization_urn": "urn:li:organization:YOUR_COMPANY_PAGE_ID",
+ *     "organization_urn": "urn:li:organization:YOUR_ORG_ID",
  *     "creative": {
  *       "headline": "Agentic Audience Discovery",
  *       "introductory_text": "Three IAB standards. One MCP endpoint.",
@@ -27,8 +27,12 @@
  *
  * ── Finding your organization_urn ─────────────────────────────────────────────
  *   Go to https://www.linkedin.com/company/agenticadvertising/admin/
- *   The number in the URL is your org ID.
- *   URN format: urn:li:organization:12345678
+ *   The number in the URL is your org ID → urn:li:organization:12345678
+ *
+ * ── Banner image ──────────────────────────────────────────────────────────────
+ *   Default: src/assets/adcp-banner-1200x1000.jpg served via raw.githubusercontent.com
+ *   Override by passing creative.image_url in the request body.
+ *   Image must be publicly accessible — LinkedIn's upload server fetches it directly.
  */
 
 import { LinkedInAdapter } from '../adapters/linkedin';
@@ -53,6 +57,11 @@ export interface LinkedInRouteRequest extends LinkedInActivationRequest {
     image_url?: string;
   };
 }
+
+// Default banner — served from GitHub raw content
+// Push src/assets/adcp-banner-1200x1000.jpg to your repo and this URL works automatically
+const DEFAULT_BANNER_URL =
+  'https://raw.githubusercontent.com/EvgenyAndroid/adcp-signals-adaptor/master/src/assets/adcp-banner-1200x1000.jpg';
 
 export async function handleLinkedInActivate(
   request: Request,
@@ -92,31 +101,31 @@ export async function handleLinkedInActivate(
         result.warnings = result.warnings ?? [];
         result.warnings.push(
           'Creative skipped — organization_urn required. ' +
-          'Find yours at linkedin.com/company/YOUR_SLUG/admin/ then pass ' +
-          '"organization_urn": "urn:li:organization:12345678"',
+          'Find yours at linkedin.com/company/agenticadvertising/admin/ ' +
+          'then pass "organization_urn": "urn:li:organization:12345678"',
         );
       } else {
         try {
           const accessToken = await getValidAccessToken(env);
 
-          // Fetch banner image — default to the uploaded AdCp 300x250 banner served from Worker
-          // or any public URL passed in creative.image_url
-          const imageUrl = body.creative?.image_url ?? 'https://raw.githubusercontent.com/EvgenyAndroid/adcp-signals-adaptor/master/src/assets/adcp-banner-1200x1000.jpg';
-
+          // Fetch banner image from GitHub (or custom URL if provided)
+          const imageUrl = body.creative?.image_url ?? DEFAULT_BANNER_URL;
           const imageRes = await fetch(imageUrl);
+
           if (!imageRes.ok) {
-            throw new Error(`Banner fetch failed: ${imageUrl} → ${imageRes.status}`);
+            throw new Error(`Banner fetch failed: ${imageUrl} → HTTP ${imageRes.status}`);
           }
+
           const imageBytes = await imageRes.arrayBuffer();
 
           const creativeResult = await createFullCreative(
             imageBytes,
             env.LINKEDIN_AD_ACCOUNT_ID,
-            result.campaign_urn,
+            result.campaign_urn!,
             body.organization_urn,
             accessToken,
             {
-              headline:         body.creative?.headline         ?? 'Agentic Audience Discovery',
+              headline:         body.creative?.headline          ?? 'Agentic Audience Discovery',
               introductoryText: body.creative?.introductory_text ?? 'Three IAB standards. One MCP endpoint. Plain English targeting — open source.',
               destinationUrl:   body.creative?.destination_url   ?? 'https://agenticadvertising.org/members/nofluff',
               callToAction:     (body.creative?.call_to_action as any) ?? 'LEARN_MORE',
@@ -134,7 +143,9 @@ export async function handleLinkedInActivate(
 
         } catch (err) {
           result.warnings = result.warnings ?? [];
-          result.warnings.push(`Creative error: ${err instanceof Error ? err.message : String(err)}`);
+          result.warnings.push(
+            `Creative error (campaign still created): ${err instanceof Error ? err.message : String(err)}`
+          );
         }
       }
     }

@@ -22,7 +22,6 @@ import {
   handleLinkedInAuthStatus,
 } from "./activations/auth/linkedin";
 import { handleActivateDispatch } from "./activations/routes/activate";
-import { ADCP_BANNER_B64 } from "./bannerData";
 
 // Seed data imported as text modules via wrangler assets
 import { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv } from "./seedData";
@@ -45,7 +44,6 @@ export default {
 
     // Public paths — no auth required
     // LinkedIn auth routes must be public so OAuth flow works without a token
-    // Banner must be public so LinkedIn's upload server can fetch it
     const publicPaths = [
       "/capabilities",
       "/health",
@@ -54,7 +52,6 @@ export default {
       "/auth/linkedin/init",
       "/auth/linkedin/callback",
       "/auth/linkedin/status",
-      "/banner/300x250",
     ];
     const isPublic = publicPaths.some((p) => path === p || path.startsWith(p + "/"));
 
@@ -85,17 +82,6 @@ export default {
 
       } else if (method === "GET" && path === "/capabilities") {
         response = await handleGetCapabilities(env, logger);
-
-      // ── AdCp banner — served publicly for LinkedIn creative upload ────────────
-      } else if (method === "GET" && path === "/banner/300x250") {
-        const bytes = Uint8Array.from(atob(ADCP_BANNER_B64), (c) => c.charCodeAt(0));
-        response = new Response(bytes, {
-          headers: {
-            "Content-Type": "image/jpeg",
-            "Cache-Control": "public, max-age=86400",
-            "Content-Length": String(bytes.length),
-          },
-        });
 
       // ── LinkedIn OAuth (public — no auth required) ───────────────────────────
       } else if (method === "GET" && path === "/auth/linkedin/init") {

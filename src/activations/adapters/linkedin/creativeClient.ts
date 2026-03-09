@@ -25,7 +25,7 @@
 import { LinkedInApiError } from './client';
 
 const BASE = 'https://api.linkedin.com/rest';
-const LI_VERSION = '202503';
+const LI_VERSION = '202501';
 
 const DEFAULT_HEADERS = (token: string) => ({
   'Authorization': `Bearer ${token}`,

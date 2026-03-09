@@ -101,8 +101,7 @@ export async function handleLinkedInActivate(
 
           // Fetch banner image — default to the uploaded AdCp 300x250 banner served from Worker
           // or any public URL passed in creative.image_url
-          const imageUrl = body.creative?.image_url
-            ?? 'https://adcp-signals-adaptor.evgeny-193.workers.dev/banner/300x250';
+          const imageUrl = body.creative?.image_url   ?? 'https://raw.githubusercontent.com/EvgenyAndroid/adcp-signals-adaptor/master/src/assets/adcp-banner-1200x1000.jpg';
 
           const imageRes = await fetch(imageUrl);
           if (!imageRes.ok) {

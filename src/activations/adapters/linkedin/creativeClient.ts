@@ -157,9 +157,6 @@ export async function createDarkPost(
       media: {
         title: options.headline,
         id: imageUrn,
-        landingPage: {
-          landingPageUrls: [{ url: options.destinationUrl }],
-        },
       },
     },
     adContext: {

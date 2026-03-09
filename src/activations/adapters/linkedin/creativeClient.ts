@@ -1,32 +1,40 @@
 /**
  * src/activations/adapters/linkedin/creativeClient.ts
  *
- * LinkedIn Ad Creative pipeline — v202503 schema.
+ * LinkedIn Single Image Ad creative pipeline — correct v202503 flow.
  *
- * LinkedIn Marketing API v202503 uses a new creative schema:
- *   POST /rest/adCreatives  with content.contentEntities[] structure
+ * LinkedIn's modern creative API requires a three-step process:
  *
- * Pipeline:
- *   Step 1: POST /rest/images?action=initializeUpload  → uploadUrl + imageUrn
- *   Step 2: PUT {uploadUrl} ← raw image bytes
- *   Step 3: POST /rest/adCreatives → creativeUrn
+ *   Step 1: POST /rest/images?action=initializeUpload
+ *           PUT {uploadUrl} ← raw image bytes
+ *           → imageUrn
+ *
+ *   Step 2: POST /rest/posts  (dark post — not visible on company page feed)
+ *           Attaches imageUrn + headline + destination URL
+ *           → shareUrn (urn:li:share:{id})
+ *
+ *   Step 3: POST /rest/adCreatives
+ *           References shareUrn + campaign
+ *           → creativeUrn (urn:li:sponsoredCreative:{id})
+ *
+ * The old /adCreatives direct schema (SponsoredUpdateCreativeVariables) is deprecated.
+ * The correct flow creates a dark post first, then sponsors it.
  *
  * Image requirements:
- *   Format: JPEG or PNG
- *   Min: 640×360. Max: 5MB.
- *   Recommended: 1200×628 (1.91:1) or 1200×1000 (near-square)
+ *   Format: JPEG or PNG. Min: 640×360. Max: 5MB.
  *
  * organizationUrn: urn:li:organization:{id}
- *   Find at: https://www.linkedin.com/company/{slug}/admin/
  *
- * API reference:
- *   https://learn.microsoft.com/en-us/linkedin/marketing/integrations/ads/creative-management
+ * API references:
+ *   Images: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/images-api
+ *   Posts:  https://learn.microsoft.com/en-us/linkedin/marketing/integrations/ads/advertising-targeting/version/image-ads-integrations
+ *   Creatives: https://learn.microsoft.com/en-us/linkedin/marketing/integrations/ads/account-structure/create-and-manage-creatives
  */
 
 import { LinkedInApiError } from './client';
 
 const BASE = 'https://api.linkedin.com/rest';
-const LI_VERSION = '202504';
+const LI_VERSION = '202503';
 
 const DEFAULT_HEADERS = (token: string) => ({
   'Authorization': `Bearer ${token}`,
@@ -66,11 +74,12 @@ export interface LinkedInCreativeRequest {
 export interface FullCreativeResult {
   success: boolean;
   imageUrn?: string;
+  shareUrn?: string;
   creativeUrn?: string;
   error?: string;
 }
 
-// ─── Step 1+2: Upload image ───────────────────────────────────────────────────
+// ─── Step 1: Upload image ─────────────────────────────────────────────────────
 
 export async function uploadImage(
   imageBytes: ArrayBuffer,
@@ -78,7 +87,7 @@ export async function uploadImage(
   accessToken: string,
 ): Promise<LinkedInImageUploadResult> {
 
-  // Initialize upload
+  // Initialize upload — get pre-signed uploadUrl + imageUrn
   const initRes = await fetch(`${BASE}/images?action=initializeUpload`, {
     method: 'POST',
     headers: DEFAULT_HEADERS(accessToken),
@@ -100,7 +109,7 @@ export async function uploadImage(
 
   const { uploadUrl, image: imageUrn } = initData.value;
 
-  // PUT raw bytes to pre-signed URL
+  // PUT raw bytes to pre-signed URL — no LinkedIn-Version header on this one
   const uploadRes = await fetch(uploadUrl, {
     method: 'PUT',
     headers: {
@@ -118,47 +127,85 @@ export async function uploadImage(
   return { imageUrn, uploadUrl };
 }
 
-// ─── Step 3: Create ad creative (v202503 schema) ──────────────────────────────
+// ─── Step 2: Create dark post ─────────────────────────────────────────────────
+//
+// A "dark post" is a sponsored post that doesn't appear in the company page's
+// organic feed — it only shows as a paid ad. Set lifecycleState: PUBLISHED and
+// feedDistribution: NONE to achieve this.
+
+export async function createDarkPost(
+  imageUrn: string,
+  organizationUrn: string,
+  adAccountId: string,
+  accessToken: string,
+  options: {
+    headline: string;
+    commentary: string;
+    destinationUrl: string;
+  },
+): Promise<string> {
+
+  const body = {
+    author: organizationUrn,
+    commentary: options.commentary,
+    visibility: 'PUBLIC',
+    distribution: {
+      feedDistribution: 'NONE',
+      thirdPartyDistributionChannels: [],
+    },
+    content: {
+      media: {
+        title: options.headline,
+        id: imageUrn,
+        landingPage: {
+          landingPageUrls: [{ url: options.destinationUrl }],
+        },
+      },
+    },
+    adContext: {
+      dscAdAccount: `urn:li:sponsoredAccount:${adAccountId}`,
+      dscStatus: 'ACTIVE',
+    },
+    lifecycleState: 'PUBLISHED',
+    isReshareDisabledByAuthor: true,
+  };
+
+  const res = await fetch(`${BASE}/posts`, {
+    method: 'POST',
+    headers: DEFAULT_HEADERS(accessToken),
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new LinkedInApiError(res.status, text, 'POST /rest/posts');
+  }
+
+  // Post ID comes from X-RestLi-Id header
+  const idHeader = res.headers.get('x-restli-id') ?? res.headers.get('X-RestLi-Id');
+  if (!idHeader) {
+    const text = await res.text();
+    throw new Error(`POST /rest/posts succeeded but no X-RestLi-Id header returned. Body: ${text.slice(0, 200)}`);
+  }
+
+  // shareUrn format: urn:li:share:{id}
+  return idHeader.startsWith('urn:') ? idHeader : `urn:li:share:${idHeader}`;
+}
+
+// ─── Step 3: Create ad creative ───────────────────────────────────────────────
 
 export async function createAdCreative(
-  request: LinkedInCreativeRequest,
+  campaignUrn: string,
+  shareUrn: string,
   accessToken: string,
 ): Promise<string> {
 
-  // v202503 creative schema — uses content.contentEntities[] structure
   const body = {
-    account: request.campaignUrn.replace('sponsoredCampaign', 'sponsoredAccount').replace(/:\d+$/, `:${request.campaignUrn.split(':').pop()}`),
-    campaign: request.campaignUrn,
-    status: 'ACTIVE',
-    type: 'SPONSORED_UPDATE_V2',
+    campaign: campaignUrn,
+    intendedStatus: 'ACTIVE',
     content: {
-      contentEntities: [
-        {
-          entityLocation: request.destinationUrl,
-          thumbnails: [
-            { resolvedUrl: request.imageUrn },
-          ],
-        },
-      ],
-      title: request.headline,
-      description: request.introductoryText,
-      landingPage: {
-        url: request.destinationUrl,
-      },
-      callToAction: {
-        callToActionType: request.callToAction ?? 'LEARN_MORE',
-        landingPage: {
-          url: request.destinationUrl,
-        },
-      },
-      shareMediaCategory: 'IMAGE',
-      media: {
-        id: request.imageUrn,
-        title: { text: request.headline },
-        description: { text: request.introductoryText },
-      },
+      reference: shareUrn,
     },
-    author: request.organizationUrn,
   };
 
   const res = await fetch(`${BASE}/adCreatives`, {
@@ -167,7 +214,6 @@ export async function createAdCreative(
     body: JSON.stringify(body),
   });
 
-  // Capture full error for debugging
   const resText = await res.text();
 
   if (!res.ok) {
@@ -181,10 +227,10 @@ export async function createAdCreative(
     try {
       const json = JSON.parse(resText) as { id?: string };
       creativeId = json.id ?? '';
-    } catch { /* empty body */ }
+    } catch { /* empty body is normal for 201 */ }
   }
 
-  return `urn:li:sponsoredCreative:${creativeId}`;
+  return creativeId.startsWith('urn:') ? creativeId : `urn:li:sponsoredCreative:${creativeId}`;
 }
 
 // ─── Full pipeline ────────────────────────────────────────────────────────────
@@ -202,20 +248,28 @@ export async function createFullCreative(
     callToAction?: LinkedInCTA;
   } = {},
 ): Promise<FullCreativeResult> {
+
+  const headline         = options.headline         ?? 'Agentic Audience Discovery';
+  const introductoryText = options.introductoryText ?? 'Three IAB standards. One MCP endpoint. Plain English targeting — open source.';
+  const destinationUrl   = options.destinationUrl   ?? 'https://agenticadvertising.org/members/nofluff';
+
   try {
+    // Step 1 — Upload image
     const { imageUrn } = await uploadImage(imageBytes, adAccountId, accessToken);
 
-    const creativeUrn = await createAdCreative({
-      campaignUrn,
-      organizationUrn,
+    // Step 2 — Create dark post
+    const shareUrn = await createDarkPost(
       imageUrn,
-      headline:         options.headline         ?? 'Agentic Audience Discovery',
-      introductoryText: options.introductoryText  ?? 'Three IAB standards. One MCP endpoint. Plain English targeting — open source.',
-      destinationUrl:   options.destinationUrl    ?? 'https://agenticadvertising.org/members/nofluff',
-      callToAction:     options.callToAction      ?? 'LEARN_MORE',
-    }, accessToken);
+      organizationUrn,
+      adAccountId,
+      accessToken,
+      { headline, commentary: introductoryText, destinationUrl },
+    );
 
-    return { success: true, imageUrn, creativeUrn };
+    // Step 3 — Create ad creative referencing the post
+    const creativeUrn = await createAdCreative(campaignUrn, shareUrn, accessToken);
+
+    return { success: true, imageUrn, shareUrn, creativeUrn };
 
   } catch (err) {
     const msg = err instanceof LinkedInApiError ? err.message : String(err);

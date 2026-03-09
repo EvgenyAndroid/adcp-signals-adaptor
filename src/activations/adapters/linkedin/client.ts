@@ -4,12 +4,10 @@
  * LinkedIn Marketing API v2 HTTP client.
  * App ID: 239110166 — Development Tier — Advertising API
  *
- * KEY: LinkedIn's versioned API requires the version in the URL path, not just
- * the header. The error "adCampaigns.CREATE.NO_VERSION" means the request hit
- * the unversioned endpoint. Use /rest/ base with LinkedIn-Version header.
+ * Correct endpoint pattern (from official docs):
+ *   POST https://api.linkedin.com/rest/adAccounts/{adAccountId}/adCampaigns
  *
- * Correct base: https://api.linkedin.com/rest
- * Header: LinkedIn-Version: 202406
+ * Version header: LinkedIn-Version: 202501 (January 2025 — active stable)
  *
  * API reference:
  *   https://learn.microsoft.com/en-us/linkedin/marketing/integrations/ads/account-structure/create-and-manage-campaigns?view=li-lms-2026-02
@@ -17,9 +15,8 @@
 
 import type { LinkedInCampaignPayload, LinkedInCampaignResponse } from '../../types/linkedin';
 
-// Use /rest base — the versioned Marketing API endpoint
 const BASE = 'https://api.linkedin.com/rest';
-const LI_VERSION = '202601';
+const LI_VERSION = '202501';
 
 const DEFAULT_HEADERS = (token: string) => ({
   'Authorization': `Bearer ${token}`,
@@ -33,8 +30,12 @@ const DEFAULT_HEADERS = (token: string) => ({
 export async function createCampaign(
   payload: LinkedInCampaignPayload,
   accessToken: string,
+  adAccountId: string,
 ): Promise<LinkedInCampaignResponse> {
-  const res = await fetch(`${BASE}/adCampaigns`, {
+  // Correct path per LinkedIn docs: account ID in URL, not in body
+  const url = `${BASE}/adAccounts/${adAccountId}/adCampaigns`;
+
+  const res = await fetch(url, {
     method: 'POST',
     headers: DEFAULT_HEADERS(accessToken),
     body: JSON.stringify(payload),
@@ -42,7 +43,7 @@ export async function createCampaign(
 
   if (!res.ok) {
     const body = await res.text();
-    throw new LinkedInApiError(res.status, body, 'POST /rest/adCampaigns');
+    throw new LinkedInApiError(res.status, body, `POST /rest/adAccounts/${adAccountId}/adCampaigns`);
   }
 
   const json = await res.json() as Partial<LinkedInCampaignResponse>;
@@ -63,14 +64,15 @@ export async function createCampaign(
 export async function getCampaign(
   campaignId: number,
   accessToken: string,
+  adAccountId: string,
 ): Promise<LinkedInCampaignResponse> {
-  const res = await fetch(`${BASE}/adCampaigns/${campaignId}`, {
+  const res = await fetch(`${BASE}/adAccounts/${adAccountId}/adCampaigns/${campaignId}`, {
     headers: DEFAULT_HEADERS(accessToken),
   });
 
   if (!res.ok) {
     const body = await res.text();
-    throw new LinkedInApiError(res.status, body, `GET /rest/adCampaigns/${campaignId}`);
+    throw new LinkedInApiError(res.status, body, `GET /rest/adAccounts/${adAccountId}/adCampaigns/${campaignId}`);
   }
 
   return res.json() as Promise<LinkedInCampaignResponse>;
@@ -91,25 +93,6 @@ export async function validateToken(
   } catch {
     return { valid: false };
   }
-}
-
-// ─── Ad accounts ─────────────────────────────────────────────────────────────
-
-export async function getAdAccount(
-  accountId: string,
-  accessToken: string,
-): Promise<{ id: string; name?: string; status?: string }> {
-  const accountUrn = encodeURIComponent(`urn:li:sponsoredAccount:${accountId}`);
-  const res = await fetch(`${BASE}/adAccountsV2/${accountUrn}`, {
-    headers: DEFAULT_HEADERS(accessToken),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new LinkedInApiError(res.status, body, `GET /rest/adAccountsV2/${accountId}`);
-  }
-
-  return res.json() as Promise<{ id: string; name?: string; status?: string }>;
 }
 
 // ─── Error type ───────────────────────────────────────────────────────────────

@@ -44,7 +44,7 @@ export type LinkedInObjectiveType =
   | 'JOB_APPLICANTS';
 
 export interface LinkedInCampaignPayload {
-  account: string;          // urn:li:sponsoredAccount:{id}
+  // account is passed in the URL path, not the body (per LinkedIn REST API docs)
   name: string;
   status: LinkedInCampaignStatus;
   type: 'SPONSORED_UPDATES' | 'TEXT_AD' | 'SPONSORED_INMAILS';
@@ -54,10 +54,9 @@ export interface LinkedInCampaignPayload {
   dailyBudget?: { amount: string; currencyCode: string };
   targetingCriteria: LinkedInTargetingCriteria;
   locale: { country: string; language: string };
-  // Required in LinkedIn REST API v202601+
-  runSchedule: { start: number; end?: number };  // epoch ms
-  offsiteDeliveryEnabled: boolean;
-  politicalIntent: "NONE" | "POLITICAL";
+  runSchedule: { start: number; end?: number };  // epoch ms — required
+  offsiteDeliveryEnabled: boolean;               // required
+  // politicalIntent omitted — EU-only field, not required for US targeting
 }
 
 export interface LinkedInCampaignResponse {

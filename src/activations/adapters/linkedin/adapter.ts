@@ -100,7 +100,6 @@ export class LinkedInAdapter {
     const startDate = new Date(todayMs).toISOString().slice(0, 10).replace(/-/g, '/');
 
     const payload: LinkedInCampaignPayload = {
-      account: accountUrn,
       name: campaignName,
       status: 'DRAFT',
       type: 'SPONSORED_UPDATES',
@@ -119,11 +118,10 @@ export class LinkedInAdapter {
       // Required fields in LinkedIn REST API v202601
       runSchedule: { start: todayMs },
       offsiteDeliveryEnabled: false,
-      politicalIntent: "NONE",
     };
 
     try {
-      const campaign = await createCampaign(payload, accessToken);
+      const campaign = await createCampaign(payload, accessToken, env.LINKEDIN_AD_ACCOUNT_ID);
       const campaignManagerUrl =
         `https://www.linkedin.com/campaignmanager/accounts/${env.LINKEDIN_AD_ACCOUNT_ID}/campaigns/${campaign.id}`;
 

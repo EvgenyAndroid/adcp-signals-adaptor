@@ -100,6 +100,7 @@ export class LinkedInAdapter {
     const startDate = new Date(todayMs).toISOString().slice(0, 10).replace(/-/g, '/');
 
     const payload: LinkedInCampaignPayload = {
+      account: accountUrn,    // ← add this back
       name: campaignName,
       status: 'DRAFT',
       type: 'SPONSORED_UPDATES',

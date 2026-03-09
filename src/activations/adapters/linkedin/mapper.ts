@@ -3,22 +3,27 @@
  *
  * Maps AdCP signal dimensions → LinkedIn Marketing API targeting facets.
  *
- * LinkedIn native support matrix:
+ * LinkedIn native support:
  *   ✅ age_band        → urn:li:adTargetingFacet:ageRanges
  *   ✅ geo             → urn:li:adTargetingFacet:locations
  *   ✅ education       → urn:li:adTargetingFacet:educationLevels
  *   ⚠️ income_band     → urn:li:adTargetingFacet:seniorityLevels (proxy)
  *   ⚠️ household_type  → urn:li:adTargetingFacet:seniorityLevels (urban_professional only)
- *   ❌ content_genre   → not supported
- *   ❌ streaming_affinity → not supported
- *   ❌ interest        → not supported
- *   ❌ archetype       → constituents resolved individually
+ *   ❌ content_genre / streaming_affinity / interest / archetype → not supported
  *
- * NOTE: facet keys use full urn:li:adTargetingFacet: prefix in the targeting
- * criteria body — this applies to both /v2 and /rest versioned endpoints.
+ * STRUCTURE RULE (LinkedIn REST API v202503):
+ *   targetingCriteria MUST always use { include: { and: [ { or: {...} } ] } }
+ *   Never use a flat { include: { or: {...} } } — the API rejects it with 422.
  *
- * REQUIRED: LinkedIn requires at least one location in every targeting criteria.
- * If no geo dimension is provided, US is injected as default.
+ * LOCATION REQUIREMENT:
+ *   LinkedIn requires at least one location in every targeting criteria.
+ *   US is injected as default if no geo dimension is provided.
+ *
+ * DEV_TIER_LOCATION_ONLY:
+ *   Development Tier accounts auto-inject interfaceLocales as a third AND clause
+ *   when 2+ facets are present, then reject it — causing a 400 loop.
+ *   Set to true to send location-only targeting (safe for Dev Tier).
+ *   Set to false after upgrading to Standard Tier for full multi-facet targeting.
  */
 
 import type { SignalDimension, DimensionMappingResult } from '../../types/shared';
@@ -34,9 +39,15 @@ const FACET = {
   SENIORITY: 'urn:li:adTargetingFacet:seniorityLevels',
 };
 
+const US_LOCATION_URN = 'urn:li:geo:101165590';
+
+// ─── Dev Tier flag ────────────────────────────────────────────────────────────
+// LinkedIn Development Tier injects interfaceLocales as a 3rd AND clause when
+// 2+ facets are present, then rejects it. Location-only avoids the bug.
+// Flip to false after upgrading to Standard Tier.
+const DEV_TIER_LOCATION_ONLY = true;
+
 // ─── Age range map ────────────────────────────────────────────────────────────
-// LinkedIn has 4 age bands (not 6 like IAB):
-//   1=18-24  2=25-34  3=35-54  4=55+
 
 const AGE_MAP: Record<string, { urn: string; note?: string }> = {
   '18-24': { urn: 'urn:li:ageRange:BETWEEN_18_AND_24' },
@@ -93,12 +104,10 @@ const GEO_MAP: Record<string, { urn: string; name: string }> = {
   'austin':        { urn: 'urn:li:geo:104204571', name: 'Austin, TX' },
   'minneapolis':   { urn: 'urn:li:geo:104193774', name: 'Minneapolis, MN' },
   'san diego':     { urn: 'urn:li:geo:102095887', name: 'San Diego, CA' },
-  'us':            { urn: 'urn:li:geo:101165590', name: 'United States' },
-  'usa':           { urn: 'urn:li:geo:101165590', name: 'United States' },
-  'united states': { urn: 'urn:li:geo:101165590', name: 'United States' },
+  'us':            { urn: US_LOCATION_URN, name: 'United States' },
+  'usa':           { urn: US_LOCATION_URN, name: 'United States' },
+  'united states': { urn: US_LOCATION_URN, name: 'United States' },
 };
-
-const US_LOCATION_URN = 'urn:li:geo:101165590';
 
 // ─── Household type ───────────────────────────────────────────────────────────
 
@@ -166,7 +175,7 @@ export function mapDimensionsToLinkedIn(dimensions: SignalDimension[]): MapResul
           dimensionResults.push({ dimension, value, status: 'mapped', platform_facet: 'locations', platform_values: [m.urn], note: `→ ${m.name}` });
           supportedCount++;
         } else {
-          dimensionResults.push({ dimension, value, status: 'not_supported', note: `"${value}" not in geo map — defaulting to United States` });
+          dimensionResults.push({ dimension, value, status: 'not_supported', note: `"${value}" not in geo map — US injected as default` });
           unsupportedCount++;
         }
         break;
@@ -221,24 +230,7 @@ export function mapDimensionsToLinkedIn(dimensions: SignalDimension[]): MapResul
     }
   }
 
-  // ── Development Tier limitation ─────────────────────────────────────────────
-  // LinkedIn Development Tier accounts auto-inject interfaceLocales as a third
-  // AND clause when 2+ facets are present, then reject it with INVALID_VALUE_FOR_FIELD.
-  // Workaround: keep only the location facet in targetingCriteria.
-  // All other dimensions (education, seniority, age) are recorded in dimension_results
-  // for transparency but not sent to LinkedIn until Standard Tier is approved.
-  // To enable multi-facet targeting: upgrade to Standard Tier via LinkedIn developer portal.
-  const DEV_TIER_LOCATION_ONLY = true;
-
-  if (DEV_TIER_LOCATION_ONLY) {
-    // Keep only location facets, drop everything else from facetMap
-    for (const key of Array.from(facetMap.keys())) {
-      if (key !== FACET.LOCATION) facetMap.delete(key);
-    }
-  }
-
-  // LinkedIn REQUIRES at least one location in every targeting criteria.
-  // Inject US as default if no geo dimension was mapped.
+  // Always inject US location if none provided — LinkedIn requires at least one
   if (!hasLocation) {
     addFacet(facetMap, FACET.LOCATION, US_LOCATION_URN);
     dimensionResults.push({
@@ -252,7 +244,16 @@ export function mapDimensionsToLinkedIn(dimensions: SignalDimension[]): MapResul
     supportedCount++;
   }
 
-  // Build AND clauses — strict validation on key and set size
+  // DEV TIER: strip all non-location facets to avoid interfaceLocales injection bug
+  if (DEV_TIER_LOCATION_ONLY) {
+    for (const key of Array.from(facetMap.keys())) {
+      if (key !== FACET.LOCATION) facetMap.delete(key);
+    }
+  }
+
+  // Build AND clauses — strict validation, always and array (never flat or)
+  // LinkedIn REST API v202503 REQUIRES and array even for single facet.
+  // Never use { include: { or: {...} } } — causes 422 INVALID_VALUE_FOR_FIELD.
   const andClauses = Array.from(facetMap.entries())
     .filter(([facetUrn, valueSet]) => {
       return facetUrn &&
@@ -264,19 +265,15 @@ export function mapDimensionsToLinkedIn(dimensions: SignalDimension[]): MapResul
       or: { [facetUrn]: Array.from(valueSet) },
     }));
 
-  // LinkedIn API v202503 is strict about boolean nesting:
-  //   0 clauses → fallback to US location flat or
-  //   1 clause  → flat { include: { or: {...} } } — no and wrapper
-  //   2+ clauses → { include: { and: [{or}, {or}, ...] } }
-  let criteria: LinkedInTargetingCriteria;
+  // Fallback: if nothing resolved, use US location
+  const criteria: LinkedInTargetingCriteria = {
+    include: {
+      and: andClauses.length > 0
+        ? andClauses
+        : [{ or: { [FACET.LOCATION]: [US_LOCATION_URN] } }],
+    },
+  };
 
-  if (andClauses.length === 0) {
-    criteria = { include: { or: { [FACET.LOCATION]: [US_LOCATION_URN] } } };
-  } else if (andClauses.length === 1) {
-    criteria = { include: andClauses[0] };
-  } else {
-    criteria = { include: { and: andClauses } };
-  }
   const coverageNote = buildCoverageNote(supportedCount, proxiedCount, unsupportedCount);
 
   return { criteria, dimensionResults, supportedCount, proxiedCount, unsupportedCount, coverageNote };

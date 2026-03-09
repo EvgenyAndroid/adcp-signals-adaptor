@@ -19,25 +19,27 @@
  *   linkedin:access_token    ← current access token
  *   linkedin:refresh_token   ← long-lived refresh token
  *   linkedin:token_expires   ← ISO timestamp of access_token expiry
- *   linkedin:token_meta      ← { scope, sub, obtained_at }
+ *   linkedin:token_meta      ← { scope, obtained_at }
  *
  * Required wrangler.toml [vars]:
- *   LINKEDIN_CLIENT_ID    = "78khhkm6qxep5i"
  *   LINKEDIN_REDIRECT_URI = "https://adcp-signals-adaptor.evgeny-193.workers.dev/auth/linkedin/callback"
  *
- * Required secrets:
- *   LINKEDIN_CLIENT_SECRET   ← npx wrangler secret put LINKEDIN_CLIENT_SECRET
- *   LINKEDIN_AD_ACCOUNT_ID   ← npx wrangler secret put LINKEDIN_AD_ACCOUNT_ID
+ * Required secrets (npx wrangler secret put ...):
+ *   LINKEDIN_CLIENT_ID
+ *   LINKEDIN_CLIENT_SECRET
+ *   LINKEDIN_AD_ACCOUNT_ID
  *
  * Required KV binding in wrangler.toml:
  *   [[kv_namespaces]]
- *   binding = "SIGNALS_CACHE"          ← already exists — reuse
+ *   binding = "SIGNALS_CACHE"
  *   id = "e17c4c99b649460a92016e1257436f22"
  */
 
-const LI_AUTH_URL   = 'https://www.linkedin.com/oauth/v2/authorization';
-const LI_TOKEN_URL  = 'https://www.linkedin.com/oauth/v2/accessToken';
-const LI_SCOPES     = 'r_ads rw_ads r_organization_social';
+const LI_AUTH_URL  = 'https://www.linkedin.com/oauth/v2/authorization';
+const LI_TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken';
+
+// w_organization_social required for dark post creation (creative pipeline)
+const LI_SCOPES = 'r_ads rw_ads r_organization_social w_organization_social';
 
 // KV key constants
 const KV_ACCESS_TOKEN  = 'linkedin:access_token';
@@ -63,13 +65,12 @@ export interface LinkedInAuthEnv {
 export interface LinkedInTokenSet {
   access_token: string;
   refresh_token: string;
-  expires_at: string;       // ISO timestamp
+  expires_at: string;
   scope: string;
-  obtained_at: string;      // ISO timestamp
+  obtained_at: string;
 }
 
 // ─── Route: GET /auth/linkedin/init ──────────────────────────────────────────
-// Redirects to LinkedIn authorization page.
 
 export function handleLinkedInAuthInit(env: LinkedInAuthEnv): Response {
   const state = crypto.randomUUID();
@@ -101,7 +102,7 @@ export function handleLinkedInAuthInit(env: LinkedInAuthEnv): Response {
 <body>
   <h1>AdCP → LinkedIn Authorization</h1>
   <p>One-time setup. After you authorize, the Worker stores your tokens and handles all refreshes automatically — no manual steps ever again.</p>
-  <div class="scope">Scopes: r_ads · rw_ads · r_organization_social</div>
+  <div class="scope">Scopes: r_ads · rw_ads · r_organization_social · w_organization_social</div>
   <a href="${authUrl}">Authorize with LinkedIn →</a>
   <p style="font-size: 12px; color: #3a3a5a;">App ID: 239110166 · Development Tier · Advertising API</p>
 </body>
@@ -111,15 +112,14 @@ export function handleLinkedInAuthInit(env: LinkedInAuthEnv): Response {
 }
 
 // ─── Route: GET /auth/linkedin/callback ──────────────────────────────────────
-// LinkedIn redirects here with ?code=XXX. Worker exchanges for tokens.
 
 export async function handleLinkedInAuthCallback(
   request: Request,
   env: LinkedInAuthEnv,
 ): Promise<Response> {
   const url = new URL(request.url);
-  const code  = url.searchParams.get('code');
-  const error = url.searchParams.get('error');
+  const code      = url.searchParams.get('code');
+  const error     = url.searchParams.get('error');
   const errorDesc = url.searchParams.get('error_description');
 
   if (error) {
@@ -138,7 +138,6 @@ export async function handleLinkedInAuthCallback(
     `);
   }
 
-  // Exchange code for tokens
   let tokenSet: LinkedInTokenSet;
   try {
     tokenSet = await exchangeCodeForTokens(code, env);
@@ -152,7 +151,6 @@ export async function handleLinkedInAuthCallback(
     `);
   }
 
-  // Store in KV
   await storeTokens(tokenSet, env.SIGNALS_CACHE);
 
   return htmlResponse('Authorization Successful ✓', `
@@ -168,7 +166,6 @@ export async function handleLinkedInAuthCallback(
 }
 
 // ─── Route: GET /auth/linkedin/status ────────────────────────────────────────
-// Returns current token state — useful for debugging and monitoring.
 
 export async function handleLinkedInAuthStatus(
   env: LinkedInAuthEnv,
@@ -187,11 +184,11 @@ export async function handleLinkedInAuthStatus(
     });
   }
 
-  const meta = metaRaw ? JSON.parse(metaRaw) : {};
-  const expiresDate = expiresAt ? new Date(expiresAt) : null;
-  const now = new Date();
-  const isExpired = expiresDate ? expiresDate.getTime() - now.getTime() < 0 : false;
-  const expiresInMs = expiresDate ? expiresDate.getTime() - now.getTime() : null;
+  const meta         = metaRaw ? JSON.parse(metaRaw) : {};
+  const expiresDate  = expiresAt ? new Date(expiresAt) : null;
+  const now          = new Date();
+  const isExpired    = expiresDate ? expiresDate.getTime() - now.getTime() < 0 : false;
+  const expiresInMs  = expiresDate ? expiresDate.getTime() - now.getTime() : null;
   const expiresInMin = expiresInMs ? Math.round(expiresInMs / 60000) : null;
 
   return json({
@@ -210,9 +207,7 @@ export async function handleLinkedInAuthStatus(
   });
 }
 
-// ─── Token manager: get valid access token ────────────────────────────────────
-// Call this from the LinkedIn adapter instead of reading env.LINKEDIN_ACCESS_TOKEN.
-// Automatically refreshes if expired.
+// ─── Token manager ────────────────────────────────────────────────────────────
 
 export async function getValidAccessToken(env: LinkedInAuthEnv): Promise<string> {
   const [accessToken, refreshToken, expiresAt] = await Promise.all([
@@ -225,15 +220,11 @@ export async function getValidAccessToken(env: LinkedInAuthEnv): Promise<string>
     throw new Error('LinkedIn not authorized. Visit /auth/linkedin/init to complete setup.');
   }
 
-  // Check if access token needs refresh
   const needsRefresh = !expiresAt
     || new Date(expiresAt).getTime() - Date.now() < REFRESH_BUFFER_MS;
 
-  if (!needsRefresh) {
-    return accessToken;
-  }
+  if (!needsRefresh) return accessToken;
 
-  // Silently refresh
   const newTokenSet = await refreshAccessToken(refreshToken, env);
   await storeTokens(newTokenSet, env.SIGNALS_CACHE);
   return newTokenSet.access_token;
@@ -276,15 +267,12 @@ async function exchangeCodeForTokens(
     throw new Error(`No access_token in LinkedIn response: ${JSON.stringify(data)}`);
   }
 
-  const expiresAt = new Date(Date.now() + data.expires_in * 1000).toISOString();
-  const obtainedAt = new Date().toISOString();
-
   return {
-    access_token: data.access_token,
+    access_token:  data.access_token,
     refresh_token: data.refresh_token ?? '',
-    expires_at: expiresAt,
-    scope: data.scope,
-    obtained_at: obtainedAt,
+    expires_at:    new Date(Date.now() + data.expires_in * 1000).toISOString(),
+    scope:         data.scope,
+    obtained_at:   new Date().toISOString(),
   };
 }
 
@@ -319,22 +307,19 @@ async function refreshAccessToken(
     scope: string;
   };
 
-  const expiresAt = new Date(Date.now() + data.expires_in * 1000).toISOString();
-
   return {
-    access_token: data.access_token,
-    // LinkedIn rotates refresh_token on each refresh — use new one if provided
+    access_token:  data.access_token,
     refresh_token: data.refresh_token ?? refreshToken,
-    expires_at: expiresAt,
-    scope: data.scope,
-    obtained_at: new Date().toISOString(),
+    expires_at:    new Date(Date.now() + data.expires_in * 1000).toISOString(),
+    scope:         data.scope,
+    obtained_at:   new Date().toISOString(),
   };
 }
 
 // ─── KV storage ───────────────────────────────────────────────────────────────
 
 async function storeTokens(tokenSet: LinkedInTokenSet, kv: KVNamespace): Promise<void> {
-  const ttl90Days = 90 * 24 * 60 * 60;
+  const ttl90Days   = 90  * 24 * 60 * 60;
   const ttl12Months = 365 * 24 * 60 * 60;
 
   await Promise.all([

@@ -16,7 +16,7 @@
 import type { LinkedInCampaignPayload, LinkedInCampaignResponse } from '../../types/linkedin';
 
 const BASE = 'https://api.linkedin.com/rest';
-const LI_VERSION = '202503';
+const LI_VERSION = '202501';
 
 const DEFAULT_HEADERS = (token: string) => ({
   'Authorization': `Bearer ${token}`,
@@ -109,4 +109,54 @@ export class LinkedInApiError extends Error {
 
   get isAuthError(): boolean { return this.statusCode === 401 || this.statusCode === 403; }
   get isRateLimit(): boolean { return this.statusCode === 429; }
+}
+
+// ─── Campaign Groups ──────────────────────────────────────────────────────────
+
+export async function createCampaignGroup(
+  adAccountId: string,
+  accessToken: string,
+  name = 'AdCP Signals',
+): Promise<string> {
+  const url = `${BASE}/adAccounts/${adAccountId}/adCampaignGroups`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: DEFAULT_HEADERS(accessToken),
+    body: JSON.stringify({
+      account: `urn:li:sponsoredAccount:${adAccountId}`,
+      name,
+      status: 'ACTIVE',
+      runSchedule: { start: Date.now() },
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new LinkedInApiError(res.status, body, `POST /rest/adAccounts/${adAccountId}/adCampaignGroups`);
+  }
+
+  const idHeader = res.headers.get('x-restli-id') ?? res.headers.get('X-RestLi-Id');
+  const json = await res.json() as { id?: number };
+  const id = idHeader ?? String(json.id ?? '');
+  return `urn:li:sponsoredCampaignGroup:${id}`;
+}
+
+export async function listCampaignGroups(
+  adAccountId: string,
+  accessToken: string,
+): Promise<Array<{ id: number; name: string; status: string }>> {
+  const url = `${BASE}/adAccounts/${adAccountId}/adCampaignGroups?q=search&search.status.values[0]=ACTIVE&count=10`;
+
+  const res = await fetch(url, {
+    headers: DEFAULT_HEADERS(accessToken),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new LinkedInApiError(res.status, body, `GET /rest/adAccounts/${adAccountId}/adCampaignGroups`);
+  }
+
+  const json = await res.json() as { elements?: Array<{ id: number; name: string; status: string }> };
+  return json.elements ?? [];
 }

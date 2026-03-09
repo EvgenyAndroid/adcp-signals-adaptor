@@ -45,7 +45,6 @@ export type LinkedInObjectiveType =
 
 export interface LinkedInCampaignPayload {
   // account is passed in the URL path, not the body (per LinkedIn REST API docs)
-  account: string;        // ← add this back
   name: string;
   status: LinkedInCampaignStatus;
   type: 'SPONSORED_UPDATES' | 'TEXT_AD' | 'SPONSORED_INMAILS';
@@ -57,6 +56,7 @@ export interface LinkedInCampaignPayload {
   locale: { country: string; language: string };
   runSchedule: { start: number; end?: number };  // epoch ms — required
   offsiteDeliveryEnabled: boolean;               // required
+  campaignGroup?: string;                         // urn:li:sponsoredCampaignGroup:{id}
   // politicalIntent omitted — EU-only field, not required for US targeting
 }
 

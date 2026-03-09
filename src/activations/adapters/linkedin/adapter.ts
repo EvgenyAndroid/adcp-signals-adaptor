@@ -11,7 +11,7 @@
  */
 
 import { mapDimensionsToLinkedIn } from './mapper';
-import { createCampaign, LinkedInApiError } from './client';
+import { createCampaign, createCampaignGroup, listCampaignGroups, LinkedInApiError } from './client';
 import { getValidAccessToken } from '../../auth/linkedin';
 import { inferDimensionsFromSignalId } from '../../types/shared';
 
@@ -95,12 +95,32 @@ export class LinkedInAdapter {
     const objective: LinkedInObjectiveType = request.objective ?? 'BRAND_AWARENESS';
     const accountUrn = `urn:li:sponsoredAccount:${env.LINKEDIN_AD_ACCOUNT_ID}`;
 
+    // Resolve campaign group — reuse cached URN from KV, or find/create one
+    const KV_GROUP_KEY = 'linkedin:campaign_group_urn';
+    let campaignGroupUrn = await env.SIGNALS_CACHE.get(KV_GROUP_KEY);
+
+    if (!campaignGroupUrn) {
+      // Try to find an existing active group first
+      try {
+        const groups = await listCampaignGroups(env.LINKEDIN_AD_ACCOUNT_ID, accessToken);
+        if (groups.length > 0) {
+          campaignGroupUrn = `urn:li:sponsoredCampaignGroup:${groups[0].id}`;
+        } else {
+          campaignGroupUrn = await createCampaignGroup(env.LINKEDIN_AD_ACCOUNT_ID, accessToken, 'AdCP Signals');
+        }
+        // Cache for 30 days
+        await env.SIGNALS_CACHE.put(KV_GROUP_KEY, campaignGroupUrn, { expirationTtl: 30 * 24 * 60 * 60 });
+      } catch (err) {
+        warnings.push(`Campaign group lookup failed: ${err instanceof Error ? err.message : String(err)}`);
+        campaignGroupUrn = null;
+      }
+    }
+
     // runSchedule.start is required — use today as start, no end date for DRAFT
     const todayMs = Date.now();
     const startDate = new Date(todayMs).toISOString().slice(0, 10).replace(/-/g, '/');
 
     const payload: LinkedInCampaignPayload = {
-      account: accountUrn,    // ← add this back
       name: campaignName,
       status: 'DRAFT',
       type: 'SPONSORED_UPDATES',
@@ -116,9 +136,9 @@ export class LinkedInAdapter {
       },
       targetingCriteria: criteria,
       locale: { country: 'US', language: 'en' },
-      // Required fields in LinkedIn REST API v202601
       runSchedule: { start: todayMs },
       offsiteDeliveryEnabled: false,
+      ...(campaignGroupUrn ? { campaignGroup: campaignGroupUrn } : {}),
     };
 
     try {

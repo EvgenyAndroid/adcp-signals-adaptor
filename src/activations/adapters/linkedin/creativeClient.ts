@@ -85,16 +85,19 @@ export async function uploadImage(
   imageBytes: ArrayBuffer,
   adAccountId: string,
   accessToken: string,
+  organizationUrn?: string,
 ): Promise<LinkedInImageUploadResult> {
+
+  // Image must be owned by the post author (organization), not the ad account
+  // Otherwise LinkedIn throws "content not owned by author" on POST /rest/posts
+  const owner = organizationUrn ?? `urn:li:sponsoredAccount:${adAccountId}`;
 
   // Initialize upload — get pre-signed uploadUrl + imageUrn
   const initRes = await fetch(`${BASE}/images?action=initializeUpload`, {
     method: 'POST',
     headers: DEFAULT_HEADERS(accessToken),
     body: JSON.stringify({
-      initializeUploadRequest: {
-        owner: `urn:li:sponsoredAccount:${adAccountId}`,
-      },
+      initializeUploadRequest: { owner },
     }),
   });
 
@@ -252,7 +255,7 @@ export async function createFullCreative(
 
   try {
     // Step 1 — Upload image
-    const { imageUrn } = await uploadImage(imageBytes, adAccountId, accessToken);
+    const { imageUrn } = await uploadImage(imageBytes, adAccountId, accessToken, organizationUrn);
 
     // Step 2 — Create dark post
     const shareUrn = await createDarkPost(

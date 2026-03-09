@@ -1,6 +1,6 @@
 /**
  * conceptRegistry.ts
- * Concept-Level VAC — UCP v5.2 §4
+ * Concept-Level VAC — UCP v0.2 §4
  *
  * Maintains the canonical concept registry: ~50 advertising concepts with
  * constituent dimensions, cross-taxonomy member nodes, and description text

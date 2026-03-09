@@ -6,7 +6,7 @@
  *
  * GET /signals/:id/embedding
  *
- * Response shape (UCP v5.2 §2, VAC-compliant):
+ * Response shape (UCP v0.2 §2, VAC-compliant):
  * {
  *   signal_agent_segment_id: string,
  *   embedding: {

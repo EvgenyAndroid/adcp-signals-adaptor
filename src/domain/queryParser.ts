@@ -2,7 +2,7 @@
  * queryParser.ts
  * Natural Language → AudienceQueryAST decomposition via Claude API.
  *
- * UCP v5.2 NLAQ §3.1 — LLM Decomposition Layer
+ * UCP v0.2 NLAQ §3.1 — LLM Decomposition Layer
  *
  * Converts free-form audience descriptions into a structured boolean AST
  * that can be resolved against any signal catalog. The LLM handles:

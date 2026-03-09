@@ -7,7 +7,7 @@
  * dimensions: 512
  * signals:    26
  *
- * UCP v5.2 §2 — VAC space_id declaration.
+ * UCP v0.2 §2 — VAC space_id declaration.
  * Phase 2b: /ucp/projector aligns this space → ucp-space-v1.0 via Procrustes/SVD.
  */
 

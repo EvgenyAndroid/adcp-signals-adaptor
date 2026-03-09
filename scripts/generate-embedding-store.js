@@ -30,7 +30,7 @@ lines.push(` * space_id:   openai-te3-small-d512-v1`);
 lines.push(` * dimensions: 512`);
 lines.push(` * signals:    ${signals.length}`);
 lines.push(` *`);
-lines.push(` * UCP v5.2 §2 — VAC space_id declaration.`);
+lines.push(` * UCP v0.2 §2 — VAC space_id declaration.`);
 lines.push(` * Phase 2b: /ucp/projector aligns this space → ucp-space-v1.0 via Procrustes/SVD.`);
 lines.push(` */`);
 lines.push(``);

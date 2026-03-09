@@ -1,8 +1,8 @@
-# UCP v5.2 Contribution — Natural Language Audience Query (NLAQ)
+# UCP v0.2 Contribution — Natural Language Audience Query (NLAQ)
 
 **Proposed by:** Evgeny Popov, IAB Tech Lab Principal Spec Editor  
 **Status:** Draft — v0.4  
-**Target:** UCP v5.2, new normative Appendix D  
+**Target:** UCP v0.2, new normative Appendix D  
 **Reference implementation:** adcp-signals-adaptor (https://github.com/EvgenyAndroid/adcp-signals-adaptor)
 
 ---

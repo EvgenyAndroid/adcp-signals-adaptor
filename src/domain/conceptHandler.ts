@@ -1,7 +1,7 @@
 /**
  * conceptHandler.ts
  * HTTP + MCP handlers for the Concept-Level VAC registry.
- * UCP v5.2 §4.3
+ * UCP v0.2 §4.3
  *
  * Routes (add to src/index.ts):
  *

@@ -2,7 +2,7 @@
  * compositeScorer.ts
  * Traverses AudienceQueryAST + LeafResolution[] → CompositeAudienceResult.
  *
- * UCP v5.2 NLAQ §3.3 — Compositional Scoring Engine
+ * UCP v0.2 NLAQ §3.3 — Compositional Scoring Engine
  *
  * Implements set arithmetic over resolved signal audiences:
  *   AND  → probabilistic intersection (independence assumption + overlap factor)

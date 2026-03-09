@@ -19,7 +19,7 @@ import type { LinkedInCampaignPayload, LinkedInCampaignResponse } from '../../ty
 
 // Use /rest base — the versioned Marketing API endpoint
 const BASE = 'https://api.linkedin.com/rest';
-const LI_VERSION = '202406';
+const LI_VERSION = '202502';
 
 const DEFAULT_HEADERS = (token: string) => ({
   'Authorization': `Bearer ${token}`,

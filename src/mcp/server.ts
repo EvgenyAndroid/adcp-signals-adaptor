@@ -1,8 +1,8 @@
 // src/mcp/server.ts
 // MCP server — Streamable HTTP transport (JSON-RPC 2.0).
-// 4 tools: get_adcp_capabilities, get_signals, activate_signal, get_operation_status.
-// generate_custom_signal removed — proposals surface via get_signals brief param.
-// activate_signal is now properly async: returns task_id + "pending" immediately.
+// 8 tools: get_adcp_capabilities, get_signals, activate_signal, get_operation_status,
+//          get_similar_signals, query_signals_nl, get_concept, search_concepts.
+// v3.0-rc: handleInitialize now advertises GTS, projector, and handshake simulator.
 
 import type { Env } from "../types/env";
 import type { Logger } from "../utils/logger";
@@ -22,6 +22,9 @@ import { findSignalById, searchSignals } from "../storage/signalRepo";
 import { createEmbeddingEngine } from "../ucp/embeddingEngine";
 import { cosineSimilarity } from "../domain/semanticResolver";
 import { toSignalSummary } from "../mappers/signalMapper";
+import { getAllSignalsForCatalog } from "../domain/signalService";
+import { handleNLQuery } from "../domain/nlQueryHandler";
+import { handleConceptToolCall } from "../domain/conceptHandler";
 
 // ── JSON-RPC 2.0 types ────────────────────────────────────────────────────────
 
@@ -46,11 +49,11 @@ interface JsonRpcError {
 
 type JsonRpcResponse = JsonRpcSuccess | JsonRpcError;
 
-const RPC_PARSE_ERROR = -32700;
+const RPC_PARSE_ERROR    = -32700;
 const RPC_INVALID_REQUEST = -32600;
 const RPC_METHOD_NOT_FOUND = -32601;
-const RPC_INTERNAL_ERROR = -32603;
-const MCP_TOOL_ERROR = -32000;
+const RPC_INTERNAL_ERROR  = -32603;
+const MCP_TOOL_ERROR      = -32000;
 
 interface McpInitializeParams {
   protocolVersion: string;
@@ -143,11 +146,55 @@ async function handleInitialize(
     protocolVersion: "2024-11-05",
     capabilities: { tools: { listChanged: false } },
     serverInfo: {
-      name: "adcp-signals-adaptor",
-      version: env.API_VERSION ?? "2.6",
+      name:    "adcp-signals-adaptor",
+      version: env.API_VERSION ?? "3.0-rc",
       description:
         "AdCP Signals Provider — IAB Audience Taxonomy 1.1 aligned signal discovery, " +
         "brief-driven custom segment proposals, and async activation with webhook support.",
+      ucp: {
+        // Embedding space declaration (VAC)
+        space_id: "openai-te3-small-d512-v1",
+        phase:    "v1",
+
+        // Phase 2b: GTS + Projector (live as of v3.0-rc)
+        gts: {
+          supported:      true,
+          endpoint:       "/ucp/gts",
+          version:        "adcp-gts-v1.0",
+          pair_count:     15,
+          pass_threshold: 0.95,
+        },
+        projector: {
+          available:  true,
+          endpoint:   "/ucp/projector",
+          algorithm:  "procrustes_svd",
+          from_space: "openai-te3-small-d512-v1",
+          to_space:   "ucp-space-v1.0",
+          status:     "simulated",  // IAB reference model pending publication
+        },
+
+        // Phase 1 demo tool
+        handshake_simulator: {
+          supported: true,
+          endpoint:  "/ucp/simulate-handshake",
+        },
+
+        // NL query
+        nl_query: {
+          supported:           true,
+          endpoint:            "/signals/query",
+          min_embedding_score: 0.45,
+          archetype_count:     4,
+          concept_count:       19,
+        },
+
+        // Concept registry
+        concept_registry: {
+          supported:     true,
+          endpoint:      "/ucp/concepts",
+          concept_count: 19,
+        },
+      },
     },
   };
 }
@@ -159,9 +206,9 @@ async function handleToolCall(
 ): Promise<unknown> {
   const { name, arguments: args = {} } = params;
 
-  // Aliases not in ADCP_TOOLS schema are still valid — check after resolving aliases
+  // Aliases not in ADCP_TOOLS schema are still valid
   const TOOL_ALIASES: Record<string, string> = {
-    "get_task_status": "get_operation_status",
+    "get_task_status":   "get_operation_status",
     "get_signal_status": "get_operation_status",
   };
   const resolvedName = TOOL_ALIASES[name] ?? name;
@@ -178,11 +225,16 @@ async function handleToolCall(
     case "activate_signal":
       return callActivateSignal(args, env, logger);
     case "get_operation_status":
-    case "get_task_status":        // spec alias — both accepted
-    case "get_signal_status":      // legacy alias
+    case "get_task_status":
+    case "get_signal_status":
       return callGetOperation(args, env, logger);
     case "get_similar_signals":
       return callGetSimilarSignals(args, env, logger);
+    case "query_signals_nl":
+      return callQuerySignalsNl(args, env, logger);
+    case "get_concept":
+    case "search_concepts":
+      return handleConceptToolCall(resolvedName, args);
     default:
       throw new McpToolError(`Tool not implemented: ${name}`);
   }
@@ -199,37 +251,23 @@ async function callGetSignals(
   args: Record<string, unknown>,
   env: Env
 ): Promise<unknown> {
-  // Normalize spec param names → internal names
-  // signal_spec (spec) = brief (internal)
-  // max_results (spec) = limit (internal)
-  // deliver_to.deployments (spec) = destinations (internal)
-  // filters.query / filters.category_type etc (spec) = flat query/categoryType (internal)
-  const filters = args["filters"] as Record<string, unknown> | undefined;
-  const deliverTo = args["deliver_to"] as Record<string, unknown> | undefined;
+  const filters    = args["filters"]    as Record<string, unknown> | undefined;
+  const deliverTo  = args["deliver_to"] as Record<string, unknown> | undefined;
   const pagination = args["pagination"] as Record<string, unknown> | undefined;
 
   const req = {
-    brief: (args["signal_spec"] ?? args["brief"]) as string | undefined,
-    query: (filters?.["query"] ?? args["query"]) as string | undefined,
-    categoryType: (filters?.["category_type"] ?? args["categoryType"]) as string | undefined,
-    generationMode: (filters?.["generation_mode"] ?? args["generationMode"]) as string | undefined,
-    taxonomyId: (filters?.["taxonomy_id"] ?? args["taxonomyId"]) as string | undefined,
-    destination: args["destination"] as string | undefined,
-    limit: args["max_results"] ? Number(args["max_results"]) : args["limit"] ? Number(args["limit"]) : 20,
-    offset: (pagination?.["offset"] ? Number(pagination["offset"]) : args["offset"] ? Number(args["offset"]) : 0),
-    // deliver_to.deployments takes priority over destinations
-    destinations: (
-      deliverTo?.["deployments"] as Array<{ type: string; platform?: string; agent_url?: string }> | undefined
-    ) ?? (args["destinations"] as Array<{ type: string; platform?: string; agent_url?: string }> | undefined),
+    brief:          (args["signal_spec"] ?? args["brief"]) as string | undefined,
+    query:          (filters?.["query"]          ?? args["query"])        as string | undefined,
+    categoryType:   (filters?.["category_type"]  ?? args["categoryType"]) as string | undefined,
+    generationMode: (filters?.["generation_mode"]?? args["generationMode"])as string | undefined,
+    taxonomyId:     (filters?.["taxonomy_id"]    ?? args["taxonomyId"])   as string | undefined,
+    destination:    args["destination"]                                   as string | undefined,
+    limit:  args["max_results"] ? Number(args["max_results"]) : args["limit"] ? Number(args["limit"]) : 20,
+    offset: pagination?.["offset"] ? Number(pagination["offset"]) : args["offset"] ? Number(args["offset"]) : 0,
   };
 
-  const validation = validateSearchRequest(req);
-  if (!validation.ok) {
-    throw new McpToolError(validation.error!.message, { code: validation.error!.code });
-  }
-
   const db = getDb(env);
-  const result = await searchSignalsService(db, req as Parameters<typeof searchSignalsService>[1]);
+  const result = await searchSignalsService(db, req);
   return toolResult(JSON.stringify(result, null, 2));
 }
 
@@ -238,55 +276,24 @@ async function callActivateSignal(
   env: Env,
   logger: Logger
 ): Promise<unknown> {
-  // Normalize all destination field variants
-  // deliver_to.deployments (spec) > destinations > deployments > destination
-  let destination: string | undefined;
-  let accountId: string | undefined;
+  const raw         = args["deliver_to"] ?? args["deployments"];
+  const destination = Array.isArray(raw)
+    ? ((raw[0] as Record<string, unknown>)?.["platform"] as string ?? "mock_dsp")
+    : (args["destination"] as string ?? "mock_dsp");
 
-  const deliverTo = args["deliver_to"] as Record<string, unknown> | undefined;
-  const raw = deliverTo?.["deployments"] ?? args["destinations"] ?? args["deployments"] ?? args["destination"];
-
-  if (Array.isArray(raw) && raw.length > 0) {
-    const first = raw[0] as Record<string, unknown>;
-    destination = (first["platform"] ?? first["agent_url"]) as string | undefined;
-    accountId = first["account_id"] as string | undefined;
-  } else if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-    const obj = raw as Record<string, unknown>;
-    destination = (obj["platform"] ?? obj["agent_url"]) as string | undefined;
-    accountId = obj["account_id"] as string | undefined;
-  } else if (typeof raw === "string") {
-    destination = raw;
-  }
-
-  if (!destination) {
-    throw new McpToolError(
-      "Missing required field: destinations (array with { type: \"platform\", platform: \"<id>\" })"
-    );
-  }
-
-  const PLATFORM_MAP: Record<string, string> = {
-    mock_dsp: "mock_dsp", mock_cleanroom: "mock_cleanroom",
-    mock_cdp: "mock_cdp", mock_measurement: "mock_measurement",
-    "trade-desk": "mock_dsp", "the-trade-desk": "mock_dsp", ttd: "mock_dsp",
-    dv360: "mock_dsp", xandr: "mock_dsp", pubmatic: "mock_dsp",
-    "index-exchange": "mock_dsp", liveramp: "mock_cleanroom",
-    // @adcp/client test suite platforms
-    meta: "mock_dsp", facebook: "mock_dsp", amazon: "mock_dsp", yahoo: "mock_dsp",
-    "amazon-dsp": "mock_dsp", "amazon-ads": "mock_dsp",
-  };
-  const resolvedDestination = PLATFORM_MAP[destination.toLowerCase()] ?? "mock_dsp";
-
-  // Accept all field name variants: spec (signal_agent_segment_id), SDK test suite (signal_id), legacy (signalId)
-  const signalId = (args["signal_agent_segment_id"] ?? args["signal_id"] ?? args["signalId"]) as string;
+  const resolvedDestination = destination;
+  const signalId   = (args["signal_agent_segment_id"] ?? args["signalId"]) as string;
   const webhookUrl = args["webhook_url"] as string | undefined;
   const pricingOptionId = args["pricing_option_id"] as string | undefined;
+
+  if (!signalId) throw new McpToolError("signal_agent_segment_id is required");
 
   const req = {
     signalId,
     destination: resolvedDestination,
-    accountId: (args["accountId"] ?? accountId) as string | undefined,
-    campaignId: args["campaignId"] as string | undefined,
-    notes: args["notes"] as string | undefined,
+    accountId:   args["accountId"]  as string | undefined,
+    campaignId:  args["campaignId"] as string | undefined,
+    notes:       args["notes"]      as string | undefined,
     webhookUrl,
   };
 
@@ -299,7 +306,6 @@ async function callActivateSignal(
     const db = getDb(env);
     const result = await activateSignalService(db, req, logger);
 
-    // Build input deployments for response echo
     const inputDeployments = Array.isArray(raw)
       ? (raw as Array<Record<string, unknown>>)
       : [{ type: "platform", platform: destination }];
@@ -308,30 +314,29 @@ async function callActivateSignal(
       const depType = dep["type"] as string;
       if (depType === "agent") {
         return {
-          type: "agent",
-          agent_url: dep["agent_url"] as string,
-          is_live: false,    // pending — not live until completed
+          type:       "agent",
+          agent_url:  dep["agent_url"] as string,
+          is_live:    false,
           activation_key: { type: "segment_id", segment_id: `adcp_${signalId}` },
           estimated_activation_duration_minutes: 1,
         };
       }
       const platform = (dep["platform"] as string) ?? resolvedDestination;
       return {
-        type: "platform",
+        type:     "platform",
         platform,
-        is_live: false,    // pending
+        is_live:  false,
         activation_key: { type: "segment_id", segment_id: `${platform}_${signalId}` },
         estimated_activation_duration_minutes: 1,
       };
     });
 
-    // Return pending response immediately — caller polls task_id
     const specResponse = {
-      task_id: result.task_id,
-      status: "pending",
+      task_id:                 result.task_id,
+      status:                  "pending",
       signal_agent_segment_id: signalId,
-      deployments: responseDeployments,
-      ...(webhookUrl ? { webhook_url: webhookUrl } : {}),
+      deployments:             responseDeployments,
+      ...(webhookUrl      ? { webhook_url: webhookUrl }             : {}),
       ...(pricingOptionId ? { pricing_option_id: pricingOptionId } : {}),
     };
 
@@ -350,22 +355,17 @@ async function callGetOperation(
   logger: Logger
 ): Promise<unknown> {
   const taskId = (args["task_id"] ?? args["operationId"]) as string;
-  if (!taskId) {
-    throw new McpToolError("task_id is required");
-  }
+  if (!taskId) throw new McpToolError("task_id is required");
 
   try {
     const db = getDb(env);
     const result = await getOperationService(db, taskId, logger);
     return toolResult(JSON.stringify(result, null, 2));
   } catch (err) {
-    if (err instanceof NotFoundError) {
-      throw new McpToolError(err.message);
-    }
+    if (err instanceof NotFoundError) throw new McpToolError(err.message);
     throw err;
   }
 }
-
 
 async function callGetSimilarSignals(
   args: Record<string, unknown>,
@@ -375,28 +375,24 @@ async function callGetSimilarSignals(
   const signalId = (args["signal_agent_segment_id"] ?? args["signal_id"]) as string;
   if (!signalId) throw new McpToolError("signal_agent_segment_id is required");
 
-  const topK = Math.min(args["top_k"] ? Number(args["top_k"]) : 5, 20);
-  const minSimilarity = args["min_similarity"] ? Number(args["min_similarity"]) : 0.7;
+  const topK          = Math.min(args["top_k"]          ? Number(args["top_k"])          : 5,   20);
+  const minSimilarity =          args["min_similarity"]  ? Number(args["min_similarity"]) : 0.7;
 
   const db = getDb(env);
 
-  // Load reference signal
   const refSignal = await findSignalById(db, signalId);
   if (!refSignal) throw new McpToolError(`Signal not found: ${signalId}`);
 
-  // Load all catalog signals
   const { signals: allSignals } = await searchSignals(db, { limit: 200, offset: 0 });
 
-  // Generate embeddings
-  const engine = createEmbeddingEngine(env as unknown as Record<string, string>);
-  const refVec = await engine.generate(refSignal);
-  const candidates = allSignals.filter((s) => s.signalId !== signalId);
+  const engine      = createEmbeddingEngine(env as unknown as Record<string, string>);
+  const refVec      = await engine.generate(refSignal);
+  const candidates  = allSignals.filter((s) => s.signalId !== signalId);
   const candidateVecs = await engine.batchGenerate(candidates);
 
-  // Score and rank
   const scored = candidates
     .map((s, i) => ({
-      signal: s,
+      signal:     s,
       similarity: cosineSimilarity(refVec, candidateVecs[i]),
     }))
     .filter((x) => x.similarity >= minSimilarity)
@@ -405,17 +401,34 @@ async function callGetSimilarSignals(
 
   const result = {
     reference_signal_id: signalId,
-    model_id: engine.modelId,
-    space_id: "adcp-bridge-space-v1.0",
-    results: scored.map((x) => ({
+    model_id:   engine.modelId,
+    space_id:   "adcp-bridge-space-v1.0",
+    results:    scored.map((x) => ({
       ...toSignalSummary(x.signal),
       cosine_similarity: Math.round(x.similarity * 1000) / 1000,
     })),
     context_id: requestId(),
-    count: scored.length,
+    count:      scored.length,
   };
 
   return toolResult(JSON.stringify(result, null, 2));
+}
+
+async function callQuerySignalsNl(
+  args: Record<string, unknown>,
+  env: Env,
+  logger: Logger
+): Promise<unknown> {
+  const query = args["query"] as string | undefined;
+  if (!query) throw new McpToolError("query is required");
+
+  const limit = args["limit"] ? Number(args["limit"]) : 10;
+
+  const db      = getDb(env);
+  const catalog = await getAllSignalsForCatalog(db);
+  const res     = await handleNLQuery({ query, limit }, catalog, env);
+  const text    = await res.text();
+  return toolResult(text);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

@@ -1,4 +1,8 @@
 // src/routes/capabilities.ts
+//
+// CHANGELOG (fix):
+//   - getCapabilities() now requires env (not just kv) so it can determine
+//     the active embedding engine. Pass env.SIGNALS_CACHE + env together.
 
 import type { Env } from "../types/env";
 import { getCapabilities } from "../domain/capabilityService";
@@ -7,10 +11,10 @@ import type { Logger } from "../utils/logger";
 
 export async function handleGetCapabilities(
   env: Env,
-  logger: Logger
+  logger: Logger,
 ): Promise<Response> {
   try {
-    const caps = await getCapabilities(env.SIGNALS_CACHE);
+    const caps = await getCapabilities(env.SIGNALS_CACHE, env);
     logger.info("capabilities_requested");
     return jsonResponse(caps);
   } catch (err) {

@@ -3,6 +3,12 @@
 // Defines the HybridPayload — the bridge between AdCP signal objects and
 // UCP embedding exchange. Embedded in AdCP responses as x_ucp extension field.
 // Spec reference: IABTechLab/agentic-audiences v0.1
+//
+// CHANGELOG (fix):
+//   - UcpEmbeddingPhase: added "v1" (real OpenAI vectors, was missing)
+//   - UcpCapabilityDeclaration: replaced loose gts_version string with typed
+//     UcpGtsCapability, UcpProjectorCapability, UcpHandshakeCapability blocks
+//     to match what the live /capabilities endpoint actually emits.
 
 // ── VAC (Vector Alignment Contract) ──────────────────────────────────────────
 
@@ -11,7 +17,14 @@ export type UcpNormalization = "l2" | "none";
 export type UcpDistanceMetric = "cosine" | "dot_product" | "euclidean";
 export type UcpSignalType = "identity" | "contextual" | "reinforcement";
 export type UcpSignalStrength = "high" | "medium" | "low";
-export type UcpEmbeddingPhase = "pseudo-v1" | "llm-v1" | "trained-v1";
+
+/**
+ * Embedding phase — which engine produced the vectors.
+ *   "v1"        — real OpenAI text-embedding-3-small 512-dim vectors (EMBEDDING_ENGINE=llm)
+ *   "pseudo-v1" — deterministic hash-based vectors (no OpenAI key; fallback path)
+ *   "trained-v1"— future: IAB-trained reference model
+ */
+export type UcpEmbeddingPhase = "v1" | "pseudo-v1" | "trained-v1";
 
 /**
  * VAC-compliant embedding declaration.
@@ -21,9 +34,9 @@ export type UcpEmbeddingPhase = "pseudo-v1" | "llm-v1" | "trained-v1";
  * Use vector_endpoint to fetch on demand.
  */
 export interface UcpEmbeddingDeclaration {
-  model_id: string;             // e.g. "adcp-ucp-bridge-pseudo-v1.0"
-  model_family: string;         // e.g. "adcp-bridge/deterministic-taxonomy-v1"
-  space_id: string;             // e.g. "adcp-bridge-space-v1.0"
+  model_id: string;             // e.g. "text-embedding-3-small"
+  model_family: string;         // e.g. "openai/text-embedding-3"
+  space_id: string;             // e.g. "openai-te3-small-d512-v1"
   dimensions: number;           // 256 | 384 | 512 | 768 | 1024
   encoding: UcpEncoding;
   normalization: UcpNormalization;
@@ -99,16 +112,66 @@ export interface UcpHybridPayload {
   classification_rationale: string;
 }
 
-// ── VAC Capability (for get_adcp_capabilities) ────────────────────────────────
+// ── Capability sub-blocks ─────────────────────────────────────────────────────
+
+/** GTS (Golden Test Set) capability block — advertised in /capabilities ucp.gts */
+export interface UcpGtsCapability {
+  supported: boolean;
+  endpoint: string;          // "/ucp/gts"
+  version: string;           // "adcp-gts-v1.0"
+  pair_count: number;        // total pairs evaluated
+  /** Overall pass threshold (fraction of must-pass pairs that must pass). */
+  pass_threshold: number;    // 0–1; calibrated per engine — see vacDeclaration.ts
+}
+
+/** Projector capability block — advertised in /capabilities ucp.projector */
+export interface UcpProjectorCapability {
+  available: boolean;
+  endpoint: string;          // "/ucp/projector"
+  algorithm: string;         // "procrustes_svd"
+  from_space: string;        // source space_id
+  to_space: string;          // "ucp-space-v1.0"
+  status: "live" | "simulated" | "pending";
+}
+
+/** Handshake simulator capability block */
+export interface UcpHandshakeCapability {
+  supported: boolean;
+  endpoint: string;          // "/ucp/simulate-handshake"
+}
+
+/** NL query capability block */
+export interface UcpNlQueryCapability {
+  supported: boolean;
+  endpoint: string;
+  min_embedding_score: number;
+  archetype_count: number;
+  concept_count: number;
+}
+
+/** Concept registry capability block */
+export interface UcpConceptRegistryCapability {
+  supported: boolean;
+  endpoint: string;
+  concept_count: number;
+  registry_version: string;
+  categories: string[];
+}
+
+// ── VAC Capability Declaration (for /capabilities ucp block) ─────────────────
 
 export interface UcpCapabilityDeclaration {
   supported_spaces: string[];
   supported_encodings: UcpEncoding[];
   dimensions: number[];
-  embedding_endpoint_template: string;    // "/signals/{signal_id}/embedding"
-  similarity_search: boolean;             // true when get_similar_signals tool present
+  embedding_endpoint_template: string;     // "/signals/{signal_id}/embedding"
+  similarity_search: boolean;
   phase: UcpEmbeddingPhase;
-  gts_version?: string;                   // Golden Test Set version if available
+  gts: UcpGtsCapability;
+  projector: UcpProjectorCapability;
+  handshake_simulator: UcpHandshakeCapability;
+  nl_query: UcpNlQueryCapability;
+  concept_registry: UcpConceptRegistryCapability;
 }
 
 // ── Similarity Search ─────────────────────────────────────────────────────────

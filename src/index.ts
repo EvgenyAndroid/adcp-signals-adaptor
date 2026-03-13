@@ -7,9 +7,8 @@ import { handleSearchSignals } from "./routes/searchSignals";
 import { handleActivateSignal } from "./routes/activateSignal";
 import { handleGetOperation } from "./routes/getOperation";
 import { handleGetEmbedding } from "./routes/getEmbedding";
-import { handleGetGts } from "./routes/getGts";
-import { handleGetProjector } from "./routes/getProjector";
-import { handleSimulateHandshake } from "./routes/simulateHandshake";
+import { handleGetGts } from "./routes/gts";
+import { handleSimulateHandshake } from "./routes/handshake";
 import { handleMcpRequest } from "./mcp/server";
 import { jsonResponse, errorResponse, requireAuth } from "./routes/shared";
 import { createLogger } from "./utils/logger";
@@ -53,12 +52,11 @@ export default {
       "/mcp",
       "/ucp/concepts",
       "/ucp/gts",
-      "/ucp/projector",
       "/ucp/simulate-handshake",
       "/auth/linkedin/init",
       "/auth/linkedin/callback",
       "/auth/linkedin/status",
-      "/auth/linkedin/token-debug",
+      '/auth/linkedin/token-debug',
     ];
     const isPublic = publicPaths.some((p) => path === p || path.startsWith(p + "/"));
 
@@ -85,48 +83,64 @@ export default {
       // ── Route matching ────────────────────────────────────────────────────
 
       if (method === "GET" && path === "/health") {
-        response = jsonResponse({ status: "ok", version: env.API_VERSION ?? "3.0-rc" });
+        response = jsonResponse({ status: "ok", version: "3.0-rc" });
 
-      // ── Capabilities ──────────────────────────────────────────────────────
+      } else if (method === 'GET' && path === '/auth/linkedin/token-debug') {
+        const token = await env.SIGNALS_CACHE.get('linkedin:access_token');
+        response = jsonResponse({ token });
+
       } else if (method === "GET" && path === "/capabilities") {
         response = await handleGetCapabilities(env, logger);
 
-      // ── MCP (Streamable HTTP, JSON-RPC 2.0) ───────────────────────────────
-      } else if (path === "/mcp") {
-        response = await handleMcpRequest(request, env, logger);
-
-      // ── UCP: GTS validation (public, Phase 2b prerequisite) ───────────────
+      // ── UCP GTS ──────────────────────────────────────────────────────────
       } else if (method === "GET" && path === "/ucp/gts") {
-        response = handleGetGts();
+        response = await handleGetGts(env, logger);
 
-      // ── UCP: Projector (public, Phase 2b) ─────────────────────────────────
-      } else if (method === "GET" && path === "/ucp/projector") {
-        response = handleGetProjector();
-
-      // ── UCP: Handshake simulator (public, Phase 1 demo) ───────────────────
+      // ── UCP Handshake Simulator ───────────────────────────────────────────
       } else if (method === "POST" && path === "/ucp/simulate-handshake") {
-        response = await handleSimulateHandshake(request);
+        response = await handleSimulateHandshake(request, env, logger);
 
-      // ── UCP: Concept registry ─────────────────────────────────────────────
+      // ── LinkedIn OAuth (public — no auth required) ───────────────────────
+      } else if (method === "GET" && path === "/auth/linkedin/init") {
+        response = handleLinkedInAuthInit(env);
+
+      } else if (method === "GET" && path === "/auth/linkedin/callback") {
+        response = await handleLinkedInAuthCallback(request, env);
+
+      } else if (method === "GET" && path === "/auth/linkedin/status") {
+        response = await handleLinkedInAuthStatus(env);
+
+      // ── UCP Concept Registry ─────────────────────────────────────────────
       } else if (path.startsWith("/ucp/concepts")) {
         response = await handleConceptRoute(request, env, path);
 
-      // ── LinkedIn auth ─────────────────────────────────────────────────────
-      } else if (method === "GET" && path === "/auth/linkedin/init") {
-        response = await handleLinkedInAuthInit(request, env, logger);
-      } else if (method === "GET" && path === "/auth/linkedin/callback") {
-        response = await handleLinkedInAuthCallback(request, env, logger);
-      } else if (method === "GET" && path === "/auth/linkedin/status") {
-        response = await handleLinkedInAuthStatus(request, env, logger);
-
-      // ── Signals NL query ──────────────────────────────────────────────────
+      // ── NL Audience Query ────────────────────────────────────────────────
       } else if (method === "POST" && path === "/signals/query") {
         const body = await request.json() as { query: string; limit?: number };
-        const db = getDb(env);
-        const catalog = await getAllSignalsForCatalog(db);
+        const catalog = await getAllSignalsForCatalog(getDb(env));
         response = await handleNLQuery(body, catalog, env);
 
-      // ── Signals search ────────────────────────────────────────────────────
+      // ── Platform Activation (auth required) ──────────────────────────────
+      } else if (method === "POST" && path.startsWith("/signals/activate/")) {
+        const platform = path.replace("/signals/activate/", "").split("/")[0];
+        response = await handleActivateDispatch(request, env as any, platform);
+
+      // ── MCP ───────────────────────────────────────────────────────────────
+      } else if (path === "/mcp" || path.startsWith("/mcp")) {
+        if (method === "OPTIONS") {
+          response = new Response(null, {
+            status: 204,
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+              "Access-Control-Allow-Methods": "POST, OPTIONS",
+              "Access-Control-Allow-Headers": "Content-Type, Authorization, Mcp-Session-Id",
+            },
+          });
+        } else {
+          response = await handleMcpRequest(request, env, logger);
+        }
+
+      // ── Signal search ────────────────────────────────────────────────────
       } else if (
         (method === "POST" || method === "GET") &&
         path === "/signals/search"
@@ -136,10 +150,6 @@ export default {
       // ── Signal activate (legacy AdCP flow) ───────────────────────────────
       } else if (method === "POST" && path === "/signals/activate") {
         response = await handleActivateSignal(request, env, logger);
-
-      // ── Signal activate (new dispatch route) ─────────────────────────────
-      } else if (method === "POST" && path.startsWith("/activations/")) {
-        response = await handleActivateDispatch(request, env, logger);
 
       // ── Dev seed force endpoint ───────────────────────────────────────────
       } else if (
@@ -155,12 +165,12 @@ export default {
         );
         response = jsonResponse({ message: "Seed complete", ...result });
 
-      // ── Signal embedding ──────────────────────────────────────────────────
+      // ── Signal embedding ─────────────────────────────────────────────────
       } else if (method === "GET" && path.match(/^\/signals\/[^/]+\/embedding$/)) {
         const signalId = path.split("/")[2];
         response = await handleGetEmbedding(signalId, env, logger);
 
-      // ── Operations polling ────────────────────────────────────────────────
+      // ── Operations polling ───────────────────────────────────────────────
       } else if (method === "GET" && path.startsWith("/operations/")) {
         const opId = path.replace("/operations/", "");
         response = await handleGetOperation(opId, env, logger);

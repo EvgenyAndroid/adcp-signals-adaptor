@@ -3,6 +3,9 @@
 // This is the normative AdCP → UCP identity bridge:
 //   signal_agent_segment_id  ← AdCP primary key
 //   segment_ids              ← IAB AT 1.1 node IDs from x_dts.taxonomy_id_list
+//
+// Bug #10 fix: empty fallback is now [] (empty array) not ["0"].
+// "0" is not a valid IAB Audience Taxonomy 1.1 node ID and confuses consumers.
 
 import type { UcpLegacyFallback } from "../types/ucp";
 import type { CanonicalSignal } from "../types/signal";
@@ -19,7 +22,7 @@ export function buildLegacyFallback(signal: CanonicalSignal): UcpLegacyFallback 
 
   return {
     signal_agent_segment_id: signal.signalId,
-    segment_ids: ids.size > 0 ? Array.from(ids) : ["0"],
+    segment_ids: Array.from(ids),   // empty array [] when no taxonomy IDs are known
     taxonomy_version: "iab_audience_1.1",
     data_provider: DATA_PROVIDER,
   };

@@ -11,9 +11,16 @@
  * description using the SAME engine instance it uses for catalog signals.
  * This is the only safe way to compare — query vector and candidate vectors must come from
  * the same engine instance per request (never cross pseudo↔llm spaces).
+ *
+ * Bug #4 fix: EmbeddingPhase is now re-exported from types/ucp.ts (UcpEmbeddingPhase)
+ * so the two types are identical and no cross-import mismatch exists.
  */
 
-export type EmbeddingPhase = 'v1' | 'pseudo-v1';
+// ── Re-export canonical phase type from types/ucp ─────────────────────────────
+// This eliminates the duplicate local type and ensures embeddingEngine.phase
+// is always assignable to UcpEmbeddingDeclaration.phase without casting.
+export type { UcpEmbeddingPhase as EmbeddingPhase } from "../types/ucp";
+import type { UcpEmbeddingPhase } from "../types/ucp";
 
 export interface SignalEmbedding {
   model_id: string;
@@ -23,7 +30,7 @@ export interface SignalEmbedding {
   encoding: 'float32';
   normalization: 'l2';
   distance_metric: 'cosine';
-  phase: EmbeddingPhase;
+  phase: UcpEmbeddingPhase;
   vector: number[];
   description?: string;
 }
@@ -43,7 +50,7 @@ export interface SignalEmbedding {
  */
 export interface EmbeddingEngine {
   readonly spaceId: string;
-  readonly phase: EmbeddingPhase;
+  readonly phase: UcpEmbeddingPhase;
   embedSignal(signalId: string, description: string): Promise<number[]>;
   embedText(text: string): Promise<number[]>;
 }
@@ -61,7 +68,7 @@ export interface EmbeddingEngine {
  */
 export class PseudoEmbeddingEngine implements EmbeddingEngine {
   readonly spaceId = 'adcp-bridge-space-v1.0';
-  readonly phase: EmbeddingPhase = 'pseudo-v1';
+  readonly phase: UcpEmbeddingPhase = 'pseudo-v1';
 
   private djb2(s: string): number {
     let h = 5381;
@@ -90,7 +97,6 @@ export class PseudoEmbeddingEngine implements EmbeddingEngine {
   }
 
   async embedSignal(signalId: string, description: string): Promise<number[]> {
-    // Use description as the semantic content; signal ID is ignored for pseudo
     return this.pseudoVec(description || signalId);
   }
 
@@ -122,7 +128,7 @@ async function getEmbeddingStore() {
 
 export class LlmEmbeddingEngine implements EmbeddingEngine {
   readonly spaceId = 'openai-te3-small-d512-v1';
-  readonly phase: EmbeddingPhase = 'v1';
+  readonly phase: UcpEmbeddingPhase = 'llm-v1';
 
   constructor(private readonly apiKey: string) {}
 
@@ -154,14 +160,14 @@ export class LlmEmbeddingEngine implements EmbeddingEngine {
 
   /**
    * For catalog signals: check the hardcoded embeddingStore first.
-   * If the signal has a pre-built vector (phase v1), use it — no API call.
+   * If the signal has a pre-built vector (phase llm-v1), use it — no API call.
    * If not (dynamic signals, test fixtures), fall through to live API.
    */
   async embedSignal(signalId: string, description: string): Promise<number[]> {
     try {
       const store = await getEmbeddingStore();
       const stored = store.getSignalEmbedding(signalId);
-      if (stored && stored.phase === 'v1') {
+      if (stored && stored.phase === 'llm-v1') {
         return stored.vector;
       }
     } catch {

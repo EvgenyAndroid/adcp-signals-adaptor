@@ -1,7 +1,8 @@
-﻿/**
- * src/routes/getEmbedding.ts  (replace existing file)
+/**
+ * src/routes/getEmbedding.ts
  *
- * Serves real OpenAI text-embedding-3-small vectors for each signal.
+ * Serves per-signal embedding vectors for UCP VAC compliance.
+ * Returns real OpenAI text-embedding-3-small 512-dim vectors from embeddingStore.
  * Falls back to pseudo-hash for signals not yet in the store.
  *
  * GET /signals/:id/embedding
@@ -10,18 +11,21 @@
  * {
  *   signal_agent_segment_id: string,
  *   embedding: {
- *     model_id:        "text-embedding-3-small",
- *     model_family:    "openai/text-embedding-3",
- *     space_id:        "openai-te3-small-d512-v1",
+ *     model_id:        string,
+ *     model_family:    string,
+ *     space_id:        string,
  *     dimensions:      512,
  *     encoding:        "float32",
  *     normalization:   "l2",
  *     distance_metric: "cosine",
- *     phase:           "v1",               ← was "pseudo-v1"
+ *     phase:           "llm-v1" | "pseudo-v1",
  *     vector:          number[],
  *     vector_endpoint: "/signals/{id}/embedding"
  *   }
  * }
+ *
+ * Bug #2 fix: import UCP_MODEL_FAMILY (and sibling constants) from vacDeclaration
+ * instead of hardcoding string literals, so there is a single source of truth.
  */
 
 import type { Env }          from "../types/env";
@@ -31,6 +35,12 @@ import { getSignalEmbedding, EMBEDDING_MODEL_ID, EMBEDDING_SPACE_ID, EMBEDDING_D
   from "../domain/embeddingStore";
 import { findSignalById }    from "../storage/signalRepo";
 import { getDb }             from "../storage/db";
+import {
+  UCP_MODEL_ID as PSEUDO_MODEL_ID,
+  UCP_MODEL_FAMILY as PSEUDO_MODEL_FAMILY,
+  UCP_SPACE_ID as PSEUDO_SPACE_ID,
+  UCP_DIMENSIONS as PSEUDO_DIMENSIONS,
+} from "../ucp/vacDeclaration";
 
 export async function handleGetEmbedding(
   signalId: string,
@@ -61,7 +71,7 @@ export async function handleGetEmbedding(
         encoding:        "float32",
         normalization:   "l2",
         distance_metric: "cosine",
-        phase:           "v1",
+        phase:           "llm-v1",
         vector:          stored.vector,
         vector_endpoint: `/signals/${signalId}/embedding`,
       },
@@ -76,10 +86,10 @@ export async function handleGetEmbedding(
   return jsonResponse({
     signal_agent_segment_id: signalId,
     embedding: {
-      model_id:        "adcp-ucp-bridge-pseudo-v1.0",
-      model_family:    "adcp-bridge/deterministic-taxonomy-v1",
-      space_id:        "adcp-bridge-space-v1.0",
-      dimensions:      512,
+      model_id:        PSEUDO_MODEL_ID,
+      model_family:    PSEUDO_MODEL_FAMILY,
+      space_id:        PSEUDO_SPACE_ID,
+      dimensions:      PSEUDO_DIMENSIONS,
       encoding:        "float32",
       normalization:   "l2",
       distance_metric: "cosine",
@@ -91,22 +101,28 @@ export async function handleGetEmbedding(
   });
 }
 
-// ─── Pseudo-hash fallback (unchanged from original) ──────────────────────────
+// ── Pseudo-hash fallback (matches PseudoEmbeddingEngine algorithm) ────────────
 
-function generatePseudoVector(signalId: string, description: string): number[] {
-  const seed   = signalId + (description ?? "");
-  const vector = new Array(512).fill(0);
-  let   hash   = 5381;
-  for (let i = 0; i < seed.length; i++) {
-    hash = ((hash << 5) + hash) ^ seed.charCodeAt(i);
-    hash = hash & hash; // 32-bit
+function djb2(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h) ^ s.charCodeAt(i);
+    h = h >>> 0;
   }
-  for (let i = 0; i < 512; i++) {
-    hash = ((hash << 5) + hash) ^ i;
-    hash = hash & hash;
-    vector[i] = (hash % 10000) / 10000 - 0.5;
+  return h;
+}
+
+function generatePseudoVector(signalId: string, description?: string): number[] {
+  const text = (description ?? signalId).toLowerCase().trim();
+  const seed = djb2(text);
+  const dims = 512;
+  const vec: number[] = [];
+  let rng = seed;
+  for (let i = 0; i < dims; i++) {
+    rng = (rng * 1664525 + 1013904223) >>> 0;
+    vec.push((rng / 0xffffffff) * 2 - 1);
   }
-  // L2 normalise
-  const norm = Math.sqrt(vector.reduce((s, v) => s + v * v, 0));
-  return vector.map((v) => (norm === 0 ? 0 : v / norm));
+  // L2 normalize
+  const norm = Math.sqrt(vec.reduce((s, x) => s + x * x, 0));
+  return norm === 0 ? vec : vec.map(x => x / norm);
 }

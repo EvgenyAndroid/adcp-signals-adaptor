@@ -1,44 +1,75 @@
-// src/ucp/vacDeclaration.ts
-// VAC (Vector Alignment Contract) constants for the AdCP-UCP Bridge.
-// Real OpenAI text-embedding-3-small vectors — phase "v1".
-// Phase 2b projector aligns this space → ucp-space-v1.0 via Procrustes/SVD.
+// src/domain/capabilityService.ts
+// @adcp/client SDK: COMPATIBLE_ADCP_VERSIONS = ['v2.5', 'v2.6', 'v3', ...]
+// SIGNALS_TOOLS = ['get_signals', 'activate_signal']
 
-import type { UcpEmbeddingDeclaration, UcpCapabilityDeclaration } from "../types/ucp";
+const CACHE_KEY = "adcp_capabilities_v4";
+const CACHE_TTL_SECONDS = 3600;
 
-// ── Model constants ───────────────────────────────────────────────────────────
+import { UCP_CAPABILITY } from "../ucp/vacDeclaration";
 
-export const UCP_MODEL_ID = "text-embedding-3-small";
-export const UCP_MODEL_FAMILY = "openai/text-embedding-3-small";
-export const UCP_SPACE_ID = "openai-te3-small-d512-v1";
-export const UCP_DIMENSIONS = 512;
-export const UCP_GTS_VERSION = "adcp-gts-v1.0";   // referenced by capabilityService.ts gts block
-
-// ── VAC declaration factory ───────────────────────────────────────────────────
-
-export function buildVacDeclaration(signalId: string): UcpEmbeddingDeclaration {
-    return {
-        model_id: UCP_MODEL_ID,
-        model_family: UCP_MODEL_FAMILY,
-        space_id: UCP_SPACE_ID,
-        dimensions: UCP_DIMENSIONS,
-        encoding: "float32",
-        normalization: "l2",
-        distance_metric: "cosine",
-        phase: "v1",
-        vector_endpoint: `/signals/${signalId}/embedding`,
-    };
-}
-
-// ── Base capability declaration ───────────────────────────────────────────────
-// Spread into capabilityService.ts ucp block. GTS version/thresholds and all
-// sub-blocks (gts, projector, handshake_simulator, nl_query, concept_registry)
-// are defined in capabilityService.ts, not here.
-
-export const UCP_CAPABILITY: UcpCapabilityDeclaration = {
-    supported_spaces: [UCP_SPACE_ID],
-    supported_encodings: ["float32"],
-    dimensions: [UCP_DIMENSIONS],
-    embedding_endpoint_template: "/signals/{signal_id}/embedding",
-    similarity_search: true,
-    phase: "v1",
+const STATIC_CAPABILITIES = {
+  adcp: {
+    major_versions: [2, 3],  // SDK confirms v2.5, v2.6, v3 all compatible
+  },
+  supported_protocols: ["signals"],
+  signals: {
+    signal_categories: [
+      "demographic",
+      "interest",
+      "purchase_intent",
+      "geo",
+      "composite",
+    ],
+    dynamic_segment_generation: true,
+    activation_mode: "async",
+    provider: "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+    destinations: [
+      {
+        id: "mock_dsp",
+        name: "Mock DSP",
+        type: "dsp",
+        activation_supported: true,
+      },
+      {
+        id: "mock_cleanroom",
+        name: "Mock Clean Room",
+        type: "cleanroom",
+        activation_supported: true,
+      },
+      {
+        id: "mock_cdp",
+        name: "Mock CDP",
+        type: "cdp",
+        activation_supported: true,
+      },
+      {
+        id: "mock_measurement",
+        name: "Mock Measurement Platform",
+        type: "measurement",
+        activation_supported: false,
+      },
+    ],
+    limits: {
+      max_signals_per_request: 100,
+      max_rules_per_segment: 6,
+    },
+  },
+  // UCP (User Context Protocol) — embedding + similarity capabilities
+  ucp: UCP_CAPABILITY,
 };
+
+// Named export required by src/mcp/server.ts and src/routes/capabilities.ts
+export async function getCapabilities(kv: KVNamespace): Promise<typeof STATIC_CAPABILITIES> {
+  try {
+    const cached = await kv.get(CACHE_KEY);
+    if (cached) return JSON.parse(cached) as typeof STATIC_CAPABILITIES;
+  } catch { /* cache miss */ }
+
+  try {
+    await kv.put(CACHE_KEY, JSON.stringify(STATIC_CAPABILITIES), {
+      expirationTtl: CACHE_TTL_SECONDS,
+    });
+  } catch { /* non-fatal */ }
+
+  return STATIC_CAPABILITIES;
+}

@@ -1,8 +1,6 @@
 // src/mcp/tools.ts
-// MCP tool definitions — 4 tools matching the AdCP Signals protocol.
-// Parameter names match the canonical AdCP spec:
-//   get_signals:    signal_spec (brief), deliver_to (required), max_results, filters, pagination
-//   activate_signal: signal_agent_segment_id, deliver_to (required), webhook_url
+// MCP tool definitions — 8 tools matching the AdCP Signals protocol v2.6 + UCP extensions.
+// Parameter names match the canonical AdCP spec.
 //
 // @adcp/client SDK reference:
 //   SIGNALS_TOOLS = ['get_signals', 'activate_signal']
@@ -21,6 +19,8 @@ export interface McpToolDefinition {
 }
 
 export const ADCP_TOOLS: McpToolDefinition[] = [
+  // ── Core AdCP tools ─────────────────────────────────────────────────────────
+
   {
     name: "get_adcp_capabilities",
     description:
@@ -241,6 +241,87 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
         },
       },
       required: ["signal_agent_segment_id", "deliver_to"],
+    },
+  },
+
+  // ── UCP extension tools ──────────────────────────────────────────────────────
+
+  {
+    name: "query_signals_nl",
+    description:
+      "Find audience signals matching a natural language description. " +
+      "Decomposes the query into a boolean AST (AND/OR/NOT), resolves each dimension " +
+      "against the signal catalog using hybrid rule+embedding+lexical matching, " +
+      "and returns ranked matches with a compositional audience size estimate. " +
+      "Use when the user describes a target audience in free-form language.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description:
+            "Natural language audience description. " +
+            "Examples: 'soccer moms 35+ who stream heavily', " +
+            "'urban professionals without children who watch sci-fi', " +
+            "'affluent families 35-44 in top DMAs'.",
+          maxLength: 2000,
+        },
+        limit: {
+          type: "number",
+          description: "Maximum number of matched signals to return. Range 1–50. Default 10.",
+          minimum: 1,
+          maximum: 50,
+        },
+      },
+      required: ["query"],
+    },
+  },
+
+  {
+    name: "get_concept",
+    description:
+      "Look up a specific concept from the UCP Concept-Level VAC registry by concept_id. " +
+      "Returns the concept definition including label, description, constituent dimensions, " +
+      "and cross-taxonomy member nodes showing how it maps to IAB, LiveRamp, TradeDesk, etc.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        concept_id: {
+          type: "string",
+          description:
+            "Concept registry ID. Examples: HIGH_INCOME_HOUSEHOLD_US, SOCCER_MOM_US, DRAMA_VIEWER_US, NASHVILLE_DMA_US",
+        },
+      },
+      required: ["concept_id"],
+    },
+  },
+
+  {
+    name: "search_concepts",
+    description:
+      "Semantic search over the UCP Concept Registry. " +
+      "Find concepts matching a natural language description. " +
+      "Use this to discover concept_ids for use in audience queries, " +
+      "or to explore what cross-taxonomy mappings exist for a given audience type. " +
+      "Optionally filter by category: demographic, interest, behavioral, geo, archetype, content, purchase_intent.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        q: {
+          type: "string",
+          description: "Search query. Examples: 'soccer mom', 'high income', 'afternoon drama viewer'",
+        },
+        category: {
+          type: "string",
+          enum: ["demographic", "interest", "behavioral", "geo", "archetype", "content", "purchase_intent"],
+          description: "Optional category filter",
+        },
+        limit: {
+          type: "number",
+          description: "Max results (1–50, default 10)",
+        },
+      },
+      required: ["q"],
     },
   },
 ];

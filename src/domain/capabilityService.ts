@@ -1,15 +1,17 @@
 // src/domain/capabilityService.ts
 // @adcp/client SDK: COMPATIBLE_ADCP_VERSIONS = ['v2.5', 'v2.6', 'v3', ...]
 // SIGNALS_TOOLS = ['get_signals', 'activate_signal']
+//
+// Cache key bumped to v5 to bust the stale v4 entry that had pseudo-v1 space data.
 
-const CACHE_KEY = "adcp_capabilities_v4";
+const CACHE_KEY = "adcp_capabilities_v5";
 const CACHE_TTL_SECONDS = 3600;
 
 import { UCP_CAPABILITY } from "../ucp/vacDeclaration";
 
 const STATIC_CAPABILITIES = {
   adcp: {
-    major_versions: [2, 3],  // SDK confirms v2.5, v2.6, v3 all compatible
+    major_versions: [2, 3],
   },
   supported_protocols: ["signals"],
   signals: {
@@ -54,11 +56,9 @@ const STATIC_CAPABILITIES = {
       max_rules_per_segment: 6,
     },
   },
-  // UCP (User Context Protocol) — embedding + similarity capabilities
   ucp: UCP_CAPABILITY,
 };
 
-// Named export required by src/mcp/server.ts and src/routes/capabilities.ts
 export async function getCapabilities(kv: KVNamespace): Promise<typeof STATIC_CAPABILITIES> {
   try {
     const cached = await kv.get(CACHE_KEY);

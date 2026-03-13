@@ -6,19 +6,19 @@
 
 // ── VAC (Vector Alignment Contract) ──────────────────────────────────────────
 
-export type UcpEncoding       = "float32" | "float16" | "int8" | "binary";
-export type UcpNormalization  = "l2" | "none";
+export type UcpEncoding = "float32" | "float16" | "int8" | "binary";
+export type UcpNormalization = "l2" | "none";
 export type UcpDistanceMetric = "cosine" | "dot_product" | "euclidean";
-export type UcpSignalType     = "identity" | "contextual" | "reinforcement";
+export type UcpSignalType = "identity" | "contextual" | "reinforcement";
 export type UcpSignalStrength = "high" | "medium" | "low";
 
 /**
  * Phase values:
- *   "v1"        — real vectors from declared model (openai-te3-small-d512-v1).
- *                 Cosine between same-model agents is valid without projector.
- *   "pseudo-v1" — hash-based deterministic vectors. Cosine not guaranteed meaningful.
- *   "llm-v1"    — on-demand LLM vectors (legacy alias for v1).
- *   "trained-v1"— fine-tuned model vectors.
+ *   "v1"         — real vectors from declared model (openai-te3-small-d512-v1).
+ *                  Cosine between same-model agents is valid without projector.
+ *   "pseudo-v1"  — hash-based deterministic vectors. Cosine not guaranteed meaningful.
+ *   "llm-v1"     — on-demand LLM vectors (legacy alias for v1).
+ *   "trained-v1" — fine-tuned model vectors.
  */
 export type UcpEmbeddingPhase = "v1" | "pseudo-v1" | "llm-v1" | "trained-v1";
 
@@ -30,15 +30,15 @@ export type UcpEmbeddingPhase = "v1" | "pseudo-v1" | "llm-v1" | "trained-v1";
  * Use vector_endpoint to fetch on demand.
  */
 export interface UcpEmbeddingDeclaration {
-  model_id:        string;          // e.g. "text-embedding-3-small"
-  model_family:    string;          // e.g. "openai/text-embedding-3-small"
-  space_id:        string;          // e.g. "openai-te3-small-d512-v1"
-  dimensions:      number;          // 256 | 384 | 512 | 768 | 1024
-  encoding:        UcpEncoding;
-  normalization:   UcpNormalization;
-  distance_metric: UcpDistanceMetric;
-  phase:           UcpEmbeddingPhase;  // which engine produced this
-  vector_endpoint: string;             // "/signals/{id}/embedding" — fetch full vector on demand
+    model_id: string;           // e.g. "text-embedding-3-small"
+    model_family: string;           // e.g. "openai/text-embedding-3-small"
+    space_id: string;           // e.g. "openai-te3-small-d512-v1"
+    dimensions: number;           // 256 | 384 | 512 | 768 | 1024
+    encoding: UcpEncoding;
+    normalization: UcpNormalization;
+    distance_metric: UcpDistanceMetric;
+    phase: UcpEmbeddingPhase;  // which engine produced this
+    vector_endpoint: string;             // "/signals/{id}/embedding" — fetch full vector on demand
 }
 
 /**
@@ -46,9 +46,9 @@ export interface UcpEmbeddingDeclaration {
  * Contains the actual float32 vector, base64-encoded.
  */
 export interface UcpEmbeddingVector extends UcpEmbeddingDeclaration {
-  vector:             string;   // base64-encoded float32[] per spec
-  generated_at:       string;   // ISO timestamp
-  cache_ttl_seconds:  number;
+    vector: string;   // base64-encoded float32[] per spec
+    generated_at: string;   // ISO timestamp
+    cache_ttl_seconds: number;
 }
 
 // ── Legacy Fallback ───────────────────────────────────────────────────────────
@@ -60,20 +60,20 @@ export interface UcpEmbeddingVector extends UcpEmbeddingDeclaration {
  *   segment_ids              ← from x_dts.taxonomy_id_list (IAB AT 1.1 node IDs)
  */
 export interface UcpLegacyFallback {
-  signal_agent_segment_id: string;
-  segment_ids:             string[];   // IAB Audience Taxonomy 1.1 node IDs
-  taxonomy_version:        "iab_audience_1.1";
-  data_provider:           string;
+    signal_agent_segment_id: string;
+    segment_ids: string[];   // IAB Audience Taxonomy 1.1 node IDs
+    taxonomy_version: "iab_audience_1.1";
+    data_provider: string;
 }
 
 // ── Privacy (bridged from DTS v1.2) ──────────────────────────────────────────
 
 export interface UcpPrivacy {
-  privacy_compliance_mechanisms: string[];   // from x_dts.privacy_compliance_mechanisms
-  permitted_uses:                string[];   // derived from signal access policy
-  ttl_seconds:                   number;     // derived from x_dts.audience_refresh
-  gpp_applicable:                boolean;
-  tcf_applicable:                boolean;
+    privacy_compliance_mechanisms: string[];   // from x_dts.privacy_compliance_mechanisms
+    permitted_uses: string[];   // derived from signal access policy
+    ttl_seconds: number;     // derived from x_dts.audience_refresh
+    gpp_applicable: boolean;
+    tcf_applicable: boolean;
 }
 
 // ── UCP Hybrid Payload ────────────────────────────────────────────────────────
@@ -89,49 +89,50 @@ export interface UcpPrivacy {
  *   - This object is the normative "AdCP-UCP Bridge Profile" payload
  */
 export interface UcpHybridPayload {
-  schema_version: "ucp-1.0";
+    schema_version: "ucp-1.0";
 
-  // VAC declaration (vector fetched separately via vector_endpoint)
-  embedding: UcpEmbeddingDeclaration;
+    // VAC declaration (vector fetched separately via vector_endpoint)
+    embedding: UcpEmbeddingDeclaration;
 
-  // AdCP → UCP identity bridge
-  legacy_fallback: UcpLegacyFallback;
+    // AdCP → UCP identity bridge
+    legacy_fallback: UcpLegacyFallback;
 
-  // Privacy bridged from DTS v1.2
-  privacy: UcpPrivacy;
+    // Privacy bridged from DTS v1.2
+    privacy: UcpPrivacy;
 
-  // UCP signal classification
-  signal_type:               UcpSignalType;
-  signal_strength:           UcpSignalStrength;
-  classification_rationale:  string;
+    // UCP signal classification
+    signal_type: UcpSignalType;
+    signal_strength: UcpSignalStrength;
+    classification_rationale: string;
 }
 
 // ── VAC Capability (for get_adcp_capabilities) ────────────────────────────────
+// GTS version and thresholds live in the structured gts sub-block in
+// capabilityService.ts — not here. This interface covers base VAC fields only.
 
 export interface UcpCapabilityDeclaration {
-  supported_spaces:            string[];
-  supported_encodings:         UcpEncoding[];
-  dimensions:                  number[];
-  embedding_endpoint_template: string;      // "/signals/{signal_id}/embedding"
-  similarity_search:           boolean;     // true when get_similar_signals tool present
-  phase:                       UcpEmbeddingPhase;
-  gts_version?:                string;      // Golden Test Set version if available
+    supported_spaces: string[];
+    supported_encodings: UcpEncoding[];
+    dimensions: number[];
+    embedding_endpoint_template: string;       // "/signals/{signal_id}/embedding"
+    similarity_search: boolean;      // true when get_similar_signals tool present
+    phase: UcpEmbeddingPhase;
 }
 
 // ── Similarity Search ─────────────────────────────────────────────────────────
 
 export interface SimilarSignalResult {
-  signal_agent_segment_id: string;
-  name:                    string;
-  cosine_similarity:       number;
-  signal_type:             UcpSignalType;
-  signal_strength:         UcpSignalStrength;
+    signal_agent_segment_id: string;
+    name: string;
+    cosine_similarity: number;
+    signal_type: UcpSignalType;
+    signal_strength: UcpSignalStrength;
 }
 
 export interface SimilarSignalsResponse {
-  reference_signal_id: string;
-  model_id:            string;
-  space_id:            string;
-  results:             SimilarSignalResult[];
-  context_id:          string;
+    reference_signal_id: string;
+    model_id: string;
+    space_id: string;
+    results: SimilarSignalResult[];
+    context_id: string;
 }

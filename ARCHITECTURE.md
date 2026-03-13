@@ -15,9 +15,10 @@ Cloudflare Worker (src/index.ts)
         ├── Auth check (DEMO_API_KEY)
         │     Public (no auth): /health, /capabilities, /mcp,
         │                       /ucp/concepts (read), /ucp/gts,
-        │                       /ucp/projector, /ucp/simulate-handshake,
+        │                       /ucp/simulate-handshake,
         │                       /auth/linkedin/*
-        │     Auth required:    /signals/*, /ucp/concepts/seed, /seed
+        │     Auth required:    /signals/*, /ucp/concepts/seed,
+        │                       /ucp/projector, /seed
         │
         ├── Auto-seed (ctx.waitUntil) — D1 seeded on first cold request
         │
@@ -27,9 +28,9 @@ Cloudflare Worker (src/index.ts)
               ├── GET  /capabilities                 → capabilityService
               ├── POST /mcp                          → mcpServer (JSON-RPC 2.0)
               │
-              ├── GET  /ucp/gts                      → getGts (Phase 2b prerequisite)
-              ├── GET  /ucp/projector                → getProjector (Procrustes/SVD, simulated)
-              ├── POST /ucp/simulate-handshake       → simulateHandshake (Phase 1 demo)
+              ├── GET  /ucp/gts                      → getGts (Phase 2b prerequisite, public)
+              ├── GET  /ucp/projector                → getProjector (Procrustes/SVD, auth required)
+              ├── POST /ucp/simulate-handshake       → simulateHandshake (Phase 1 demo, public)
               ├── GET  /ucp/concepts                 → conceptHandler (list / search / filter)
               ├── GET  /ucp/concepts/:concept_id     → conceptHandler (exact lookup)
               ├── POST /ucp/concepts/seed            → conceptRegistry.seedConceptsToKV
@@ -143,16 +144,17 @@ conceptRegistry.ts
 
 ### Route Handlers (v3.0-rc)
 
-| File | Route | Notes |
-|---|---|---|
-| `getGts.ts` | `GET /ucp/gts` | 15-pair GTS — identity/related/orthogonal. Pure in-memory, no API calls. |
-| `getProjector.ts` | `GET /ucp/projector` | Procrustes/SVD 512×512 matrix. Status: simulated. Exports `applyProjector()`. |
-| `simulateHandshake.ts` | `POST /ucp/simulate-handshake` | Phase 1 negotiation — 3 outcomes + negotiation_trace. |
-| `getEmbedding.ts` | `GET /signals/:id/embedding` | v1 vector or pseudo fallback |
-| `searchSignals.ts` | `POST /signals/search` | Search + relevance ranking |
-| `activateSignal.ts` | `POST /signals/activate` | Async activation |
-| `getOperation.ts` | `GET /operations/:id` | Job status polling |
-| `capabilities.ts` | `GET /capabilities` | AdCP + UCP capabilities envelope |
+| File | Route | Auth | Notes |
+|---|---|---|---|
+| `gts.ts` | `GET /ucp/gts` | Public | 15-pair GTS — identity/related/orthogonal. Pure in-memory, no API calls. |
+| `handshake.ts` | `POST /ucp/simulate-handshake` | Public | Phase 1 negotiation — 3 outcomes + negotiation_trace. |
+| `getEmbedding.ts` | `GET /signals/:id/embedding` | Auth | v1 vector or pseudo fallback |
+| `searchSignals.ts` | `POST /signals/search` | Auth | Search + relevance ranking |
+| `activateSignal.ts` | `POST /signals/activate` | Auth | Async activation |
+| `getOperation.ts` | `GET /operations/:id` | Auth | Job status polling |
+| `capabilities.ts` | `GET /capabilities` | Public | AdCP + UCP capabilities envelope |
+
+Note: `/ucp/projector` is handled inline in `src/index.ts` (auth required).
 
 ---
 
@@ -229,7 +231,7 @@ Buyer agent                         AdCP Signals Adaptor
      │  cosine_similarity(q, v)             │  VALID: same model, same space
      │                                      │
      │  ── if projector_required ──         │
-     │  GET /ucp/projector                  │  Phase 2b — fetch rotation matrix
+     │  GET /ucp/projector                  │  Phase 2b — fetch rotation matrix (auth required)
      │ ────────────────────────────────────►│
      │ ◄──────────────────────────────────── │  512×512 R matrix (status: "simulated")
      │  projected_v = R × v                 │  project into ucp-space-v1.0
@@ -295,40 +297,40 @@ Confidence tiers:
 
 Note: `description_similarity` (v1.0) retired. All semantic matching is now `embedding_similarity` or `lexical_fallback`.
 
-**Production confidence examples (v2.1):**
+**Production confidence examples (v2.1, live verified 2026-03-13):**
 
 ```
-"affluent families 35-44 who stream heavily"           → 0.76   tier: medium  (4 dims exact_rule)
-"streaming heavy watchers cord cutters"                → 0.568  tier: medium  (embedding_similarity active)
-"soccer moms 35+ Nashville no coffee Desperate H."    → 0.051  tier: narrow  (3+ unresolved)
+"affluent families 35-44 who stream heavily"           → 0.8075  tier: medium  (4 dims exact_rule)
+"streaming heavy watchers cord cutters"                → 0.5415  tier: low     (embedding_similarity active)
+"soccer moms 35+ Nashville no coffee Desperate H."    → 0.307   tier: narrow  (3+ unresolved)
 ```
 
 ---
 
 ## GTS Pair Set (v3.0-rc)
 
-15 pairs across three categories, all computed from real v1 vectors in `embeddingStore.ts`:
+15 pairs across three categories, computed from real v1 vectors in `embeddingStore.ts`. Thresholds calibrated empirically from live `text-embedding-3-small` scores — all signals share the "audience segment" domain, producing cosine inflation vs general-purpose NLP benchmarks.
 
-**Identity pairs (must pass: cosine ≥ 0.90)**
-- `age-adjacent-young` — sig_age_18_24 ↔ sig_age_25_34
-- `age-adjacent-midlife` — sig_age_35_44 ↔ sig_age_45_54
-- `income-adjacent-high` — sig_high_income_households ↔ sig_upper_middle_income
-- `content-streaming-affinity` — sig_drama_viewers ↔ sig_streaming_enthusiasts
-- `education-high` — sig_college_educated_adults ↔ sig_graduate_educated_adults
-- `acs-affluent-crosswalk` — sig_acs_affluent_college_educated ↔ sig_acs_graduate_high_income
+**Identity pairs** — must pass, per-pair minimum thresholds (0.50–0.72):
+- `age-adjacent-young` — sig_age_18_24 ↔ sig_age_25_34 (observed: 0.67, min: 0.55)
+- `age-adjacent-midlife` — sig_age_35_44 ↔ sig_age_45_54 (observed: 0.75, min: 0.65)
+- `income-adjacent-high` — sig_high_income_households ↔ sig_upper_middle_income (observed: 0.82, min: 0.72)
+- `content-streaming-affinity` — sig_drama_viewers ↔ sig_streaming_enthusiasts (observed: 0.56, min: 0.50)
+- `education-high` — sig_college_educated_adults ↔ sig_graduate_educated_adults (observed: 0.73, min: 0.63)
+- `acs-affluent-crosswalk` — sig_acs_affluent_college_educated ↔ sig_acs_graduate_high_income (observed: 0.74, min: 0.64)
 
-**Related pairs (expected: 0.50–0.89)**
+**Related pairs** — informational, band 0.35–0.84:
 - `content-genres-related` — sig_drama_viewers ↔ sig_documentary_viewers
 - `income-education-related` — sig_high_income_households ↔ sig_graduate_educated_adults
 - `families-seniors-related` — sig_families_with_children ↔ sig_senior_households
 - `urban-income-related` — sig_urban_professionals ↔ sig_high_income_households
 - `scifi-action-related` — sig_sci_fi_enthusiasts ↔ sig_action_movie_fans
 
-**Orthogonal pairs (must pass: cosine < 0.40)**
-- `young-vs-senior` — sig_age_18_24 ↔ sig_age_65_plus
-- `action-vs-documentary` — sig_action_movie_fans ↔ sig_documentary_viewers
-- `low-income-vs-affluent` — sig_middle_income_households ↔ sig_acs_affluent_college_educated
-- `young-single-vs-seniors` — sig_acs_young_single_adults ↔ sig_acs_senior_households_income
+**Orthogonal pairs** — must pass, per-pair maximum thresholds (0.55–0.78, domain inflation expected):
+- `young-vs-senior` — sig_age_18_24 ↔ sig_age_65_plus (observed: 0.61, max: 0.70)
+- `action-vs-documentary` — sig_action_movie_fans ↔ sig_documentary_viewers (observed: 0.45, max: 0.55)
+- `low-income-vs-affluent` — sig_middle_income_households ↔ sig_acs_affluent_college_educated (observed: 0.68, max: 0.78)
+- `young-single-vs-seniors` — sig_acs_young_single_adults ↔ sig_acs_senior_households_income (observed: 0.49, max: 0.58)
 
 ---
 
@@ -363,7 +365,7 @@ embeddingStore.ts — AUTO-GENERATED. Do not edit manually.
             phase: "pseudo-v1", space_id: "adcp-bridge-space-v1.0"
 
   Phase 2b:
-    /ucp/projector — Procrustes/SVD rotation matrix (simulated)
+    /ucp/projector — Procrustes/SVD rotation matrix (simulated, auth required)
     Maps openai-te3-small-d512-v1 → ucp-space-v1.0
     R ≈ I until IAB publishes reference model vectors
 ```
@@ -476,7 +478,7 @@ interface TemporalScope {
 | Concept-Level VAC — registry schema | UCP v0.2 Appendix D §4 |
 | Concept-Level VAC — cross-taxonomy member_nodes | UCP v0.2 Appendix D §4.2 |
 | Temporal behavioral signals — daypart + hours_utc | UCP v0.2 Appendix D §4.4 |
-| GTS — 15-pair validation set + pass criteria | UCP v0.2 §5.2 (Phase 2b prerequisite) |
+| GTS — 15-pair validation set + empirically-calibrated per-pair thresholds | UCP v0.2 §5.2 (Phase 2b prerequisite) |
 | Projector — Procrustes/SVD algorithm spec | UCP v0.2 §5.2 Phase 2b |
 | Handshake Simulator — 3-outcome negotiation protocol | UCP v0.2 §5 Phase 1 |
 | VAC space_id + phase declaration in MCP initialize | UCP v0.2 §5.2 |

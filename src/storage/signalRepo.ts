@@ -39,6 +39,18 @@ interface RuleRow {
 
 // ── Serialization ──────────────────────────────────────────────────────────────
 
+/**
+ * Parse a JSON column safely — a single corrupted row should not 500 the
+ * whole list endpoint. Returns the fallback if the value is unparseable.
+ */
+function safeJsonParse<T>(raw: string, fallback: T): T {
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 function rowToSignal(row: SignalRow, rules: RuleRow[] = []): CanonicalSignal {
   return {
     signalId: row.signal_id,
@@ -48,20 +60,22 @@ function rowToSignal(row: SignalRow, rules: RuleRow[] = []): CanonicalSignal {
     description: row.description,
     categoryType: row.category_type as CanonicalSignal["categoryType"],
     ...(row.parent_signal_id ? { parentSignalId: row.parent_signal_id } : {}),
-    sourceSystems: JSON.parse(row.source_systems) as string[],
-    destinations: JSON.parse(row.destinations) as string[],
+    sourceSystems: safeJsonParse<string[]>(row.source_systems, []),
+    destinations: safeJsonParse<string[]>(row.destinations, []),
     activationSupported: row.activation_supported === 1,
     ...(row.estimated_audience_size !== null
       ? { estimatedAudienceSize: row.estimated_audience_size }
       : {}),
-    ...(row.geography ? { geography: JSON.parse(row.geography) as string[] } : {}),
-    ...(row.pricing ? { pricing: JSON.parse(row.pricing) as CanonicalSignal["pricing"] } : {}),
+    ...(row.geography ? { geography: safeJsonParse<string[]>(row.geography, []) } : {}),
+    ...(row.pricing
+      ? { pricing: safeJsonParse<CanonicalSignal["pricing"]>(row.pricing, undefined as CanonicalSignal["pricing"]) }
+      : {}),
     ...(row.freshness ? { freshness: row.freshness } : {}),
     accessPolicy: row.access_policy as CanonicalSignal["accessPolicy"],
     generationMode: row.generation_mode as CanonicalSignal["generationMode"],
     status: row.status as CanonicalSignal["status"],
     ...(row.raw_source_refs
-      ? { rawSourceRefs: JSON.parse(row.raw_source_refs) as string[] }
+      ? { rawSourceRefs: safeJsonParse<string[]>(row.raw_source_refs, []) }
       : {}),
     ...(rules.length > 0
       ? {
@@ -72,7 +86,7 @@ function rowToSignal(row: SignalRow, rules: RuleRow[] = []): CanonicalSignal {
             operator: r.operator as CanonicalSignal["rules"] extends Array<infer R>
               ? R["operator"]
               : never,
-            value: JSON.parse(r.value) as string | number | string[],
+            value: safeJsonParse<string | number | string[]>(r.value, r.value as string),
             ...(r.weight !== null ? { weight: r.weight } : {}),
           })),
         }

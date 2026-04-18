@@ -152,6 +152,26 @@ export async function getOperationService(
   };
 }
 
+// 5-second timeout — webhooks should be quick acks, not long-running work.
+const WEBHOOK_TIMEOUT_MS = 5000;
+
+/**
+ * Validate that a webhook URL is safe to call.
+ * Only https is allowed (http permits plaintext tokens and MITM on the
+ * payload — our payload contains the segment ID and destination). The
+ * underlying Workers runtime cannot reach private networks from Cloudflare's
+ * edge, so SSRF to internal ranges is not a concern here; scheme + parse
+ * validation is the meaningful defence.
+ */
+function isValidWebhookUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    return u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Fire webhook with activation completion payload.
  * Non-fatal: logs error but doesn't throw.
@@ -164,6 +184,19 @@ async function fireWebhook(
   webhookUrl: string,
   logger: Logger
 ): Promise<void> {
+  if (!isValidWebhookUrl(webhookUrl)) {
+    logger.warn("webhook_rejected", {
+      operationId: opId,
+      reason: "invalid_url_or_scheme",
+    });
+    // Mark fired so we don't retry invalid URLs on every poll.
+    await markWebhookFired(db, opId);
+    return;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
+
   try {
     const platformSegmentId = `${destination}_${signalId}`;
     const payload = {
@@ -186,13 +219,16 @@ async function fireWebhook(
       method: "POST",
       headers: { "Content-Type": "application/json", "User-Agent": "adcp-signals-adaptor/1.0" },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
 
     await markWebhookFired(db, opId);
-    logger.info("webhook_fired", { operationId: opId, webhookUrl, statusCode: res.status });
+    logger.info("webhook_fired", { operationId: opId, statusCode: res.status });
   } catch (err) {
-    logger.error("webhook_failed", { operationId: opId, webhookUrl, error: String(err) });
+    logger.error("webhook_failed", { operationId: opId, error: String(err) });
     // Non-fatal — caller can re-poll
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

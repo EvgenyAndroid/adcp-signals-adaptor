@@ -7,6 +7,42 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { constantTimeEqual, requireAuth } from "../src/routes/shared";
 import { escapeHtml, escapeHtmlAttr, handleLinkedInAuthInit, handleLinkedInAuthCallback } from "../src/activations/auth/linkedin";
+import { corsHeaders } from "../src/index";
+
+// ── CORS headers ──────────────────────────────────────────────────────────────
+//
+// MCP Streamable HTTP clients send Mcp-Session-Id (and a couple of related
+// headers) on the wire. If they're not in the preflight allow-list, browser
+// MCP clients fail with what looks like a generic CORS block — and at least
+// one LLM-driven probe agent has been observed mislabelling that as "CSRF".
+// This test pins the allow-list so a future edit can't silently break it.
+
+describe("corsHeaders", () => {
+  const headers = corsHeaders();
+  const allowed = headers["Access-Control-Allow-Headers"]?.toLowerCase() ?? "";
+
+  it("allows the standard request headers", () => {
+    expect(allowed).toContain("content-type");
+    expect(allowed).toContain("authorization");
+  });
+
+  it("allows the MCP Streamable HTTP transport headers", () => {
+    expect(allowed).toContain("mcp-session-id");
+    expect(allowed).toContain("mcp-protocol-version");
+    expect(allowed).toContain("last-event-id");
+  });
+
+  it("exposes Mcp-Session-Id so browser clients can read it from responses", () => {
+    expect((headers["Access-Control-Expose-Headers"] ?? "").toLowerCase())
+      .toContain("mcp-session-id");
+  });
+
+  it("permits POST and OPTIONS for MCP", () => {
+    const methods = headers["Access-Control-Allow-Methods"]?.toUpperCase() ?? "";
+    expect(methods).toContain("POST");
+    expect(methods).toContain("OPTIONS");
+  });
+});
 
 // ── constant-time compare ─────────────────────────────────────────────────────
 

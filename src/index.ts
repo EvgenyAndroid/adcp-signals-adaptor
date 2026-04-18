@@ -29,6 +29,19 @@ import { handleActivateDispatch } from "./activations/routes/activate";
 // Seed data imported as text modules via wrangler assets
 import { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv } from "./seedData";
 
+// KV flag + module-level memoization gate the auto-seed.
+// Workers isolates persist across requests; the module-level boolean short-circuits
+// the KV read after the first successful check. The KV flag covers isolate recycling.
+const KV_SEED_COMPLETE = "seed:complete";
+let seedCheckedInIsolate = false;
+
+// Paths that don't interact with the signal catalog — skip auto-seed entirely
+// to keep the hot path (health, OAuth callbacks) quick.
+const SEED_SKIP_PREFIXES = [
+    "/health",
+    "/auth/",
+];
+
 export default {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
         const reqId = requestId();
@@ -57,7 +70,6 @@ export default {
             "/auth/linkedin/init",
             "/auth/linkedin/callback",
             "/auth/linkedin/status",
-            '/auth/linkedin/token-debug',
         ];
         const isPublic = publicPaths.some((p) => path === p || path.startsWith(p + "/"));
 
@@ -70,14 +82,11 @@ export default {
         logger.info("request_received", { method, path });
 
         try {
-            // Auto-seed on first request if DB is empty
-            ctx.waitUntil(
-                runSeedPipeline(
-                    getDb(env),
-                    { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv },
-                    logger
-                ).catch((err) => logger.error("auto_seed_failed", { error: String(err) }))
-            );
+            // Auto-seed on first request if DB is empty.
+            // Gated by isolate-local + KV flag so it's not a per-request pipeline run.
+            if (!seedCheckedInIsolate && !SEED_SKIP_PREFIXES.some((p) => path.startsWith(p))) {
+                ctx.waitUntil(maybeSeed(env, logger));
+            }
 
             let response: Response;
 
@@ -85,10 +94,6 @@ export default {
 
             if (method === "GET" && path === "/health") {
                 response = jsonResponse({ status: "ok", version: "3.0-rc" });
-
-            } else if (method === 'GET' && path === '/auth/linkedin/token-debug') {
-                const token = await env.SIGNALS_CACHE.get('linkedin:access_token');
-                response = jsonResponse({ token });
 
             } else if (method === "GET" && path === "/capabilities") {
                 response = await handleGetCapabilities(request, env, logger);
@@ -107,7 +112,7 @@ export default {
 
                 // ── LinkedIn OAuth (public — no auth required) ───────────────────────
             } else if (method === "GET" && path === "/auth/linkedin/init") {
-                response = handleLinkedInAuthInit(env);
+                response = await handleLinkedInAuthInit(env);
 
             } else if (method === "GET" && path === "/auth/linkedin/callback") {
                 response = await handleLinkedInAuthCallback(request, env);
@@ -216,4 +221,33 @@ function withCors(response: Response): Response {
         status: response.status,
         headers,
     });
+}
+
+/**
+ * Run the seed pipeline at most once per isolate, and at most once per
+ * deployment (KV flag persists across isolates). Safe to call concurrently —
+ * runSeedPipeline itself is idempotent.
+ */
+async function maybeSeed(env: Env, logger: ReturnType<typeof createLogger>): Promise<void> {
+    seedCheckedInIsolate = true;
+    try {
+        const flag = await env.SIGNALS_CACHE.get(KV_SEED_COMPLETE);
+        if (flag) return;
+
+        const result = await runSeedPipeline(
+            getDb(env),
+            { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv },
+            logger
+        );
+
+        // Either fresh-seeded or count-check found prior seed — either way,
+        // the catalog is populated and we can short-circuit on future requests.
+        if (result.seeded > 0 || result.skipped) {
+            await env.SIGNALS_CACHE.put(KV_SEED_COMPLETE, "1");
+        }
+    } catch (err) {
+        // Reset isolate flag so a transient failure can be retried on the next request.
+        seedCheckedInIsolate = false;
+        logger.error("auto_seed_failed", { error: String(err) });
+    }
 }

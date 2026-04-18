@@ -46,9 +46,14 @@ const KV_ACCESS_TOKEN  = 'linkedin:access_token';
 const KV_REFRESH_TOKEN = 'linkedin:refresh_token';
 const KV_TOKEN_EXPIRES = 'linkedin:token_expires';
 const KV_TOKEN_META    = 'linkedin:token_meta';
+const KV_OAUTH_STATE_PREFIX = 'linkedin:oauth_state:';
 
 // Refresh buffer: refresh 5 minutes before expiry
 const REFRESH_BUFFER_MS = 5 * 60 * 1000;
+
+// OAuth state TTL — must match the time a user reasonably takes to complete
+// the provider login. 10 minutes balances user grace against CSRF window.
+const OAUTH_STATE_TTL_SECONDS = 10 * 60;
 
 // ─── Env shape ────────────────────────────────────────────────────────────────
 
@@ -72,8 +77,16 @@ export interface LinkedInTokenSet {
 
 // ─── Route: GET /auth/linkedin/init ──────────────────────────────────────────
 
-export function handleLinkedInAuthInit(env: LinkedInAuthEnv): Response {
+export async function handleLinkedInAuthInit(env: LinkedInAuthEnv): Promise<Response> {
   const state = crypto.randomUUID();
+  // Persist state so the callback can verify it — CSRF protection.
+  // Single-use: deleted on successful callback or expires via TTL.
+  await env.SIGNALS_CACHE.put(
+    KV_OAUTH_STATE_PREFIX + state,
+    '1',
+    { expirationTtl: OAUTH_STATE_TTL_SECONDS },
+  );
+
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: env.LINKEDIN_CLIENT_ID,
@@ -103,7 +116,7 @@ export function handleLinkedInAuthInit(env: LinkedInAuthEnv): Response {
   <h1>AdCP → LinkedIn Authorization</h1>
   <p>One-time setup. After you authorize, the Worker stores your tokens and handles all refreshes automatically — no manual steps ever again.</p>
   <div class="scope">Scopes: r_ads · rw_ads · r_organization_social · w_organization_social</div>
-  <a href="${authUrl}">Authorize with LinkedIn →</a>
+  <a href="${escapeHtmlAttr(authUrl)}">Authorize with LinkedIn →</a>
   <p style="font-size: 12px; color: #3a3a5a;">App ID: 239110166 · Development Tier · Advertising API</p>
 </body>
 </html>`,
@@ -119,13 +132,25 @@ export async function handleLinkedInAuthCallback(
 ): Promise<Response> {
   const url = new URL(request.url);
   const code      = url.searchParams.get('code');
+  const state     = url.searchParams.get('state');
   const error     = url.searchParams.get('error');
   const errorDesc = url.searchParams.get('error_description');
+
+  // Verify state first — rejects CSRF regardless of whether LinkedIn
+  // returned an error or a code. Provider-supplied values are escaped
+  // below because the error path still renders them.
+  if (!state || !(await consumeOAuthState(state, env.SIGNALS_CACHE))) {
+    return htmlResponse('Invalid State', `
+      <p style="color:#ef4444">OAuth state missing, expired, or already used.</p>
+      <p>This protects against CSRF. Start the flow fresh.</p>
+      <a href="/auth/linkedin/init">Start over →</a>
+    `);
+  }
 
   if (error) {
     return htmlResponse('Authorization Failed', `
       <p style="color:#ef4444">LinkedIn returned an error:</p>
-      <pre style="color:#fb923c">${error}: ${errorDesc}</pre>
+      <pre style="color:#fb923c">${escapeHtml(error)}: ${escapeHtml(errorDesc ?? '')}</pre>
       <p>Common causes: user denied access, or scopes not approved on your app.</p>
       <a href="/auth/linkedin/init">Try again →</a>
     `);
@@ -145,7 +170,7 @@ export async function handleLinkedInAuthCallback(
     const msg = err instanceof Error ? err.message : String(err);
     return htmlResponse('Token Exchange Failed', `
       <p style="color:#ef4444">Failed to exchange code for tokens:</p>
-      <pre style="color:#fb923c">${msg}</pre>
+      <pre style="color:#fb923c">${escapeHtml(msg)}</pre>
       <p>Check LINKEDIN_CLIENT_SECRET is set correctly.</p>
       <a href="/auth/linkedin/init">Try again →</a>
     `);
@@ -156,13 +181,26 @@ export async function handleLinkedInAuthCallback(
   return htmlResponse('Authorization Successful ✓', `
     <p style="color:#00ff88; font-size: 20px;">✓ LinkedIn authorization complete.</p>
     <p>Tokens stored securely in KV. The Worker will handle all refreshes automatically.</p>
-    <div class="info-row"><span>Scope:</span><span>${tokenSet.scope}</span></div>
-    <div class="info-row"><span>Access token expires:</span><span>${new Date(tokenSet.expires_at).toLocaleString()}</span></div>
+    <div class="info-row"><span>Scope:</span><span>${escapeHtml(tokenSet.scope)}</span></div>
+    <div class="info-row"><span>Access token expires:</span><span>${escapeHtml(new Date(tokenSet.expires_at).toLocaleString())}</span></div>
     <div class="info-row"><span>Refresh token:</span><span>stored (12 month validity)</span></div>
-    <div class="info-row"><span>Ad account:</span><span>${env.LINKEDIN_AD_ACCOUNT_ID}</span></div>
+    <div class="info-row"><span>Ad account:</span><span>${escapeHtml(env.LINKEDIN_AD_ACCOUNT_ID)}</span></div>
     <p style="margin-top: 24px; font-size: 13px; color: #4a4a6a;">You can close this tab. Setup is complete.</p>
     <a href="/auth/linkedin/status">Check status →</a>
   `);
+}
+
+/**
+ * Verify and consume an OAuth state value.
+ * Returns true only if the state existed — and deletes it so it cannot be
+ * replayed. A missing state returns false (causes callback to reject).
+ */
+async function consumeOAuthState(state: string, kv: KVNamespace): Promise<boolean> {
+  const key = KV_OAUTH_STATE_PREFIX + state;
+  const existed = await kv.get(key);
+  if (!existed) return false;
+  await kv.delete(key);
+  return true;
 }
 
 // ─── Route: GET /auth/linkedin/status ────────────────────────────────────────
@@ -364,4 +402,27 @@ function json(body: unknown): Response {
   return new Response(JSON.stringify(body, null, 2), {
     headers: { 'Content-Type': 'application/json' },
   });
+}
+
+// ─── HTML escaping ────────────────────────────────────────────────────────────
+
+/**
+ * Escape a string for safe interpolation inside HTML text content.
+ * Prevents XSS from provider-supplied OAuth error strings.
+ */
+export function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Escape a string for safe interpolation inside a double-quoted HTML attribute.
+ * (Same set as escapeHtml — kept as a named helper for intent clarity.)
+ */
+export function escapeHtmlAttr(s: string): string {
+  return escapeHtml(s);
 }

@@ -42,5 +42,21 @@ export function requireAuth(request: Request, expectedKey: string): boolean {
 
   // Support both "Bearer <key>" and "ApiKey <key>"
   const match = authHeader.match(/^(?:Bearer|ApiKey)\s+(.+)$/i);
-  return match !== null && match[1] === expectedKey;
+  if (!match) return false;
+  return constantTimeEqual(match[1] ?? "", expectedKey);
+}
+
+/**
+ * Length-independent constant-time string compare.
+ * Compares against the longer of the two strings (zero-padded conceptually
+ * via XOR of indexed bytes) so both length and content leak no information.
+ * Sufficient for short shared-secret tokens; not a substitute for HMAC.
+ */
+export function constantTimeEqual(a: string, b: string): boolean {
+  const len = Math.max(a.length, b.length);
+  let diff = a.length ^ b.length;
+  for (let i = 0; i < len; i++) {
+    diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  }
+  return diff === 0;
 }

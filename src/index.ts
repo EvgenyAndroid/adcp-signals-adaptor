@@ -136,19 +136,9 @@ export default {
                 response = await handleActivateDispatch(request, env as any, platform);
 
                 // ── MCP ───────────────────────────────────────────────────────────────
+                // OPTIONS is handled by the early global preflight at the top of fetch.
             } else if (path === "/mcp" || path.startsWith("/mcp")) {
-                if (method === "OPTIONS") {
-                    response = new Response(null, {
-                        status: 204,
-                        headers: {
-                            "Access-Control-Allow-Origin": "*",
-                            "Access-Control-Allow-Methods": "POST, OPTIONS",
-                            "Access-Control-Allow-Headers": "Content-Type, Authorization, Mcp-Session-Id",
-                        },
-                    });
-                } else {
-                    response = await handleMcpRequest(request, env, logger);
-                }
+                response = await handleMcpRequest(request, env, logger);
 
                 // ── Signal search ────────────────────────────────────────────────────
             } else if (
@@ -203,11 +193,16 @@ export default {
     },
 };
 
-function corsHeaders(): Record<string, string> {
+export function corsHeaders(): Record<string, string> {
     return {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        // Mcp-Session-Id, Mcp-Protocol-Version and Last-Event-ID are required by
+        // the MCP Streamable HTTP transport. Omitting them causes browser-based
+        // MCP clients to fail preflight and report it as a generic "blocked"
+        // (which LLM-driven probes sometimes mislabel as CSRF).
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version, Last-Event-ID",
+        "Access-Control-Expose-Headers": "Mcp-Session-Id",
         "Access-Control-Max-Age": "86400",
     };
 }

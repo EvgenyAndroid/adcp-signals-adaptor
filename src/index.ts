@@ -91,7 +91,7 @@ export default {
                 response = jsonResponse({ token });
 
             } else if (method === "GET" && path === "/capabilities") {
-                response = await handleGetCapabilities(env, logger);
+                response = await handleGetCapabilities(request, env, logger);
 
                 // ── UCP GTS ──────────────────────────────────────────────────────────
             } else if (method === "GET" && path === "/ucp/gts") {

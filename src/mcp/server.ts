@@ -219,7 +219,7 @@ async function handleToolCall(
 
     switch (resolvedName) {
         case "get_adcp_capabilities":
-            return callGetCapabilities(env);
+            return callGetCapabilities(args, env);
         case "get_signals":
             return callGetSignals(args, env);
         case "activate_signal":
@@ -242,8 +242,15 @@ async function handleToolCall(
 
 // ── Tool implementations ──────────────────────────────────────────────────────
 
-async function callGetCapabilities(env: Env): Promise<unknown> {
-    const caps = await getCapabilities(env.SIGNALS_CACHE);
+async function callGetCapabilities(
+    args: Record<string, unknown>,
+    env: Env
+): Promise<unknown> {
+    const raw = args["protocols"];
+    const protocols = Array.isArray(raw)
+        ? raw.filter((p): p is string => typeof p === "string")
+        : undefined;
+    const caps = await getCapabilities(env.SIGNALS_CACHE, protocols);
     return toolResult(JSON.stringify(caps, null, 2));
 }
 

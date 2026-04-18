@@ -26,10 +26,29 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
         description:
             "Returns the capabilities of this AdCP Signals Provider: supported operations, " +
             "signal categories, available destinations, activation mode, and limits. " +
-            "Call this first to understand what the provider supports before searching or activating signals.",
+            "Call this first to understand what the provider supports before searching or activating signals. " +
+            "Optionally pass `protocols` to filter the response to specific protocol blocks.",
         inputSchema: {
             type: "object",
-            properties: {},
+            properties: {
+                protocols: {
+                    type: "array",
+                    description:
+                        "Optional filter — return only the listed protocol blocks. " +
+                        "Top-level adcp, supported_protocols, and ext are always returned.",
+                    items: {
+                        type: "string",
+                        enum: [
+                            "media_buy",
+                            "signals",
+                            "governance",
+                            "sponsored_intelligence",
+                            "creative",
+                            "brand",
+                        ],
+                    },
+                },
+            },
         },
     },
 

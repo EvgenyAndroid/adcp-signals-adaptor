@@ -1,6 +1,6 @@
 # AdCP Signals Adaptor
 
-A production-structured, AdCP 2.6-compliant Signals Provider built on Cloudflare Workers. Implements the full AdCP Signals Activation Protocol with IAB Data Transparency Standard v1.2 labeling, a UCP (User Context Protocol) embedding bridge, real OpenAI embedding vectors, a concept-level cross-taxonomy registry, natural language audience query, and a complete three-phase Vector Alignment Handshake — the first reference implementation combining the AdCP-UCP Bridge Profile with all UCP v0.2-draft extensions including GTS, Projector, and Handshake Simulator.
+A production-structured, AdCP 3.0-rc-compliant Signals Provider built on Cloudflare Workers. Implements the full AdCP Signals Activation Protocol with IAB Data Transparency Standard v1.2 labeling, a UCP (User Context Protocol) embedding bridge, real OpenAI embedding vectors, a concept-level cross-taxonomy registry, natural language audience query, and a complete three-phase Vector Alignment Handshake — the first reference implementation combining the AdCP-UCP Bridge Profile with all UCP v0.2-draft extensions including GTS, Projector, and Handshake Simulator.
 
 **Live:** `https://adcp-signals-adaptor.evgeny-193.workers.dev`  
 **MCP:** `https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp`  
@@ -17,16 +17,17 @@ A production-structured, AdCP 2.6-compliant Signals Provider built on Cloudflare
 | v2.0 | 2026-02-15 | UCP embedding bridge — `x_ucp` on every signal, real OpenAI vectors, concept registry (19 concepts, 5 vendors), 3 new MCP tools (`query_signals_nl`, `get_concept`, `search_concepts`) |
 | v2.1 | 2026-03-08 | Hybrid NL resolver — true three-pass pipeline (exact_rule → embedding_similarity → lexical_fallback), MIN_EMBEDDING_SCORE=0.45, cord_cutter archetype, SemanticResolver class, `_embedding_mode` transparency field |
 | v3.0-rc | 2026-03-12 | Phase 2b + Phase 3 — GTS endpoint (15 pairs), Projector (Procrustes/SVD, simulated), Handshake Simulator (3-outcome negotiation), updated MCP initialize serverInfo |
+| v3.0-rc.1 | 2026-04-19 | AdCP v3 capabilities schema conformance — `get_adcp_capabilities` now accepts the `protocols` filter parameter, UCP block moved from top-level to `ext.ucp` (schema-sanctioned extension slot) |
 
 ---
 
 ## Protocol Compliance
 
-Implements AdCP Signals Activation Protocol v2.6 — 8 MCP tools:
+Implements AdCP Signals Activation Protocol v3.0-rc — 8 MCP tools. Capabilities response conforms to the [v3 schema](https://adcontextprotocol.org/schemas/v3/protocol/get-adcp-capabilities-response.json):
 
 | Tool | Status | Notes |
 |---|---|---|
-| `get_adcp_capabilities` | ✅ | `adcp.major_versions: [2, 3]` + full UCP capability block incl. GTS + projector |
+| `get_adcp_capabilities` | ✅ | `adcp.major_versions: [2, 3]` + `supported_protocols: ["signals"]` + UCP block under `ext.ucp`. Accepts `protocols` filter param. |
 | `get_signals` | ✅ | `signal_spec` + `deliver_to` (required) + relevance ranking + `x_dts` + `x_ucp` on every signal |
 | `activate_signal` | ✅ | `deliver_to` required. Async — returns `task_id + pending` immediately |
 | `get_operation_status` | ✅ | Aliases: `get_task_status`, `get_signal_status`. `destinations` field. |
@@ -43,7 +44,7 @@ Passes the AdCP conformance test suite: health, discovery, capability_discovery,
 
 | Standard | Coverage |
 |---|---|
-| AdCP Signals Activation Protocol v2.6 | Full — all 4 core tools + `get_similar_signals` + NL query + concept registry extensions |
+| AdCP Signals Activation Protocol v3.0-rc | Full — all 4 core tools + `get_similar_signals` + NL query + concept registry extensions. Capabilities response conforms to v3 schema (UCP under `ext.ucp`, `protocols` filter supported). |
 | IAB Data Transparency Standard v1.2 | Full — `x_dts` on every signal, all field types, onboarder section |
 | UCP (User Context Protocol) v0.1/v0.2-draft | `x_ucp` on every signal, real VAC embeddings, concept registry, NL query, GTS, Projector |
 
@@ -362,7 +363,7 @@ Cloudflare Worker (src/index.ts)
 Domain Layer (src/domain/)
   signalService.ts        — search, relevance ranking, brief parsing, catalog adapter
   activationService.ts    — async activate, lazy state machine, webhook
-  capabilityService.ts    — capabilities + UCP block (KV-cached 1hr)
+  capabilityService.ts    — AdCP v3 capabilities envelope (KV-cached 1hr). `protocols` filter. UCP under `ext.ucp`.
   ruleEngine.ts           — deterministic segment generation
   signalModel.ts          — base seeded + derived catalog (33 signals)
   enrichedSignalModel.ts  — Census ACS + Nielsen DMA + cross-taxonomy (16 signals)

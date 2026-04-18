@@ -1,6 +1,6 @@
 # Architecture
 
-AdCP Signals Adaptor — Cloudflare Worker implementing AdCP 2.6 Signals Activation Protocol with UCP v0.1/v0.2-draft extensions including GTS, Projector, and Handshake Simulator (v3.0-rc).
+AdCP Signals Adaptor — Cloudflare Worker implementing AdCP 3.0-rc Signals Activation Protocol with UCP v0.1/v0.2-draft extensions including GTS, Projector, and Handshake Simulator (v3.0-rc). Capabilities response conforms to the v3 schema — UCP capability block lives under the schema-sanctioned `ext.ucp` extension slot.
 
 ---
 
@@ -55,7 +55,7 @@ Cloudflare Worker (src/index.ts)
 |---|---|
 | `signalService.ts` | Search, generate, brief ranking, catalog adapter for NL query. Exports `getAllSignalsForCatalog()` and `inferRulesFromSignalId()`. |
 | `activationService.ts` | Activation job lifecycle, lazy state machine, webhook callback |
-| `capabilityService.ts` | AdCP capabilities envelope (KV-cached 1hr). Imports `UCP_CAPABILITY` from `vacDeclaration.ts`. |
+| `capabilityService.ts` | AdCP v3-schema capabilities envelope (KV-cached 1hr). Accepts optional `protocols` filter. UCP block nested under `ext.ucp`. Imports `UCP_CAPABILITY` from `vacDeclaration.ts`. |
 | `ruleEngine.ts` | Dynamic segment generation from dimension rules |
 | `signalModel.ts` | Base seeded + derived catalog (33 signals) |
 | `enrichedSignalModel.ts` | Census ACS-derived (5), Nielsen DMA-derived (6), cross-taxonomy bridge (5) = 16 enriched signals |

@@ -214,7 +214,7 @@ async function getSimilarity(
 export async function handleGetGts(env: Env, logger: Logger): Promise<Response> {
   logger.info("ucp_gts_requested");
 
-  const engine = createEmbeddingEngine(env as any);
+  const engine = createEmbeddingEngine(env);
   const enginePhase = engine.phase;
   const isPseudo = enginePhase === "pseudo-v1";
   const spaceId = engine.spaceId;

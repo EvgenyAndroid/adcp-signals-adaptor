@@ -14,10 +14,11 @@
 
 import { handleLinkedInActivate } from './linkedin';
 import { isSupportedPlatform } from '../adapters';
+import type { Env } from '../../types/env';
 
 export async function handleActivateDispatch(
   request: Request,
-  env: Record<string, string>,
+  env: Env,
   platform: string,
 ): Promise<Response> {
   if (!isSupportedPlatform(platform)) {
@@ -32,7 +33,7 @@ export async function handleActivateDispatch(
 
   switch (platform) {
     case 'linkedin':
-      return handleLinkedInActivate(request, env as any);
+      return handleLinkedInActivate(request, env);
     default:
       return new Response(
         JSON.stringify({ success: false, error: `Platform "${platform}" not yet implemented.` }),

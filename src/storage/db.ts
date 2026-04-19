@@ -9,10 +9,16 @@ export function getDb(env: Env): DB {
   return env.DB;
 }
 
+// The T constraint below is `object` rather than `Record<string, unknown>`
+// so callers can pass interface row shapes (JobRow, SignalRow, RuleRow) —
+// TypeScript interfaces don't satisfy a `Record<string, unknown>` constraint
+// because they lack an index signature. D1's `.all<T>()` / `.first<T>()`
+// accept any object type, so the constraint wasn't providing extra safety.
+
 /**
  * Run a query and return all rows typed.
  */
-export async function queryAll<T extends Record<string, unknown>>(
+export async function queryAll<T extends object>(
   db: DB,
   sql: string,
   params: unknown[] = []
@@ -25,7 +31,7 @@ export async function queryAll<T extends Record<string, unknown>>(
 /**
  * Run a query and return the first row or null.
  */
-export async function queryFirst<T extends Record<string, unknown>>(
+export async function queryFirst<T extends object>(
   db: DB,
   sql: string,
   params: unknown[] = []

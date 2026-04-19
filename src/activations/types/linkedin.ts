@@ -47,7 +47,11 @@ export type LinkedInObjectiveType =
   | 'JOB_APPLICANTS';
 
 export interface LinkedInCampaignPayload {
-  // account is passed in the URL path, not the body (per LinkedIn REST API docs)
+  // account is primarily passed in the URL path per the LinkedIn REST API,
+  // but the adapter also includes it in the body (ignored server-side,
+  // kept for client-side response mirroring in createCampaign). Typed here
+  // so the adapter/client don't need casts.
+  account?: string;
   name: string;
   status: LinkedInCampaignStatus;
   type: 'SPONSORED_UPDATES' | 'TEXT_AD' | 'SPONSORED_INMAILS';

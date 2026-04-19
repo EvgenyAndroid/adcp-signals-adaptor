@@ -88,7 +88,7 @@ export class LinkedInAdapter {
     if (!campaignGroupUrn) {
       try {
         const groups = await listCampaignGroups(env.LINKEDIN_AD_ACCOUNT_ID, accessToken);
-        if (groups.length > 0) {
+        if (groups.length > 0 && groups[0]) {
           campaignGroupUrn = `urn:li:sponsoredCampaignGroup:${groups[0].id}`;
         } else {
           campaignGroupUrn = await createCampaignGroup(env.LINKEDIN_AD_ACCOUNT_ID, accessToken, 'AdCP Signals');

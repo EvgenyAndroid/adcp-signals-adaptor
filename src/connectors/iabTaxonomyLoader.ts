@@ -30,14 +30,20 @@ export function parseTaxonomyTsv(tsv: string): TaxonomyIndex {
     const uniqueId = cols[0]?.trim();
     if (!uniqueId) continue;
 
+    // exactOptionalPropertyTypes: conditionally include optional fields
+    // rather than assigning `undefined` — the type disallows `| undefined`.
+    const parentId = cols[1]?.trim();
+    const tier1 = cols[3]?.trim();
+    const tier2 = cols[4]?.trim();
+    const tier3 = cols[5]?.trim();
     const node: IabTaxonomyNode = {
       uniqueId,
-      parentId: cols[1]?.trim() || undefined,
       name: cols[2]?.trim() ?? "",
-      tier1: cols[3]?.trim() || undefined,
-      tier2: cols[4]?.trim() || undefined,
-      tier3: cols[5]?.trim() || undefined,
       extension: (cols[6]?.trim() ?? "").toLowerCase() === "true",
+      ...(parentId ? { parentId } : {}),
+      ...(tier1 ? { tier1 } : {}),
+      ...(tier2 ? { tier2 } : {}),
+      ...(tier3 ? { tier3 } : {}),
     };
     nodes.push(node);
   }

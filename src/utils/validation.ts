@@ -4,7 +4,6 @@ import type { ApiError } from "../types/api";
 import type {
   SearchSignalsRequest,
   ActivateSignalRequest,
-  GenerateSignalRequest,
 } from "../types/api";
 
 // Allowed values for enum-like fields
@@ -25,19 +24,8 @@ const VALID_DESTINATIONS = new Set([
   "mock_measurement",
 ]);
 
-const VALID_RULE_DIMENSIONS = new Set([
-  "age_band",
-  "income_band",
-  "education",
-  "household_type",
-  "geography",
-  "metro_tier",
-  "content_genre",
-  "content_affinity_score",
-  "streaming_affinity",
-]);
-
-const VALID_RULE_OPERATORS = new Set(["eq", "in", "gte", "lte", "contains", "range"]);
+// VALID_RULE_DIMENSIONS + VALID_RULE_OPERATORS were only used by
+// validateGenerateRequest (removed). Removed with the validator.
 
 export interface ValidationResult {
   ok: boolean;
@@ -105,40 +93,9 @@ export function validateActivateRequest(body: unknown): ValidationResult {
   return { ok: true };
 }
 
-export function validateGenerateRequest(body: unknown): ValidationResult {
-  if (!body || typeof body !== "object") {
-    return fail("INVALID_BODY", "Request body must be a JSON object");
-  }
-  const req = body as Partial<GenerateSignalRequest>;
-
-  if (!Array.isArray(req.rules) || req.rules.length === 0) {
-    return fail("MISSING_RULES", "rules array is required and must not be empty");
-  }
-
-  if (req.rules.length > 6) {
-    return fail("TOO_MANY_RULES", "Maximum 6 rules per custom segment");
-  }
-
-  for (const [i, rule] of req.rules.entries()) {
-    if (!rule.dimension || !VALID_RULE_DIMENSIONS.has(rule.dimension)) {
-      return fail(
-        "INVALID_RULE_DIMENSION",
-        `Rule ${i}: dimension must be one of: ${[...VALID_RULE_DIMENSIONS].join(", ")}`
-      );
-    }
-    if (!rule.operator || !VALID_RULE_OPERATORS.has(rule.operator)) {
-      return fail(
-        "INVALID_RULE_OPERATOR",
-        `Rule ${i}: operator must be one of: ${[...VALID_RULE_OPERATORS].join(", ")}`
-      );
-    }
-    if (rule.value === undefined || rule.value === null) {
-      return fail("MISSING_RULE_VALUE", `Rule ${i}: value is required`);
-    }
-  }
-
-  return { ok: true };
-}
+// validateGenerateRequest was removed: it was dead code referencing a
+// non-existent GenerateSignalRequest type. The generate endpoint was
+// folded into /signals/search's brief-proposal flow.
 
 function fail(code: string, message: string): ValidationResult {
   return { ok: false, error: { error: message, code } };

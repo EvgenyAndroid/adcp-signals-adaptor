@@ -316,7 +316,8 @@ async function callActivateSignal(
 
     const validation = validateActivateRequest(req);
     if (!validation.ok) {
-        throw new McpToolError(validation.error!.message, { code: validation.error!.code });
+        // ApiError uses `error` (not `message`) for the human-readable string.
+        throw new McpToolError(validation.error!.error, { code: validation.error!.code });
     }
 
     try {

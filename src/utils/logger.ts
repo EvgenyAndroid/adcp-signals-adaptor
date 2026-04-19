@@ -15,7 +15,7 @@ export class Logger {
   private requestId?: string;
 
   constructor(requestId?: string) {
-    this.requestId = requestId;
+    if (requestId !== undefined) this.requestId = requestId;
   }
 
   private write(level: LogLevel, event: string, meta: Record<string, unknown> = {}): void {

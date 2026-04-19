@@ -132,7 +132,7 @@ export default {
 
                 // ── Platform Activation (auth required) ──────────────────────────────
             } else if (method === "POST" && path.startsWith("/signals/activate/")) {
-                const platform = path.replace("/signals/activate/", "").split("/")[0];
+                const platform = path.replace("/signals/activate/", "").split("/")[0] ?? "";
                 response = await handleActivateDispatch(request, env, platform);
 
                 // ── MCP ───────────────────────────────────────────────────────────────
@@ -167,7 +167,7 @@ export default {
 
                 // ── Signal embedding ─────────────────────────────────────────────────
             } else if (method === "GET" && path.match(/^\/signals\/[^/]+\/embedding$/)) {
-                const signalId = path.split("/")[2];
+                const signalId = path.split("/")[2] ?? "";
                 response = await handleGetEmbedding(signalId, env, logger);
 
                 // ── Operations polling ───────────────────────────────────────────────

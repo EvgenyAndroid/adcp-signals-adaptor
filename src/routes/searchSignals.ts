@@ -36,9 +36,12 @@ export async function handleSearchSignals(
 
   const validation = validateSearchRequest(req);
   if (!validation.ok) {
+    // Note: ApiError uses `error` (not `message`) for the human-readable
+    // string — previous callers accessed `.message` and shipped responses
+    // missing the text. Fixed below.
     return errorResponse(
       validation.error!.code,
-      validation.error!.message,
+      validation.error!.error,
       400
     );
   }

@@ -76,10 +76,10 @@ export async function activateSignalService(
     operationId: opId,
     signalId: req.signalId,
     destination: req.destination,
-    accountId: req.accountId,
-    campaignId: req.campaignId,
-    notes: req.notes,
-    webhookUrl: req.webhookUrl,
+    ...(req.accountId !== undefined ? { accountId: req.accountId } : {}),
+    ...(req.campaignId !== undefined ? { campaignId: req.campaignId } : {}),
+    ...(req.notes !== undefined ? { notes: req.notes } : {}),
+    ...(req.webhookUrl !== undefined ? { webhookUrl: req.webhookUrl } : {}),
   });
 
   logger.info("activation_submitted", {

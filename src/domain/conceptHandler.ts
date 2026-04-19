@@ -72,7 +72,7 @@ export async function handleConceptRoute(
   // GET /ucp/concepts/:concept_id
   const idMatch = pathname.match(/^\/ucp\/concepts\/([A-Z0-9_]+)$/);
   if (idMatch && request.method === "GET") {
-    const concept_id = idMatch[1];
+    const concept_id = idMatch[1] ?? "";
     const entry = getConceptById(concept_id);
     if (!entry) {
       return json({ error: `Concept '${concept_id}' not found` }, 404);

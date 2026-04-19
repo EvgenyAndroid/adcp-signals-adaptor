@@ -73,6 +73,7 @@ export function estimateAudienceSize(rules: ResolvedRule[]): AudienceSizeEstimat
     if (!dimFactors) continue;
 
     const val = Array.isArray(rule.value) ? rule.value[0] : String(rule.value);
+    if (val === undefined) continue;
     const dimFactor = dimFactors[val];
     if (dimFactor !== undefined) {
       factor *= dimFactor;

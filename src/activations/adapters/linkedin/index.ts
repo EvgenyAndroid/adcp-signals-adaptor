@@ -3,5 +3,6 @@
  */
 export { LinkedInAdapter } from './adapter';
 export { mapDimensionsToLinkedIn } from './mapper';
-export { createCampaign, validateToken, getAdAccount, LinkedInApiError } from './client';
+// getAdAccount was referenced here but never existed in ./client — removed.
+export { createCampaign, validateToken, LinkedInApiError } from './client';
 export type { LinkedInEnv, LinkedInActivationRequest, LinkedInActivationResult } from '../../types/linkedin';

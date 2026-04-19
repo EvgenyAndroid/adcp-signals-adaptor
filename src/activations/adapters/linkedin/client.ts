@@ -139,7 +139,11 @@ export async function validateToken(
     });
     if (!res.ok) return { valid: false };
     const json = await res.json() as { sub?: string; name?: string };
-    return { valid: true, sub: json.sub, name: json.name };
+    return {
+      valid: true,
+      ...(json.sub !== undefined ? { sub: json.sub } : {}),
+      ...(json.name !== undefined ? { name: json.name } : {}),
+    };
   } catch {
     return { valid: false };
   }

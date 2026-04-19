@@ -157,7 +157,7 @@ export function mapDimensionsToLinkedIn(dimensions: SignalDimension[]): MapResul
         if (m) {
           addFacet(facetMap, FACET.AGE, m.urn);
           const proxied = !!m.note;
-          dimensionResults.push({ dimension, value, status: proxied ? 'proxied' : 'mapped', platform_facet: 'ageRanges', platform_values: [m.urn], note: m.note });
+          dimensionResults.push({ dimension, value, status: proxied ? 'proxied' : 'mapped', platform_facet: 'ageRanges', platform_values: [m.urn], ...(m.note !== undefined ? { note: m.note } : {}) });
           proxied ? proxiedCount++ : supportedCount++;
         } else {
           dimensionResults.push({ dimension, value, status: 'not_supported', note: `Unknown age band: ${value}` });
@@ -167,7 +167,7 @@ export function mapDimensionsToLinkedIn(dimensions: SignalDimension[]): MapResul
       }
 
       case 'geo': {
-        const key = v.split(',')[0].trim();
+        const key = (v.split(',')[0] ?? v).trim();
         const m = GEO_MAP[key] ?? GEO_MAP[v];
         if (m) {
           addFacet(facetMap, FACET.LOCATION, m.urn);

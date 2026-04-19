@@ -20,7 +20,8 @@ export async function handleActivateSignal(
 
   const validation = validateActivateRequest(body);
   if (!validation.ok) {
-    return errorResponse(validation.error!.code, validation.error!.message, 400);
+    // ApiError uses `error` (not `message`) for the human-readable string.
+    return errorResponse(validation.error!.code, validation.error!.error, 400);
   }
 
   try {

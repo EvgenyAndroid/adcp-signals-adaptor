@@ -44,8 +44,9 @@ export function parseTaxonomyBridgeCsv(csv: string): TaxonomyBridgeEntry[] {
     return idx >= 0 ? (row[idx]?.trim() ?? "") : "";
   };
 
-  return lines.slice(1).map((line) => {
+  return lines.slice(1).map((line): TaxonomyBridgeEntry => {
     const cols = line.split(",");
+    const contentTier2 = col(cols, "content_tier2");
     return {
       audienceTaxonomyId: col(cols, "audience_id"),
       audienceTaxonomyName: col(cols, "audience_name"),
@@ -53,10 +54,10 @@ export function parseTaxonomyBridgeCsv(csv: string): TaxonomyBridgeEntry[] {
       contentTaxonomyId: col(cols, "content_id"),
       contentTaxonomyName: col(cols, "content_name"),
       contentTier1: col(cols, "content_tier1"),
-      contentTier2: col(cols, "content_tier2") || undefined,
       mappingType: col(cols, "mapping_type") as TaxonomyBridgeEntry["mappingType"],
       mappingRationale: col(cols, "mapping_rationale"),
       bidirectional: col(cols, "bidirectional") === "true",
+      ...(contentTier2 ? { contentTier2 } : {}),
     };
   });
 }

@@ -239,7 +239,6 @@ describe("Signal catalog", () => {
 import {
   validateSearchRequest,
   validateActivateRequest,
-  validateGenerateRequest,
 } from "../src/utils/validation";
 
 describe("Request validation", () => {
@@ -279,28 +278,12 @@ describe("Request validation", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("accepts valid generate request", () => {
-    const result = validateGenerateRequest({
-      rules: [{ dimension: "age_band", operator: "eq", value: "25-34" }],
-    });
-    expect(result.ok).toBe(true);
-  });
-
-  it("rejects generate request with no rules", () => {
-    const result = validateGenerateRequest({ rules: [] });
-    expect(result.ok).toBe(false);
-  });
-
-  it("rejects generate request with too many rules", () => {
-    const result = validateGenerateRequest({
-      rules: Array.from({ length: 7 }, () => ({
-        dimension: "age_band",
-        operator: "eq",
-        value: "25-34",
-      })),
-    });
-    expect(result.ok).toBe(false);
-  });
+  // The three "generate request" tests were removed alongside
+  // validateGenerateRequest itself: that validator was dead code with no
+  // production caller, importing a GenerateSignalRequest type that didn't
+  // exist. Brief-driven proposal generation is exercised via
+  // searchSignalsService (covered by tests/proposal-cache.test.ts and
+  // the live runner).
 });
 
 // ── Mapper tests ──────────────────────────────────────────────────────────────

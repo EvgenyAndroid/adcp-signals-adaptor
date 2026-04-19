@@ -17,7 +17,7 @@ export async function handleGetOperation(
 
   try {
     const db = getDb(env);
-    const result = await getOperationService(db, operationId);
+    const result = await getOperationService(db, operationId, logger);
     return jsonResponse(result);
   } catch (err) {
     if (err instanceof NotFoundError) {

@@ -3,12 +3,15 @@
  *
  * LinkedIn OAuth 2.0 Authorization Code flow with automatic token refresh.
  *
- * SETUP (one-time, in browser):
- *   1. Visit: GET /auth/linkedin/init
- *   2. LinkedIn login page appears — authorize the app
- *   3. LinkedIn redirects to: GET /auth/linkedin/callback?code=XXX
- *   4. Worker exchanges code for access_token + refresh_token
- *   5. Both tokens stored in KV — never needed manually again
+ * SETUP (one-time, operator-driven):
+ *   1. Call `GET /auth/linkedin/init` with your API key
+ *      (Authorization: Bearer $DEMO_API_KEY). The HTML response
+ *      contains a one-click LinkedIn authorize link.
+ *   2. Click through to LinkedIn; authorize the app.
+ *   3. LinkedIn redirects to `GET /auth/linkedin/callback?code=XXX`
+ *      (public by design — state-consumed-once is the defense).
+ *   4. Worker exchanges the code for access_token + refresh_token.
+ *   5. Both tokens stored in KV — never needed manually again.
  *
  * ALL SUBSEQUENT CALLS (fully automated, server-to-server):
  *   - Worker reads access_token from KV
@@ -272,9 +275,9 @@ export async function handleLinkedInAuthCallback(
  * public /callback route. Under the previous KV implementation
  * (`kv.get` → `kv.delete`) two near-simultaneous callbacks could both see
  * the state before either deletion landed, yielding a TOCTOU replay. With
- * D1, SQLite serializes row-level writes — the DELETE that matches a row
- * is the only one that sees it; any concurrent DELETE on the same primary
- * key returns zero rows. Strictly single-use.
+ * D1, SQLite serializes writes — only one DELETE can consume the state;
+ * any concurrent DELETE on the same primary key returns zero rows.
+ * Strictly single-use.
  *
  * The WHERE clause includes an expiry check so a DB with stale rows (after
  * a clock rewind or a missed cleanup) can't be induced to accept something
@@ -309,7 +312,7 @@ export async function handleLinkedInAuthStatus(
   if (!accessToken || !refreshToken) {
     return json({
       configured: false,
-      message: 'No LinkedIn tokens found. Visit /auth/linkedin/init to authorize.',
+      message: 'No LinkedIn tokens found. Call `GET /auth/linkedin/init` with your API key to start the flow.',
     });
   }
 
@@ -351,7 +354,7 @@ export async function getValidAccessToken(env: LinkedInAuthEnv): Promise<string>
   ]);
 
   if (!accessToken || !refreshToken) {
-    throw new Error('LinkedIn not authorized. Visit /auth/linkedin/init to complete setup.');
+    throw new Error('LinkedIn not authorized. Call `GET /auth/linkedin/init` with your API key to complete setup.');
   }
 
   const needsRefresh = !expiresAt

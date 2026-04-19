@@ -86,8 +86,8 @@ export default {
         // /init writes a random UUID to the `oauth_state` D1 table, and
         // /callback consumes it atomically via
         // `DELETE ... WHERE state = ? AND expires_at > ? RETURNING state`
-        // — SQLite serializes the row-level write, so exactly one DELETE
-        // matches a given state. An attacker can't forge a valid state
+        // — SQLite serializes writes, so only one DELETE can consume a
+        // given state. An attacker can't forge a valid state
         // without first coaxing a legitimate operator to hit /init —
         // which /init's auth gate prevents.
         //

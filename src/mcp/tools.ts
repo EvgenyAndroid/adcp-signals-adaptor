@@ -77,6 +77,14 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                         "Provided for compatibility with clients that use the singular form.",
                     enum: [...PROTOCOL_ENUM],
                 },
+                context: {
+                    type: "object",
+                    description:
+                        "Opaque correlation data echoed unchanged in the response. " +
+                        "Use for tracing / session IDs / correlation IDs. Per the AdCP " +
+                        "context schema, contents are not parsed by the agent — they round-trip.",
+                    additionalProperties: true,
+                },
             },
         },
         outputSchema: {
@@ -85,12 +93,23 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
             properties: {
                 adcp: {
                     type: "object",
-                    required: ["major_versions"],
+                    required: ["major_versions", "idempotency"],
                     properties: {
                         major_versions: {
                             type: "array",
                             items: { type: "integer", minimum: 1 },
                             minItems: 1,
+                        },
+                        idempotency: {
+                            type: "object",
+                            required: ["replay_ttl_seconds"],
+                            properties: {
+                                replay_ttl_seconds: {
+                                    type: "integer",
+                                    minimum: 3600,
+                                    maximum: 604800,
+                                },
+                            },
                         },
                     },
                     additionalProperties: true,
@@ -106,6 +125,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 creative: { type: "object", additionalProperties: true },
                 brand: { type: "object", additionalProperties: true },
                 ext: { type: "object", additionalProperties: true },
+                context: { type: "object", additionalProperties: true },
                 extensions_supported: { type: "array", items: { type: "string" } },
                 last_updated: { type: "string" },
             },

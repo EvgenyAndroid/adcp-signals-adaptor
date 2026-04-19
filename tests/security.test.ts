@@ -81,6 +81,28 @@ describe("MCP tool definitions — outputSchema", () => {
     expect(props.protocol?.type).toBe("string");
   });
 
+  it("get_adcp_capabilities inputSchema advertises `context` (opaque echo)", () => {
+    const schema = getToolByName("get_adcp_capabilities")!.inputSchema;
+    const props = schema.properties as Record<string, { type?: string }>;
+    expect(props.context?.type).toBe("object");
+  });
+
+  it("get_adcp_capabilities outputSchema requires adcp.idempotency.replay_ttl_seconds (HEAD schema)", () => {
+    const schema = getToolByName("get_adcp_capabilities")!.outputSchema!;
+    const adcp = (schema.properties as Record<string, any>).adcp;
+    expect(adcp.required).toContain("idempotency");
+    const idempotency = adcp.properties.idempotency;
+    expect(idempotency.required).toContain("replay_ttl_seconds");
+    expect(idempotency.properties.replay_ttl_seconds.minimum).toBe(3600);
+    expect(idempotency.properties.replay_ttl_seconds.maximum).toBe(604800);
+  });
+
+  it("get_adcp_capabilities outputSchema declares optional `context` for echo", () => {
+    const schema = getToolByName("get_adcp_capabilities")!.outputSchema!;
+    const props = schema.properties as Record<string, { type?: string }>;
+    expect(props.context?.type).toBe("object");
+  });
+
   it("activate_signal outputSchema requires task_id, status, signal_agent_segment_id", () => {
     const schema = getToolByName("activate_signal")!.outputSchema!;
     expect(schema.required).toEqual(
@@ -99,6 +121,42 @@ describe("MCP tool definitions — outputSchema", () => {
     for (const t of ADCP_TOOLS) {
       expect(getToolByName(t.name)).toBe(t);
     }
+  });
+});
+
+// ── getCapabilities runtime shape ─────────────────────────────────────────────
+// HEAD schema (per upstream PR #2315) requires adcp.idempotency in the response.
+// Pin it here so a future edit to STATIC_CAPABILITIES can't drop the field.
+
+import { getCapabilities } from "../src/domain/capabilityService";
+
+describe("getCapabilities runtime shape", () => {
+  function makeStaticKv(): KVNamespace {
+    const store = new Map<string, string>();
+    return {
+      async get(k: string) { return store.get(k) ?? null; },
+      async put(k: string, v: string) { store.set(k, v); },
+      async delete(k: string) { store.delete(k); },
+      async list() { return { keys: [], list_complete: true } as never; },
+      async getWithMetadata() { return { value: null, metadata: null } as never; },
+    } as unknown as KVNamespace;
+  }
+
+  it("includes adcp.idempotency.replay_ttl_seconds in spec range", async () => {
+    const caps = await getCapabilities(makeStaticKv());
+    expect(caps.adcp.idempotency).toBeDefined();
+    const ttl = caps.adcp.idempotency.replay_ttl_seconds;
+    expect(typeof ttl).toBe("number");
+    expect(ttl).toBeGreaterThanOrEqual(3600);
+    expect(ttl).toBeLessThanOrEqual(604800);
+  });
+
+  it("declares supported_protocols as a non-empty array of valid enum values", async () => {
+    const caps = await getCapabilities(makeStaticKv());
+    expect(Array.isArray(caps.supported_protocols)).toBe(true);
+    expect(caps.supported_protocols.length).toBeGreaterThan(0);
+    const allowed = ["media_buy", "signals", "governance", "sponsored_intelligence", "creative", "brand"];
+    for (const p of caps.supported_protocols) expect(allowed).toContain(p);
   });
 });
 

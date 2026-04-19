@@ -261,7 +261,17 @@ async function callGetCapabilities(
         protocols = [rawSingle];
     }
     const caps = await getCapabilities(env.SIGNALS_CACHE, protocols);
-    return toolResult(JSON.stringify(caps, null, 2), caps);
+
+    // Echo back the request's context block. Capability-discovery storyboards
+    // send context.correlation_id and assert it round-trips. Per
+    // /schemas/core/context.json, context is opaque — we don't parse it, we
+    // copy it through unchanged.
+    const ctx = args["context"];
+    const response = ctx && typeof ctx === "object" && !Array.isArray(ctx)
+        ? { ...caps, context: ctx as Record<string, unknown> }
+        : caps;
+
+    return toolResult(JSON.stringify(response, null, 2), response);
 }
 
 async function callGetSignals(

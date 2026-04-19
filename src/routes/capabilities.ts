@@ -22,8 +22,18 @@ export async function handleGetCapabilities(
       : undefined;
 
     const caps = await getCapabilities(env.SIGNALS_CACHE, protocols);
+
+    // Echo back any context the caller passed. REST /capabilities is a GET,
+    // so we look for `correlation_id` in the query string (the most common
+    // field) and assemble a context object from it. Schema-wise this is an
+    // opaque pass-through — the field has no protocol semantics.
+    const correlationId = url.searchParams.get("correlation_id");
+    const response = correlationId
+      ? { ...caps, context: { correlation_id: correlationId } }
+      : caps;
+
     logger.info("capabilities_requested", { protocols });
-    return jsonResponse(caps);
+    return jsonResponse(response);
   } catch (err) {
     logger.error("capabilities_error", { error: String(err) });
     return errorResponse("INTERNAL_ERROR", "Failed to retrieve capabilities", 500);

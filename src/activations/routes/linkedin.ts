@@ -40,6 +40,7 @@ import { createFullCreative } from '../adapters/linkedin/creativeClient';
 import type { LinkedInEnv, LinkedInActivationRequest } from '../types/linkedin';
 import type { LinkedInAuthEnv } from '../auth/linkedin';
 import { getValidAccessToken } from '../auth/linkedin';
+import { fetchWithTimeout, readBoundedArrayBuffer, BoundedFetchError } from '../../utils/fetchWithLimits';
 
 export interface LinkedInRouteEnv extends LinkedInEnv, LinkedInAuthEnv {
   DEMO_API_KEY: string;
@@ -62,6 +63,26 @@ export interface LinkedInRouteRequest extends LinkedInActivationRequest {
 // Push src/assets/adcp-banner-1200x1000.jpg to your repo and this URL works automatically
 const DEFAULT_BANNER_URL =
   'https://raw.githubusercontent.com/EvgenyAndroid/adcp-signals-adaptor/master/src/assets/adcp-banner-1200x1000.jpg';
+
+// Image fetch guardrails. LinkedIn's own limits are 5 MB for images; we cap
+// below that so an attacker-controlled creative.image_url can't make the
+// worker download arbitrary data before LinkedIn's upload API rejects it.
+// Timeout is generous (15 s) because GitHub/CDN cold starts can be slow;
+// the worker's overall budget is 30 s.
+const IMAGE_FETCH_TIMEOUT_MS = 15_000;
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+const IMAGE_ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/gif'];
+
+// Only http(s) schemes — otherwise fetch() on Workers will happily resolve
+// data: / blob: / file: schemes that short-circuit the guardrails.
+function isFetchableImageUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    return u.protocol === 'https:' || u.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
 
 export async function handleLinkedInActivate(
   request: Request,
@@ -108,15 +129,37 @@ export async function handleLinkedInActivate(
         try {
           const accessToken = await getValidAccessToken(env);
 
-          // Fetch banner image from GitHub (or custom URL if provided)
+          // Fetch banner image from GitHub (or custom URL if provided).
+          // The URL can be caller-supplied, so we gate it:
+          //   1. scheme allow-list (http/https only; no data: / file: / blob:)
+          //   2. 15 s timeout (cold CDN edges can be slow; the worker budget is 30 s)
+          //   3. 5 MB body cap, enforced both via Content-Length pre-check and
+          //      streaming read (some CDNs use chunked encoding with no length)
+          //   4. Content-Type allow-list (image/jpeg, image/png, image/gif)
           const imageUrl = body.creative?.image_url ?? DEFAULT_BANNER_URL;
-          const imageRes = await fetch(imageUrl);
+          if (!isFetchableImageUrl(imageUrl)) {
+            throw new Error(`Banner URL rejected (must be http/https): ${imageUrl}`);
+          }
+          const imageRes = await fetchWithTimeout(imageUrl, {
+            timeoutMs: IMAGE_FETCH_TIMEOUT_MS,
+          });
 
           if (!imageRes.ok) {
             throw new Error(`Banner fetch failed: ${imageUrl} → HTTP ${imageRes.status}`);
           }
 
-          const imageBytes = await imageRes.arrayBuffer();
+          let imageBytes: ArrayBuffer;
+          try {
+            imageBytes = await readBoundedArrayBuffer(imageRes, {
+              maxBytes: IMAGE_MAX_BYTES,
+              allowedContentTypes: IMAGE_ALLOWED_MIMES,
+            });
+          } catch (err) {
+            if (err instanceof BoundedFetchError) {
+              throw new Error(`Banner rejected (${err.reason}): ${err.message}`);
+            }
+            throw err;
+          }
 
           const creativeResult = await createFullCreative(
             imageBytes,

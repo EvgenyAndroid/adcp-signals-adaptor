@@ -350,7 +350,17 @@ async function callGetSignals(
 
     const db = getDb(env);
     const result = await searchSignalsService(db, env.SIGNALS_CACHE, req);
-    return toolResult(JSON.stringify(result, null, 2), result);
+
+    // Echo back the request's context block. Signals storyboard validates
+    // `context.correlation_id` round-trips. Per /schemas/core/context.json,
+    // context is opaque — copy through unchanged. Same pattern as
+    // get_adcp_capabilities.
+    const ctx = args["context"];
+    const response = ctx && typeof ctx === "object" && !Array.isArray(ctx)
+        ? { ...result, context: ctx as Record<string, unknown> }
+        : result;
+
+    return toolResult(JSON.stringify(response, null, 2), response);
 }
 
 async function callActivateSignal(
@@ -358,10 +368,26 @@ async function callActivateSignal(
     env: Env,
     logger: Logger
 ): Promise<unknown> {
-    const raw = args["deliver_to"] ?? args["deployments"];
-    const destination = Array.isArray(raw)
-        ? ((raw[0] as Record<string, unknown>)?.["platform"] as string ?? "mock_dsp")
-        : (args["destination"] as string ?? "mock_dsp");
+    // Accept three request shapes for the destinations payload:
+    //   - args.destinations  (current AdCP signals storyboard / HEAD spec)
+    //   - args.deliver_to    (legacy AdCP shape we shipped earlier)
+    //   - args.deployments   (older alias)
+    // Falls back to a singleton platform=mock_dsp record if none of these
+    // are populated, so unsophisticated demo callers still get a response.
+    const raw = args["destinations"] ?? args["deliver_to"] ?? args["deployments"];
+    const firstEntry = Array.isArray(raw) ? (raw[0] as Record<string, unknown>) : undefined;
+    const firstType = firstEntry?.["type"] as string | undefined;
+    // Pull destination name for the activation-job DB write — for an agent
+    // destination that's the agent_url; for a platform destination it's the
+    // platform name. Falls back to mock_dsp only when neither is supplied.
+    const destination = (firstEntry?.["agent_url"] as string)
+        ?? (firstEntry?.["platform"] as string)
+        ?? (args["destination"] as string)
+        ?? "mock_dsp";
+    // Track agent vs platform so the service can skip the destinations-
+    // whitelist check for agent activations (every signal MUST accept
+    // type=agent per the AdCP signals spec).
+    const destinationType: "platform" | "agent" = firstType === "agent" ? "agent" : "platform";
 
     const resolvedDestination = destination;
     const signalId = (args["signal_agent_segment_id"] ?? args["signalId"]) as string;
@@ -373,6 +399,7 @@ async function callActivateSignal(
     const req = {
         signalId,
         destination: resolvedDestination,
+        destinationType,
         accountId: args["accountId"] as string | undefined,
         campaignId: args["campaignId"] as string | undefined,
         notes: args["notes"] as string | undefined,
@@ -414,6 +441,13 @@ async function callActivateSignal(
             };
         });
 
+        // Echo back request context — signals storyboard validates
+        // `context.correlation_id` round-trips on activate_signal too.
+        const ctx = args["context"];
+        const contextEcho = ctx && typeof ctx === "object" && !Array.isArray(ctx)
+            ? { context: ctx as Record<string, unknown> }
+            : {};
+
         const specResponse = {
             task_id: result.task_id,
             status: "pending",
@@ -421,6 +455,7 @@ async function callActivateSignal(
             deployments: responseDeployments,
             ...(webhookUrl ? { webhook_url: webhookUrl } : {}),
             ...(pricingOptionId ? { pricing_option_id: pricingOptionId } : {}),
+            ...contextEcho,
         };
 
         return toolResult(JSON.stringify(specResponse, null, 2), specResponse);

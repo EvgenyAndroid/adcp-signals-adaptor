@@ -20,6 +20,12 @@ const PROVIDER_EMAIL = "evgeny@samba.tv";
 const PRIVACY_POLICY_URL = `https://${PROVIDER_DOMAIN}/privacy`;
 const TOTAL_ADDRESSABLE = 240_000_000;
 
+// Self-identifying agent URL for signal_id.agent_url (per
+// /schemas/core/signal-id.json agent-variant). Hardcoded to the deployed
+// MCP endpoint; matches the worker we ship from. If we ever need this to be
+// per-deployment dynamic (staging vs prod), thread it through env.
+const SELF_AGENT_URL = `https://${PROVIDER_DOMAIN}/mcp`;
+
 const DESTINATION_PLATFORM_MAP: Record<string, { activationSupported: boolean }> = {
   mock_dsp:         { activationSupported: true },
   mock_cleanroom:   { activationSupported: true },
@@ -244,6 +250,10 @@ export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
   const pricingCurrency = signal.pricing?.currency ?? "USD";
   const pricingOptionId = `opt-${signal.pricing?.model ?? "none"}-${signal.signalId}`.slice(0, 64);
 
+  // pricing_options is schema-required with minItems: 1. Emit a default
+  // sentinel option for signals that lack explicit pricing — buyers can
+  // still reference its pricing_option_id from the storyboard's
+  // context_outputs even when the signal is "free / contact for pricing".
   const pricingOptions = signal.pricing
     ? [
         {
@@ -254,9 +264,26 @@ export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
           is_fixed: true,
         },
       ]
-    : [];
+    : [
+        {
+          pricing_option_id: `opt-default-${signal.signalId}`.slice(0, 64),
+          pricing_model: "cpm",
+          rate: 0,
+          currency: pricingCurrency,
+          is_fixed: false,
+        },
+      ];
 
   return {
+    // Universal signal_id required by the AdCP signals storyboard baseline.
+    // We're an agent-native signals service (no upstream data-provider
+    // catalog), so source is always "agent". The internal signalId already
+    // matches the schema's `^[a-zA-Z0-9_-]+$` pattern.
+    signal_id: {
+      source: "agent" as const,
+      agent_url: SELF_AGENT_URL,
+      id: signal.signalId,
+    },
     signal_agent_segment_id: signal.signalId,
     name: signal.name,
     description: signal.description,

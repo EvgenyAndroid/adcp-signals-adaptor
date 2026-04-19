@@ -18,7 +18,36 @@ export interface McpToolDefinition {
         properties: Record<string, unknown>;
         required?: string[];
     };
+    /**
+     * Optional JSON Schema describing the tool's `structuredContent` response.
+     * Per MCP 2025-06-18 §Tools, clients SHOULD validate structured results
+     * against this schema. Schemas here are deliberately permissive
+     * (additionalProperties: true, only require the contractually-required
+     * fields) so additive changes to response shape don't trip validators.
+     */
+    outputSchema?: {
+        type: "object";
+        properties?: Record<string, unknown>;
+        required?: string[];
+        additionalProperties?: boolean;
+    };
 }
+
+// ── Reusable schema fragments ────────────────────────────────────────────────
+
+const PROTOCOL_ENUM = ["media_buy", "signals", "governance", "sponsored_intelligence", "creative", "brand"] as const;
+
+const DEPLOYMENT_ITEM = {
+    type: "object",
+    properties: {
+        type: { type: "string" },
+        platform: { type: "string" },
+        is_live: { type: "boolean" },
+        activation_key: { type: "object" },
+        estimated_activation_duration_minutes: { type: "number" },
+    },
+    additionalProperties: true,
+};
 
 export const ADCP_TOOLS: McpToolDefinition[] = [
     {
@@ -38,17 +67,42 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                         "Top-level adcp, supported_protocols, and ext are always returned.",
                     items: {
                         type: "string",
-                        enum: [
-                            "media_buy",
-                            "signals",
-                            "governance",
-                            "sponsored_intelligence",
-                            "creative",
-                            "brand",
-                        ],
+                        enum: [...PROTOCOL_ENUM],
                     },
                 },
             },
+        },
+        outputSchema: {
+            type: "object",
+            required: ["adcp", "supported_protocols"],
+            properties: {
+                adcp: {
+                    type: "object",
+                    required: ["major_versions"],
+                    properties: {
+                        major_versions: {
+                            type: "array",
+                            items: { type: "integer", minimum: 1 },
+                            minItems: 1,
+                        },
+                    },
+                    additionalProperties: true,
+                },
+                supported_protocols: {
+                    type: "array",
+                    items: { type: "string", enum: [...PROTOCOL_ENUM] },
+                },
+                signals: { type: "object", additionalProperties: true },
+                media_buy: { type: "object", additionalProperties: true },
+                governance: { type: "object", additionalProperties: true },
+                sponsored_intelligence: { type: "object", additionalProperties: true },
+                creative: { type: "object", additionalProperties: true },
+                brand: { type: "object", additionalProperties: true },
+                ext: { type: "object", additionalProperties: true },
+                extensions_supported: { type: "array", items: { type: "string" } },
+                last_updated: { type: "string" },
+            },
+            additionalProperties: true,
         },
     },
 
@@ -143,6 +197,21 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
             },
             required: ["signal_spec", "deliver_to"],
         },
+        outputSchema: {
+            type: "object",
+            required: ["signals", "count"],
+            properties: {
+                message: { type: "string" },
+                context_id: { type: "string" },
+                signals: { type: "array", items: { type: "object", additionalProperties: true } },
+                proposals: { type: "array", items: { type: "object", additionalProperties: true } },
+                count: { type: "integer", minimum: 0 },
+                totalCount: { type: "integer", minimum: 0 },
+                offset: { type: "integer", minimum: 0 },
+                hasMore: { type: "boolean" },
+            },
+            additionalProperties: true,
+        },
     },
 
     {
@@ -207,6 +276,19 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
             },
             required: ["signal_agent_segment_id", "deliver_to"],
         },
+        outputSchema: {
+            type: "object",
+            required: ["task_id", "status", "signal_agent_segment_id"],
+            properties: {
+                task_id: { type: "string" },
+                status: { type: "string" },
+                signal_agent_segment_id: { type: "string" },
+                deployments: { type: "array", items: DEPLOYMENT_ITEM },
+                webhook_url: { type: "string" },
+                pricing_option_id: { type: "string" },
+            },
+            additionalProperties: true,
+        },
     },
 
     {
@@ -225,6 +307,20 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 },
             },
             required: ["task_id"],
+        },
+        outputSchema: {
+            type: "object",
+            required: ["task_id", "status", "signal_agent_segment_id"],
+            properties: {
+                task_id: { type: "string" },
+                status: { type: "string" },
+                signal_agent_segment_id: { type: "string" },
+                deployments: { type: "array", items: DEPLOYMENT_ITEM },
+                submittedAt: { type: "string" },
+                updatedAt: { type: "string" },
+                completedAt: { type: "string" },
+            },
+            additionalProperties: true,
         },
     },
 
@@ -261,6 +357,19 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
             },
             required: ["signal_agent_segment_id", "deliver_to"],
         },
+        outputSchema: {
+            type: "object",
+            required: ["reference_signal_id", "results", "count"],
+            properties: {
+                reference_signal_id: { type: "string" },
+                model_id: { type: "string" },
+                space_id: { type: "string" },
+                results: { type: "array", items: { type: "object", additionalProperties: true } },
+                context_id: { type: "string" },
+                count: { type: "integer", minimum: 0 },
+            },
+            additionalProperties: true,
+        },
     },
 
     // ── UCP extension tools ──────────────────────────────────────────────────────
@@ -294,6 +403,17 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
             },
             required: ["query"],
         },
+        outputSchema: {
+            type: "object",
+            properties: {
+                query: { type: "string" },
+                matched_signals: { type: "array", items: { type: "object", additionalProperties: true } },
+                composite_audience: { type: "object", additionalProperties: true },
+                resolved_ast: { type: "object", additionalProperties: true },
+                count: { type: "integer", minimum: 0 },
+            },
+            additionalProperties: true,
+        },
     },
 
     {
@@ -312,6 +432,18 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 },
             },
             required: ["concept_id"],
+        },
+        outputSchema: {
+            type: "object",
+            properties: {
+                concept_id: { type: "string" },
+                label: { type: "string" },
+                description: { type: "string" },
+                category: { type: "string" },
+                error: { type: "string" },
+                available_count: { type: "integer" },
+            },
+            additionalProperties: true,
         },
     },
 
@@ -341,6 +473,17 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 },
             },
             required: ["q"],
+        },
+        outputSchema: {
+            type: "object",
+            properties: {
+                query: { type: "string" },
+                results: { type: "array", items: { type: "object", additionalProperties: true } },
+                count: { type: "integer", minimum: 0 },
+                total_in_registry: { type: "integer", minimum: 0 },
+                error: { type: "string" },
+            },
+            additionalProperties: true,
         },
     },
 ];

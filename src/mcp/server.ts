@@ -233,8 +233,12 @@ async function handleToolCall(
         case "query_signals_nl":
             return callQuerySignalsNl(args, env, logger);
         case "get_concept":
-        case "search_concepts":
-            return handleConceptToolCall(resolvedName, args);
+        case "search_concepts": {
+            // handleConceptToolCall returns a plain object; wrap it in MCP tool
+            // result format with both stringified text and structuredContent.
+            const conceptResult = handleConceptToolCall(resolvedName, args);
+            return toolResult(JSON.stringify(conceptResult, null, 2), conceptResult);
+        }
         default:
             throw new McpToolError(`Tool not implemented: ${name}`);
     }
@@ -251,7 +255,7 @@ async function callGetCapabilities(
         ? raw.filter((p): p is string => typeof p === "string")
         : undefined;
     const caps = await getCapabilities(env.SIGNALS_CACHE, protocols);
-    return toolResult(JSON.stringify(caps, null, 2));
+    return toolResult(JSON.stringify(caps, null, 2), caps);
 }
 
 async function callGetSignals(
@@ -275,7 +279,7 @@ async function callGetSignals(
 
     const db = getDb(env);
     const result = await searchSignalsService(db, req);
-    return toolResult(JSON.stringify(result, null, 2));
+    return toolResult(JSON.stringify(result, null, 2), result);
 }
 
 async function callActivateSignal(
@@ -347,7 +351,7 @@ async function callActivateSignal(
             ...(pricingOptionId ? { pricing_option_id: pricingOptionId } : {}),
         };
 
-        return toolResult(JSON.stringify(specResponse, null, 2));
+        return toolResult(JSON.stringify(specResponse, null, 2), specResponse);
     } catch (err) {
         if (err instanceof NotFoundError || err instanceof ValidationError) {
             throw new McpToolError(err.message);
@@ -367,7 +371,7 @@ async function callGetOperation(
     try {
         const db = getDb(env);
         const result = await getOperationService(db, taskId, logger);
-        return toolResult(JSON.stringify(result, null, 2));
+        return toolResult(JSON.stringify(result, null, 2), result);
     } catch (err) {
         if (err instanceof NotFoundError) throw new McpToolError(err.message);
         throw err;
@@ -418,7 +422,7 @@ async function callGetSimilarSignals(
         count: scored.length,
     };
 
-    return toolResult(JSON.stringify(result, null, 2));
+    return toolResult(JSON.stringify(result, null, 2), result);
 }
 
 async function callQuerySignalsNl(
@@ -435,13 +439,34 @@ async function callQuerySignalsNl(
     const catalog = await getAllSignalsForCatalog(db);
     const res = await handleNLQuery({ query, limit }, catalog, env);
     const text = await res.text();
-    return toolResult(text);
+    let structured: unknown;
+    try { structured = JSON.parse(text); } catch { /* leave undefined — text-only result */ }
+    return toolResult(text, structured);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function toolResult(text: string): unknown {
-    return { content: [{ type: "text", text }], isError: false };
+/**
+ * Build an MCP tool result.
+ *
+ * Per MCP 2025-06-18 §Tools, tools that return structured data SHOULD return
+ * both a `structuredContent` field (the typed object — schema-validated by
+ * clients against the tool's `outputSchema`) AND a `content[].text` block
+ * with the JSON-stringified form (for backwards-compatible clients that
+ * don't know about structuredContent).
+ *
+ * Pass `structured` for any tool whose response is JSON. Omit it for plain
+ * text responses.
+ */
+export function toolResult(text: string, structured?: unknown): unknown {
+    const result: Record<string, unknown> = {
+        content: [{ type: "text", text }],
+        isError: false,
+    };
+    if (structured !== undefined) {
+        result["structuredContent"] = structured;
+    }
+    return result;
 }
 
 function rpcSuccess(id: string | number | null, result: unknown): JsonRpcSuccess {

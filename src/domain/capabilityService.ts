@@ -10,10 +10,13 @@
 // Cache key bumped to v6 for the v3-conformant shape (ucp moved to ext)
 // then v7 for the HEAD-schema-conformant shape (adds adcp.idempotency).
 
-const CACHE_KEY = "adcp_capabilities_v7";
+// Cache key bumped to v8 — the ext.ucp block is now engine-aware, so any
+// v7 cache entry written under the old static pseudo-declaring
+// UCP_CAPABILITY needs to be invalidated on next deploy.
+const CACHE_KEY = "adcp_capabilities_v8";
 const CACHE_TTL_SECONDS = 3600;
 
-import { UCP_CAPABILITY } from "../ucp/vacDeclaration";
+import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
 
 const VALID_PROTOCOLS = new Set([
   "media_buy",
@@ -53,60 +56,49 @@ type AdcpCapabilities = {
   context?: Record<string, unknown>;
 };
 
-const STATIC_CAPABILITIES: AdcpCapabilities = {
-  adcp: {
-    major_versions: [2, 3],
-    // 24h replay window (recommended in the HEAD schema; min 3600, max 604800).
-    // Mutating tools (activate_signal) honour this — see activationRepo.
-    idempotency: { replay_ttl_seconds: 86400 },
-  },
-  supported_protocols: ["signals"],
-  signals: {
-    signal_categories: [
-      "demographic",
-      "interest",
-      "purchase_intent",
-      "geo",
-      "composite",
-    ],
-    dynamic_segment_generation: true,
-    activation_mode: "async",
-    provider: "AdCP Signals Adaptor - Demo Provider (Evgeny)",
-    destinations: [
-      {
-        id: "mock_dsp",
-        name: "Mock DSP",
-        type: "dsp",
-        activation_supported: true,
-      },
-      {
-        id: "mock_cleanroom",
-        name: "Mock Clean Room",
-        type: "cleanroom",
-        activation_supported: true,
-      },
-      {
-        id: "mock_cdp",
-        name: "Mock CDP",
-        type: "cdp",
-        activation_supported: true,
-      },
-      {
-        id: "mock_measurement",
-        name: "Mock Measurement Platform",
-        type: "measurement",
-        activation_supported: false,
-      },
-    ],
-    limits: {
-      max_signals_per_request: 100,
-      max_rules_per_segment: 6,
+// Protocol + provider metadata is static; only the ext.ucp block varies
+// by engine env. Build the full capability object per-request (cheap — it's
+// all constant-time), and cache it in KV so we don't rebuild on every call.
+function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
+  return {
+    adcp: {
+      major_versions: [2, 3],
+      // 24h replay window (recommended in the HEAD schema; min 3600, max 604800).
+      // Mutating tools (activate_signal) honour this — see activationRepo.
+      idempotency: { replay_ttl_seconds: 86400 },
     },
-  },
-  ext: {
-    ucp: UCP_CAPABILITY,
-  },
-};
+    supported_protocols: ["signals"],
+    signals: {
+      signal_categories: [
+        "demographic",
+        "interest",
+        "purchase_intent",
+        "geo",
+        "composite",
+      ],
+      dynamic_segment_generation: true,
+      activation_mode: "async",
+      provider: "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+      destinations: [
+        { id: "mock_dsp",         name: "Mock DSP",                   type: "dsp",         activation_supported: true  },
+        { id: "mock_cleanroom",   name: "Mock Clean Room",            type: "cleanroom",   activation_supported: true  },
+        { id: "mock_cdp",         name: "Mock CDP",                   type: "cdp",         activation_supported: true  },
+        { id: "mock_measurement", name: "Mock Measurement Platform",  type: "measurement", activation_supported: false },
+      ],
+      limits: {
+        max_signals_per_request: 100,
+        max_rules_per_segment: 6,
+      },
+    },
+    ext: {
+      // ext.ucp now mirrors the real engine. Previously this was a static
+      // UCP_CAPABILITY constant that always declared the pseudo bridge,
+      // so /capabilities contradicted /ucp/gts and /mcp serverInfo.ucp
+      // on any deployment where EMBEDDING_ENGINE=llm.
+      ucp: buildUcpCapability(env),
+    },
+  };
+}
 
 // Per-protocol block keys that may appear at top level.
 const PROTOCOL_BLOCK_KEYS = [
@@ -128,6 +120,7 @@ const PROTOCOL_BLOCK_KEYS = [
 export async function getCapabilities(
   kv: KVNamespace,
   protocols?: string[],
+  env?: UcpCapabilityEnv,
 ): Promise<AdcpCapabilities> {
   let full: AdcpCapabilities | null = null;
   try {
@@ -136,9 +129,12 @@ export async function getCapabilities(
   } catch { /* cache miss */ }
 
   if (!full) {
-    full = STATIC_CAPABILITIES;
+    // env is optional for backwards compat with test shims; default to an
+    // empty object which makes buildUcpCapability fall through to the
+    // pseudo declaration (correct for tests that don't set EMBEDDING_ENGINE).
+    full = buildStaticCapabilities(env ?? {});
     try {
-      await kv.put(CACHE_KEY, JSON.stringify(STATIC_CAPABILITIES), {
+      await kv.put(CACHE_KEY, JSON.stringify(full), {
         expirationTtl: CACHE_TTL_SECONDS,
       });
     } catch { /* non-fatal */ }

@@ -310,7 +310,10 @@ async function callGetCapabilities(
     } else if (typeof rawSingle === "string" && rawSingle.length > 0) {
         protocols = [rawSingle];
     }
-    const caps = await getCapabilities(env.SIGNALS_CACHE, protocols);
+    const caps = await getCapabilities(env.SIGNALS_CACHE, protocols, {
+        ...(env.EMBEDDING_ENGINE !== undefined ? { EMBEDDING_ENGINE: env.EMBEDDING_ENGINE } : {}),
+        ...(env.OPENAI_API_KEY    !== undefined ? { OPENAI_API_KEY:    env.OPENAI_API_KEY    } : {}),
+    });
 
     // Echo back the request's context block. Capability-discovery storyboards
     // send context.correlation_id and assert it round-trips. Per

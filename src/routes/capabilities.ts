@@ -21,7 +21,10 @@ export async function handleGetCapabilities(
       ? raw.split(",").map((s) => s.trim()).filter(Boolean)
       : undefined;
 
-    const caps = await getCapabilities(env.SIGNALS_CACHE, protocols);
+    const caps = await getCapabilities(env.SIGNALS_CACHE, protocols, {
+      ...(env.EMBEDDING_ENGINE !== undefined ? { EMBEDDING_ENGINE: env.EMBEDDING_ENGINE } : {}),
+      ...(env.OPENAI_API_KEY    !== undefined ? { OPENAI_API_KEY:    env.OPENAI_API_KEY    } : {}),
+    });
 
     // Echo back any context the caller passed. REST /capabilities is a GET,
     // so we look for `correlation_id` in the query string (the most common

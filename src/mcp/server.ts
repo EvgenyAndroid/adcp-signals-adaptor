@@ -439,7 +439,7 @@ async function callGetOperation(
 
     try {
         const db = getDb(env);
-        const result = await getOperationService(db, taskId, logger);
+        const result = await getOperationService(db, taskId, logger, env.WEBHOOK_SIGNING_SECRET);
         return toolResult(JSON.stringify(result, null, 2), result);
     } catch (err) {
         if (err instanceof NotFoundError) throw new McpToolError(err.message);

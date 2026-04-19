@@ -17,7 +17,7 @@ export async function handleGetOperation(
 
   try {
     const db = getDb(env);
-    const result = await getOperationService(db, operationId, logger);
+    const result = await getOperationService(db, operationId, logger, env.WEBHOOK_SIGNING_SECRET);
     return jsonResponse(result);
   } catch (err) {
     if (err instanceof NotFoundError) {

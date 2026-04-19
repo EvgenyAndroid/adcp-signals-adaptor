@@ -270,12 +270,19 @@ describe("Request validation", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("rejects activation with invalid destination", () => {
+  // Sec-12 round 2: validator no longer rejects unknown platform names.
+  // Every signals agent MUST accept arbitrary platforms per the upstream
+  // signals storyboard baseline (adcp#2365); is_live: false is the
+  // correct response shape for platforms we don't have a real integration
+  // with — and the MCP handler emits exactly that for every activation.
+  // The rejection paths preserved here cover actually-malformed cases
+  // (missing field, wrong type), not policy filtering.
+  it("accepts activation with arbitrary platform name (storyboard conformance)", () => {
     const result = validateActivateRequest({
       signalId: "sig_demo_test",
-      destination: "real_dsp_that_doesnt_exist",
+      destination: "the-trade-desk",
     });
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
   });
 
   // The three "generate request" tests were removed alongside

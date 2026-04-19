@@ -256,7 +256,10 @@ describe("constantTimeEqual", () => {
 // ── requireAuth ───────────────────────────────────────────────────────────────
 
 describe("requireAuth", () => {
-  const KEY = "demo-key-adcp-signals-v1";
+  // Test fixture only — the real demo key is a Worker secret, not a
+  // checked-in constant. Using an obviously-labeled value so no one greps
+  // the repo and mistakes this for the production key.
+  const KEY = "fixture-api-key-for-requireAuth-tests";
 
   function req(authHeader?: string): Request {
     const headers = new Headers();

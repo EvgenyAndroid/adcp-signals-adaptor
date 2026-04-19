@@ -12,7 +12,14 @@
 set -u
 
 BASE="${BASE:-https://adcp-signals-adaptor.evgeny-193.workers.dev}"
-KEY="${API_KEY:-demo-key-adcp-signals-v1}"
+# API_KEY must be provided via the environment. Previously this script
+# defaulted to the demo value, which meant the "secret" was effectively
+# published in-tree. Fail loudly if the operator forgot to export it.
+if [ -z "${API_KEY:-}" ]; then
+  echo "ERROR: API_KEY is not set. Run: export API_KEY=<your-DEMO_API_KEY-secret>" >&2
+  exit 2
+fi
+KEY="$API_KEY"
 
 PASS=0
 FAIL=0
@@ -178,15 +185,29 @@ fi
 echo ""
 echo "=== AUTH SURFACE ==="
 run "token-debug should be gone"          401 ''  "$BASE/auth/linkedin/token-debug"
-# Sec-1 Finding #2: OAuth routes are no longer public. An unauth'd caller
-# can no longer initiate the flow (DoS on shared LinkedIn tokens), hit the
-# callback (overwriting tokens), or read /status (which leaked a token
-# preview + scope + ad account ID).
+# /init and /status are DEMO_API_KEY gated. /init is the load-bearing
+# defense — it's the only route that can issue a state UUID, so an
+# unauth'd caller cannot start a flow whose callback we'd later accept.
 run "linkedin init requires auth"         401 ''  "$BASE/auth/linkedin/init"
-run "linkedin callback requires auth"     401 ''  "$BASE/auth/linkedin/callback?state=fabricated"
 run "linkedin status requires auth"       401 ''  "$BASE/auth/linkedin/status"
-# With a valid API key, /status is reachable (the operator path).
 run "linkedin status with auth reachable" 200 ''  -H "Authorization: Bearer $KEY" "$BASE/auth/linkedin/status"
+# /callback is intentionally public: LinkedIn's 302 back to the worker
+# carries only the OAuth state param, no bearer. The state mechanism
+# (single-use UUID in KV, issued on /init, consumed on /callback) is the
+# defense. A fabricated state must be rejected with the "Invalid State"
+# HTML page rather than proceeding to token exchange.
+run "linkedin callback fabricated state → Invalid State" 200 '' \
+    "$BASE/auth/linkedin/callback?state=fabricated-by-attacker"
+# Additional correctness check — response body is the Invalid State page,
+# not some generic success. Shell-side since the body is HTML, not JSON.
+CB_BODY=$(curl -s "$BASE/auth/linkedin/callback?state=fabricated-by-attacker")
+if printf '%s' "$CB_BODY" | grep -q 'Invalid State'; then
+  PASS=$((PASS + 1))
+  printf 'PASS %-46s %s\n' "linkedin callback rejects fabricated state body" "(Invalid State)"
+else
+  FAIL=$((FAIL + 1)); FAILS+=("linkedin callback body check")
+  printf 'FAIL %-46s %s\n' "linkedin callback rejects fabricated state body" "(unexpected body)"
+fi
 # Sec-1 Finding B: oversized MCP bodies rejected pre-parse via Content-Length
 # header check. We generate the body as a file (argv doesn't fit 1.1MB on
 # Windows git-bash) and let curl set Content-Length itself.

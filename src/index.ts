@@ -70,18 +70,24 @@ export default {
         // (initialize, tools/list, ping) stay reachable, paid-egress /
         // state-changing tools do not.
         //
-        // /auth/linkedin/{init,callback,status} are NOT public. Earlier
-        // iterations made them public "so OAuth works without a token";
-        // that let any internet user complete the OAuth flow and overwrite
-        // the worker's shared LinkedIn tokens (a DoS on the integration),
-        // and the /status route leaked a 12-char token preview + scope +
-        // ad account ID to anyone. Now gated by the DEMO_API_KEY — this
-        // is a demo, so an admin-initiated one-time bootstrap is the right
-        // trust model. LinkedIn's redirect back to /callback carries the
-        // API key via the original /init request's setup link (the operator
-        // opens /auth/linkedin/init in an auth'd browser tab; the subsequent
-        // redirect inherits the Authorization header via a cookie or a
-        // browser-extension, depending on how the operator drives the flow).
+        // /auth/linkedin/init and /auth/linkedin/status are DEMO_API_KEY
+        // gated (not listed here). `init` gating is the load-bearing
+        // defense: it's the only path that can issue a state UUID, so
+        // an unauth'd attacker cannot start a flow whose callback we
+        // would later accept. `status` gating prevents a token preview
+        // + scope leak to any passerby.
+        //
+        // /auth/linkedin/callback is public. LinkedIn's 302 back to the
+        // worker is a cross-origin top-level navigation — it carries the
+        // OAuth `state` query param and nothing else. A bearer token on
+        // that request is architecturally impossible without a cookie or
+        // signed bootstrap layer, which we don't have. The defense for
+        // this route is the OAuth state machine, already implemented in
+        // auth/linkedin.ts: /init writes a random UUID to KV, /callback
+        // accepts the returned state only if it matches a live KV entry,
+        // and the entry is deleted on first use (single-use). An attacker
+        // can't forge a valid state without first coaxing a legitimate
+        // operator to hit /init — which /init's auth gate prevents.
         const publicPaths = [
             "/capabilities",
             "/health",
@@ -89,6 +95,7 @@ export default {
             "/ucp/concepts",
             "/ucp/gts",
             "/ucp/simulate-handshake",
+            "/auth/linkedin/callback",
         ];
         const isPublic = publicPaths.some((p) => path === p || path.startsWith(p + "/"));
 

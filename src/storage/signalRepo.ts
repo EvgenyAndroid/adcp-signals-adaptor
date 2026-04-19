@@ -155,10 +155,27 @@ export async function searchSignals(
     conditions.push("s.activation_supported = ?");
     params.push(opts.activationSupported ? 1 : 0);
   }
+  // Destination filter is now SQL-side via json_each on the destinations
+  // JSON-array column. Previously this ran as a post-filter in memory AFTER
+  // COUNT(*) was computed, which meant totalCount overcounted by the number
+  // of rows that matched the other filters but not the destination. It
+  // also meant `LIMIT ? OFFSET ?` applied to the unfiltered set, so pagers
+  // could see short/empty pages in the middle of a scan.
+  //
+  // D1 runs SQLite, which ships with the json1 extension. `json_each(col)`
+  // expands the JSON array into a one-row-per-element virtual table so the
+  // EXISTS correlates row-by-row, using the same bound param.
+  if (opts.destination) {
+    conditions.push(
+      "EXISTS (SELECT 1 FROM json_each(s.destinations) WHERE json_each.value = ?)"
+    );
+    params.push(opts.destination);
+  }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
-  // Count query
+  // Count query — includes the destination filter, so totalCount now matches
+  // what the paginated result set actually enumerates.
   const countRow = await queryFirst<{ total: number }>(
     db,
     `SELECT COUNT(*) as total FROM signals s ${where}`,
@@ -166,19 +183,13 @@ export async function searchSignals(
   );
   const totalCount = countRow?.total ?? 0;
 
-  // Data query - destination filtering done in-memory (JSON column)
   const rows = await queryAll<SignalRow>(
     db,
     `SELECT s.* FROM signals s ${where} ORDER BY s.name ASC LIMIT ? OFFSET ?`,
     [...params, opts.limit, opts.offset]
   );
 
-  let signals = rows.map((r) => rowToSignal(r));
-
-  // Post-filter by destination
-  if (opts.destination) {
-    signals = signals.filter((s) => s.destinations.includes(opts.destination!));
-  }
+  const signals = rows.map((r) => rowToSignal(r));
 
   return { signals, totalCount };
 }

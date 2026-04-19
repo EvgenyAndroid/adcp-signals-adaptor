@@ -35,6 +35,9 @@
  *   id = "e17c4c99b649460a92016e1257436f22"
  */
 
+import { encryptIfConfigured, decryptIfNeeded } from '../../utils/tokenCrypto';
+import { fetchWithTimeout } from '../../utils/fetchWithLimits';
+
 const LI_AUTH_URL  = 'https://www.linkedin.com/oauth/v2/authorization';
 const LI_TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken';
 
@@ -63,6 +66,9 @@ export interface LinkedInAuthEnv {
   LINKEDIN_REDIRECT_URI: string;
   LINKEDIN_AD_ACCOUNT_ID: string;
   SIGNALS_CACHE: KVNamespace;
+  // Optional: when set, access/refresh tokens are AES-GCM encrypted at rest.
+  // Unset ⇒ plaintext storage (legacy; reads transparently handle both).
+  TOKEN_ENCRYPTION_KEY?: string;
 }
 
 // ─── Token shape ──────────────────────────────────────────────────────────────
@@ -140,6 +146,22 @@ export async function handleLinkedInAuthCallback(
   // returned an error or a code. Provider-supplied values are escaped
   // below because the error path still renders them.
   if (!state || !(await consumeOAuthState(state, env.SIGNALS_CACHE))) {
+    // Observability: log unknown/expired/replayed state so a spike —
+    // typically a sign of abuse or a misconfigured relay — is visible in
+    // `wrangler tail`. The route is public (provider redirects carry no
+    // bearer), so the state machine is the only defense; a spike here is
+    // where we'd see it first. Log structure matches createLogger output.
+    console.warn(JSON.stringify({
+      level: 'warn',
+      event: 'linkedin_callback_invalid_state',
+      ts: new Date().toISOString(),
+      // Don't log the state value — that's the thing someone trying to
+      // replay would be leaking. Log presence only.
+      state_present: !!state,
+      has_code: !!code,
+      has_error: !!error,
+      ua: request.headers.get('user-agent') ?? null,
+    }));
     return htmlResponse('Invalid State', `
       <p style="color:#ef4444">OAuth state missing, expired, or already used.</p>
       <p>This protects against CSRF. Start the flow fresh.</p>
@@ -176,7 +198,7 @@ export async function handleLinkedInAuthCallback(
     `);
   }
 
-  await storeTokens(tokenSet, env.SIGNALS_CACHE);
+  await storeTokens(tokenSet, env.SIGNALS_CACHE, env.TOKEN_ENCRYPTION_KEY);
 
   return htmlResponse('Authorization Successful ✓', `
     <p style="color:#00ff88; font-size: 20px;">✓ LinkedIn authorization complete.</p>
@@ -208,11 +230,16 @@ async function consumeOAuthState(state: string, kv: KVNamespace): Promise<boolea
 export async function handleLinkedInAuthStatus(
   env: LinkedInAuthEnv,
 ): Promise<Response> {
-  const [accessToken, refreshToken, expiresAt, metaRaw] = await Promise.all([
+  const [rawAccess, rawRefresh, expiresAt, metaRaw] = await Promise.all([
     env.SIGNALS_CACHE.get(KV_ACCESS_TOKEN),
     env.SIGNALS_CACHE.get(KV_REFRESH_TOKEN),
     env.SIGNALS_CACHE.get(KV_TOKEN_EXPIRES),
     env.SIGNALS_CACHE.get(KV_TOKEN_META),
+  ]);
+
+  const [accessToken, refreshToken] = await Promise.all([
+    decryptIfNeeded(rawAccess,  env.TOKEN_ENCRYPTION_KEY),
+    decryptIfNeeded(rawRefresh, env.TOKEN_ENCRYPTION_KEY),
   ]);
 
   if (!accessToken || !refreshToken) {
@@ -248,10 +275,15 @@ export async function handleLinkedInAuthStatus(
 // ─── Token manager ────────────────────────────────────────────────────────────
 
 export async function getValidAccessToken(env: LinkedInAuthEnv): Promise<string> {
-  const [accessToken, refreshToken, expiresAt] = await Promise.all([
+  const [rawAccess, rawRefresh, expiresAt] = await Promise.all([
     env.SIGNALS_CACHE.get(KV_ACCESS_TOKEN),
     env.SIGNALS_CACHE.get(KV_REFRESH_TOKEN),
     env.SIGNALS_CACHE.get(KV_TOKEN_EXPIRES),
+  ]);
+
+  const [accessToken, refreshToken] = await Promise.all([
+    decryptIfNeeded(rawAccess,  env.TOKEN_ENCRYPTION_KEY),
+    decryptIfNeeded(rawRefresh, env.TOKEN_ENCRYPTION_KEY),
   ]);
 
   if (!accessToken || !refreshToken) {
@@ -264,7 +296,7 @@ export async function getValidAccessToken(env: LinkedInAuthEnv): Promise<string>
   if (!needsRefresh) return accessToken;
 
   const newTokenSet = await refreshAccessToken(refreshToken, env);
-  await storeTokens(newTokenSet, env.SIGNALS_CACHE);
+  await storeTokens(newTokenSet, env.SIGNALS_CACHE, env.TOKEN_ENCRYPTION_KEY);
   return newTokenSet.access_token;
 }
 
@@ -282,10 +314,11 @@ async function exchangeCodeForTokens(
     redirect_uri: env.LINKEDIN_REDIRECT_URI,
   });
 
-  const res = await fetch(LI_TOKEN_URL, {
+  const res = await fetchWithTimeout(LI_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
+    timeoutMs: 15_000,
   });
 
   if (!res.ok) {
@@ -327,10 +360,11 @@ async function refreshAccessToken(
     client_secret: env.LINKEDIN_CLIENT_SECRET,
   });
 
-  const res = await fetch(LI_TOKEN_URL, {
+  const res = await fetchWithTimeout(LI_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
+    timeoutMs: 15_000,
   });
 
   if (!res.ok) {
@@ -356,13 +390,25 @@ async function refreshAccessToken(
 
 // ─── KV storage ───────────────────────────────────────────────────────────────
 
-async function storeTokens(tokenSet: LinkedInTokenSet, kv: KVNamespace): Promise<void> {
+async function storeTokens(
+  tokenSet: LinkedInTokenSet,
+  kv: KVNamespace,
+  encryptionKey?: string,
+): Promise<void> {
   const ttl90Days   = 90  * 24 * 60 * 60;
   const ttl12Months = 365 * 24 * 60 * 60;
 
+  // Tokens are the secrets at risk. `expires_at` and `token_meta` are
+  // non-sensitive timestamps/scopes, stored plaintext so /status etc. can
+  // read them without the encryption key.
+  const [encryptedAccess, encryptedRefresh] = await Promise.all([
+    encryptIfConfigured(tokenSet.access_token,  encryptionKey),
+    encryptIfConfigured(tokenSet.refresh_token, encryptionKey),
+  ]);
+
   await Promise.all([
-    kv.put(KV_ACCESS_TOKEN,  tokenSet.access_token,  { expirationTtl: ttl90Days }),
-    kv.put(KV_REFRESH_TOKEN, tokenSet.refresh_token, { expirationTtl: ttl12Months }),
+    kv.put(KV_ACCESS_TOKEN,  encryptedAccess,  { expirationTtl: ttl90Days }),
+    kv.put(KV_REFRESH_TOKEN, encryptedRefresh, { expirationTtl: ttl12Months }),
     kv.put(KV_TOKEN_EXPIRES, tokenSet.expires_at),
     kv.put(KV_TOKEN_META, JSON.stringify({
       scope:       tokenSet.scope,

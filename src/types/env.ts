@@ -31,4 +31,11 @@ export interface Env {
   // deliveries (backwards-compatible). Provision via:
   //   wrangler secret put WEBHOOK_SIGNING_SECRET
   WEBHOOK_SIGNING_SECRET?: string;
+
+  // Optional — when set, LinkedIn access/refresh tokens stored in KV are
+  // AES-GCM encrypted at rest. Unset ⇒ tokens stored plaintext (legacy,
+  // backwards-compatible during rollout). Reads auto-detect the enc:v1:
+  // prefix and decrypt; plaintext values are returned unchanged. Provision:
+  //   wrangler secret put TOKEN_ENCRYPTION_KEY
+  TOKEN_ENCRYPTION_KEY?: string;
 }

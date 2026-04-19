@@ -128,9 +128,11 @@ Pass criteria: thresholds are calibrated empirically from real `text-embedding-3
 
 Returns a 512×512 orthogonal rotation matrix mapping `openai-te3-small-d512-v1` → `ucp-space-v1.0`. Status is `"simulated"` — IAB Tech Lab has not yet published reference model vectors, so R ≈ I (identity). Endpoint shape is fully spec-compliant and will carry the real matrix on IAB publication. Requires auth.
 
+> **API key:** gated routes require `Authorization: Bearer $DEMO_API_KEY`. Export the value you provisioned via `wrangler secret put DEMO_API_KEY` into your shell before running the examples below — e.g. `export DEMO_API_KEY=...`. The key is a Worker secret, not a checked-in constant.
+
 ```bash
 curl https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/projector \
-  -H "Authorization: Bearer demo-key-adcp-signals-v1" \
+  -H "Authorization: Bearer $DEMO_API_KEY" \
   | jq '{from_space, to_space, status, anchor_count, signature}'
 ```
 
@@ -284,7 +286,7 @@ Every signal carries an `x_ucp` object — UCP HybridPayload per the AdCP-UCP Br
 
 ```bash
 curl https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/sig_drama_viewers/embedding \
-  -H "Authorization: Bearer demo-key-adcp-signals-v1"
+  -H "Authorization: Bearer $DEMO_API_KEY"
 ```
 
 ---
@@ -293,7 +295,7 @@ curl https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/sig_drama_viewe
 
 ```
 POST /signals/query
-Authorization: Bearer demo-key-adcp-signals-v1
+Authorization: Bearer $DEMO_API_KEY
 Content-Type: application/json
 
 {
@@ -519,7 +521,7 @@ npm run dev
 
 # Seed concept registry
 curl -X POST http://localhost:8787/ucp/concepts/seed \
-  -H "Authorization: Bearer demo-key-adcp-signals-v1"
+  -H "Authorization: Bearer $DEMO_API_KEY"
 ```
 
 ## Deploying

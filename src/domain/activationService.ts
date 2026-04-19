@@ -1,4 +1,4 @@
-﻿// src/domain/activationService.ts
+// src/domain/activationService.ts
 // Proper async activation: returns task_id + "pending" immediately.
 // Status transitions happen lazily on first poll (demo pattern — no Queues needed).
 // Fires webhook on completion if webhook_url was provided.
@@ -26,6 +26,7 @@ import { operationId } from "../utils/ids";
 import type { Logger } from "../utils/logger";
 import type { CanonicalSignal } from "../types/signal";
 import { signWebhookBody } from "./webhookSigning";
+import { fetchWithTimeout } from "../utils/fetchWithLimits";
 
 export async function activateSignalService(
   db: DB,
@@ -204,7 +205,15 @@ function isValidWebhookUrl(raw: string): boolean {
 
 /**
  * Fire webhook with activation completion payload.
- * Non-fatal: logs error but doesn't throw.
+ *
+ * Non-fatal: logs and moves on. `markWebhookFired` is the "don't retry"
+ * receipt — we only set it when we have evidence the remote actually
+ * accepted the delivery, i.e. a 2xx response. Non-2xx leaves the DB flag
+ * clear so the next poll retries; prior versions marked fired regardless
+ * of status, which silently lost deliveries to e.g. a 500 on the receiver.
+ *
+ * Invalid URLs (non-https, unparseable) are still marked fired — retrying
+ * them just re-fails synchronously every poll with no possible recovery.
  *
  * When `signingSecret` is a non-empty string, the outbound request carries:
  *
@@ -234,62 +243,67 @@ async function fireWebhook(
     return;
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
+  const platformSegmentId = `${destination}_${signalId}`;
+  const payload = {
+    task_id: opId,
+    status: "completed",
+    signal_agent_segment_id: signalId,
+    deployments: [
+      {
+        type: "platform",
+        platform: destination,
+        is_live: true,
+        activation_key: { type: "segment_id", segment_id: platformSegmentId },
+        estimated_activation_duration_minutes: 0,
+      },
+    ],
+    completed_at: new Date().toISOString(),
+  };
+
+  // IMPORTANT: stringify once. We sign the exact byte sequence that goes
+  // on the wire — if we re-serialize inside signWebhookBody and the two
+  // JSON encodings differ (object key ordering, whitespace, Number
+  // precision), receivers will fail to verify.
+  const bodyString = JSON.stringify(payload);
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "User-Agent": "adcp-signals-adaptor/1.0",
+  };
+  let signed = false;
+  if (signingSecret && signingSecret.length > 0) {
+    const sig = await signWebhookBody(signingSecret, bodyString);
+    headers["X-AdCP-Signature"] = sig.headerValue;
+    signed = true;
+  }
 
   try {
-    const platformSegmentId = `${destination}_${signalId}`;
-    const payload = {
-      task_id: opId,
-      status: "completed",
-      signal_agent_segment_id: signalId,
-      deployments: [
-        {
-          type: "platform",
-          platform: destination,
-          is_live: true,
-          activation_key: { type: "segment_id", segment_id: platformSegmentId },
-          estimated_activation_duration_minutes: 0,
-        },
-      ],
-      completed_at: new Date().toISOString(),
-    };
-
-    // IMPORTANT: stringify once. We sign the exact byte sequence that goes
-    // on the wire — if we re-serialize inside signWebhookBody and the two
-    // JSON encodings differ (object key ordering, whitespace, Number
-    // precision), receivers will fail to verify.
-    const bodyString = JSON.stringify(payload);
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      "User-Agent": "adcp-signals-adaptor/1.0",
-    };
-    let signed = false;
-    if (signingSecret && signingSecret.length > 0) {
-      const sig = await signWebhookBody(signingSecret, bodyString);
-      headers["X-AdCP-Signature"] = sig.headerValue;
-      signed = true;
-    }
-
-    const res = await fetch(webhookUrl, {
+    const res = await fetchWithTimeout(webhookUrl, {
       method: "POST",
       headers,
       body: bodyString,
-      signal: controller.signal,
+      timeoutMs: WEBHOOK_TIMEOUT_MS,
     });
 
-    await markWebhookFired(db, opId);
-    logger.info("webhook_fired", {
-      operationId: opId,
-      statusCode: res.status,
-      signed,
-    });
+    if (res.ok) {
+      await markWebhookFired(db, opId);
+      logger.info("webhook_fired", {
+        operationId: opId,
+        statusCode: res.status,
+        signed,
+      });
+    } else {
+      // Receiver rejected the delivery. Leave the flag clear so the next
+      // poll retries — don't burn the single attempt on a transient 5xx.
+      logger.warn("webhook_non_2xx", {
+        operationId: opId,
+        statusCode: res.status,
+        signed,
+      });
+    }
   } catch (err) {
-    logger.error("webhook_failed", { operationId: opId, error: String(err) });
-    // Non-fatal — caller can re-poll
-  } finally {
-    clearTimeout(timeout);
+    // Network error or timeout — treat as retriable.
+    logger.error("webhook_failed", { operationId: opId, error: String(err), signed });
   }
 }
 

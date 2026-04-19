@@ -136,25 +136,32 @@ fi
 
 echo ""
 echo "=== MCP ==="
-run "mcp: initialize"                                  200 'b.result && b.result.serverInfo && b.result.serverInfo.name'           -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"1.0"}}}'
-run "mcp: tools/list (8 tools w/ outputSchema)"        200 'b.result.tools.length===8 && b.result.tools.every(t=>!!t.outputSchema)' -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
-run "mcp: get_adcp_capabilities (structuredContent)"   200 'b.result.structuredContent && b.result.structuredContent.adcp && Array.isArray(b.result.structuredContent.adcp.major_versions)' -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_adcp_capabilities","arguments":{}}}'
-run "mcp: get_adcp_capabilities (protocols filter)"    200 'b.result.structuredContent.signals && !("media_buy" in b.result.structuredContent)' -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_adcp_capabilities","arguments":{"protocols":["signals"]}}}'
+# Discovery methods (initialize, tools/list, ping) stay public — MCP clients
+# bootstrap without credentials, and evaluators expect an unauthenticated
+# handshake. tools/call is gated per the AUTHENTICATED_MCP_METHODS set in
+# src/mcp/server.ts.
+run "mcp: initialize (public)"                         200 'b.result && b.result.serverInfo && b.result.serverInfo.name'           -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"1.0"}}}'
+run "mcp: tools/list (8 tools w/ outputSchema, public)" 200 'b.result.tools.length===8 && b.result.tools.every(t=>!!t.outputSchema)' -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+# tools/call now requires auth — Sec-1 Finding #1. Verify the unauth path
+# returns -32001 (server-error band; JSON-RPC has no canonical auth code).
+run "mcp: tools/call unauth returns -32001" 200 'b.error && b.error.code===-32001' -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":99,"method":"tools/call","params":{"name":"get_adcp_capabilities","arguments":{}}}'
+run "mcp: get_adcp_capabilities (structuredContent)"   200 'b.result.structuredContent && b.result.structuredContent.adcp && Array.isArray(b.result.structuredContent.adcp.major_versions)' -X POST "$BASE/mcp" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_adcp_capabilities","arguments":{}}}'
+run "mcp: get_adcp_capabilities (protocols filter)"    200 'b.result.structuredContent.signals && !("media_buy" in b.result.structuredContent)' -X POST "$BASE/mcp" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_adcp_capabilities","arguments":{"protocols":["signals"]}}}'
 # Discriminating test: pass `protocol: "media_buy"` (which we don't declare).
 # With singular alias working, response should NOT include `signals`. Without
 # the alias, the singular `protocol` arg is ignored and the unfiltered response
 # (which DOES include `signals`) is returned.
-run "mcp: get_adcp_capabilities (singular protocol alias actually filters)" 200 '!("signals" in b.result.structuredContent)' -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_adcp_capabilities","arguments":{"protocol":"media_buy"}}}'
-run "mcp: get_adcp_capabilities idempotency block (HEAD schema req)" 200 'b.result.structuredContent.adcp.idempotency && b.result.structuredContent.adcp.idempotency.replay_ttl_seconds>=3600' -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_adcp_capabilities","arguments":{}}}'
-run "mcp: get_adcp_capabilities echoes context.correlation_id" 200 'b.result.structuredContent.context && b.result.structuredContent.context.correlation_id==="probe-xyz-123"' -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_adcp_capabilities","arguments":{"context":{"correlation_id":"probe-xyz-123"}}}}'
+run "mcp: get_adcp_capabilities (singular protocol alias actually filters)" 200 '!("signals" in b.result.structuredContent)' -X POST "$BASE/mcp" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_adcp_capabilities","arguments":{"protocol":"media_buy"}}}'
+run "mcp: get_adcp_capabilities idempotency block (HEAD schema req)" 200 'b.result.structuredContent.adcp.idempotency && b.result.structuredContent.adcp.idempotency.replay_ttl_seconds>=3600' -X POST "$BASE/mcp" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_adcp_capabilities","arguments":{}}}'
+run "mcp: get_adcp_capabilities echoes context.correlation_id" 200 'b.result.structuredContent.context && b.result.structuredContent.context.correlation_id==="probe-xyz-123"' -X POST "$BASE/mcp" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_adcp_capabilities","arguments":{"context":{"correlation_id":"probe-xyz-123"}}}}'
 run "mcp: query_signals_nl (structuredContent)"        200 'b.result.structuredContent'  -X POST "$BASE/mcp" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"query_signals_nl","arguments":{"query":"affluent streaming families","limit":5}}}'
-run "mcp: get_concept (structuredContent)"             200 'b.result.structuredContent && b.result.structuredContent.concept_id==="SOCCER_MOM_US"' -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_concept","arguments":{"concept_id":"SOCCER_MOM_US"}}}'
+run "mcp: get_concept (structuredContent)"             200 'b.result.structuredContent && b.result.structuredContent.concept_id==="SOCCER_MOM_US"' -X POST "$BASE/mcp" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_concept","arguments":{"concept_id":"SOCCER_MOM_US"}}}'
 run "mcp: get_similar_signals (was dead, now wired)" 200 'b.result.structuredContent && b.result.structuredContent.reference_signal_id==="sig_drama_viewers" && Array.isArray(b.result.structuredContent.results)' -X POST "$BASE/mcp" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"get_similar_signals","arguments":{"signal_agent_segment_id":"sig_drama_viewers","top_k":3,"min_similarity":0.0}}}'
 # min_similarity:0 must return results. The bug fix replaces the prior
 # `args["min_similarity"] ? ...` truthy check that treated literal 0 as
 # missing and silently substituted 0.7 — filtering every candidate out.
 run "mcp: get_similar_signals min_similarity=0 returns >0 results" 200 'b.result.structuredContent.results.length>0' -X POST "$BASE/mcp" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"get_similar_signals","arguments":{"signal_agent_segment_id":"sig_drama_viewers","top_k":5,"min_similarity":0.0}}}'
-run "mcp: search_concepts (structuredContent)"         200 'b.result.structuredContent && Array.isArray(b.result.structuredContent.results)'      -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"search_concepts","arguments":{"q":"high income household","limit":5}}}'
+run "mcp: search_concepts (structuredContent)"         200 'b.result.structuredContent && Array.isArray(b.result.structuredContent.results)'      -X POST "$BASE/mcp" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"search_concepts","arguments":{"q":"high income household","limit":5}}}'
 
 echo ""
 echo "=== CORS preflight (browser MCP clients) ==="
@@ -170,8 +177,23 @@ fi
 
 echo ""
 echo "=== AUTH SURFACE ==="
-run "token-debug should be gone"        401 ''   "$BASE/auth/linkedin/token-debug"
-run "OAuth callback fabricated state"   200 ''   "$BASE/auth/linkedin/callback?state=fabricated"
+run "token-debug should be gone"          401 ''  "$BASE/auth/linkedin/token-debug"
+# Sec-1 Finding #2: OAuth routes are no longer public. An unauth'd caller
+# can no longer initiate the flow (DoS on shared LinkedIn tokens), hit the
+# callback (overwriting tokens), or read /status (which leaked a token
+# preview + scope + ad account ID).
+run "linkedin init requires auth"         401 ''  "$BASE/auth/linkedin/init"
+run "linkedin callback requires auth"     401 ''  "$BASE/auth/linkedin/callback?state=fabricated"
+run "linkedin status requires auth"       401 ''  "$BASE/auth/linkedin/status"
+# With a valid API key, /status is reachable (the operator path).
+run "linkedin status with auth reachable" 200 ''  -H "Authorization: Bearer $KEY" "$BASE/auth/linkedin/status"
+# Sec-1 Finding B: oversized MCP bodies rejected pre-parse via Content-Length
+# header check. We generate the body as a file (argv doesn't fit 1.1MB on
+# Windows git-bash) and let curl set Content-Length itself.
+BIG_FILE="${TMPDIR:-/tmp}/adcp-big-body.$$.json"
+node -e "require('fs').writeFileSync(process.argv[1],'\"'+'x'.repeat(1100000)+'\"')" "$BIG_FILE"
+run "mcp: oversized body rejected (>1MB)" 200 'b.error && b.error.code===-32600' -X POST "$BASE/mcp" -H "Content-Type: application/json" --data-binary "@$BIG_FILE"
+rm -f "$BIG_FILE"
 
 echo ""
 echo "=================================================="

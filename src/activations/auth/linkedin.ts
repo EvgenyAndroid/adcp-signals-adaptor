@@ -49,7 +49,9 @@ const KV_ACCESS_TOKEN  = 'linkedin:access_token';
 const KV_REFRESH_TOKEN = 'linkedin:refresh_token';
 const KV_TOKEN_EXPIRES = 'linkedin:token_expires';
 const KV_TOKEN_META    = 'linkedin:token_meta';
-const KV_OAUTH_STATE_PREFIX = 'linkedin:oauth_state:';
+// Note: OAuth state moved from KV to D1 in Sec-10 (atomic consume).
+// Any stray `linkedin:oauth_state:*` keys in KV from before the migration
+// will age out via the 10-min TTL; new flows never touch KV for state.
 
 // Refresh buffer: refresh 5 minutes before expiry
 const REFRESH_BUFFER_MS = 5 * 60 * 1000;
@@ -66,6 +68,13 @@ export interface LinkedInAuthEnv {
   LINKEDIN_REDIRECT_URI: string;
   LINKEDIN_AD_ACCOUNT_ID: string;
   SIGNALS_CACHE: KVNamespace;
+  // D1 binding — used for the OAuth state table. Previously the state lived
+  // in KV, but KV has no atomic consume-and-delete so two near-simultaneous
+  // callbacks could both observe a state before either deletion landed.
+  // On the public /callback route where state IS the auth defense, that
+  // TOCTOU gap is exploitable. D1 gives us DELETE...RETURNING in a single
+  // round-trip.
+  DB: D1Database;
   // Optional: when set, access/refresh tokens are AES-GCM encrypted at rest.
   // Unset ⇒ plaintext storage (legacy; reads transparently handle both).
   TOKEN_ENCRYPTION_KEY?: string;
@@ -85,13 +94,21 @@ export interface LinkedInTokenSet {
 
 export async function handleLinkedInAuthInit(env: LinkedInAuthEnv): Promise<Response> {
   const state = crypto.randomUUID();
-  // Persist state so the callback can verify it — CSRF protection.
-  // Single-use: deleted on successful callback or expires via TTL.
-  await env.SIGNALS_CACHE.put(
-    KV_OAUTH_STATE_PREFIX + state,
-    '1',
-    { expirationTtl: OAUTH_STATE_TTL_SECONDS },
-  );
+  const expiresAt = new Date(Date.now() + OAUTH_STATE_TTL_SECONDS * 1000).toISOString();
+  // Persist state in D1 so the callback can verify — and atomically consume —
+  // in a single round-trip. CSRF + single-use protection live on the WHERE
+  // clause of the DELETE...RETURNING in consumeOAuthState below.
+  //
+  // Opportunistic cleanup: drop any expired rows from prior flows on write.
+  // This keeps the table bounded without a scheduled cron. INSERT OR REPLACE
+  // wouldn't help here because the state UUID is always fresh; instead we
+  // trim the expired-rows subset.
+  await env.DB.prepare(
+    'DELETE FROM oauth_state WHERE expires_at < ?'
+  ).bind(new Date().toISOString()).run();
+  await env.DB.prepare(
+    'INSERT INTO oauth_state (state, provider, expires_at) VALUES (?, ?, ?)'
+  ).bind(state, 'linkedin', expiresAt).run();
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -145,7 +162,7 @@ export async function handleLinkedInAuthCallback(
   // Verify state first — rejects CSRF regardless of whether LinkedIn
   // returned an error or a code. Provider-supplied values are escaped
   // below because the error path still renders them.
-  if (!state || !(await consumeOAuthState(state, env.SIGNALS_CACHE))) {
+  if (!state || !(await consumeOAuthState(state, env.DB))) {
     // Observability: log unknown/expired/replayed state so a spike —
     // typically a sign of abuse or a misconfigured relay — is visible in
     // `wrangler tail`. The route is public (provider redirects carry no
@@ -221,9 +238,19 @@ export async function handleLinkedInAuthCallback(
 
   await storeTokens(tokenSet, env.SIGNALS_CACHE, env.TOKEN_ENCRYPTION_KEY);
 
+  // Truth-in-UI: the prior "stored securely" wording was only true when
+  // TOKEN_ENCRYPTION_KEY is provisioned. On deployments where it's unset
+  // (the default), tokens land in KV plaintext — and saying "securely"
+  // in that case is misleading. Render a message that matches the
+  // deployment posture the operator is actually looking at.
+  const encryptedAtRest = !!env.TOKEN_ENCRYPTION_KEY;
+  const storageDescription = encryptedAtRest
+    ? 'Tokens stored <strong>encrypted</strong> in KV (AES-GCM at rest). The Worker will handle all refreshes automatically.'
+    : 'Tokens stored in KV. <strong>Set <code>TOKEN_ENCRYPTION_KEY</code></strong> (via <code>wrangler secret put</code>) to enable encryption at rest; see README.md.';
+
   return htmlResponse('Authorization Successful ✓', `
     <p style="color:#00ff88; font-size: 20px;">✓ LinkedIn authorization complete.</p>
-    <p>Tokens stored securely in KV. The Worker will handle all refreshes automatically.</p>
+    <p>${storageDescription}</p>
     <div class="info-row"><span>Scope:</span><span>${escapeHtml(tokenSet.scope)}</span></div>
     <div class="info-row"><span>Access token expires:</span><span>${escapeHtml(new Date(tokenSet.expires_at).toLocaleString())}</span></div>
     <div class="info-row"><span>Refresh token:</span><span>stored (12 month validity)</span></div>
@@ -234,16 +261,32 @@ export async function handleLinkedInAuthCallback(
 }
 
 /**
- * Verify and consume an OAuth state value.
- * Returns true only if the state existed — and deletes it so it cannot be
- * replayed. A missing state returns false (causes callback to reject).
+ * Atomically verify and consume an OAuth state value.
+ *
+ * Single SQL round-trip: `DELETE ... RETURNING state` deletes the row and
+ * returns the deleted row in the same statement. If the row doesn't exist
+ * (never issued, already consumed, or expired), nothing is deleted and
+ * nothing is returned — we report the state invalid without a second call.
+ *
+ * Why atomicity matters here: this function is the only auth defense on the
+ * public /callback route. Under the previous KV implementation
+ * (`kv.get` → `kv.delete`) two near-simultaneous callbacks could both see
+ * the state before either deletion landed, yielding a TOCTOU replay. With
+ * D1, SQLite serializes row-level writes — the DELETE that matches a row
+ * is the only one that sees it; any concurrent DELETE on the same primary
+ * key returns zero rows. Strictly single-use.
+ *
+ * The WHERE clause includes an expiry check so a DB with stale rows (after
+ * a clock rewind or a missed cleanup) can't be induced to accept something
+ * the CSRF window had already closed on.
  */
-async function consumeOAuthState(state: string, kv: KVNamespace): Promise<boolean> {
-  const key = KV_OAUTH_STATE_PREFIX + state;
-  const existed = await kv.get(key);
-  if (!existed) return false;
-  await kv.delete(key);
-  return true;
+async function consumeOAuthState(state: string, db: D1Database): Promise<boolean> {
+  const now = new Date().toISOString();
+  const row = await db
+    .prepare('DELETE FROM oauth_state WHERE state = ? AND expires_at > ? RETURNING state')
+    .bind(state, now)
+    .first<{ state: string }>();
+  return row !== null;
 }
 
 // ─── Route: GET /auth/linkedin/status ────────────────────────────────────────

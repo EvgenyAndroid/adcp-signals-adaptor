@@ -319,13 +319,17 @@ describe("escapeHtml", () => {
 
 // ── OAuth state roundtrip ─────────────────────────────────────────────────────
 //
-// We don't mock LinkedIn here — only the KV side of the state lifecycle is
-// under test. handleLinkedInAuthInit must write the state into KV; the
-// callback must reject if state is missing or replayed.
-
-interface FakeKV {
-  store: Map<string, string>;
-}
+// We don't mock LinkedIn here — only the D1-backed state lifecycle is
+// under test. handleLinkedInAuthInit must write the state into the
+// oauth_state table; the callback must reject if state is missing or
+// replayed.
+//
+// Sec-10: state moved from KV to D1 for atomic consume. The in-memory
+// D1 fake below implements just enough of the three SQL shapes used by
+// the LinkedIn OAuth path:
+//   INSERT INTO oauth_state (state, provider, expires_at) VALUES (?,?,?)
+//   DELETE FROM oauth_state WHERE expires_at < ?
+//   DELETE FROM oauth_state WHERE state = ? AND expires_at > ? RETURNING state
 
 function makeKv(): KVNamespace {
   const store = new Map<string, string>();
@@ -333,19 +337,65 @@ function makeKv(): KVNamespace {
     async get(key: string) { return store.get(key) ?? null; },
     async put(key: string, value: string) { store.set(key, value); },
     async delete(key: string) { store.delete(key); },
-    // not used in these tests:
     async list() { return { keys: [], list_complete: true, cacheStatus: null } as never; },
     async getWithMetadata() { return { value: null, metadata: null, cacheStatus: null } as never; },
   } as unknown as KVNamespace;
 }
 
-function makeEnv(kv: KVNamespace) {
+// Minimal in-memory D1 that supports the three SQL shapes used by the
+// OAuth state path. Returns a `.store` handle so tests can poke at
+// contents directly — mirrors the KV fake ergonomics.
+interface FakeOAuthDb {
+  db: D1Database;
+  store: Map<string, { provider: string; expires_at: string }>;
+}
+
+function makeOAuthDb(): FakeOAuthDb {
+  const store = new Map<string, { provider: string; expires_at: string }>();
+  const db = {
+    prepare(sql: string) {
+      let bound: unknown[] = [];
+      return {
+        bind(...args: unknown[]) { bound = args; return this; },
+        async run(): Promise<D1Result> {
+          if (/INSERT INTO oauth_state/i.test(sql)) {
+            const [state, provider, expires_at] = bound as [string, string, string];
+            store.set(state, { provider, expires_at });
+          } else if (/DELETE FROM oauth_state WHERE expires_at < \?/i.test(sql)) {
+            const [now] = bound as [string];
+            for (const [k, v] of store) {
+              if (v.expires_at < now) store.delete(k);
+            }
+          }
+          return { success: true, meta: {} } as unknown as D1Result;
+        },
+        async first<T>(): Promise<T | null> {
+          if (/DELETE FROM oauth_state WHERE state = \? AND expires_at > \? RETURNING state/i.test(sql)) {
+            const [state, now] = bound as [string, string];
+            const row = store.get(state);
+            if (!row || row.expires_at <= now) return null;
+            store.delete(state); // atomic consume
+            return { state } as unknown as T;
+          }
+          return null;
+        },
+        async all<T>(): Promise<{ results: T[] }> {
+          return { results: [] };
+        },
+      };
+    },
+  } as unknown as D1Database;
+  return { db, store };
+}
+
+function makeEnv(kv: KVNamespace, db: D1Database) {
   return {
     LINKEDIN_CLIENT_ID: "client",
     LINKEDIN_CLIENT_SECRET: "secret",
     LINKEDIN_REDIRECT_URI: "https://example.com/cb",
     LINKEDIN_AD_ACCOUNT_ID: "1234",
     SIGNALS_CACHE: kv,
+    DB: db,
   };
 }
 
@@ -354,9 +404,10 @@ function extractState(authUrl: string): string {
 }
 
 describe("OAuth state lifecycle", () => {
-  it("init persists state in KV; callback consumes it once", async () => {
+  it("init persists state in D1; callback consumes it once", async () => {
     const kv = makeKv();
-    const env = makeEnv(kv);
+    const { db, store } = makeOAuthDb();
+    const env = makeEnv(kv, db);
 
     const initRes = await handleLinkedInAuthInit(env);
     const html = await initRes.text();
@@ -365,8 +416,9 @@ describe("OAuth state lifecycle", () => {
     const state = extractState(match[1].replace(/&amp;/g, "&"));
     expect(state.length).toBeGreaterThan(0);
 
-    // KV should contain the state key
-    expect(await kv.get(`linkedin:oauth_state:${state}`)).toBe("1");
+    // D1 should contain the state row
+    expect(store.has(state)).toBe(true);
+    expect(store.get(state)?.provider).toBe("linkedin");
 
     // First callback with that state passes the state check (will then fail
     // at the missing `code` step, which is fine — we only assert that the
@@ -379,8 +431,8 @@ describe("OAuth state lifecycle", () => {
     expect(cb1Body).not.toContain("Invalid State");
     expect(cb1Body).toContain("Missing Code"); // expected: state OK, code missing
 
-    // KV entry was deleted (single-use)
-    expect(await kv.get(`linkedin:oauth_state:${state}`)).toBeNull();
+    // D1 row was deleted (single-use, via DELETE...RETURNING)
+    expect(store.has(state)).toBe(false);
 
     // Replay rejected
     const cb2 = await handleLinkedInAuthCallback(
@@ -391,8 +443,8 @@ describe("OAuth state lifecycle", () => {
   });
 
   it("callback rejects when state is missing", async () => {
-    const kv = makeKv();
-    const env = makeEnv(kv);
+    const { db } = makeOAuthDb();
+    const env = makeEnv(makeKv(), db);
     const res = await handleLinkedInAuthCallback(
       new Request("https://example.com/cb"),
       env,
@@ -401,8 +453,8 @@ describe("OAuth state lifecycle", () => {
   });
 
   it("callback rejects when state was never issued", async () => {
-    const kv = makeKv();
-    const env = makeEnv(kv);
+    const { db } = makeOAuthDb();
+    const env = makeEnv(makeKv(), db);
     const res = await handleLinkedInAuthCallback(
       new Request("https://example.com/cb?state=fabricated"),
       env,
@@ -411,8 +463,8 @@ describe("OAuth state lifecycle", () => {
   });
 
   it("callback escapes provider-supplied error_description", async () => {
-    const kv = makeKv();
-    const env = makeEnv(kv);
+    const { db } = makeOAuthDb();
+    const env = makeEnv(makeKv(), db);
 
     // Issue a state we can use
     const initRes = await handleLinkedInAuthInit(env);
@@ -430,6 +482,75 @@ describe("OAuth state lifecycle", () => {
 
     expect(body).not.toContain("<script>alert(1)</script>");
     expect(body).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+  });
+
+  // ── Sec-10: atomic consume under concurrent callbacks ──────────────────────
+  //
+  // Regression pin for the prior TOCTOU: the previous KV implementation
+  // did `kv.get(state)` then `kv.delete(state)`. Two near-simultaneous
+  // callbacks with the same state could both observe the row before either
+  // deletion landed, yielding a replay. The D1 implementation uses a
+  // single `DELETE ... RETURNING`, which serializes at the row level —
+  // exactly one DELETE matches the row, all others return zero rows.
+
+  it("concurrent callbacks with the same state: exactly one succeeds", async () => {
+    const { db, store } = makeOAuthDb();
+    const env = makeEnv(makeKv(), db);
+
+    // Issue a state
+    const initRes = await handleLinkedInAuthInit(env);
+    const html = await initRes.text();
+    const m = html.match(/href="([^"]*linkedin\.com[^"]*)"/);
+    if (!m || !m[1]) throw new Error("authorize URL not found in init HTML");
+    const state = extractState(m[1].replace(/&amp;/g, "&"));
+    expect(store.has(state)).toBe(true);
+
+    // Fire two callbacks "simultaneously" — in the fake, Promise.all
+    // schedules both synchronous consume paths against the same Map entry.
+    const [a, b] = await Promise.all([
+      handleLinkedInAuthCallback(
+        new Request(`https://example.com/cb?state=${state}`),
+        env,
+      ),
+      handleLinkedInAuthCallback(
+        new Request(`https://example.com/cb?state=${state}`),
+        env,
+      ),
+    ]);
+    const bodies = [await a.text(), await b.text()];
+
+    // Exactly one of the two got past the state gate (reached the
+    // "Missing Code" branch). The other saw "Invalid State".
+    const passed = bodies.filter((x) => x.includes("Missing Code"));
+    const rejected = bodies.filter((x) => x.includes("Invalid State"));
+    expect(passed.length).toBe(1);
+    expect(rejected.length).toBe(1);
+
+    // Row is gone after the consume.
+    expect(store.has(state)).toBe(false);
+  });
+
+  it("expired state is rejected even if the row is still present", async () => {
+    const { db, store } = makeOAuthDb();
+    const env = makeEnv(makeKv(), db);
+
+    // Manually plant a row with expires_at in the past — simulates a stale
+    // entry that escaped cleanup. The WHERE clause in consumeOAuthState
+    // must still reject it.
+    const staleState = "stale-state-fixture";
+    store.set(staleState, {
+      provider: "linkedin",
+      expires_at: "2000-01-01T00:00:00.000Z",
+    });
+
+    const res = await handleLinkedInAuthCallback(
+      new Request(`https://example.com/cb?state=${staleState}`),
+      env,
+    );
+    expect(await res.text()).toContain("Invalid State");
+    // And the row was NOT consumed (it didn't match the WHERE) — so a
+    // future expires_at < ? cleanup sweep can still garbage-collect it.
+    expect(store.has(staleState)).toBe(true);
   });
 });
 

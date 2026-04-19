@@ -75,6 +75,8 @@ run "health"                          200 'b.status==="ok"'                     
 run "capabilities unfiltered"         200 'b.adcp && Array.isArray(b.adcp.major_versions) && b.ext && b.ext.ucp' "$BASE/capabilities"
 run "capabilities ?protocols=signals" 200 'b.signals && b.ext && b.ext.ucp && !("media_buy" in b)'               "$BASE/capabilities?protocols=signals"
 run "capabilities ?protocol=signals (singular alias)" 200 'b.signals && b.ext && b.ext.ucp && !("media_buy" in b)' "$BASE/capabilities?protocol=signals"
+run "capabilities has adcp.idempotency.replay_ttl_seconds (HEAD schema)" 200 'b.adcp.idempotency && typeof b.adcp.idempotency.replay_ttl_seconds==="number" && b.adcp.idempotency.replay_ttl_seconds>=3600 && b.adcp.idempotency.replay_ttl_seconds<=604800' "$BASE/capabilities"
+run "capabilities echoes ?correlation_id=" 200 'b.context && b.context.correlation_id==="test-corr-abc"' "$BASE/capabilities?correlation_id=test-corr-abc"
 
 echo ""
 echo "=== UCP HANDSHAKE ==="
@@ -143,6 +145,8 @@ run "mcp: get_adcp_capabilities (protocols filter)"    200 'b.result.structuredC
 # the alias, the singular `protocol` arg is ignored and the unfiltered response
 # (which DOES include `signals`) is returned.
 run "mcp: get_adcp_capabilities (singular protocol alias actually filters)" 200 '!("signals" in b.result.structuredContent)' -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_adcp_capabilities","arguments":{"protocol":"media_buy"}}}'
+run "mcp: get_adcp_capabilities idempotency block (HEAD schema req)" 200 'b.result.structuredContent.adcp.idempotency && b.result.structuredContent.adcp.idempotency.replay_ttl_seconds>=3600' -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_adcp_capabilities","arguments":{}}}'
+run "mcp: get_adcp_capabilities echoes context.correlation_id" 200 'b.result.structuredContent.context && b.result.structuredContent.context.correlation_id==="probe-xyz-123"' -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_adcp_capabilities","arguments":{"context":{"correlation_id":"probe-xyz-123"}}}}'
 run "mcp: query_signals_nl (structuredContent)"        200 'b.result.structuredContent'  -X POST "$BASE/mcp" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"query_signals_nl","arguments":{"query":"affluent streaming families","limit":5}}}'
 run "mcp: get_concept (structuredContent)"             200 'b.result.structuredContent && b.result.structuredContent.concept_id==="SOCCER_MOM_US"' -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_concept","arguments":{"concept_id":"SOCCER_MOM_US"}}}'
 run "mcp: search_concepts (structuredContent)"         200 'b.result.structuredContent && Array.isArray(b.result.structuredContent.results)'      -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"search_concepts","arguments":{"q":"high income household","limit":5}}}'

@@ -7,9 +7,10 @@
 // extensions_supported, last_updated, errors, context, ext.
 // UCP lives under `ext.ucp` (schema-sanctioned extension slot).
 //
-// Cache key bumped to v6 for the v3-conformant shape (ucp moved to ext).
+// Cache key bumped to v6 for the v3-conformant shape (ucp moved to ext)
+// then v7 for the HEAD-schema-conformant shape (adds adcp.idempotency).
 
-const CACHE_KEY = "adcp_capabilities_v6";
+const CACHE_KEY = "adcp_capabilities_v7";
 const CACHE_TTL_SECONDS = 3600;
 
 import { UCP_CAPABILITY } from "../ucp/vacDeclaration";
@@ -24,7 +25,17 @@ const VALID_PROTOCOLS = new Set([
 ]);
 
 type AdcpCapabilities = {
-  adcp: { major_versions: number[] };
+  adcp: {
+    major_versions: number[];
+    /**
+     * Idempotency replay-window declaration. Required by the HEAD AdCP
+     * capabilities schema (per upstream PR #2315 — the field landed without
+     * a versioned schema tag, so rc.{1,2,3} validators don't catch its
+     * absence; the live evaluator runs HEAD and does). Seller declares how
+     * long a canonical response is retained for an idempotency_key.
+     */
+    idempotency: { replay_ttl_seconds: number };
+  };
   supported_protocols: string[];
   signals?: unknown;
   media_buy?: unknown;
@@ -33,11 +44,21 @@ type AdcpCapabilities = {
   creative?: unknown;
   brand?: unknown;
   ext?: Record<string, unknown>;
+  /**
+   * Opaque correlation data echoed unchanged in responses. Capability-discovery
+   * storyboards send context.correlation_id and assert the response carries it
+   * back. Populated per-request by the caller (MCP handler / REST route) after
+   * getCapabilities returns; not part of the static capability set.
+   */
+  context?: Record<string, unknown>;
 };
 
 const STATIC_CAPABILITIES: AdcpCapabilities = {
   adcp: {
     major_versions: [2, 3],
+    // 24h replay window (recommended in the HEAD schema; min 3600, max 604800).
+    // Mutating tools (activate_signal) honour this — see activationRepo.
+    idempotency: { replay_ttl_seconds: 86400 },
   },
   supported_protocols: ["signals"],
   signals: {

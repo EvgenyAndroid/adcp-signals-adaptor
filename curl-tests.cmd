@@ -34,10 +34,10 @@ curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/simulate-ha
 :: Full GTS results
 curl https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/gts
 
-:: ── UCP PHASE 2b — PROJECTOR (public) ────────────────────────
+:: ── UCP PHASE 2b — PROJECTOR (auth required) ────────────────
 
 :: Projector matrix (512x512 — large response)
-curl https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/projector
+curl https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/projector -H "Authorization: Bearer demo-key-adcp-signals-v1"
 
 
 :: ── SIGNALS — SEARCH (auth required) ─────────────────────────

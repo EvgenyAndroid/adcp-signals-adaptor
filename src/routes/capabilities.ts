@@ -12,7 +12,11 @@ export async function handleGetCapabilities(
 ): Promise<Response> {
   try {
     const url = new URL(request.url);
-    const raw = url.searchParams.get("protocols");
+    // Accept both ?protocols=a,b (canonical) and ?protocol=a (singular alias).
+    // Some clients/evaluators send the singular form; treating it as a synonym
+    // costs nothing and avoids returning the unfiltered response when filtering
+    // was clearly intended.
+    const raw = url.searchParams.get("protocols") ?? url.searchParams.get("protocol");
     const protocols = raw
       ? raw.split(",").map((s) => s.trim()).filter(Boolean)
       : undefined;

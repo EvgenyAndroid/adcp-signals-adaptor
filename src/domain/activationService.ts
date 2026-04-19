@@ -65,7 +65,12 @@ export async function activateSignalService(
   if (!signal.activationSupported) {
     throw new ValidationError(`Signal ${req.signalId} does not support activation`);
   }
-  if (!signal.destinations.includes(req.destination)) {
+  // Platform destinations are gated by the signal's destinations whitelist
+  // (mock_dsp, mock_cleanroom, etc.). Agent destinations are SA URLs that
+  // aren't in that whitelist by design — every signal MUST accept agent
+  // activation per the signals spec, so we skip the membership check
+  // when the caller declared destinationType = "agent".
+  if (req.destinationType !== "agent" && !signal.destinations.includes(req.destination)) {
     throw new ValidationError(
       `Signal ${req.signalId} is not available for destination '${req.destination}'`
     );

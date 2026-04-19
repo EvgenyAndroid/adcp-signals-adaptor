@@ -79,7 +79,26 @@ export interface CustomSignalProposal {
 }
 
 // AdCP Signals spec-compliant signal object
+/**
+ * Universal signal identifier per /schemas/core/signal-id.json.
+ * Discriminated by `source`. We're a self-contained signals agent (not a
+ * data-provider catalog mirror), so every signal we expose is the `agent`
+ * variant — schema requires `source`, `agent_url`, `id`.
+ */
+export interface SignalIdAgent {
+  source: "agent";
+  agent_url: string;
+  id: string;
+}
+
 export interface SignalSummary {
+  /**
+   * Universal signal identifier — required by the AdCP signals storyboard
+   * baseline (validates `signals[0].signal_id.source` is present). Carries
+   * the source discriminator buyers use to know whether the ID resolves to
+   * an external catalog or is agent-native.
+   */
+  signal_id: SignalIdAgent;
   signal_agent_segment_id: string;
   name: string;
   description: string;
@@ -122,6 +141,15 @@ export interface SignalDeployment {
 export interface ActivateSignalRequest {
   signalId: string;
   destination: string;
+  /**
+   * Destination kind. Defaults to "platform" (the legacy behaviour and the
+   * shape every existing test exercises). When set to "agent", the
+   * destination is a sales-agent URL — those aren't in the signal's
+   * destinations whitelist (which enumerates downstream platforms only),
+   * so the service skips the membership check. Per AdCP signals spec
+   * docs/signals/specification.mdx:186, signal agents MUST accept both.
+   */
+  destinationType?: "platform" | "agent";
   accountId?: string;
   campaignId?: string;
   notes?: string;

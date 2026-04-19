@@ -1,0 +1,2098 @@
+{
+  "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+  "agent_profile": {
+    "name": "E2E Test Client",
+    "tools": [
+      "get_adcp_capabilities",
+      "get_signals",
+      "activate_signal",
+      "get_operation_status",
+      "get_similar_signals",
+      "query_signals_nl",
+      "get_concept",
+      "search_concepts"
+    ],
+    "adcp_version": "v3",
+    "supported_protocols": [
+      "signals"
+    ],
+    "supports_governance": false,
+    "supports_si": false
+  },
+  "overall_status": "passing",
+  "tracks": [
+    {
+      "track": "core",
+      "status": "pass",
+      "label": "Core Protocol",
+      "scenarios": [
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "capability_discovery/protocol_discovery",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Discover agent capabilities",
+              "task": "get_adcp_capabilities",
+              "passed": true,
+              "duration_ms": 31,
+              "details": "✓ Response matches get-adcp-capabilities-response.json schema; ✓ Agent declares supported protocol versions; ✓ Agent declares which protocol domains it supports; ✓ Response echoes back the context object; ✓ Context correlation_id returned unchanged",
+              "observation_data": {
+                "adcp": {
+                  "major_versions": [
+                    2,
+                    3
+                  ],
+                  "idempotency": {
+                    "replay_ttl_seconds": 86400
+                  }
+                },
+                "supported_protocols": [
+                  "signals"
+                ],
+                "signals": {
+                  "signal_categories": [
+                    "demographic",
+                    "interest",
+                    "purchase_intent",
+                    "geo",
+                    "composite"
+                  ],
+                  "dynamic_segment_generation": true,
+                  "activation_mode": "async",
+                  "provider": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+                  "destinations": [
+                    {
+                      "id": "mock_dsp",
+                      "name": "Mock DSP",
+                      "type": "dsp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cleanroom",
+                      "name": "Mock Clean Room",
+                      "type": "cleanroom",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cdp",
+                      "name": "Mock CDP",
+                      "type": "cdp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_measurement",
+                      "name": "Mock Measurement Platform",
+                      "type": "measurement",
+                      "activation_supported": false
+                    }
+                  ],
+                  "limits": {
+                    "max_signals_per_request": 100,
+                    "max_rules_per_segment": 6
+                  }
+                },
+                "context": {
+                  "correlation_id": "capability_discovery--get_capabilities"
+                },
+                "ext": {
+                  "ucp": {
+                    "supported_spaces": [
+                      "openai-te3-small-d512-v1"
+                    ],
+                    "supported_encodings": [
+                      "float32"
+                    ],
+                    "dimensions": [
+                      512
+                    ],
+                    "embedding_endpoint_template": "/signals/{signal_id}/embedding",
+                    "similarity_search": true,
+                    "phase": "llm-v1",
+                    "gts_version": "adcp-gts-v1.0"
+                  }
+                },
+                "_message": "{\n  \"adcp\": {\n    \"major_versions\": [\n      2,\n      3\n    ],\n    \"idempotency\": {\n      \"replay_ttl_seconds\": 86400\n    }\n  },\n  \"supported_protocols\": [\n    \"signals\"\n  ],\n  \"signals\": {\n    \"signal_categories\": [\n      \"demographic\",\n      \"interest\",\n      \"purchase_intent\",\n      \"geo\",\n      \"composite\"\n    ],\n    \"dynamic_segment_generation\": true,\n    \"activation_mode\": \"async\",\n    \"provider\": \"AdCP Signals Adaptor - Demo Provider (Evgeny)\",\n    \"destinations\": [\n      {\n        \"id\": \"mock_dsp\",\n        \"name\": \"Mock DSP\",\n        \"type\": \"dsp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cleanroom\",\n        \"name\": \"Mock Clean Room\",\n        \"type\": \"cleanroom\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cdp\",\n        \"name\": \"Mock CDP\",\n        \"type\": \"cdp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_measurement\",\n        \"name\": \"Mock Measurement Platform\",\n        \"type\": \"measurement\",\n        \"activation_supported\": false\n      }\n    ],\n    \"limits\": {\n      \"max_signals_per_request\": 100,\n      \"max_rules_per_segment\": 6\n    }\n  },\n  \"ext\": {\n    \"ucp\": {\n      \"supported_spaces\": [\n        \"openai-te3-small-d512-v1\"\n      ],\n      \"supported_encodings\": [\n        \"float32\"\n      ],\n      \"dimensions\": [\n        512\n      ],\n      \"embedding_endpoint_template\": \"/signals/{signal_id}/embedding\",\n      \"similarity_search\": true,\n      \"phase\": \"llm-v1\",\n      \"gts_version\": \"adcp-gts-v1.0\"\n    }\n  },\n  \"context\": {\n    \"correlation_id\": \"capability_discovery--get_capabilities\"\n  }\n}"
+              }
+            },
+            {
+              "step": "Discover capabilities filtered by protocol",
+              "task": "get_adcp_capabilities",
+              "passed": true,
+              "duration_ms": 36,
+              "details": "✓ Response matches get-adcp-capabilities-response.json schema; ✓ Response echoes back the context object; ✓ Context correlation_id returned unchanged",
+              "observation_data": {
+                "adcp": {
+                  "major_versions": [
+                    2,
+                    3
+                  ],
+                  "idempotency": {
+                    "replay_ttl_seconds": 86400
+                  }
+                },
+                "supported_protocols": [
+                  "signals"
+                ],
+                "signals": {
+                  "signal_categories": [
+                    "demographic",
+                    "interest",
+                    "purchase_intent",
+                    "geo",
+                    "composite"
+                  ],
+                  "dynamic_segment_generation": true,
+                  "activation_mode": "async",
+                  "provider": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+                  "destinations": [
+                    {
+                      "id": "mock_dsp",
+                      "name": "Mock DSP",
+                      "type": "dsp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cleanroom",
+                      "name": "Mock Clean Room",
+                      "type": "cleanroom",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cdp",
+                      "name": "Mock CDP",
+                      "type": "cdp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_measurement",
+                      "name": "Mock Measurement Platform",
+                      "type": "measurement",
+                      "activation_supported": false
+                    }
+                  ],
+                  "limits": {
+                    "max_signals_per_request": 100,
+                    "max_rules_per_segment": 6
+                  }
+                },
+                "context": {
+                  "correlation_id": "capability_discovery--get_capabilities_filtered"
+                },
+                "ext": {
+                  "ucp": {
+                    "supported_spaces": [
+                      "openai-te3-small-d512-v1"
+                    ],
+                    "supported_encodings": [
+                      "float32"
+                    ],
+                    "dimensions": [
+                      512
+                    ],
+                    "embedding_endpoint_template": "/signals/{signal_id}/embedding",
+                    "similarity_search": true,
+                    "phase": "llm-v1",
+                    "gts_version": "adcp-gts-v1.0"
+                  }
+                },
+                "_message": "{\n  \"adcp\": {\n    \"major_versions\": [\n      2,\n      3\n    ],\n    \"idempotency\": {\n      \"replay_ttl_seconds\": 86400\n    }\n  },\n  \"supported_protocols\": [\n    \"signals\"\n  ],\n  \"signals\": {\n    \"signal_categories\": [\n      \"demographic\",\n      \"interest\",\n      \"purchase_intent\",\n      \"geo\",\n      \"composite\"\n    ],\n    \"dynamic_segment_generation\": true,\n    \"activation_mode\": \"async\",\n    \"provider\": \"AdCP Signals Adaptor - Demo Provider (Evgeny)\",\n    \"destinations\": [\n      {\n        \"id\": \"mock_dsp\",\n        \"name\": \"Mock DSP\",\n        \"type\": \"dsp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cleanroom\",\n        \"name\": \"Mock Clean Room\",\n        \"type\": \"cleanroom\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cdp\",\n        \"name\": \"Mock CDP\",\n        \"type\": \"cdp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_measurement\",\n        \"name\": \"Mock Measurement Platform\",\n        \"type\": \"measurement\",\n        \"activation_supported\": false\n      }\n    ],\n    \"limits\": {\n      \"max_signals_per_request\": 100,\n      \"max_rules_per_segment\": 6\n    }\n  },\n  \"ext\": {\n    \"ucp\": {\n      \"supported_spaces\": [\n        \"openai-te3-small-d512-v1\"\n      ],\n      \"supported_encodings\": [\n        \"float32\"\n      ],\n      \"dimensions\": [\n        512\n      ],\n      \"embedding_endpoint_template\": \"/signals/{signal_id}/embedding\",\n      \"similarity_search\": true,\n      \"phase\": \"llm-v1\",\n      \"gts_version\": \"adcp-gts-v1.0\"\n    }\n  },\n  \"context\": {\n    \"correlation_id\": \"capability_discovery--get_capabilities_filtered\"\n  }\n}"
+              }
+            }
+          ],
+          "summary": "Protocol and capability discovery: all steps passed",
+          "total_duration_ms": 71,
+          "tested_at": "2026-04-19T19:32:28.285Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "deterministic_testing/capability_discovery",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Check agent capabilities",
+              "task": "get_adcp_capabilities",
+              "passed": true,
+              "duration_ms": 30,
+              "details": "✓ Response matches get-adcp-capabilities-response.json schema; ✓ Agent declares supported protocols; ✓ Response echoes back the context object; ✓ Context correlation_id returned unchanged",
+              "observation_data": {
+                "adcp": {
+                  "major_versions": [
+                    2,
+                    3
+                  ],
+                  "idempotency": {
+                    "replay_ttl_seconds": 86400
+                  }
+                },
+                "supported_protocols": [
+                  "signals"
+                ],
+                "signals": {
+                  "signal_categories": [
+                    "demographic",
+                    "interest",
+                    "purchase_intent",
+                    "geo",
+                    "composite"
+                  ],
+                  "dynamic_segment_generation": true,
+                  "activation_mode": "async",
+                  "provider": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+                  "destinations": [
+                    {
+                      "id": "mock_dsp",
+                      "name": "Mock DSP",
+                      "type": "dsp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cleanroom",
+                      "name": "Mock Clean Room",
+                      "type": "cleanroom",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cdp",
+                      "name": "Mock CDP",
+                      "type": "cdp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_measurement",
+                      "name": "Mock Measurement Platform",
+                      "type": "measurement",
+                      "activation_supported": false
+                    }
+                  ],
+                  "limits": {
+                    "max_signals_per_request": 100,
+                    "max_rules_per_segment": 6
+                  }
+                },
+                "context": {
+                  "correlation_id": "deterministic_testing--get_capabilities"
+                },
+                "ext": {
+                  "ucp": {
+                    "supported_spaces": [
+                      "openai-te3-small-d512-v1"
+                    ],
+                    "supported_encodings": [
+                      "float32"
+                    ],
+                    "dimensions": [
+                      512
+                    ],
+                    "embedding_endpoint_template": "/signals/{signal_id}/embedding",
+                    "similarity_search": true,
+                    "phase": "llm-v1",
+                    "gts_version": "adcp-gts-v1.0"
+                  }
+                },
+                "_message": "{\n  \"adcp\": {\n    \"major_versions\": [\n      2,\n      3\n    ],\n    \"idempotency\": {\n      \"replay_ttl_seconds\": 86400\n    }\n  },\n  \"supported_protocols\": [\n    \"signals\"\n  ],\n  \"signals\": {\n    \"signal_categories\": [\n      \"demographic\",\n      \"interest\",\n      \"purchase_intent\",\n      \"geo\",\n      \"composite\"\n    ],\n    \"dynamic_segment_generation\": true,\n    \"activation_mode\": \"async\",\n    \"provider\": \"AdCP Signals Adaptor - Demo Provider (Evgeny)\",\n    \"destinations\": [\n      {\n        \"id\": \"mock_dsp\",\n        \"name\": \"Mock DSP\",\n        \"type\": \"dsp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cleanroom\",\n        \"name\": \"Mock Clean Room\",\n        \"type\": \"cleanroom\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cdp\",\n        \"name\": \"Mock CDP\",\n        \"type\": \"cdp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_measurement\",\n        \"name\": \"Mock Measurement Platform\",\n        \"type\": \"measurement\",\n        \"activation_supported\": false\n      }\n    ],\n    \"limits\": {\n      \"max_signals_per_request\": 100,\n      \"max_rules_per_segment\": 6\n    }\n  },\n  \"ext\": {\n    \"ucp\": {\n      \"supported_spaces\": [\n        \"openai-te3-small-d512-v1\"\n      ],\n      \"supported_encodings\": [\n        \"float32\"\n      ],\n      \"dimensions\": [\n        512\n      ],\n      \"embedding_endpoint_template\": \"/signals/{signal_id}/embedding\",\n      \"similarity_search\": true,\n      \"phase\": \"llm-v1\",\n      \"gts_version\": \"adcp-gts-v1.0\"\n    }\n  },\n  \"context\": {\n    \"correlation_id\": \"deterministic_testing--get_capabilities\"\n  }\n}"
+              }
+            }
+          ],
+          "summary": "Capability discovery: all steps passed",
+          "total_duration_ms": 30,
+          "tested_at": "2026-04-19T19:32:28.317Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "deterministic_testing/controller_validation",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "List supported scenarios",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Unknown scenario returns error",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Missing params returns error",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Nonexistent entity returns NOT_FOUND",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            }
+          ],
+          "summary": "Controller validation: all steps passed",
+          "total_duration_ms": 1,
+          "tested_at": "2026-04-19T19:32:28.317Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "deterministic_testing/deterministic_account",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Create sandbox account for state machine test",
+              "task": "sync_accounts",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Find account for state machine test",
+              "task": "list_accounts",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Force account to suspended",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Reactivate account",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Force account to payment_required",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Restore account to active",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            }
+          ],
+          "summary": "Deterministic account state machine: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.317Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "deterministic_testing/deterministic_media_buy",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Create media buy for state machine test",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Force media buy to active",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Verify media buy status via get_media_buys",
+              "task": "get_media_buys",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Force media buy to completed (terminal)",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Reject transition from terminal state",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            }
+          ],
+          "summary": "Deterministic media buy state machine: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.317Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "deterministic_testing/deterministic_creative",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Sync creative for state machine test",
+              "task": "sync_creatives",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Force creative to approved",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Force creative to archived (terminal)",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Reject archived to processing",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Force fresh creative to rejected with reason",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            }
+          ],
+          "summary": "Deterministic creative state machine: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.317Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "deterministic_testing/deterministic_session",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Initiate SI session",
+              "task": "si_initiate_session",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: agent lacks required tool"
+              ]
+            },
+            {
+              "step": "Force session timeout",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Verify messaging fails on terminated session",
+              "task": "si_send_message",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            }
+          ],
+          "summary": "Deterministic SI session state machine: all steps passed",
+          "total_duration_ms": 1,
+          "tested_at": "2026-04-19T19:32:28.317Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "deterministic_testing/deterministic_delivery",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Create media buy for delivery test",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Simulate delivery data",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Verify delivery via get_media_buy_delivery",
+              "task": "get_media_buy_delivery",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            }
+          ],
+          "summary": "Deterministic delivery simulation: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.317Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "deterministic_testing/deterministic_budget",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Create media buy for budget test",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Simulate 95% budget spend",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Simulate 100% budget depletion",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            }
+          ],
+          "summary": "Deterministic budget simulation: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.317Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "schema_validation/capability_discovery",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Check agent capabilities",
+              "task": "get_adcp_capabilities",
+              "passed": true,
+              "duration_ms": 31,
+              "details": "✓ Response matches get-adcp-capabilities-response.json schema; ✓ Agent declares supported protocols; ✓ Response echoes back the context object; ✓ Context correlation_id returned unchanged",
+              "observation_data": {
+                "adcp": {
+                  "major_versions": [
+                    2,
+                    3
+                  ],
+                  "idempotency": {
+                    "replay_ttl_seconds": 86400
+                  }
+                },
+                "supported_protocols": [
+                  "signals"
+                ],
+                "signals": {
+                  "signal_categories": [
+                    "demographic",
+                    "interest",
+                    "purchase_intent",
+                    "geo",
+                    "composite"
+                  ],
+                  "dynamic_segment_generation": true,
+                  "activation_mode": "async",
+                  "provider": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+                  "destinations": [
+                    {
+                      "id": "mock_dsp",
+                      "name": "Mock DSP",
+                      "type": "dsp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cleanroom",
+                      "name": "Mock Clean Room",
+                      "type": "cleanroom",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cdp",
+                      "name": "Mock CDP",
+                      "type": "cdp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_measurement",
+                      "name": "Mock Measurement Platform",
+                      "type": "measurement",
+                      "activation_supported": false
+                    }
+                  ],
+                  "limits": {
+                    "max_signals_per_request": 100,
+                    "max_rules_per_segment": 6
+                  }
+                },
+                "context": {
+                  "correlation_id": "schema_validation--get_capabilities"
+                },
+                "ext": {
+                  "ucp": {
+                    "supported_spaces": [
+                      "openai-te3-small-d512-v1"
+                    ],
+                    "supported_encodings": [
+                      "float32"
+                    ],
+                    "dimensions": [
+                      512
+                    ],
+                    "embedding_endpoint_template": "/signals/{signal_id}/embedding",
+                    "similarity_search": true,
+                    "phase": "llm-v1",
+                    "gts_version": "adcp-gts-v1.0"
+                  }
+                },
+                "_message": "{\n  \"adcp\": {\n    \"major_versions\": [\n      2,\n      3\n    ],\n    \"idempotency\": {\n      \"replay_ttl_seconds\": 86400\n    }\n  },\n  \"supported_protocols\": [\n    \"signals\"\n  ],\n  \"signals\": {\n    \"signal_categories\": [\n      \"demographic\",\n      \"interest\",\n      \"purchase_intent\",\n      \"geo\",\n      \"composite\"\n    ],\n    \"dynamic_segment_generation\": true,\n    \"activation_mode\": \"async\",\n    \"provider\": \"AdCP Signals Adaptor - Demo Provider (Evgeny)\",\n    \"destinations\": [\n      {\n        \"id\": \"mock_dsp\",\n        \"name\": \"Mock DSP\",\n        \"type\": \"dsp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cleanroom\",\n        \"name\": \"Mock Clean Room\",\n        \"type\": \"cleanroom\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cdp\",\n        \"name\": \"Mock CDP\",\n        \"type\": \"cdp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_measurement\",\n        \"name\": \"Mock Measurement Platform\",\n        \"type\": \"measurement\",\n        \"activation_supported\": false\n      }\n    ],\n    \"limits\": {\n      \"max_signals_per_request\": 100,\n      \"max_rules_per_segment\": 6\n    }\n  },\n  \"ext\": {\n    \"ucp\": {\n      \"supported_spaces\": [\n        \"openai-te3-small-d512-v1\"\n      ],\n      \"supported_encodings\": [\n        \"float32\"\n      ],\n      \"dimensions\": [\n        512\n      ],\n      \"embedding_endpoint_template\": \"/signals/{signal_id}/embedding\",\n      \"similarity_search\": true,\n      \"phase\": \"llm-v1\",\n      \"gts_version\": \"adcp-gts-v1.0\"\n    }\n  },\n  \"context\": {\n    \"correlation_id\": \"schema_validation--get_capabilities\"\n  }\n}"
+              }
+            }
+          ],
+          "summary": "Capability discovery: all steps passed",
+          "total_duration_ms": 31,
+          "tested_at": "2026-04-19T19:32:28.382Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "schema_validation/schema_compliance",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Validate get_products response schema",
+              "task": "get_products",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            },
+            {
+              "step": "Validate pricing options structure",
+              "task": "get_products",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            }
+          ],
+          "summary": "Response schema compliance: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.382Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "schema_validation/format_id_reconciliation",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Get products and verify identifiers",
+              "task": "get_products",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            },
+            {
+              "step": "Verify format catalog includes product formats",
+              "task": "list_creative_formats",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            }
+          ],
+          "summary": "Format ID and pricing option reconciliation: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.382Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "schema_validation/temporal_validation",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Reject reversed flight dates",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            },
+            {
+              "step": "Handle past start date",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            }
+          ],
+          "summary": "Temporal constraint enforcement: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.382Z"
+        }
+      ],
+      "skipped_scenarios": [],
+      "observations": [],
+      "duration_ms": 134,
+      "mode": "deterministic"
+    },
+    {
+      "track": "signals",
+      "status": "skip",
+      "label": "Signals",
+      "scenarios": [],
+      "skipped_scenarios": [],
+      "observations": [],
+      "duration_ms": 0,
+      "mode": "observational"
+    },
+    {
+      "track": "error_handling",
+      "status": "pass",
+      "label": "Error Handling",
+      "scenarios": [
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "error_compliance/capability_discovery",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Check agent capabilities",
+              "task": "get_adcp_capabilities",
+              "passed": true,
+              "duration_ms": 33,
+              "details": "✓ Response matches get-adcp-capabilities-response.json schema; ✓ Agent declares supported protocols; ✓ Response echoes back the context object; ✓ Context correlation_id returned unchanged",
+              "observation_data": {
+                "adcp": {
+                  "major_versions": [
+                    2,
+                    3
+                  ],
+                  "idempotency": {
+                    "replay_ttl_seconds": 86400
+                  }
+                },
+                "supported_protocols": [
+                  "signals"
+                ],
+                "signals": {
+                  "signal_categories": [
+                    "demographic",
+                    "interest",
+                    "purchase_intent",
+                    "geo",
+                    "composite"
+                  ],
+                  "dynamic_segment_generation": true,
+                  "activation_mode": "async",
+                  "provider": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+                  "destinations": [
+                    {
+                      "id": "mock_dsp",
+                      "name": "Mock DSP",
+                      "type": "dsp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cleanroom",
+                      "name": "Mock Clean Room",
+                      "type": "cleanroom",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cdp",
+                      "name": "Mock CDP",
+                      "type": "cdp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_measurement",
+                      "name": "Mock Measurement Platform",
+                      "type": "measurement",
+                      "activation_supported": false
+                    }
+                  ],
+                  "limits": {
+                    "max_signals_per_request": 100,
+                    "max_rules_per_segment": 6
+                  }
+                },
+                "context": {
+                  "correlation_id": "error_compliance--get_capabilities"
+                },
+                "ext": {
+                  "ucp": {
+                    "supported_spaces": [
+                      "openai-te3-small-d512-v1"
+                    ],
+                    "supported_encodings": [
+                      "float32"
+                    ],
+                    "dimensions": [
+                      512
+                    ],
+                    "embedding_endpoint_template": "/signals/{signal_id}/embedding",
+                    "similarity_search": true,
+                    "phase": "llm-v1",
+                    "gts_version": "adcp-gts-v1.0"
+                  }
+                },
+                "_message": "{\n  \"adcp\": {\n    \"major_versions\": [\n      2,\n      3\n    ],\n    \"idempotency\": {\n      \"replay_ttl_seconds\": 86400\n    }\n  },\n  \"supported_protocols\": [\n    \"signals\"\n  ],\n  \"signals\": {\n    \"signal_categories\": [\n      \"demographic\",\n      \"interest\",\n      \"purchase_intent\",\n      \"geo\",\n      \"composite\"\n    ],\n    \"dynamic_segment_generation\": true,\n    \"activation_mode\": \"async\",\n    \"provider\": \"AdCP Signals Adaptor - Demo Provider (Evgeny)\",\n    \"destinations\": [\n      {\n        \"id\": \"mock_dsp\",\n        \"name\": \"Mock DSP\",\n        \"type\": \"dsp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cleanroom\",\n        \"name\": \"Mock Clean Room\",\n        \"type\": \"cleanroom\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cdp\",\n        \"name\": \"Mock CDP\",\n        \"type\": \"cdp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_measurement\",\n        \"name\": \"Mock Measurement Platform\",\n        \"type\": \"measurement\",\n        \"activation_supported\": false\n      }\n    ],\n    \"limits\": {\n      \"max_signals_per_request\": 100,\n      \"max_rules_per_segment\": 6\n    }\n  },\n  \"ext\": {\n    \"ucp\": {\n      \"supported_spaces\": [\n        \"openai-te3-small-d512-v1\"\n      ],\n      \"supported_encodings\": [\n        \"float32\"\n      ],\n      \"dimensions\": [\n        512\n      ],\n      \"embedding_endpoint_template\": \"/signals/{signal_id}/embedding\",\n      \"similarity_search\": true,\n      \"phase\": \"llm-v1\",\n      \"gts_version\": \"adcp-gts-v1.0\"\n    }\n  },\n  \"context\": {\n    \"correlation_id\": \"error_compliance--get_capabilities\"\n  }\n}"
+              }
+            }
+          ],
+          "summary": "Capability discovery: all steps passed",
+          "total_duration_ms": 34,
+          "tested_at": "2026-04-19T19:32:28.351Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "error_compliance/error_responses",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Reject negative budget",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            },
+            {
+              "step": "Reject nonexistent product ID",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            },
+            {
+              "step": "Reject empty get_products request",
+              "task": "get_products",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            },
+            {
+              "step": "Reject reversed dates with error code",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            }
+          ],
+          "summary": "Error responses for invalid input: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.351Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "error_compliance/error_structure",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Validate error response structure",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            }
+          ],
+          "summary": "Error structure compliance: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.351Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "error_compliance/version_negotiation",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Reject unsupported adcp_major_version",
+              "task": "get_products",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            },
+            {
+              "step": "Accept supported adcp_major_version",
+              "task": "get_products",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            }
+          ],
+          "summary": "Protocol version validation: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.351Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "error_compliance/error_transport",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Validate error transport binding",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            }
+          ],
+          "summary": "Error transport bindings: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.351Z"
+        }
+      ],
+      "skipped_scenarios": [],
+      "observations": [],
+      "duration_ms": 34,
+      "mode": "observational"
+    }
+  ],
+  "tested_tracks": [
+    {
+      "track": "core",
+      "status": "pass",
+      "label": "Core Protocol",
+      "scenarios": [
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "capability_discovery/protocol_discovery",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Discover agent capabilities",
+              "task": "get_adcp_capabilities",
+              "passed": true,
+              "duration_ms": 31,
+              "details": "✓ Response matches get-adcp-capabilities-response.json schema; ✓ Agent declares supported protocol versions; ✓ Agent declares which protocol domains it supports; ✓ Response echoes back the context object; ✓ Context correlation_id returned unchanged",
+              "observation_data": {
+                "adcp": {
+                  "major_versions": [
+                    2,
+                    3
+                  ],
+                  "idempotency": {
+                    "replay_ttl_seconds": 86400
+                  }
+                },
+                "supported_protocols": [
+                  "signals"
+                ],
+                "signals": {
+                  "signal_categories": [
+                    "demographic",
+                    "interest",
+                    "purchase_intent",
+                    "geo",
+                    "composite"
+                  ],
+                  "dynamic_segment_generation": true,
+                  "activation_mode": "async",
+                  "provider": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+                  "destinations": [
+                    {
+                      "id": "mock_dsp",
+                      "name": "Mock DSP",
+                      "type": "dsp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cleanroom",
+                      "name": "Mock Clean Room",
+                      "type": "cleanroom",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cdp",
+                      "name": "Mock CDP",
+                      "type": "cdp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_measurement",
+                      "name": "Mock Measurement Platform",
+                      "type": "measurement",
+                      "activation_supported": false
+                    }
+                  ],
+                  "limits": {
+                    "max_signals_per_request": 100,
+                    "max_rules_per_segment": 6
+                  }
+                },
+                "context": {
+                  "correlation_id": "capability_discovery--get_capabilities"
+                },
+                "ext": {
+                  "ucp": {
+                    "supported_spaces": [
+                      "openai-te3-small-d512-v1"
+                    ],
+                    "supported_encodings": [
+                      "float32"
+                    ],
+                    "dimensions": [
+                      512
+                    ],
+                    "embedding_endpoint_template": "/signals/{signal_id}/embedding",
+                    "similarity_search": true,
+                    "phase": "llm-v1",
+                    "gts_version": "adcp-gts-v1.0"
+                  }
+                },
+                "_message": "{\n  \"adcp\": {\n    \"major_versions\": [\n      2,\n      3\n    ],\n    \"idempotency\": {\n      \"replay_ttl_seconds\": 86400\n    }\n  },\n  \"supported_protocols\": [\n    \"signals\"\n  ],\n  \"signals\": {\n    \"signal_categories\": [\n      \"demographic\",\n      \"interest\",\n      \"purchase_intent\",\n      \"geo\",\n      \"composite\"\n    ],\n    \"dynamic_segment_generation\": true,\n    \"activation_mode\": \"async\",\n    \"provider\": \"AdCP Signals Adaptor - Demo Provider (Evgeny)\",\n    \"destinations\": [\n      {\n        \"id\": \"mock_dsp\",\n        \"name\": \"Mock DSP\",\n        \"type\": \"dsp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cleanroom\",\n        \"name\": \"Mock Clean Room\",\n        \"type\": \"cleanroom\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cdp\",\n        \"name\": \"Mock CDP\",\n        \"type\": \"cdp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_measurement\",\n        \"name\": \"Mock Measurement Platform\",\n        \"type\": \"measurement\",\n        \"activation_supported\": false\n      }\n    ],\n    \"limits\": {\n      \"max_signals_per_request\": 100,\n      \"max_rules_per_segment\": 6\n    }\n  },\n  \"ext\": {\n    \"ucp\": {\n      \"supported_spaces\": [\n        \"openai-te3-small-d512-v1\"\n      ],\n      \"supported_encodings\": [\n        \"float32\"\n      ],\n      \"dimensions\": [\n        512\n      ],\n      \"embedding_endpoint_template\": \"/signals/{signal_id}/embedding\",\n      \"similarity_search\": true,\n      \"phase\": \"llm-v1\",\n      \"gts_version\": \"adcp-gts-v1.0\"\n    }\n  },\n  \"context\": {\n    \"correlation_id\": \"capability_discovery--get_capabilities\"\n  }\n}"
+              }
+            },
+            {
+              "step": "Discover capabilities filtered by protocol",
+              "task": "get_adcp_capabilities",
+              "passed": true,
+              "duration_ms": 36,
+              "details": "✓ Response matches get-adcp-capabilities-response.json schema; ✓ Response echoes back the context object; ✓ Context correlation_id returned unchanged",
+              "observation_data": {
+                "adcp": {
+                  "major_versions": [
+                    2,
+                    3
+                  ],
+                  "idempotency": {
+                    "replay_ttl_seconds": 86400
+                  }
+                },
+                "supported_protocols": [
+                  "signals"
+                ],
+                "signals": {
+                  "signal_categories": [
+                    "demographic",
+                    "interest",
+                    "purchase_intent",
+                    "geo",
+                    "composite"
+                  ],
+                  "dynamic_segment_generation": true,
+                  "activation_mode": "async",
+                  "provider": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+                  "destinations": [
+                    {
+                      "id": "mock_dsp",
+                      "name": "Mock DSP",
+                      "type": "dsp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cleanroom",
+                      "name": "Mock Clean Room",
+                      "type": "cleanroom",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cdp",
+                      "name": "Mock CDP",
+                      "type": "cdp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_measurement",
+                      "name": "Mock Measurement Platform",
+                      "type": "measurement",
+                      "activation_supported": false
+                    }
+                  ],
+                  "limits": {
+                    "max_signals_per_request": 100,
+                    "max_rules_per_segment": 6
+                  }
+                },
+                "context": {
+                  "correlation_id": "capability_discovery--get_capabilities_filtered"
+                },
+                "ext": {
+                  "ucp": {
+                    "supported_spaces": [
+                      "openai-te3-small-d512-v1"
+                    ],
+                    "supported_encodings": [
+                      "float32"
+                    ],
+                    "dimensions": [
+                      512
+                    ],
+                    "embedding_endpoint_template": "/signals/{signal_id}/embedding",
+                    "similarity_search": true,
+                    "phase": "llm-v1",
+                    "gts_version": "adcp-gts-v1.0"
+                  }
+                },
+                "_message": "{\n  \"adcp\": {\n    \"major_versions\": [\n      2,\n      3\n    ],\n    \"idempotency\": {\n      \"replay_ttl_seconds\": 86400\n    }\n  },\n  \"supported_protocols\": [\n    \"signals\"\n  ],\n  \"signals\": {\n    \"signal_categories\": [\n      \"demographic\",\n      \"interest\",\n      \"purchase_intent\",\n      \"geo\",\n      \"composite\"\n    ],\n    \"dynamic_segment_generation\": true,\n    \"activation_mode\": \"async\",\n    \"provider\": \"AdCP Signals Adaptor - Demo Provider (Evgeny)\",\n    \"destinations\": [\n      {\n        \"id\": \"mock_dsp\",\n        \"name\": \"Mock DSP\",\n        \"type\": \"dsp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cleanroom\",\n        \"name\": \"Mock Clean Room\",\n        \"type\": \"cleanroom\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cdp\",\n        \"name\": \"Mock CDP\",\n        \"type\": \"cdp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_measurement\",\n        \"name\": \"Mock Measurement Platform\",\n        \"type\": \"measurement\",\n        \"activation_supported\": false\n      }\n    ],\n    \"limits\": {\n      \"max_signals_per_request\": 100,\n      \"max_rules_per_segment\": 6\n    }\n  },\n  \"ext\": {\n    \"ucp\": {\n      \"supported_spaces\": [\n        \"openai-te3-small-d512-v1\"\n      ],\n      \"supported_encodings\": [\n        \"float32\"\n      ],\n      \"dimensions\": [\n        512\n      ],\n      \"embedding_endpoint_template\": \"/signals/{signal_id}/embedding\",\n      \"similarity_search\": true,\n      \"phase\": \"llm-v1\",\n      \"gts_version\": \"adcp-gts-v1.0\"\n    }\n  },\n  \"context\": {\n    \"correlation_id\": \"capability_discovery--get_capabilities_filtered\"\n  }\n}"
+              }
+            }
+          ],
+          "summary": "Protocol and capability discovery: all steps passed",
+          "total_duration_ms": 71,
+          "tested_at": "2026-04-19T19:32:28.285Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "deterministic_testing/capability_discovery",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Check agent capabilities",
+              "task": "get_adcp_capabilities",
+              "passed": true,
+              "duration_ms": 30,
+              "details": "✓ Response matches get-adcp-capabilities-response.json schema; ✓ Agent declares supported protocols; ✓ Response echoes back the context object; ✓ Context correlation_id returned unchanged",
+              "observation_data": {
+                "adcp": {
+                  "major_versions": [
+                    2,
+                    3
+                  ],
+                  "idempotency": {
+                    "replay_ttl_seconds": 86400
+                  }
+                },
+                "supported_protocols": [
+                  "signals"
+                ],
+                "signals": {
+                  "signal_categories": [
+                    "demographic",
+                    "interest",
+                    "purchase_intent",
+                    "geo",
+                    "composite"
+                  ],
+                  "dynamic_segment_generation": true,
+                  "activation_mode": "async",
+                  "provider": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+                  "destinations": [
+                    {
+                      "id": "mock_dsp",
+                      "name": "Mock DSP",
+                      "type": "dsp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cleanroom",
+                      "name": "Mock Clean Room",
+                      "type": "cleanroom",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cdp",
+                      "name": "Mock CDP",
+                      "type": "cdp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_measurement",
+                      "name": "Mock Measurement Platform",
+                      "type": "measurement",
+                      "activation_supported": false
+                    }
+                  ],
+                  "limits": {
+                    "max_signals_per_request": 100,
+                    "max_rules_per_segment": 6
+                  }
+                },
+                "context": {
+                  "correlation_id": "deterministic_testing--get_capabilities"
+                },
+                "ext": {
+                  "ucp": {
+                    "supported_spaces": [
+                      "openai-te3-small-d512-v1"
+                    ],
+                    "supported_encodings": [
+                      "float32"
+                    ],
+                    "dimensions": [
+                      512
+                    ],
+                    "embedding_endpoint_template": "/signals/{signal_id}/embedding",
+                    "similarity_search": true,
+                    "phase": "llm-v1",
+                    "gts_version": "adcp-gts-v1.0"
+                  }
+                },
+                "_message": "{\n  \"adcp\": {\n    \"major_versions\": [\n      2,\n      3\n    ],\n    \"idempotency\": {\n      \"replay_ttl_seconds\": 86400\n    }\n  },\n  \"supported_protocols\": [\n    \"signals\"\n  ],\n  \"signals\": {\n    \"signal_categories\": [\n      \"demographic\",\n      \"interest\",\n      \"purchase_intent\",\n      \"geo\",\n      \"composite\"\n    ],\n    \"dynamic_segment_generation\": true,\n    \"activation_mode\": \"async\",\n    \"provider\": \"AdCP Signals Adaptor - Demo Provider (Evgeny)\",\n    \"destinations\": [\n      {\n        \"id\": \"mock_dsp\",\n        \"name\": \"Mock DSP\",\n        \"type\": \"dsp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cleanroom\",\n        \"name\": \"Mock Clean Room\",\n        \"type\": \"cleanroom\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cdp\",\n        \"name\": \"Mock CDP\",\n        \"type\": \"cdp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_measurement\",\n        \"name\": \"Mock Measurement Platform\",\n        \"type\": \"measurement\",\n        \"activation_supported\": false\n      }\n    ],\n    \"limits\": {\n      \"max_signals_per_request\": 100,\n      \"max_rules_per_segment\": 6\n    }\n  },\n  \"ext\": {\n    \"ucp\": {\n      \"supported_spaces\": [\n        \"openai-te3-small-d512-v1\"\n      ],\n      \"supported_encodings\": [\n        \"float32\"\n      ],\n      \"dimensions\": [\n        512\n      ],\n      \"embedding_endpoint_template\": \"/signals/{signal_id}/embedding\",\n      \"similarity_search\": true,\n      \"phase\": \"llm-v1\",\n      \"gts_version\": \"adcp-gts-v1.0\"\n    }\n  },\n  \"context\": {\n    \"correlation_id\": \"deterministic_testing--get_capabilities\"\n  }\n}"
+              }
+            }
+          ],
+          "summary": "Capability discovery: all steps passed",
+          "total_duration_ms": 30,
+          "tested_at": "2026-04-19T19:32:28.317Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "deterministic_testing/controller_validation",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "List supported scenarios",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Unknown scenario returns error",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Missing params returns error",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Nonexistent entity returns NOT_FOUND",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            }
+          ],
+          "summary": "Controller validation: all steps passed",
+          "total_duration_ms": 1,
+          "tested_at": "2026-04-19T19:32:28.317Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "deterministic_testing/deterministic_account",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Create sandbox account for state machine test",
+              "task": "sync_accounts",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Find account for state machine test",
+              "task": "list_accounts",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Force account to suspended",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Reactivate account",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Force account to payment_required",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Restore account to active",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            }
+          ],
+          "summary": "Deterministic account state machine: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.317Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "deterministic_testing/deterministic_media_buy",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Create media buy for state machine test",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Force media buy to active",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Verify media buy status via get_media_buys",
+              "task": "get_media_buys",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Force media buy to completed (terminal)",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Reject transition from terminal state",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            }
+          ],
+          "summary": "Deterministic media buy state machine: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.317Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "deterministic_testing/deterministic_creative",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Sync creative for state machine test",
+              "task": "sync_creatives",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Force creative to approved",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Force creative to archived (terminal)",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Reject archived to processing",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Force fresh creative to rejected with reason",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            }
+          ],
+          "summary": "Deterministic creative state machine: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.317Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "deterministic_testing/deterministic_session",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Initiate SI session",
+              "task": "si_initiate_session",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: agent lacks required tool"
+              ]
+            },
+            {
+              "step": "Force session timeout",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Verify messaging fails on terminated session",
+              "task": "si_send_message",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            }
+          ],
+          "summary": "Deterministic SI session state machine: all steps passed",
+          "total_duration_ms": 1,
+          "tested_at": "2026-04-19T19:32:28.317Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "deterministic_testing/deterministic_delivery",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Create media buy for delivery test",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Simulate delivery data",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Verify delivery via get_media_buy_delivery",
+              "task": "get_media_buy_delivery",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            }
+          ],
+          "summary": "Deterministic delivery simulation: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.317Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "deterministic_testing/deterministic_budget",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Create media buy for budget test",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Simulate 95% budget spend",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            },
+            {
+              "step": "Simulate 100% budget depletion",
+              "task": "comply_test_controller",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Not testable: requires comply_test_controller harness"
+              ]
+            }
+          ],
+          "summary": "Deterministic budget simulation: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.317Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "schema_validation/capability_discovery",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Check agent capabilities",
+              "task": "get_adcp_capabilities",
+              "passed": true,
+              "duration_ms": 31,
+              "details": "✓ Response matches get-adcp-capabilities-response.json schema; ✓ Agent declares supported protocols; ✓ Response echoes back the context object; ✓ Context correlation_id returned unchanged",
+              "observation_data": {
+                "adcp": {
+                  "major_versions": [
+                    2,
+                    3
+                  ],
+                  "idempotency": {
+                    "replay_ttl_seconds": 86400
+                  }
+                },
+                "supported_protocols": [
+                  "signals"
+                ],
+                "signals": {
+                  "signal_categories": [
+                    "demographic",
+                    "interest",
+                    "purchase_intent",
+                    "geo",
+                    "composite"
+                  ],
+                  "dynamic_segment_generation": true,
+                  "activation_mode": "async",
+                  "provider": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+                  "destinations": [
+                    {
+                      "id": "mock_dsp",
+                      "name": "Mock DSP",
+                      "type": "dsp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cleanroom",
+                      "name": "Mock Clean Room",
+                      "type": "cleanroom",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cdp",
+                      "name": "Mock CDP",
+                      "type": "cdp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_measurement",
+                      "name": "Mock Measurement Platform",
+                      "type": "measurement",
+                      "activation_supported": false
+                    }
+                  ],
+                  "limits": {
+                    "max_signals_per_request": 100,
+                    "max_rules_per_segment": 6
+                  }
+                },
+                "context": {
+                  "correlation_id": "schema_validation--get_capabilities"
+                },
+                "ext": {
+                  "ucp": {
+                    "supported_spaces": [
+                      "openai-te3-small-d512-v1"
+                    ],
+                    "supported_encodings": [
+                      "float32"
+                    ],
+                    "dimensions": [
+                      512
+                    ],
+                    "embedding_endpoint_template": "/signals/{signal_id}/embedding",
+                    "similarity_search": true,
+                    "phase": "llm-v1",
+                    "gts_version": "adcp-gts-v1.0"
+                  }
+                },
+                "_message": "{\n  \"adcp\": {\n    \"major_versions\": [\n      2,\n      3\n    ],\n    \"idempotency\": {\n      \"replay_ttl_seconds\": 86400\n    }\n  },\n  \"supported_protocols\": [\n    \"signals\"\n  ],\n  \"signals\": {\n    \"signal_categories\": [\n      \"demographic\",\n      \"interest\",\n      \"purchase_intent\",\n      \"geo\",\n      \"composite\"\n    ],\n    \"dynamic_segment_generation\": true,\n    \"activation_mode\": \"async\",\n    \"provider\": \"AdCP Signals Adaptor - Demo Provider (Evgeny)\",\n    \"destinations\": [\n      {\n        \"id\": \"mock_dsp\",\n        \"name\": \"Mock DSP\",\n        \"type\": \"dsp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cleanroom\",\n        \"name\": \"Mock Clean Room\",\n        \"type\": \"cleanroom\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cdp\",\n        \"name\": \"Mock CDP\",\n        \"type\": \"cdp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_measurement\",\n        \"name\": \"Mock Measurement Platform\",\n        \"type\": \"measurement\",\n        \"activation_supported\": false\n      }\n    ],\n    \"limits\": {\n      \"max_signals_per_request\": 100,\n      \"max_rules_per_segment\": 6\n    }\n  },\n  \"ext\": {\n    \"ucp\": {\n      \"supported_spaces\": [\n        \"openai-te3-small-d512-v1\"\n      ],\n      \"supported_encodings\": [\n        \"float32\"\n      ],\n      \"dimensions\": [\n        512\n      ],\n      \"embedding_endpoint_template\": \"/signals/{signal_id}/embedding\",\n      \"similarity_search\": true,\n      \"phase\": \"llm-v1\",\n      \"gts_version\": \"adcp-gts-v1.0\"\n    }\n  },\n  \"context\": {\n    \"correlation_id\": \"schema_validation--get_capabilities\"\n  }\n}"
+              }
+            }
+          ],
+          "summary": "Capability discovery: all steps passed",
+          "total_duration_ms": 31,
+          "tested_at": "2026-04-19T19:32:28.382Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "schema_validation/schema_compliance",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Validate get_products response schema",
+              "task": "get_products",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            },
+            {
+              "step": "Validate pricing options structure",
+              "task": "get_products",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            }
+          ],
+          "summary": "Response schema compliance: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.382Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "schema_validation/format_id_reconciliation",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Get products and verify identifiers",
+              "task": "get_products",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            },
+            {
+              "step": "Verify format catalog includes product formats",
+              "task": "list_creative_formats",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            }
+          ],
+          "summary": "Format ID and pricing option reconciliation: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.382Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "schema_validation/temporal_validation",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Reject reversed flight dates",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            },
+            {
+              "step": "Handle past start date",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            }
+          ],
+          "summary": "Temporal constraint enforcement: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.382Z"
+        }
+      ],
+      "skipped_scenarios": [],
+      "observations": [],
+      "duration_ms": 134,
+      "mode": "deterministic"
+    },
+    {
+      "track": "error_handling",
+      "status": "pass",
+      "label": "Error Handling",
+      "scenarios": [
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "error_compliance/capability_discovery",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Check agent capabilities",
+              "task": "get_adcp_capabilities",
+              "passed": true,
+              "duration_ms": 33,
+              "details": "✓ Response matches get-adcp-capabilities-response.json schema; ✓ Agent declares supported protocols; ✓ Response echoes back the context object; ✓ Context correlation_id returned unchanged",
+              "observation_data": {
+                "adcp": {
+                  "major_versions": [
+                    2,
+                    3
+                  ],
+                  "idempotency": {
+                    "replay_ttl_seconds": 86400
+                  }
+                },
+                "supported_protocols": [
+                  "signals"
+                ],
+                "signals": {
+                  "signal_categories": [
+                    "demographic",
+                    "interest",
+                    "purchase_intent",
+                    "geo",
+                    "composite"
+                  ],
+                  "dynamic_segment_generation": true,
+                  "activation_mode": "async",
+                  "provider": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+                  "destinations": [
+                    {
+                      "id": "mock_dsp",
+                      "name": "Mock DSP",
+                      "type": "dsp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cleanroom",
+                      "name": "Mock Clean Room",
+                      "type": "cleanroom",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_cdp",
+                      "name": "Mock CDP",
+                      "type": "cdp",
+                      "activation_supported": true
+                    },
+                    {
+                      "id": "mock_measurement",
+                      "name": "Mock Measurement Platform",
+                      "type": "measurement",
+                      "activation_supported": false
+                    }
+                  ],
+                  "limits": {
+                    "max_signals_per_request": 100,
+                    "max_rules_per_segment": 6
+                  }
+                },
+                "context": {
+                  "correlation_id": "error_compliance--get_capabilities"
+                },
+                "ext": {
+                  "ucp": {
+                    "supported_spaces": [
+                      "openai-te3-small-d512-v1"
+                    ],
+                    "supported_encodings": [
+                      "float32"
+                    ],
+                    "dimensions": [
+                      512
+                    ],
+                    "embedding_endpoint_template": "/signals/{signal_id}/embedding",
+                    "similarity_search": true,
+                    "phase": "llm-v1",
+                    "gts_version": "adcp-gts-v1.0"
+                  }
+                },
+                "_message": "{\n  \"adcp\": {\n    \"major_versions\": [\n      2,\n      3\n    ],\n    \"idempotency\": {\n      \"replay_ttl_seconds\": 86400\n    }\n  },\n  \"supported_protocols\": [\n    \"signals\"\n  ],\n  \"signals\": {\n    \"signal_categories\": [\n      \"demographic\",\n      \"interest\",\n      \"purchase_intent\",\n      \"geo\",\n      \"composite\"\n    ],\n    \"dynamic_segment_generation\": true,\n    \"activation_mode\": \"async\",\n    \"provider\": \"AdCP Signals Adaptor - Demo Provider (Evgeny)\",\n    \"destinations\": [\n      {\n        \"id\": \"mock_dsp\",\n        \"name\": \"Mock DSP\",\n        \"type\": \"dsp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cleanroom\",\n        \"name\": \"Mock Clean Room\",\n        \"type\": \"cleanroom\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_cdp\",\n        \"name\": \"Mock CDP\",\n        \"type\": \"cdp\",\n        \"activation_supported\": true\n      },\n      {\n        \"id\": \"mock_measurement\",\n        \"name\": \"Mock Measurement Platform\",\n        \"type\": \"measurement\",\n        \"activation_supported\": false\n      }\n    ],\n    \"limits\": {\n      \"max_signals_per_request\": 100,\n      \"max_rules_per_segment\": 6\n    }\n  },\n  \"ext\": {\n    \"ucp\": {\n      \"supported_spaces\": [\n        \"openai-te3-small-d512-v1\"\n      ],\n      \"supported_encodings\": [\n        \"float32\"\n      ],\n      \"dimensions\": [\n        512\n      ],\n      \"embedding_endpoint_template\": \"/signals/{signal_id}/embedding\",\n      \"similarity_search\": true,\n      \"phase\": \"llm-v1\",\n      \"gts_version\": \"adcp-gts-v1.0\"\n    }\n  },\n  \"context\": {\n    \"correlation_id\": \"error_compliance--get_capabilities\"\n  }\n}"
+              }
+            }
+          ],
+          "summary": "Capability discovery: all steps passed",
+          "total_duration_ms": 34,
+          "tested_at": "2026-04-19T19:32:28.351Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "error_compliance/error_responses",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Reject negative budget",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            },
+            {
+              "step": "Reject nonexistent product ID",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            },
+            {
+              "step": "Reject empty get_products request",
+              "task": "get_products",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            },
+            {
+              "step": "Reject reversed dates with error code",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            }
+          ],
+          "summary": "Error responses for invalid input: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.351Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "error_compliance/error_structure",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Validate error response structure",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            }
+          ],
+          "summary": "Error structure compliance: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.351Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "error_compliance/version_negotiation",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Reject unsupported adcp_major_version",
+              "task": "get_products",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            },
+            {
+              "step": "Accept supported adcp_major_version",
+              "task": "get_products",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            }
+          ],
+          "summary": "Protocol version validation: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.351Z"
+        },
+        {
+          "agent_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+          "scenario": "error_compliance/error_transport",
+          "overall_passed": true,
+          "steps": [
+            {
+              "step": "Validate error transport binding",
+              "task": "create_media_buy",
+              "passed": true,
+              "duration_ms": 0,
+              "warnings": [
+                "Skipped: agent does not implement this tool"
+              ]
+            }
+          ],
+          "summary": "Error transport bindings: all steps passed",
+          "total_duration_ms": 0,
+          "tested_at": "2026-04-19T19:32:28.351Z"
+        }
+      ],
+      "skipped_scenarios": [],
+      "observations": [],
+      "duration_ms": 34,
+      "mode": "observational"
+    }
+  ],
+  "skipped_tracks": [
+    {
+      "track": "signals",
+      "label": "Signals",
+      "reason": "No storyboards produced results for this track"
+    }
+  ],
+  "summary": {
+    "tracks_passed": 2,
+    "tracks_failed": 0,
+    "tracks_skipped": 1,
+    "tracks_partial": 0,
+    "headline": "All 2 track(s) pass"
+  },
+  "observations": [
+    {
+      "category": "tool_discovery",
+      "severity": "info",
+      "message": "Discovered 8 tools: [get_adcp_capabilities, get_signals, activate_signal, get_operation_status, get_similar_signals, query_signals_nl, get_concept, search_concepts]",
+      "evidence": {
+        "tools": [
+          "get_adcp_capabilities",
+          "get_signals",
+          "activate_signal",
+          "get_operation_status",
+          "get_similar_signals",
+          "query_signals_nl",
+          "get_concept",
+          "search_concepts"
+        ]
+      }
+    }
+  ],
+  "storyboards_executed": [
+    "capability_discovery",
+    "deterministic_testing",
+    "error_compliance",
+    "schema_validation",
+    "signals_baseline"
+  ],
+  "controller_detected": false,
+  "tested_at": "2026-04-19T19:32:28.388Z",
+  "total_duration_ms": 1157
+}

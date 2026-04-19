@@ -82,12 +82,20 @@ export default {
         // OAuth `state` query param and nothing else. A bearer token on
         // that request is architecturally impossible without a cookie or
         // signed bootstrap layer, which we don't have. The defense for
-        // this route is the OAuth state machine, already implemented in
-        // auth/linkedin.ts: /init writes a random UUID to KV, /callback
-        // accepts the returned state only if it matches a live KV entry,
-        // and the entry is deleted on first use (single-use). An attacker
-        // can't forge a valid state without first coaxing a legitimate
-        // operator to hit /init — which /init's auth gate prevents.
+        // this route is the OAuth state machine in auth/linkedin.ts:
+        // /init writes a random UUID to the `oauth_state` D1 table, and
+        // /callback consumes it atomically via
+        // `DELETE ... WHERE state = ? AND expires_at > ? RETURNING state`
+        // — SQLite serializes the row-level write, so exactly one DELETE
+        // matches a given state. An attacker can't forge a valid state
+        // without first coaxing a legitimate operator to hit /init —
+        // which /init's auth gate prevents.
+        //
+        // Operational dependency: the `oauth_state` table is created by
+        // migrations/0003_oauth_state.sql. Run
+        // `wrangler d1 migrations apply adcp-signals-db --remote` before
+        // deploying this code to any new environment, or /init and
+        // /callback will throw on first use.
         const publicPaths = [
             "/capabilities",
             "/health",
@@ -136,7 +144,11 @@ export default {
             } else if (method === "GET" && path === "/ucp/projector") {
                 response = handleGetProjector();
 
-                // ── LinkedIn OAuth (public — no auth required) ───────────────────────
+                // ── LinkedIn OAuth ────────────────────────────────────────────────────
+                // Only /callback is in publicPaths. /init and /status are
+                // DEMO_API_KEY-gated by the top-level auth check above. The
+                // callback's safety rests on the atomic D1 state-consume —
+                // see the publicPaths comment earlier in this file.
             } else if (method === "GET" && path === "/auth/linkedin/init") {
                 response = await handleLinkedInAuthInit(env);
 

@@ -83,17 +83,19 @@ export function validateActivateRequest(body: unknown): ValidationResult {
     return fail("MISSING_DESTINATION", "destination is required");
   }
 
-  // Platform destinations must be in our supported set. Agent destinations
-  // are caller-supplied URLs ("https://...") that don't appear in
-  // VALID_DESTINATIONS by design — every signals agent MUST accept
-  // type=agent per docs/signals/specification.mdx:186, so we skip the
-  // membership check when destinationType === "agent".
-  if (req.destinationType !== "agent" && !VALID_DESTINATIONS.has(req.destination)) {
-    return fail(
-      "INVALID_DESTINATION",
-      `destination must be one of: ${[...VALID_DESTINATIONS].join(", ")}`
-    );
-  }
+  // Platform-name whitelist removed (Sec-12 round 2): every signals agent
+  // MUST accept arbitrary platform identifiers and return an async
+  // deployment record per docs/signals/specification.mdx + the upstream
+  // signals storyboard baseline (adcp#2365). The runner activates against
+  // platforms like "the-trade-desk" / "dv360" against any signal — those
+  // were never in our VALID_DESTINATIONS, so the check rejected legitimate
+  // protocol-level conformance traffic.
+  //
+  // is_live: false is explicitly valid per the activate-signal-response
+  // schema; the MCP handler emits it for every activation, so accepting
+  // unknown platforms here is a no-op on the response shape.
+  //
+  // Agent destinations were already exempted; this just unifies the rule.
 
   return { ok: true };
 }

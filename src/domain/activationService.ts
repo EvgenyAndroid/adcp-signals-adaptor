@@ -65,15 +65,22 @@ export async function activateSignalService(
   if (!signal.activationSupported) {
     throw new ValidationError(`Signal ${req.signalId} does not support activation`);
   }
-  // Platform destinations are gated by the signal's destinations whitelist
-  // (mock_dsp, mock_cleanroom, etc.). Agent destinations are SA URLs that
-  // aren't in that whitelist by design — every signal MUST accept agent
-  // activation per the signals spec, so we skip the membership check
-  // when the caller declared destinationType = "agent".
+  // Per-signal destinations list is now advisory metadata, not a rejection
+  // gate (Sec-12 round 2). The AdCP signals storyboard activates against
+  // arbitrary platform names (the-trade-desk, dv360, etc.) and the agent
+  // must return an async deployment record — `is_live: false` is
+  // explicitly valid per the activate-signal-response schema and is
+  // exactly what the MCP handler emits today. Real platform integrations,
+  // when wired, would light up `is_live: true` from the activation
+  // pipeline — not from this gate.
+  //
+  // We log unknown-platform requests at info so they're visible in tail.
   if (req.destinationType !== "agent" && !signal.destinations.includes(req.destination)) {
-    throw new ValidationError(
-      `Signal ${req.signalId} is not available for destination '${req.destination}'`
-    );
+    logger.info("activation_unknown_platform", {
+      signalId: req.signalId,
+      requested: req.destination,
+      knownDestinations: signal.destinations,
+    });
   }
 
   const opId = operationId();

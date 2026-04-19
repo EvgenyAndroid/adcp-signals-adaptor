@@ -159,12 +159,16 @@ describe("activate_signal request-shape parsing", () => {
   });
 });
 
-// ── activationService destinations gate behavior ─────────────────────────────
+// ── activationService destinations behavior (post-Sec-12 round 2) ────────────
 //
-// Direct test of the change in src/domain/activationService.ts:
-//   - platform destinations still gated by signal.destinations.includes(...)
-//   - agent destinations skip that check (signals MUST accept type=agent
-//     per docs/signals/specification.mdx:186)
+// Per the AdCP signals storyboard baseline, every signals agent must accept
+// arbitrary platform destinations and return an async deployment record —
+// `is_live: false` is explicitly valid per the activate-signal-response
+// schema. The per-signal destinations[] list is now advisory metadata,
+// not a rejection gate. This pin documents the post-relaxation behavior:
+//   - platform IN signal.destinations  → activates
+//   - platform NOT in signal.destinations → activates (logs at info)
+//   - agent destination (URL)           → activates (skips check entirely)
 
 import { activateSignalService, ValidationError } from "../src/domain/activationService";
 import { findSignalById } from "../src/storage/signalRepo";
@@ -183,7 +187,7 @@ vi.mock("../src/storage/activationRepo", () => ({
 
 import { createLogger } from "../src/utils/logger";
 
-describe("activationService — destinations gate", () => {
+describe("activationService — destinations behavior (post-Sec-12 round 2)", () => {
   const db = {} as unknown as import("../src/storage/db").DB;
   const kv = {} as unknown as KVNamespace;
   const logger = createLogger("test-sec12");
@@ -193,7 +197,7 @@ describe("activationService — destinations gate", () => {
     destinations: ["mock_dsp", "mock_cleanroom"],
   };
 
-  it("platform destination IN whitelist → passes", async () => {
+  it("platform destination IN signal.destinations → activates", async () => {
     vi.mocked(findSignalById).mockResolvedValue(stubSignal);
     const res = await activateSignalService(
       db, kv,
@@ -203,20 +207,22 @@ describe("activationService — destinations gate", () => {
     expect(res.task_id).toBeDefined();
   });
 
-  it("platform destination NOT in whitelist → ValidationError", async () => {
+  it("platform destination NOT in signal.destinations → still activates (storyboard requires acceptance)", async () => {
+    // Pre-relaxation, this would throw ValidationError. The runner sends
+    // arbitrary platforms (the-trade-desk, dv360, etc.) against any
+    // signal — those were never in our destinations list, so rejecting
+    // them broke protocol-level conformance.
     vi.mocked(findSignalById).mockResolvedValue(stubSignal);
-    await expect(
-      activateSignalService(
-        db, kv,
-        { signalId: "sig_drama_viewers", destination: "the-trade-desk", destinationType: "platform" },
-        logger,
-      ),
-    ).rejects.toBeInstanceOf(ValidationError);
+    const res = await activateSignalService(
+      db, kv,
+      { signalId: "sig_drama_viewers", destination: "the-trade-desk", destinationType: "platform" },
+      logger,
+    );
+    expect(res.task_id).toBeDefined();
+    expect(res.status).toBe("pending");
   });
 
-  it("agent destination (URL not in whitelist) → bypasses the check, passes", async () => {
-    // This is the Sec-12 regression pin. Pre-fix, this would throw
-    // ValidationError because "https://..." isn't in signal.destinations.
+  it("agent destination (URL) → activates without any platform check", async () => {
     vi.mocked(findSignalById).mockResolvedValue(stubSignal);
     const res = await activateSignalService(
       db, kv,
@@ -230,31 +236,32 @@ describe("activationService — destinations gate", () => {
     expect(res.task_id).toBeDefined();
   });
 
-  it("agent destination skips whitelist even when URL coincidentally matches a platform name", async () => {
-    // Defensive: someone passing destinationType: "agent" with a non-URL
-    // should still pass — the type field is the gate, not URL parsing.
+  it("default destinationType (omitted) treats as platform AND still activates against unknowns", async () => {
     vi.mocked(findSignalById).mockResolvedValue(stubSignal);
-    const res = await activateSignalService(
+    const a = await activateSignalService(
       db, kv,
-      { signalId: "sig_drama_viewers", destination: "mock_dsp", destinationType: "agent" },
+      { signalId: "sig_drama_viewers", destination: "mock_dsp" },
       logger,
     );
-    expect(res.task_id).toBeDefined();
+    expect(a.task_id).toBeDefined();
+    const b = await activateSignalService(
+      db, kv,
+      { signalId: "sig_drama_viewers", destination: "the-trade-desk" },
+      logger,
+    );
+    expect(b.task_id).toBeDefined();
   });
 
-  it("default destinationType (omitted) treated as platform — preserves existing test behavior", async () => {
-    vi.mocked(findSignalById).mockResolvedValue(stubSignal);
-    const res = await activateSignalService(
-      db, kv,
-      { signalId: "sig_drama_viewers", destination: "mock_dsp" }, // no destinationType
-      logger,
-    );
-    expect(res.task_id).toBeDefined();
-    // And not-in-whitelist should still throw without destinationType.
+  // The activationSupported gate is the ONLY hard reject in the service now.
+  it("signals with activationSupported=false still throw ValidationError", async () => {
+    vi.mocked(findSignalById).mockResolvedValue({
+      ...stubSignal,
+      activationSupported: false,
+    });
     await expect(
       activateSignalService(
         db, kv,
-        { signalId: "sig_drama_viewers", destination: "the-trade-desk" },
+        { signalId: "sig_drama_viewers", destination: "mock_dsp", destinationType: "platform" },
         logger,
       ),
     ).rejects.toBeInstanceOf(ValidationError);

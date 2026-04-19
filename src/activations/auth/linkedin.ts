@@ -36,6 +36,7 @@
  */
 
 import { encryptIfConfigured, decryptIfNeeded } from '../../utils/tokenCrypto';
+import { fetchWithTimeout } from '../../utils/fetchWithLimits';
 
 const LI_AUTH_URL  = 'https://www.linkedin.com/oauth/v2/authorization';
 const LI_TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken';
@@ -297,10 +298,11 @@ async function exchangeCodeForTokens(
     redirect_uri: env.LINKEDIN_REDIRECT_URI,
   });
 
-  const res = await fetch(LI_TOKEN_URL, {
+  const res = await fetchWithTimeout(LI_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
+    timeoutMs: 15_000,
   });
 
   if (!res.ok) {
@@ -342,10 +344,11 @@ async function refreshAccessToken(
     client_secret: env.LINKEDIN_CLIENT_SECRET,
   });
 
-  const res = await fetch(LI_TOKEN_URL, {
+  const res = await fetchWithTimeout(LI_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
+    timeoutMs: 15_000,
   });
 
   if (!res.ok) {

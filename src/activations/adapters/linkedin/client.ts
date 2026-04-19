@@ -9,9 +9,14 @@
  */
 
 import type { LinkedInCampaignPayload, LinkedInCampaignResponse } from '../../types/linkedin';
+import { fetchWithTimeout } from '../../../utils/fetchWithLimits';
 
 const BASE = 'https://api.linkedin.com/rest';
 const LI_VERSION = '202503';
+
+// LinkedIn's ad-platform endpoints target ~p99 <3s; 10s is generous cover
+// for tail latency while staying well under the 30s Worker CPU budget.
+const LI_API_TIMEOUT_MS = 10_000;
 
 const DEFAULT_HEADERS = (token: string) => ({
   'Authorization': `Bearer ${token}`,
@@ -29,10 +34,11 @@ export async function createCampaign(
 ): Promise<LinkedInCampaignResponse> {
   const url = `${BASE}/adAccounts/${adAccountId}/adCampaigns`;
 
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method: 'POST',
     headers: DEFAULT_HEADERS(accessToken),
     body: JSON.stringify(payload),
+    timeoutMs: LI_API_TIMEOUT_MS,
   });
 
   if (!res.ok) {
@@ -68,8 +74,9 @@ export async function getCampaign(
   accessToken: string,
   adAccountId: string,
 ): Promise<LinkedInCampaignResponse> {
-  const res = await fetch(`${BASE}/adAccounts/${adAccountId}/adCampaigns/${campaignId}`, {
+  const res = await fetchWithTimeout(`${BASE}/adAccounts/${adAccountId}/adCampaigns/${campaignId}`, {
     headers: DEFAULT_HEADERS(accessToken),
+    timeoutMs: LI_API_TIMEOUT_MS,
   });
 
   if (!res.ok) {
@@ -89,8 +96,9 @@ export async function listCampaignGroups(
   // Simple search without status filter — LinkedIn rejects search.status.values[] param
   const url = `${BASE}/adAccounts/${adAccountId}/adCampaignGroups?q=search&count=10`;
 
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     headers: DEFAULT_HEADERS(accessToken),
+    timeoutMs: LI_API_TIMEOUT_MS,
   });
 
   if (!res.ok) {
@@ -109,7 +117,7 @@ export async function createCampaignGroup(
 ): Promise<string> {
   const url = `${BASE}/adAccounts/${adAccountId}/adCampaignGroups`;
 
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method: 'POST',
     headers: DEFAULT_HEADERS(accessToken),
     body: JSON.stringify({
@@ -118,6 +126,7 @@ export async function createCampaignGroup(
       status: 'ACTIVE',
       runSchedule: { start: Date.now() },
     }),
+    timeoutMs: LI_API_TIMEOUT_MS,
   });
 
   if (!res.ok) {
@@ -137,8 +146,9 @@ export async function validateToken(
   accessToken: string,
 ): Promise<{ valid: boolean; sub?: string; name?: string }> {
   try {
-    const res = await fetch('https://api.linkedin.com/v2/userinfo', {
+    const res = await fetchWithTimeout('https://api.linkedin.com/v2/userinfo', {
       headers: { 'Authorization': `Bearer ${accessToken}` },
+      timeoutMs: LI_API_TIMEOUT_MS,
     });
     if (!res.ok) return { valid: false };
     const json = await res.json() as { sub?: string; name?: string };

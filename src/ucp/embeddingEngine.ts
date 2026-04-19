@@ -21,6 +21,7 @@
 // is always assignable to UcpEmbeddingDeclaration.phase without casting.
 export type { UcpEmbeddingPhase as EmbeddingPhase } from "../types/ucp";
 import type { UcpEmbeddingPhase } from "../types/ucp";
+import { fetchWithTimeout } from "../utils/fetchWithLimits";
 
 export interface SignalEmbedding {
   model_id: string;
@@ -138,7 +139,9 @@ export class LlmEmbeddingEngine implements EmbeddingEngine {
   }
 
   private async callOpenAI(text: string): Promise<number[]> {
-    const res = await fetch('https://api.openai.com/v1/embeddings', {
+    // 15s timeout — OpenAI embeddings typically return in <1s; a 15s cap
+    // is generous for p99 while still well under the Worker CPU budget.
+    const res = await fetchWithTimeout('https://api.openai.com/v1/embeddings', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -149,6 +152,7 @@ export class LlmEmbeddingEngine implements EmbeddingEngine {
         input: text,
         dimensions: 512,
       }),
+      timeoutMs: 15_000,
     });
     if (!res.ok) {
       const err = await res.text();

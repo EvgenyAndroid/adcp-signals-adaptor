@@ -32,9 +32,16 @@
  */
 
 import { LinkedInApiError } from './client';
+import { fetchWithTimeout } from '../../../utils/fetchWithLimits';
 
 const BASE = 'https://api.linkedin.com/rest';
 const LI_VERSION = '202503';
+
+// LinkedIn's creative endpoints can be slower than the ad-platform ones
+// (image upload crosses a different pipeline). 20s here covers slow uploads
+// of the 5MB max-size banner; the 5MB size cap lives in the route layer.
+const LI_API_TIMEOUT_MS = 10_000;
+const LI_UPLOAD_TIMEOUT_MS = 20_000;
 
 const DEFAULT_HEADERS = (token: string) => ({
   'Authorization': `Bearer ${token}`,
@@ -93,12 +100,13 @@ export async function uploadImage(
   const owner = organizationUrn ?? `urn:li:sponsoredAccount:${adAccountId}`;
 
   // Initialize upload — get pre-signed uploadUrl + imageUrn
-  const initRes = await fetch(`${BASE}/images?action=initializeUpload`, {
+  const initRes = await fetchWithTimeout(`${BASE}/images?action=initializeUpload`, {
     method: 'POST',
     headers: DEFAULT_HEADERS(accessToken),
     body: JSON.stringify({
       initializeUploadRequest: { owner },
     }),
+    timeoutMs: LI_API_TIMEOUT_MS,
   });
 
   if (!initRes.ok) {
@@ -113,13 +121,14 @@ export async function uploadImage(
   const { uploadUrl, image: imageUrn } = initData.value;
 
   // PUT raw bytes to pre-signed URL — no LinkedIn-Version header on this one
-  const uploadRes = await fetch(uploadUrl, {
+  const uploadRes = await fetchWithTimeout(uploadUrl, {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'image/jpeg',
     },
     body: imageBytes,
+    timeoutMs: LI_UPLOAD_TIMEOUT_MS,
   });
 
   if (!uploadRes.ok) {
@@ -170,10 +179,11 @@ export async function createDarkPost(
     isReshareDisabledByAuthor: true,
   };
 
-  const res = await fetch(`${BASE}/posts`, {
+  const res = await fetchWithTimeout(`${BASE}/posts`, {
     method: 'POST',
     headers: DEFAULT_HEADERS(accessToken),
     body: JSON.stringify(body),
+    timeoutMs: LI_API_TIMEOUT_MS,
   });
 
   if (!res.ok) {
@@ -208,10 +218,11 @@ export async function createAdCreative(
     },
   };
 
-  const res = await fetch(`${BASE}/adCreatives`, {
+  const res = await fetchWithTimeout(`${BASE}/adCreatives`, {
     method: 'POST',
     headers: DEFAULT_HEADERS(accessToken),
     body: JSON.stringify(body),
+    timeoutMs: LI_API_TIMEOUT_MS,
   });
 
   const resText = await res.text();

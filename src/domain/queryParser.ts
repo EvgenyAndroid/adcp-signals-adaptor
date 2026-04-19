@@ -13,6 +13,8 @@
  *   - Title-level content affinity ("Desperate Housewives" → drama + audience embedding hint)
  */
 
+import { fetchWithTimeout } from "../utils/fetchWithLimits";
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type Dimension =
@@ -163,10 +165,13 @@ export async function parseNLQuery(
 
   let raw: string;
   try {
-    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    // 30s timeout — Claude message-completions can take 15–20s on long
+    // prompts; we want to abort rather than eat the Worker's 30s CPU budget.
+    const resp = await fetchWithTimeout("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers,
       body: JSON.stringify(body),
+      timeoutMs: 30_000,
     });
 
     if (!resp.ok) {

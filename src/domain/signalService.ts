@@ -7,7 +7,8 @@ import type {
   CustomSignalProposal,
 } from "../types/api";
 import type { DB } from "../storage/db";
-import { searchSignals, findSignalById, upsertSignal } from "../storage/signalRepo";
+import { searchSignals, findSignalById } from "../storage/signalRepo";
+import { putProposal } from "../storage/proposalCache";
 import { toSignalSummary, toSignalSummaries } from "../mappers/signalMapper";
 import { validateRules, generateSegment } from "./ruleEngine";
 import { estimateAudienceSize } from "../utils/estimation";
@@ -20,8 +21,21 @@ const MAX_LIMIT = 100;
 const TOTAL_ADDRESSABLE = 240_000_000;
 const DATA_PROVIDER = "AdCP Signals Adaptor - Demo Provider (Evgeny)";
 
+/**
+ * Search the signal catalog and, when a `brief` is supplied, generate
+ * dynamic-segment proposals.
+ *
+ * Generated proposals are written to the KV proposal cache (not D1) so
+ * a follow-up `activate_signal` call can promote them lazily into D1.
+ * This keeps the search read-path off D1 writes — see proposalCache.ts.
+ *
+ * @param db   D1 binding
+ * @param kv   KV binding for the proposal cache
+ * @param req  search request
+ */
 export async function searchSignalsService(
   db: DB,
+  kv: KVNamespace,
   req: SearchSignalsRequest
 ): Promise<SearchSignalsResponse> {
   const limit = Math.min(req.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
@@ -64,33 +78,19 @@ export async function searchSignalsService(
     }
   }
 
-  // Generate proposals from natural language brief and persist them to D1
-  // so activate_signal can find them by ID
+  // Generate proposals from natural language brief. We cache each
+  // proposal in KV (not D1) so activate_signal can promote it lazily on
+  // demand — see src/storage/proposalCache.ts for rationale.
   let proposals: CustomSignalProposal[] | undefined;
   if (req.brief) {
     const generated = generateProposalsFromBrief(req.brief);
     if (generated.length > 0) {
       const now = new Date().toISOString();
-      for (const proposal of generated) {
-        const canonical: CanonicalSignal = {
-          signalId: proposal.signal_agent_segment_id,
-          taxonomySystem: "iab_audience_1_1",
-          name: proposal.name,
-          description: proposal.description,
-          categoryType: proposal.category_type as CanonicalSignal["categoryType"],
-          sourceSystems: ["rule_engine", "brief_generator"],
-          destinations: ["mock_dsp", "mock_cleanroom", "mock_cdp", "mock_measurement"],
-          activationSupported: true,
-          estimatedAudienceSize: proposal.estimated_audience_size,
-          accessPolicy: "public_demo",
-          generationMode: "dynamic",
-          status: "available",
-          pricing: { model: "mock_cpm", value: 4.0, currency: "USD" },
-          createdAt: now,
-          updatedAt: now,
-        };
-        await upsertSignal(db, canonical);
-      }
+      await Promise.all(
+        generated.map((proposal) =>
+          putProposal(kv, proposalToCanonical(proposal, now))
+        )
+      );
       proposals = generated;
     }
   }
@@ -120,6 +120,34 @@ export async function getSignalByIdService(
   signalId: string
 ): Promise<CanonicalSignal | null> {
   return findSignalById(db, signalId);
+}
+
+/**
+ * Build the CanonicalSignal shape that activation expects from a
+ * generated proposal. Extracted so search-side caching and
+ * activation-side promotion produce identical D1 rows.
+ */
+export function proposalToCanonical(
+  proposal: CustomSignalProposal,
+  now: string,
+): CanonicalSignal {
+  return {
+    signalId: proposal.signal_agent_segment_id,
+    taxonomySystem: "iab_audience_1_1",
+    name: proposal.name,
+    description: proposal.description,
+    categoryType: proposal.category_type as CanonicalSignal["categoryType"],
+    sourceSystems: ["rule_engine", "brief_generator"],
+    destinations: ["mock_dsp", "mock_cleanroom", "mock_cdp", "mock_measurement"],
+    activationSupported: true,
+    estimatedAudienceSize: proposal.estimated_audience_size,
+    accessPolicy: "public_demo",
+    generationMode: "dynamic",
+    status: "available",
+    pricing: { model: "mock_cpm", value: 4.0, currency: "USD" },
+    createdAt: now,
+    updatedAt: now,
+  };
 }
 
 /**

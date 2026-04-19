@@ -21,27 +21,42 @@ import {
   markWebhookFired,
 } from "../storage/activationRepo";
 import { findSignalById, upsertSignal } from "../storage/signalRepo";
+import { getProposal, deleteProposal } from "../storage/proposalCache";
 import { operationId } from "../utils/ids";
 import type { Logger } from "../utils/logger";
 import type { CanonicalSignal } from "../types/signal";
 
 export async function activateSignalService(
   db: DB,
+  kv: KVNamespace,
   req: ActivateSignalRequest,
   logger: Logger
 ): Promise<ActivateSignalResponse> {
-  // Attempt to find signal — if not found, it may be a custom proposal ID that
-  // needs lazy creation. Callers should pass signal metadata in that case.
+  // Resolve the signal in three stages:
+  //   1. D1 catalog (real signals + previously-activated proposals)
+  //   2. Caller-supplied proposalData (legacy code path; still honoured)
+  //   3. KV proposal cache (proposals generated during /signals/search;
+  //      promoted to D1 here on first activation, then dropped from cache)
   let signal = await findSignalById(db, req.signalId);
 
   if (!signal) {
-    // Check if caller passed signal data for lazy creation (custom proposals)
     if (req.proposalData) {
       signal = req.proposalData;
       await upsertSignal(db, signal);
-      logger.info("proposal_created_on_activation", { signalId: req.signalId });
+      logger.info("proposal_created_on_activation", { signalId: req.signalId, source: "request_data" });
     } else {
-      throw new NotFoundError(`Signal not found: ${req.signalId}`);
+      const cached = await getProposal(kv, req.signalId);
+      if (cached) {
+        signal = cached;
+        await upsertSignal(db, signal);
+        // Best-effort cache eviction: D1 is now the source of truth.
+        // A failure here doesn't affect the activation — the entry will
+        // expire via TTL.
+        await deleteProposal(kv, req.signalId).catch(() => {});
+        logger.info("proposal_created_on_activation", { signalId: req.signalId, source: "kv_cache" });
+      } else {
+        throw new NotFoundError(`Signal not found: ${req.signalId}`);
+      }
     }
   }
 

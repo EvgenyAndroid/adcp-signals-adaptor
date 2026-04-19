@@ -167,7 +167,11 @@ export class LlmEmbeddingEngine implements EmbeddingEngine {
     try {
       const store = await getEmbeddingStore();
       const stored = store.getSignalEmbedding(signalId);
-      if (stored && stored.phase === 'llm-v1') {
+      // embeddingStore's SignalEmbedding doesn't carry a `phase` field —
+      // by construction the static store only holds llm-v1 vectors
+      // (generated once via scripts/embed-signals.html with te3-small).
+      // A non-empty return here means we have a real vector.
+      if (stored && stored.vector.length > 0) {
         return stored.vector;
       }
     } catch {

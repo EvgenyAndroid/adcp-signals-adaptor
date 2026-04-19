@@ -82,7 +82,8 @@ const ANCHOR_CLUSTERS: Array<{ anchor_id: string; signal_ids: string[] }> = [
 // ─── Math helpers ─────────────────────────────────────────────────────────────
 
 function add(a: number[], b: number[]): number[] {
-  return a.map((v, i) => v + b[i]);
+  // Caller guarantees equal length; `?? 0` satisfies noUncheckedIndexedAccess.
+  return a.map((v, i) => v + (b[i] ?? 0));
 }
 
 function scale(v: number[], s: number): number[] {
@@ -106,12 +107,18 @@ function computeCentroid(vectors: number[][]): number[] {
  */
 function crossCovariance(A: number[][], B: number[][]): number[][] {
   const n = A.length;
-  const d = A[0].length;
+  if (n === 0) return [];
+  const d = A[0]!.length;
   const H: number[][] = Array.from({ length: d }, () => new Array(d).fill(0));
   for (let i = 0; i < n; i++) {
+    const ai = A[i];
+    const bi = B[i];
+    if (!ai || !bi) continue;
     for (let r = 0; r < d; r++) {
+      const ar = ai[r] ?? 0;
+      const hr = H[r]!;
       for (let c = 0; c < d; c++) {
-        H[r][c] += A[i][r] * B[i][c];
+        hr[c] = (hr[c] ?? 0) + ar * (bi[c] ?? 0);
       }
     }
   }
@@ -213,9 +220,11 @@ export function applyProjector(matrix: number[][], vec: number[]): number[] {
   const dim = vec.length;
   const out = new Array(dim).fill(0);
   for (let r = 0; r < dim; r++) {
+    const row = matrix[r];
+    if (!row) continue;
     let sum = 0;
     for (let c = 0; c < dim; c++) {
-      sum += matrix[r][c] * vec[c];
+      sum += (row[c] ?? 0) * (vec[c] ?? 0);
     }
     out[r] = sum;
   }

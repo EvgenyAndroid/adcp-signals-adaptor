@@ -221,9 +221,13 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length) throw new Error(`Dimension mismatch: ${a.length} vs ${b.length}`);
   let dot = 0, normA = 0, normB = 0;
   for (let i = 0; i < a.length; i++) {
-    dot   += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
+    // Local copies to satisfy noUncheckedIndexedAccess. The length-equality
+    // check above guarantees both indices are in bounds.
+    const ai = a[i] ?? 0;
+    const bi = b[i] ?? 0;
+    dot   += ai * bi;
+    normA += ai * ai;
+    normB += bi * bi;
   }
   const denom = Math.sqrt(normA) * Math.sqrt(normB);
   return denom === 0 ? 0 : dot / denom;

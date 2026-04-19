@@ -30,7 +30,10 @@ export const DIM_SLOTS = {
 
 // ── VAC declaration factory ───────────────────────────────────────────────────
 
-export function buildVacDeclaration(signalId: string): UcpEmbeddingDeclaration {
+export function buildVacDeclaration(
+  signalId: string,
+  phase: UcpEmbeddingDeclaration["phase"] = "pseudo-v1",
+): UcpEmbeddingDeclaration {
   return {
     model_id: UCP_MODEL_ID,
     model_family: UCP_MODEL_FAMILY,
@@ -39,7 +42,7 @@ export function buildVacDeclaration(signalId: string): UcpEmbeddingDeclaration {
     encoding: "float32",
     normalization: "l2",
     distance_metric: "cosine",
-    phase: "pseudo-v1",
+    phase,
     vector_endpoint: `/signals/${signalId}/embedding`,
   };
 }

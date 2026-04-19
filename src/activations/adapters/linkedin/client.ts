@@ -55,7 +55,10 @@ export async function createCampaign(
     id,
     name: json.name ?? payload.name,
     status: json.status ?? 'DRAFT',
-    account: json.account ?? payload.account,
+    // payload.account is optional on the body (primary transport is the URL
+    // path); fall back to empty string so the response shape stays a string
+    // rather than `string | undefined`.
+    account: json.account ?? payload.account ?? '',
     targetingCriteria: json.targetingCriteria ?? payload.targetingCriteria,
   };
 }

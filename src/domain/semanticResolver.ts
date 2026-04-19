@@ -28,6 +28,15 @@ export interface CatalogSignalForSemantic {
   description?: string;
   category?: string;
   taxonomy_id?: string;
+  // D1 wire-name alias. Production catalog rows carry both — semanticResolver
+  // uses `id` exclusively, but the object shape passed through the pipeline
+  // mirrors the D1 row. Declared here so consumers don't need to cast.
+  signal_agent_segment_id?: string;
+  category_type?: string;
+  estimated_audience_size?: number;
+  coverage_percentage?: number;
+  iab_taxonomy_ids?: string[];
+  rules?: Array<{ dimension: string; operator: string; value: string | number | string[] }>;
 }
 
 export interface SemanticMatch {
@@ -87,7 +96,9 @@ export function buildSignalSemanticText(signal: CatalogSignalForSemantic): strin
 export function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length || a.length === 0) return 0;
   let dot = 0;
-  for (let i = 0; i < a.length; i++) dot += a[i] * b[i];
+  // Length-check above guarantees both indices in bounds; the `?? 0`
+  // satisfies noUncheckedIndexedAccess without changing the math.
+  for (let i = 0; i < a.length; i++) dot += (a[i] ?? 0) * (b[i] ?? 0);
   // Clamp to [-1, 1] to handle float rounding
   return Math.max(-1, Math.min(1, dot));
 }
@@ -137,13 +148,17 @@ export class SemanticResolver {
     ]);
 
     const matches: SemanticMatch[] = [];
+    if (!queryVec) return matches; // engine yielded no vector — skip scoring
     for (let i = 0; i < catalog.length; i++) {
-      const score = cosineSimilarity(queryVec, candidateVecs[i]);
+      const candidate = catalog[i];
+      const candidateVec = candidateVecs[i];
+      if (!candidate || !candidateVec) continue; // shouldn't happen; index guard
+      const score = cosineSimilarity(queryVec, candidateVec);
       if (score >= this.minScore) {
         matches.push({
-          signalId: catalog[i].id,
-          signalName: catalog[i].name,
-          score: Math.max(0, score), // clamp negatives to 0 for scoring
+          signalId: candidate.id,
+          signalName: candidate.name,
+          score: Math.max(0, score),
           match_method: 'embedding_similarity',
         });
       }

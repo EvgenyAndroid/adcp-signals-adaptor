@@ -25,7 +25,7 @@ export async function handleActivateSignal(
 
   try {
     const db = getDb(env);
-    const result = await activateSignalService(db, body, logger);
+    const result = await activateSignalService(db, env.SIGNALS_CACHE, body, logger);
     return jsonResponse(result, 202);
   } catch (err) {
     if (err instanceof NotFoundError) {

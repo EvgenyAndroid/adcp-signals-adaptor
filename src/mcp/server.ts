@@ -284,7 +284,7 @@ async function callGetSignals(
     };
 
     const db = getDb(env);
-    const result = await searchSignalsService(db, req);
+    const result = await searchSignalsService(db, env.SIGNALS_CACHE, req);
     return toolResult(JSON.stringify(result, null, 2), result);
 }
 
@@ -321,7 +321,7 @@ async function callActivateSignal(
 
     try {
         const db = getDb(env);
-        const result = await activateSignalService(db, req, logger);
+        const result = await activateSignalService(db, env.SIGNALS_CACHE, req, logger);
 
         const inputDeployments = Array.isArray(raw)
             ? (raw as Array<Record<string, unknown>>)

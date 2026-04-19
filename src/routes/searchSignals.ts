@@ -38,7 +38,7 @@ export async function handleSearchSignals(
 
   try {
     const db = getDb(env);
-    const result = await searchSignalsService(db, req);
+    const result = await searchSignalsService(db, env.SIGNALS_CACHE, req);
 
     logger.info("signals_searched", {
       query: req.query,

@@ -133,7 +133,7 @@ export default {
                 // ── Platform Activation (auth required) ──────────────────────────────
             } else if (method === "POST" && path.startsWith("/signals/activate/")) {
                 const platform = path.replace("/signals/activate/", "").split("/")[0];
-                response = await handleActivateDispatch(request, env as any, platform);
+                response = await handleActivateDispatch(request, env, platform);
 
                 // ── MCP ───────────────────────────────────────────────────────────────
                 // OPTIONS is handled by the early global preflight at the top of fetch.

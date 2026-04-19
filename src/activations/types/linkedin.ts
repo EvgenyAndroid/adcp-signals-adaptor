@@ -15,8 +15,11 @@ import type { BaseActivationRequest, BaseActivationResult } from './shared';
 export interface LinkedInEnv {
   LINKEDIN_CLIENT_ID: string;
   LINKEDIN_CLIENT_SECRET: string;
-  LINKEDIN_ACCESS_TOKEN: string;
   LINKEDIN_AD_ACCOUNT_ID: string;
+  // LINKEDIN_ACCESS_TOKEN was the v1 manual-token field. Removed: tokens
+  // now come from OAuth (src/activations/auth/linkedin.ts) and live in KV
+  // under `linkedin:access_token`. Activation calls `getValidAccessToken()`,
+  // which auto-refreshes via the stored refresh token.
 }
 
 // ─── Targeting ────────────────────────────────────────────────────────────────

@@ -89,7 +89,7 @@ export async function handleLinkedInActivate(
     }
 
     // ── Live activation ────────────────────────────────────────────────────────
-    const result = await adapter.activate(body, env as any);
+    const result = await adapter.activate(body, env);
 
     if (!result.success) {
       return jsonResponse({ success: false, result, duration_ms: Date.now() - start }, 400);

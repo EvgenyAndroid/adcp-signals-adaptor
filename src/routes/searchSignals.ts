@@ -17,7 +17,14 @@ export async function handleSearchSignals(
 
   // Support GET-style query params too
   const url = new URL(request.url);
+  // body may carry the canonical AdCP MCP arg `signal_spec` as an alias
+  // for brief; pull it via an indexed access since the typed field is `brief`.
+  const bodyAny = body as Record<string, unknown> | null;
   const req: SearchSignalsRequest = {
+    brief: body?.brief
+      ?? (typeof bodyAny?.["signal_spec"] === "string" ? (bodyAny["signal_spec"] as string) : undefined)
+      ?? url.searchParams.get("brief")
+      ?? undefined,
     query: body?.query ?? url.searchParams.get("query") ?? undefined,
     categoryType: body?.categoryType ?? (url.searchParams.get("categoryType") as SearchSignalsRequest["categoryType"]) ?? undefined,
     generationMode: body?.generationMode ?? (url.searchParams.get("generationMode") as SearchSignalsRequest["generationMode"]) ?? undefined,

@@ -43,19 +43,17 @@ function deterministicHash(content: string): string {
 }
 
 /**
- * Generate a unique operation ID.
- * Uses @adcp/client createOperationId for spec-compliant format,
- * falls back to local implementation if unavailable (e.g. test env).
+ * Generate a unique operation ID matching the AdCP spec format
+ * `op_{timestamp_ms}_{random_hex}`.
+ *
+ * Earlier versions tried to delegate to `@adcp/client.createOperationId`
+ * via dynamic require, but Cloudflare Workers don't have CommonJS `require`
+ * at runtime — that path always threw and fell through to the local
+ * implementation below. Removed to drop the misleading dev-dep coupling
+ * and silence the eslint-disable. The output format is unchanged.
  */
 export function operationId(): string {
-  try {
-    // @adcp/client is a dev dep — dynamic import guards against Worker bundle issues
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { createOperationId } = require("@adcp/client") as { createOperationId: () => string };
-    return createOperationId();
-  } catch {
-    return `op_${Date.now()}_${randomHex(8)}`;
-  }
+  return `op_${Date.now()}_${randomHex(8)}`;
 }
 
 /**

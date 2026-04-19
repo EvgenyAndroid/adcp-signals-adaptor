@@ -61,7 +61,7 @@ export async function handleSimulateHandshake(
   const { buyer_space_ids = [], buyer_ucp_version, buyer_agent_id } = body;
 
   // Determine actual engine phase from runtime env — this is the fix
-  const engine = createEmbeddingEngine(env as any);
+  const engine = createEmbeddingEngine(env);
   const sellerPhase = engine.phase;           // "pseudo-v1" or "llm-v1"
   const sellerSpaceId = engine.spaceId;       // actual active space
 

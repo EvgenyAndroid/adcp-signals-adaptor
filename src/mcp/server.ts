@@ -398,7 +398,7 @@ async function callGetOperation(
 async function callGetSimilarSignals(
     args: Record<string, unknown>,
     env: Env,
-    logger: Logger
+    _logger: Logger
 ): Promise<unknown> {
     const signalId = (args["signal_agent_segment_id"] ?? args["signal_id"]) as string;
     if (!signalId) throw new McpToolError("signal_agent_segment_id is required");
@@ -412,25 +412,44 @@ async function callGetSimilarSignals(
     if (!refSignal) throw new McpToolError(`Signal not found: ${signalId}`);
 
     const { signals: allSignals } = await searchSignals(db, { limit: 200, offset: 0 });
-
-    const engine = createEmbeddingEngine(env as unknown as Record<string, string>);
-    const refVec = await engine.generate(refSignal);
     const candidates = allSignals.filter((s) => s.signalId !== signalId);
-    const candidateVecs = await engine.batchGenerate(candidates);
+
+    // The current EmbeddingEngine interface (post-v2.1) exposes
+    // embedSignal(id, description) and embedText(text) — no batch API and
+    // no .generate / .modelId / .batchGenerate. Earlier versions of this
+    // handler called those names; they always threw at runtime, which is
+    // why the tool was effectively unimplemented. Now wired against the
+    // real interface with Promise.all instead of a batch primitive.
+    const engine = createEmbeddingEngine(env);
+    const refVec = await engine.embedSignal(refSignal.signalId, refSignal.description);
+    const candidateVecs = await Promise.all(
+        candidates.map((s) => engine.embedSignal(s.signalId, s.description))
+    );
 
     const scored = candidates
-        .map((s, i) => ({
-            signal: s,
-            similarity: cosineSimilarity(refVec, candidateVecs[i]),
-        }))
+        .map((s, i) => {
+            const vec = candidateVecs[i];
+            // candidateVecs is built 1:1 with candidates above — vec is always
+            // defined; the guard is for noUncheckedIndexedAccess only.
+            const similarity = vec ? cosineSimilarity(refVec, vec) : 0;
+            return { signal: s, similarity };
+        })
         .filter((x) => x.similarity >= minSimilarity)
         .sort((a, b) => b.similarity - a.similarity)
         .slice(0, topK);
 
+    // Derive a model identifier from the engine phase: the live LLM engine
+    // emits text-embedding-3-small vectors; the pseudo fallback emits the
+    // hash-based bridge vectors. spaceId is what the engine itself reports.
+    const modelId = engine.phase === "pseudo-v1"
+        ? "adcp-ucp-bridge-pseudo-v1.0"
+        : "text-embedding-3-small";
+
     const result = {
         reference_signal_id: signalId,
-        model_id: engine.modelId,
-        space_id: "adcp-bridge-space-v1.0",
+        model_id: modelId,
+        space_id: engine.spaceId,
+        engine_phase: engine.phase,
         results: scored.map((x) => ({
             ...toSignalSummary(x.signal),
             cosine_similarity: Math.round(x.similarity * 1000) / 1000,

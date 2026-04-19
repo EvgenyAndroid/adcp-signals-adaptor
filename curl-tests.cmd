@@ -1,7 +1,15 @@
 :: ============================================================
 :: AdCP Signals Adaptor — Windows curl test commands
 :: Base URL: https://adcp-signals-adaptor.evgeny-193.workers.dev
-:: API Key:  demo-key-adcp-signals-v1
+::
+:: Usage:
+::   set DEMO_API_KEY=<the-key-you-provisioned-via-wrangler-secret>
+::   curl-tests.cmd
+::
+:: The API key is a Worker secret. Export it into this shell before
+:: running any of the gated calls below. Do NOT hardcode it here —
+:: prior revisions shipped the value in-tree, which made the "secret"
+:: effectively public.
 :: ============================================================
 
 
@@ -37,43 +45,43 @@ curl https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/gts
 :: ── UCP PHASE 2b — PROJECTOR (auth required) ────────────────
 
 :: Projector matrix (512x512 — large response)
-curl https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/projector -H "Authorization: Bearer demo-key-adcp-signals-v1"
+curl https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/projector -H "Authorization: Bearer %DEMO_API_KEY%"
 
 
 :: ── SIGNALS — SEARCH (auth required) ─────────────────────────
 
 :: Search by brief
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/search -H "Authorization: Bearer demo-key-adcp-signals-v1" -H "Content-Type: application/json" -d "{\"query\":\"high income households\",\"limit\":5}"
+curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/search -H "Authorization: Bearer %DEMO_API_KEY%" -H "Content-Type: application/json" -d "{\"query\":\"high income households\",\"limit\":5}"
 
 :: Search by category
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/search -H "Authorization: Bearer demo-key-adcp-signals-v1" -H "Content-Type: application/json" -d "{\"categoryType\":\"demographic\",\"limit\":10}"
+curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/search -H "Authorization: Bearer %DEMO_API_KEY%" -H "Content-Type: application/json" -d "{\"categoryType\":\"demographic\",\"limit\":10}"
 
 
 :: ── SIGNALS — NL QUERY (auth required) ───────────────────────
 
 :: Simple query — should hit medium confidence
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/query -H "Authorization: Bearer demo-key-adcp-signals-v1" -H "Content-Type: application/json" -d "{\"query\":\"affluent families 35-44 who stream heavily\",\"limit\":5}"
+curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/query -H "Authorization: Bearer %DEMO_API_KEY%" -H "Content-Type: application/json" -d "{\"query\":\"affluent families 35-44 who stream heavily\",\"limit\":5}"
 
 :: Archetype query — cord_cutter
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/query -H "Authorization: Bearer demo-key-adcp-signals-v1" -H "Content-Type: application/json" -d "{\"query\":\"streaming heavy watchers cord cutters\",\"limit\":5}"
+curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/query -H "Authorization: Bearer %DEMO_API_KEY%" -H "Content-Type: application/json" -d "{\"query\":\"streaming heavy watchers cord cutters\",\"limit\":5}"
 
 :: Complex query — multiple dimensions, expect narrow tier
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/query -H "Authorization: Bearer demo-key-adcp-signals-v1" -H "Content-Type: application/json" -d "{\"query\":\"soccer moms 35+ in Nashville who don't drink coffee but watch Desperate Housewives in the afternoon\",\"limit\":10}"
+curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/query -H "Authorization: Bearer %DEMO_API_KEY%" -H "Content-Type: application/json" -d "{\"query\":\"soccer moms 35+ in Nashville who don't drink coffee but watch Desperate Housewives in the afternoon\",\"limit\":10}"
 
 :: Negation query
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/query -H "Authorization: Bearer demo-key-adcp-signals-v1" -H "Content-Type: application/json" -d "{\"query\":\"graduate educated adults who are not low income\",\"limit\":5}"
+curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/query -H "Authorization: Bearer %DEMO_API_KEY%" -H "Content-Type: application/json" -d "{\"query\":\"graduate educated adults who are not low income\",\"limit\":5}"
 
 
 :: ── EMBEDDINGS (auth required) ────────────────────────────────
 
 :: Real v1 vector — drama viewers
-curl https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/sig_drama_viewers/embedding -H "Authorization: Bearer demo-key-adcp-signals-v1"
+curl https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/sig_drama_viewers/embedding -H "Authorization: Bearer %DEMO_API_KEY%"
 
 :: Real v1 vector — high income
-curl https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/sig_high_income_households/embedding -H "Authorization: Bearer demo-key-adcp-signals-v1"
+curl https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/sig_high_income_households/embedding -H "Authorization: Bearer %DEMO_API_KEY%"
 
 :: Pseudo-v1 fallback — dynamic signal (will return pseudo-v1 phase)
-curl https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/sig_dyn_high_income_150k_70ea9fdf/embedding -H "Authorization: Bearer demo-key-adcp-signals-v1"
+curl https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/sig_dyn_high_income_150k_70ea9fdf/embedding -H "Authorization: Bearer %DEMO_API_KEY%"
 
 
 :: ── CONCEPT REGISTRY (public) ────────────────────────────────
@@ -97,16 +105,16 @@ curl "https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/concepts?category=
 curl "https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/concepts?category=purchase_intent"
 
 :: Seed concept registry (auth required)
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/concepts/seed -H "Authorization: Bearer demo-key-adcp-signals-v1"
+curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/concepts/seed -H "Authorization: Bearer %DEMO_API_KEY%"
 
 
 :: ── ACTIVATION (auth required) ────────────────────────────────
 
 :: Activate a signal
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/activate -H "Authorization: Bearer demo-key-adcp-signals-v1" -H "Content-Type: application/json" -d "{\"signalId\":\"sig_drama_viewers\",\"destination\":\"mock_dsp\"}"
+curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/activate -H "Authorization: Bearer %DEMO_API_KEY%" -H "Content-Type: application/json" -d "{\"signalId\":\"sig_drama_viewers\",\"destination\":\"mock_dsp\"}"
 
 :: Poll activation status (replace TASK_ID with value from activate response)
-curl https://adcp-signals-adaptor.evgeny-193.workers.dev/operations/TASK_ID -H "Authorization: Bearer demo-key-adcp-signals-v1"
+curl https://adcp-signals-adaptor.evgeny-193.workers.dev/operations/TASK_ID -H "Authorization: Bearer %DEMO_API_KEY%"
 
 
 :: ── MCP (public) ──────────────────────────────────────────────
@@ -121,7 +129,7 @@ curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp -H "Content
 curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"get_adcp_capabilities\",\"arguments\":{}}}"
 
 :: MCP query_signals_nl
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp -H "Authorization: Bearer demo-key-adcp-signals-v1" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"query_signals_nl\",\"arguments\":{\"query\":\"affluent streaming families\",\"limit\":5}}}"
+curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp -H "Authorization: Bearer %DEMO_API_KEY%" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"query_signals_nl\",\"arguments\":{\"query\":\"affluent streaming families\",\"limit\":5}}}"
 
 :: MCP get_concept
 curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/call\",\"params\":{\"name\":\"get_concept\",\"arguments\":{\"concept_id\":\"SOCCER_MOM_US\"}}}"

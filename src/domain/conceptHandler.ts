@@ -23,6 +23,7 @@ import {
   CONCEPT_REGISTRY,
 } from "./conceptRegistry.js";
 import type { ConceptEntry } from "./conceptRegistry.js";
+import { requireAuth } from "../routes/shared";
 
 // ─── Env interface (matches wrangler.toml bindings) ──────────────────────────
 
@@ -30,6 +31,12 @@ interface Env {
   SIGNALS_CACHE: KVNamespace;
   DB: D1Database;
   ANTHROPIC_API_KEY?: string;
+  // DEMO_API_KEY is plumbed through so /ucp/concepts/seed uses the same
+  // shared secret as every other gated route. Previously this route had a
+  // hardcoded string literal that bypassed env.DEMO_API_KEY entirely —
+  // meaning rotating the secret via `wrangler secret put` silently broke
+  // the seed route. Now unified.
+  DEMO_API_KEY: string;
 }
 
 // ─── Response helpers ─────────────────────────────────────────────────────────
@@ -59,10 +66,16 @@ export async function handleConceptRoute(
 ): Promise<Response> {
   const url = new URL(request.url);
 
-  // POST /ucp/concepts/seed — re-seed KV (auth required)
+  // POST /ucp/concepts/seed — re-seed KV (auth required).
+  //
+  // Note: /ucp/concepts is in publicPaths at the top-level, so the seed
+  // sub-path bypasses the global auth gate. The check below is the actual
+  // defense. requireAuth does a constant-time compare against the active
+  // env.DEMO_API_KEY secret — rotating the secret via `wrangler secret put`
+  // automatically applies here. A previous hardcoded-string check is the
+  // reason we're re-doing this.
   if (pathname === "/ucp/concepts/seed" && request.method === "POST") {
-    const auth = request.headers.get("Authorization");
-    if (auth !== "Bearer demo-key-adcp-signals-v1") {
+    if (!requireAuth(request, env.DEMO_API_KEY)) {
       return json({ error: "Unauthorized" }, 401);
     }
     const count = await seedConceptsToKV(env.SIGNALS_CACHE);

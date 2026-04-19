@@ -12,7 +12,14 @@
 set -u
 
 BASE="${BASE:-https://adcp-signals-adaptor.evgeny-193.workers.dev}"
-KEY="${API_KEY:-demo-key-adcp-signals-v1}"
+# API_KEY must be provided via the environment. Previously this script
+# defaulted to the demo value, which meant the "secret" was effectively
+# published in-tree. Fail loudly if the operator forgot to export it.
+if [ -z "${API_KEY:-}" ]; then
+  echo "ERROR: API_KEY is not set. Run: export API_KEY=<your-DEMO_API_KEY-secret>" >&2
+  exit 2
+fi
+KEY="$API_KEY"
 
 PASS=0
 FAIL=0

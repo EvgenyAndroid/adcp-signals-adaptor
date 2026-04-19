@@ -24,6 +24,28 @@
 
 const PREFIX = "enc:v1:";
 
+/**
+ * Minimum accepted passphrase length.
+ *
+ * The derivation below is SHA-256(passphrase) — fast, no KDF slow-down.
+ * That's fine when the passphrase is a high-entropy random string from
+ * `wrangler secret put` (32+ bytes of base64 is ~192 bits of entropy,
+ * well above the AES-256 key we derive into). It is NOT fine for a
+ * human-chosen passphrase like "hunter2" — an attacker with KV
+ * ciphertext could brute-force the passphrase offline at line speed.
+ *
+ * 32 characters balances:
+ *   - `openssl rand -base64 24` = 32 chars, ~192 bits random entropy
+ *   - `openssl rand -hex 16`    = 32 chars, 128 bits random entropy
+ *   - Rejects almost every plausible human passphrase without burdening
+ *     the documented happy-path recipe.
+ *
+ * If the project ever moves to accepting user-chosen passphrases, the
+ * right fix is PBKDF2 / scrypt / Argon2id at ≥100k iterations, not a
+ * longer length check. This floor is a tripwire, not a KDF.
+ */
+const MIN_PASSPHRASE_LENGTH = 32;
+
 declare const crypto: Crypto;
 
 /**
@@ -34,7 +56,27 @@ export function isEncrypted(raw: string | null | undefined): boolean {
   return !!raw && raw.startsWith(PREFIX);
 }
 
+/**
+ * Thrown when TOKEN_ENCRYPTION_KEY is present but too short. Separated
+ * from a generic Error so callers / tests can match the reason without
+ * substring-matching the message.
+ */
+export class WeakPassphraseError extends Error {
+  constructor(actualLength: number) {
+    super(
+      `TOKEN_ENCRYPTION_KEY is ${actualLength} chars; need at least ` +
+      `${MIN_PASSPHRASE_LENGTH}. Generate a high-entropy secret — e.g. ` +
+      `\`openssl rand -base64 24\` — and re-provision via ` +
+      `\`wrangler secret put TOKEN_ENCRYPTION_KEY\`. See README.md.`,
+    );
+    this.name = "WeakPassphraseError";
+  }
+}
+
 async function deriveKey(passphrase: string): Promise<CryptoKey> {
+  if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
+    throw new WeakPassphraseError(passphrase.length);
+  }
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(passphrase),

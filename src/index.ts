@@ -36,10 +36,15 @@ const KV_SEED_COMPLETE = "seed:complete";
 let seedCheckedInIsolate = false;
 
 // Paths that don't interact with the signal catalog — skip auto-seed entirely
-// to keep the hot path (health, OAuth callbacks) quick.
+// to keep the hot path (health, OAuth callbacks, MCP discovery) quick.
+// /mcp is skipped here because the discovery methods (initialize, tools/list,
+// ping) are public and hot — we don't want every unauth'd probe to kick off
+// a KV read + seed-pipeline walk on a cold isolate. Authenticated tools/call
+// requests that actually need the catalog hit /signals/* instead.
 const SEED_SKIP_PREFIXES = [
     "/health",
     "/auth/",
+    "/mcp",
 ];
 
 export default {
@@ -58,8 +63,25 @@ export default {
             });
         }
 
-        // Public paths — no auth required
-        // LinkedIn auth routes must be public so OAuth flow works without a token
+        // Public paths — no auth required.
+        //
+        // /mcp is public at the HTTP layer, but inside the handler the
+        // tools/call method gates on requireAuth — discovery methods
+        // (initialize, tools/list, ping) stay reachable, paid-egress /
+        // state-changing tools do not.
+        //
+        // /auth/linkedin/{init,callback,status} are NOT public. Earlier
+        // iterations made them public "so OAuth works without a token";
+        // that let any internet user complete the OAuth flow and overwrite
+        // the worker's shared LinkedIn tokens (a DoS on the integration),
+        // and the /status route leaked a 12-char token preview + scope +
+        // ad account ID to anyone. Now gated by the DEMO_API_KEY — this
+        // is a demo, so an admin-initiated one-time bootstrap is the right
+        // trust model. LinkedIn's redirect back to /callback carries the
+        // API key via the original /init request's setup link (the operator
+        // opens /auth/linkedin/init in an auth'd browser tab; the subsequent
+        // redirect inherits the Authorization header via a cookie or a
+        // browser-extension, depending on how the operator drives the flow).
         const publicPaths = [
             "/capabilities",
             "/health",
@@ -67,9 +89,6 @@ export default {
             "/ucp/concepts",
             "/ucp/gts",
             "/ucp/simulate-handshake",
-            "/auth/linkedin/init",
-            "/auth/linkedin/callback",
-            "/auth/linkedin/status",
         ];
         const isPublic = publicPaths.some((p) => path === p || path.startsWith(p + "/"));
 

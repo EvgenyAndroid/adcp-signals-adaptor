@@ -496,6 +496,11 @@ npm run deploy
 # Required secrets
 wrangler secret put ANTHROPIC_API_KEY
 wrangler secret put OPENAI_API_KEY
+# The demo API key that gates /signals/*, /mcp tools/call, and the
+# LinkedIn OAuth admin routes. Stored as a secret — NOT a checked-in
+# wrangler.toml [vars] entry — because [vars] are baked into the public
+# Worker bundle and retrievable by anyone with the Worker URL.
+wrangler secret put DEMO_API_KEY
 
 # Required wrangler.toml var for real embeddings
 # [vars]
@@ -503,7 +508,7 @@ wrangler secret put OPENAI_API_KEY
 
 # Seed concept registry after deploy
 curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/concepts/seed \
-  -H "Authorization: Bearer demo-key-adcp-signals-v1"
+  -H "Authorization: Bearer $DEMO_API_KEY"
 ```
 
 ## Regenerating Embedding Vectors

@@ -6,6 +6,7 @@
 
 import type { Env } from "../types/env";
 import type { Logger } from "../utils/logger";
+import { requireAuth } from "../routes/shared";
 import { ADCP_TOOLS, getToolByName } from "./tools";
 import { getCapabilities } from "../domain/capabilityService";
 import { searchSignalsService } from "../domain/signalService";
@@ -54,6 +55,17 @@ const RPC_INVALID_REQUEST = -32600;
 const RPC_METHOD_NOT_FOUND = -32601;
 const RPC_INTERNAL_ERROR = -32603;
 const MCP_TOOL_ERROR = -32000;
+// JSON-RPC has no dedicated auth error in the reserved range; -32001 is within
+// the "server error" band (-32000..-32099) and conventional for auth failure.
+const RPC_UNAUTHORIZED = -32001;
+
+// Tools/call is the state-changing / paid-egress entry point: activate_signal,
+// query_signals_nl (Anthropic), get_similar_signals (OpenAI). Discovery methods
+// (initialize, tools/list, ping, notifications/*) stay public per standard MCP
+// patterns. Auth is enforced per-message so a batched request mixing discovery
+// and tool calls works uniformly — discovery messages pass, tools/call messages
+// return -32001 if no API key is present on the request.
+const AUTHENTICATED_MCP_METHODS = new Set(["tools/call"]);
 
 interface McpInitializeParams {
     protocolVersion: string;
@@ -68,6 +80,13 @@ interface McpCallToolParams {
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 
+// Hard cap on MCP JSON-RPC request bodies. Anything above this is almost
+// certainly malicious — the biggest legitimate payload is a tools/call with a
+// long query string or a fully-spelled-out deliver_to block, comfortably under
+// 64 KiB. 1 MiB is generous without being a resource-exhaustion vector on a
+// public endpoint.
+const MAX_MCP_BODY_BYTES = 1_000_000;
+
 export async function handleMcpRequest(
     request: Request,
     env: Env,
@@ -77,6 +96,18 @@ export async function handleMcpRequest(
         return new Response("Method Not Allowed", { status: 405 });
     }
 
+    // Reject obviously-oversized bodies before parsing. Workers don't stream
+    // JSON incrementally, so without this a large POST would allocate fully
+    // before the parser can reject it.
+    const contentLength = Number(request.headers.get("content-length") ?? "0");
+    if (contentLength > MAX_MCP_BODY_BYTES) {
+        return rpcErrorResponse(
+            null,
+            RPC_INVALID_REQUEST,
+            `Request body too large (${contentLength} > ${MAX_MCP_BODY_BYTES})`,
+        );
+    }
+
     let body: unknown;
     try {
         body = await request.json();
@@ -84,14 +115,20 @@ export async function handleMcpRequest(
         return rpcErrorResponse(null, RPC_PARSE_ERROR, "Parse error: invalid JSON");
     }
 
+    // Gate state-changing methods (tools/call) behind the API key. Discovery
+    // methods (initialize, tools/list, ping) stay public — that matches how
+    // MCP clients typically bootstrap a connection and gives the evaluator
+    // the unauthenticated discovery handshake it expects.
+    const isAuthed = requireAuth(request, env.DEMO_API_KEY);
+
     if (Array.isArray(body)) {
         const responses = await Promise.all(
-            body.map((msg) => handleSingleMessage(msg, env, logger))
+            body.map((msg) => handleSingleMessage(msg, env, logger, isAuthed))
         );
         return jsonResponse(responses.filter(Boolean));
     }
 
-    const response = await handleSingleMessage(body, env, logger);
+    const response = await handleSingleMessage(body, env, logger, isAuthed);
     if (response === null) {
         return new Response(null, { status: 202 });
     }
@@ -101,7 +138,8 @@ export async function handleMcpRequest(
 async function handleSingleMessage(
     msg: unknown,
     env: Env,
-    logger: Logger
+    logger: Logger,
+    isAuthed: boolean,
 ): Promise<JsonRpcResponse | null> {
     if (!isValidRpcRequest(msg)) {
         return rpcError(null, RPC_INVALID_REQUEST, "Invalid JSON-RPC request");
@@ -109,6 +147,18 @@ async function handleSingleMessage(
 
     const { id = null, method, params } = msg;
     logger.info("mcp_request", { method, id });
+
+    if (AUTHENTICATED_MCP_METHODS.has(method) && !isAuthed) {
+        // Log auth failures so spammy unauthenticated tool-call attempts are
+        // visible in the observability pipeline.
+        logger.warn("mcp_auth_required", { method, id });
+        if (id === undefined || id === null) return null;
+        return rpcError(
+            id,
+            RPC_UNAUTHORIZED,
+            "Authentication required for this method. Supply Authorization: Bearer <key>.",
+        );
+    }
 
     try {
         switch (method) {

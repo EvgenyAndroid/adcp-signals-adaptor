@@ -146,6 +146,22 @@ export async function handleLinkedInAuthCallback(
   // returned an error or a code. Provider-supplied values are escaped
   // below because the error path still renders them.
   if (!state || !(await consumeOAuthState(state, env.SIGNALS_CACHE))) {
+    // Observability: log unknown/expired/replayed state so a spike —
+    // typically a sign of abuse or a misconfigured relay — is visible in
+    // `wrangler tail`. The route is public (provider redirects carry no
+    // bearer), so the state machine is the only defense; a spike here is
+    // where we'd see it first. Log structure matches createLogger output.
+    console.warn(JSON.stringify({
+      level: 'warn',
+      event: 'linkedin_callback_invalid_state',
+      ts: new Date().toISOString(),
+      // Don't log the state value — that's the thing someone trying to
+      // replay would be leaking. Log presence only.
+      state_present: !!state,
+      has_code: !!code,
+      has_error: !!error,
+      ua: request.headers.get('user-agent') ?? null,
+    }));
     return htmlResponse('Invalid State', `
       <p style="color:#ef4444">OAuth state missing, expired, or already used.</p>
       <p>This protects against CSRF. Start the flow fresh.</p>

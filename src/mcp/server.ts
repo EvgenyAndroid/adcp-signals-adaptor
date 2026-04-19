@@ -289,8 +289,10 @@ async function callGetSignals(
         generationMode: (filters?.["generation_mode"] ?? args["generationMode"]) as string | undefined,
         taxonomyId: (filters?.["taxonomy_id"] ?? args["taxonomyId"]) as string | undefined,
         destination: args["destination"] as string | undefined,
-        limit: args["max_results"] ? Number(args["max_results"]) : args["limit"] ? Number(args["limit"]) : 20,
-        offset: pagination?.["offset"] ? Number(pagination["offset"]) : args["offset"] ? Number(args["offset"]) : 0,
+        // Use `!= null` (matches both null and undefined) instead of truthy
+        // checks so a literal 0 isn't silently replaced by the default.
+        limit: numArg(args["max_results"], numArg(args["limit"], 20)),
+        offset: numArg(pagination?.["offset"], numArg(args["offset"], 0)),
     };
 
     const db = getDb(env);
@@ -403,8 +405,8 @@ async function callGetSimilarSignals(
     const signalId = (args["signal_agent_segment_id"] ?? args["signal_id"]) as string;
     if (!signalId) throw new McpToolError("signal_agent_segment_id is required");
 
-    const topK = Math.min(args["top_k"] ? Number(args["top_k"]) : 5, 20);
-    const minSimilarity = args["min_similarity"] ? Number(args["min_similarity"]) : 0.7;
+    const topK = Math.min(numArg(args["top_k"], 5), 20);
+    const minSimilarity = numArg(args["min_similarity"], 0.7);
 
     const db = getDb(env);
 
@@ -469,7 +471,7 @@ async function callQuerySignalsNl(
     const query = args["query"] as string | undefined;
     if (!query) throw new McpToolError("query is required");
 
-    const limit = args["limit"] ? Number(args["limit"]) : 10;
+    const limit = numArg(args["limit"], 10);
 
     const db = getDb(env);
     const catalog = await getAllSignalsForCatalog(db);
@@ -503,6 +505,24 @@ export function toolResult(text: string, structured?: unknown): unknown {
         result["structuredContent"] = structured;
     }
     return result;
+}
+
+/**
+ * Coerce an optional MCP tool arg to a number, with `fallback` for missing.
+ *
+ * The prior pattern `args["x"] ? Number(args["x"]) : fallback` silently
+ * replaced a literal `0` with the fallback (because 0 is falsy in JS). That
+ * is wrong for any arg where 0 is a valid value — seen in the wild on
+ * `min_similarity: 0.0` returning no results because the filter used 0.7.
+ *
+ * This helper treats only `null` / `undefined` as missing (via `!= null`),
+ * preserves numeric 0, and returns the fallback on NaN to stay robust
+ * against non-numeric input.
+ */
+export function numArg(v: unknown, fallback: number): number {
+    if (v == null) return fallback;
+    const n = Number(v);
+    return Number.isNaN(n) ? fallback : n;
 }
 
 function rpcSuccess(id: string | number | null, result: unknown): JsonRpcSuccess {

@@ -9,7 +9,7 @@ import { constantTimeEqual, requireAuth } from "../src/routes/shared";
 import { escapeHtml, escapeHtmlAttr, handleLinkedInAuthInit, handleLinkedInAuthCallback } from "../src/activations/auth/linkedin";
 import { corsHeaders } from "../src/index";
 import { ADCP_TOOLS, getToolByName } from "../src/mcp/tools";
-import { toolResult } from "../src/mcp/server";
+import { toolResult, numArg } from "../src/mcp/server";
 
 // ── toolResult helper: structuredContent + backwards-compat text ──────────────
 
@@ -38,6 +38,39 @@ describe("toolResult", () => {
     const obj = { task_id: "op_x", status: "pending", signal_agent_segment_id: "sig_y", deployments: [] };
     const r = toolResult(JSON.stringify(obj, null, 2), obj) as { structuredContent: unknown };
     expect(JSON.parse(firstText(r))).toEqual(r.structuredContent);
+  });
+});
+
+// ── numArg: preserve literal 0 past MCP arg coercion ──────────────────────────
+//
+// The bug this test pins: `args["min_similarity"] ? Number(...) : 0.7` treated
+// the value 0 as falsy, silently replacing it with 0.7. Affected 5 call sites
+// across get_signals / get_similar_signals / query_signals_nl. Canonical
+// regression symptom: `get_similar_signals` with `min_similarity: 0.0`
+// returning 0 results because the filter quietly used 0.7.
+
+describe("numArg (MCP optional-number coercion)", () => {
+  it("preserves literal 0 instead of falling back to the default", () => {
+    expect(numArg(0, 0.7)).toBe(0);
+    expect(numArg(0.0, 0.7)).toBe(0);
+    expect(numArg("0", 0.7)).toBe(0);
+  });
+
+  it("uses the fallback when undefined / null / missing", () => {
+    expect(numArg(undefined, 0.7)).toBe(0.7);
+    expect(numArg(null, 0.7)).toBe(0.7);
+  });
+
+  it("passes through non-zero numbers and numeric strings", () => {
+    expect(numArg(5, 10)).toBe(5);
+    expect(numArg("3.14", 0)).toBe(3.14);
+    expect(numArg(-1.5, 0)).toBe(-1.5);
+  });
+
+  it("uses the fallback for non-numeric input rather than propagating NaN", () => {
+    expect(numArg("not-a-number", 42)).toBe(42);
+    expect(numArg({}, 42)).toBe(42);
+    expect(numArg([], 42)).toBe(0); // Number([]) === 0 — intentional: [] coerces to 0
   });
 });
 

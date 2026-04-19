@@ -165,7 +165,7 @@ export async function handleLinkedInAuthCallback(
     return htmlResponse('Invalid State', `
       <p style="color:#ef4444">OAuth state missing, expired, or already used.</p>
       <p>This protects against CSRF. Start the flow fresh.</p>
-      <a href="/auth/linkedin/init">Start over →</a>
+      <p>Restart the flow by calling <code>GET /auth/linkedin/init</code> with your API key.</p>
     `);
   }
 
@@ -174,14 +174,14 @@ export async function handleLinkedInAuthCallback(
       <p style="color:#ef4444">LinkedIn returned an error:</p>
       <pre style="color:#fb923c">${escapeHtml(error)}: ${escapeHtml(errorDesc ?? '')}</pre>
       <p>Common causes: user denied access, or scopes not approved on your app.</p>
-      <a href="/auth/linkedin/init">Try again →</a>
+      <p>Restart the flow by calling <code>GET /auth/linkedin/init</code> with your API key.</p>
     `);
   }
 
   if (!code) {
     return htmlResponse('Missing Code', `
       <p style="color:#ef4444">No authorization code in callback URL.</p>
-      <a href="/auth/linkedin/init">Start over →</a>
+      <p>Restart the flow by calling <code>GET /auth/linkedin/init</code> with your API key.</p>
     `);
   }
 
@@ -194,8 +194,29 @@ export async function handleLinkedInAuthCallback(
       <p style="color:#ef4444">Failed to exchange code for tokens:</p>
       <pre style="color:#fb923c">${escapeHtml(msg)}</pre>
       <p>Check LINKEDIN_CLIENT_SECRET is set correctly.</p>
-      <a href="/auth/linkedin/init">Try again →</a>
+      <p>Restart the flow by calling <code>GET /auth/linkedin/init</code> with your API key.</p>
     `);
+  }
+
+  // Overwrite observability: the token KV keys are global (see
+  // SECURITY_MODEL.md). If a prior token set exists, this callback is
+  // replacing it — which is legitimate on re-auth but is also the
+  // symptom of two operators stepping on each other. Log before write
+  // so every overwrite produces a tail signal.
+  const priorMetaRaw = await env.SIGNALS_CACHE.get(KV_TOKEN_META);
+  if (priorMetaRaw) {
+    let priorMeta: { scope?: string; obtained_at?: string } = {};
+    try { priorMeta = JSON.parse(priorMetaRaw); } catch { /* treat as opaque */ }
+    console.warn(JSON.stringify({
+      level: 'warn',
+      event: 'linkedin_oauth_tokens_overwritten',
+      ts: new Date().toISOString(),
+      prior_scope: priorMeta.scope ?? null,
+      prior_obtained_at: priorMeta.obtained_at ?? null,
+      new_scope: tokenSet.scope,
+      new_obtained_at: tokenSet.obtained_at,
+      // Don't log token values — only the metadata that signals churn.
+    }));
   }
 
   await storeTokens(tokenSet, env.SIGNALS_CACHE, env.TOKEN_ENCRYPTION_KEY);
@@ -208,7 +229,7 @@ export async function handleLinkedInAuthCallback(
     <div class="info-row"><span>Refresh token:</span><span>stored (12 month validity)</span></div>
     <div class="info-row"><span>Ad account:</span><span>${escapeHtml(env.LINKEDIN_AD_ACCOUNT_ID)}</span></div>
     <p style="margin-top: 24px; font-size: 13px; color: #4a4a6a;">You can close this tab. Setup is complete.</p>
-    <a href="/auth/linkedin/status">Check status →</a>
+    <p style="font-size: 12px; color: #4a4a6a;">Verify: <code>curl -H "Authorization: Bearer $DEMO_API_KEY" ${escapeHtml(new URL(request.url).origin)}/auth/linkedin/status</code></p>
   `);
 }
 

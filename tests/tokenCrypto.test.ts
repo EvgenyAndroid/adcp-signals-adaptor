@@ -1,5 +1,8 @@
 // tests/tokenCrypto.test.ts
 // Sec-4: AES-GCM envelope encryption for secrets stored in KV at rest.
+// Sec-9 (C): passphrases must meet a minimum length (32 chars) to ensure
+// the post-SHA-256 key has enough entropy. Tests exercise both the
+// happy-path (long passphrase) and the tripwire.
 
 import { describe, it, expect } from "vitest";
 import {
@@ -8,6 +11,7 @@ import {
   isEncrypted,
   encryptIfConfigured,
   decryptIfNeeded,
+  WeakPassphraseError,
 } from "../src/utils/tokenCrypto";
 
 describe("tokenCrypto round-trip", () => {
@@ -32,7 +36,11 @@ describe("tokenCrypto round-trip", () => {
 
   it("decrypt with wrong passphrase throws (auth tag fails)", async () => {
     const enc = await encryptToken("secret", passphrase);
-    await expect(decryptToken(enc, "wrong-passphrase")).rejects.toThrow();
+    // Use a passphrase that ALSO meets the length floor — we want to
+    // exercise AES-GCM's integrity failure, not the length tripwire.
+    await expect(
+      decryptToken(enc, "a-different-but-equally-long-passphrase"),
+    ).rejects.toThrow();
   });
 
   it("tampering the ciphertext throws on decrypt (integrity check)", async () => {
@@ -74,7 +82,7 @@ describe("tokenCrypto round-trip", () => {
 
 describe("isEncrypted", () => {
   it("true for enc:v1: prefixed values", async () => {
-    const enc = await encryptToken("x", "p");
+    const enc = await encryptToken("x", "passphrase-meeting-the-32-char-floor");
     expect(isEncrypted(enc)).toBe(true);
   });
 
@@ -92,7 +100,7 @@ describe("isEncrypted", () => {
 });
 
 describe("encryptIfConfigured / decryptIfNeeded (opt-in wrappers)", () => {
-  const passphrase = "config-passphrase";
+  const passphrase = "config-passphrase-thirty-two-chars-long";
 
   it("no passphrase ⇒ pass-through plaintext on write", async () => {
     const out = await encryptIfConfigured("raw-token", undefined);
@@ -125,12 +133,82 @@ describe("encryptIfConfigured / decryptIfNeeded (opt-in wrappers)", () => {
 
   it("read encrypted with wrong passphrase throws (via AES-GCM)", async () => {
     const enc = await encryptToken("x", passphrase);
-    await expect(decryptIfNeeded(enc, "other")).rejects.toThrow();
+    await expect(
+      decryptIfNeeded(enc, "different-passphrase-that-also-meets-min"),
+    ).rejects.toThrow();
   });
 
   it("null/empty/undefined read returns null", async () => {
     expect(await decryptIfNeeded(null, passphrase)).toBe(null);
     expect(await decryptIfNeeded(undefined, passphrase)).toBe(null);
     expect(await decryptIfNeeded("", passphrase)).toBe(null);
+  });
+});
+
+describe("passphrase length tripwire (Sec-9 C)", () => {
+  it("encryptToken throws WeakPassphraseError when passphrase < 32 chars", async () => {
+    await expect(encryptToken("x", "hunter2")).rejects.toBeInstanceOf(
+      WeakPassphraseError,
+    );
+  });
+
+  it("decryptToken throws WeakPassphraseError when passphrase < 32 chars", async () => {
+    // Encrypt with a valid passphrase so we have real ciphertext on hand
+    const valid = "sufficient-entropy-passphrase-32+";
+    const enc = await encryptToken("payload", valid);
+    await expect(decryptToken(enc, "short-key")).rejects.toBeInstanceOf(
+      WeakPassphraseError,
+    );
+  });
+
+  it("encryptIfConfigured refuses a short passphrase rather than silently passing through", async () => {
+    // Without the tripwire this would be ambiguous — did the operator
+    // intend plaintext (undefined) or did they fat-finger a short secret?
+    // The length check forces the error case to be loud.
+    await expect(encryptIfConfigured("token", "too-short")).rejects.toBeInstanceOf(
+      WeakPassphraseError,
+    );
+  });
+
+  it("decryptIfNeeded raises on a short passphrase against an encrypted value", async () => {
+    const valid = "sufficient-entropy-passphrase-32+";
+    const enc = await encryptToken("t", valid);
+    await expect(decryptIfNeeded(enc, "short")).rejects.toBeInstanceOf(
+      WeakPassphraseError,
+    );
+  });
+
+  it("decryptIfNeeded passes plaintext through even when the passphrase is too short", async () => {
+    // The length check is about KEY strength for encrypt/decrypt, not
+    // plaintext round-tripping. A legacy plaintext value should still be
+    // readable regardless of what operator-provided passphrase is set.
+    const out = await decryptIfNeeded("legacy-plaintext", "short");
+    expect(out).toBe("legacy-plaintext");
+  });
+
+  it("accepts exactly 32 chars (boundary)", async () => {
+    const exactly32 = "a".repeat(32);
+    const enc = await encryptToken("boundary-test", exactly32);
+    expect(await decryptToken(enc, exactly32)).toBe("boundary-test");
+  });
+
+  it("rejects exactly 31 chars (boundary minus one)", async () => {
+    const short = "a".repeat(31);
+    await expect(encryptToken("b", short)).rejects.toBeInstanceOf(
+      WeakPassphraseError,
+    );
+  });
+
+  it("error message cites the actual length and the fix", async () => {
+    try {
+      await encryptToken("x", "ten-chars!");
+      throw new Error("should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(WeakPassphraseError);
+      const message = (err as Error).message;
+      expect(message).toMatch(/10 chars/);
+      expect(message).toMatch(/at least 32/);
+      expect(message).toMatch(/openssl rand -base64 24/);
+    }
   });
 });

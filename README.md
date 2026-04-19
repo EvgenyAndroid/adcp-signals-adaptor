@@ -4,7 +4,8 @@ A production-structured, AdCP 3.0-rc-compliant Signals Provider built on Cloudfl
 
 **Live:** `https://adcp-signals-adaptor.evgeny-193.workers.dev`  
 **MCP:** `https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp`  
-**GitHub:** `https://github.com/EvgenyAndroid/adcp-signals-adaptor`
+**GitHub:** `https://github.com/EvgenyAndroid/adcp-signals-adaptor`  
+**Trust model:** this is a single-operator demo — see [SECURITY_MODEL.md](SECURITY_MODEL.md) for the shared-LinkedIn-token constraint and when to revisit it.
 
 ---
 
@@ -541,6 +542,17 @@ wrangler secret put DEMO_API_KEY
 # Optional: enable HMAC-SHA256 signatures on outbound activation webhooks.
 # Without it, deliveries go out unsigned. See "Webhook signatures" above.
 wrangler secret put WEBHOOK_SIGNING_SECRET
+
+# Optional: AES-GCM encrypt LinkedIn OAuth tokens at rest in KV.
+# IMPORTANT: must be a HIGH-ENTROPY RANDOM SECRET, at least 32 chars.
+# The Worker derives the AES key via SHA-256 — a short or human-chosen
+# passphrase would be trivially brute-forceable against a KV dump.
+# Generate with:
+#   openssl rand -base64 24
+# (That's 32 chars of base64 carrying ~192 bits of entropy.) The Worker
+# throws WeakPassphraseError on any value under 32 chars.
+# Unset ⇒ tokens stored plaintext (legacy, backwards-compatible).
+wrangler secret put TOKEN_ENCRYPTION_KEY
 
 # Required wrangler.toml var for real embeddings
 # [vars]

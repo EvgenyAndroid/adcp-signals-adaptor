@@ -9,7 +9,7 @@ import { constantTimeEqual, requireAuth } from "../src/routes/shared";
 import { escapeHtml, escapeHtmlAttr, handleLinkedInAuthInit, handleLinkedInAuthCallback } from "../src/activations/auth/linkedin";
 import { corsHeaders } from "../src/index";
 import { ADCP_TOOLS, getToolByName } from "../src/mcp/tools";
-import { toolResult, numArg } from "../src/mcp/server";
+import { toolResult, numArg, handleMcpRequest } from "../src/mcp/server";
 
 // ── toolResult helper: structuredContent + backwards-compat text ──────────────
 
@@ -427,5 +427,130 @@ describe("OAuth state lifecycle", () => {
 
     expect(body).not.toContain("<script>alert(1)</script>");
     expect(body).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+  });
+});
+
+// ── MCP auth gate (Sec-1 Finding #1) ──────────────────────────────────────────
+//
+// The /mcp HTTP endpoint remains publicly reachable so discovery methods
+// (initialize, tools/list, ping) bootstrap without a key — that matches
+// standard MCP client behaviour and the evaluator handshake. tools/call is
+// gated per-message via AUTHENTICATED_MCP_METHODS: anything in that set
+// returns RPC error -32001 without a valid Authorization: Bearer <key>.
+//
+// We construct a minimal Env stub — handleMcpRequest only consults
+// env.DEMO_API_KEY for auth. Discovery paths (initialize, tools/list) don't
+// touch the DB/KV; tool-call paths do, but we only exercise auth short-
+// circuits here, so the test never reaches the handler body.
+
+import { createLogger } from "../src/utils/logger";
+
+describe("handleMcpRequest — auth gate", () => {
+  const KEY = "demo-key-mcp-test";
+  const env = { DEMO_API_KEY: KEY } as unknown as import("../src/types/env").Env;
+  const logger = createLogger("test-req");
+
+  function mcpReq(rpc: unknown, authHeader?: string, contentLength?: number): Request {
+    const body = JSON.stringify(rpc);
+    const headers = new Headers({ "Content-Type": "application/json" });
+    if (authHeader) headers.set("Authorization", authHeader);
+    if (contentLength !== undefined) headers.set("Content-Length", String(contentLength));
+    return new Request("https://example.com/mcp", { method: "POST", headers, body });
+  }
+
+  async function callAndParse(req: Request): Promise<{ status: number; body: any }> {
+    const res = await handleMcpRequest(req, env, logger);
+    const text = await res.text();
+    return { status: res.status, body: text ? JSON.parse(text) : null };
+  }
+
+  it("tools/list with no Authorization header succeeds (discovery is public)", async () => {
+    const { status, body } = await callAndParse(
+      mcpReq({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
+    );
+    expect(status).toBe(200);
+    expect(body.result?.tools).toBeDefined();
+    expect(Array.isArray(body.result.tools)).toBe(true);
+  });
+
+  it("initialize with no Authorization header succeeds (discovery is public)", async () => {
+    const { status, body } = await callAndParse(
+      mcpReq({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "initialize",
+        params: { protocolVersion: "2024-11-05", clientInfo: { name: "t", version: "1" } },
+      }),
+    );
+    expect(status).toBe(200);
+    expect(body.result?.serverInfo).toBeDefined();
+  });
+
+  it("tools/call with no Authorization header returns -32001", async () => {
+    const { status, body } = await callAndParse(
+      mcpReq({
+        jsonrpc: "2.0",
+        id: 3,
+        method: "tools/call",
+        params: { name: "get_adcp_capabilities", arguments: {} },
+      }),
+    );
+    expect(status).toBe(200);
+    expect(body.error?.code).toBe(-32001);
+    // No successful result leaked alongside the error
+    expect(body.result).toBeUndefined();
+  });
+
+  it("tools/call with wrong API key returns -32001", async () => {
+    const { body } = await callAndParse(
+      mcpReq(
+        { jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "get_adcp_capabilities", arguments: {} } },
+        "Bearer not-the-key",
+      ),
+    );
+    expect(body.error?.code).toBe(-32001);
+  });
+
+  it("batched request: discovery messages succeed AND tool-calls fail in one batch", async () => {
+    // Per JSON-RPC 2.0 batching, each message is processed independently.
+    // The auth gate runs per-message — an unauthenticated batch that mixes
+    // tools/list and tools/call must return a list result AND an auth error.
+    const { status, body } = await callAndParse(
+      mcpReq([
+        { jsonrpc: "2.0", id: 10, method: "tools/list", params: {} },
+        { jsonrpc: "2.0", id: 11, method: "tools/call", params: { name: "get_adcp_capabilities", arguments: {} } },
+      ]),
+    );
+    expect(status).toBe(200);
+    expect(Array.isArray(body)).toBe(true);
+    const byId = Object.fromEntries(body.map((m: any) => [m.id, m]));
+    expect(byId[10].result?.tools).toBeDefined();
+    expect(byId[11].error?.code).toBe(-32001);
+  });
+
+  it("oversized body (>1MB via Content-Length) rejected pre-parse with -32600", async () => {
+    // We lie about Content-Length to avoid allocating a real 1MB body in the
+    // test. The guard reads the header before touching request.json().
+    const req = mcpReq(
+      { jsonrpc: "2.0", id: 20, method: "tools/list", params: {} },
+      undefined,
+      2_000_000,
+    );
+    const { status, body } = await callAndParse(req);
+    expect(status).toBe(200);
+    expect(body.error?.code).toBe(-32600);
+    expect(body.error?.message).toMatch(/too large/i);
+  });
+
+  it("notifications (no id) with auth failure are silently dropped (no response)", async () => {
+    // JSON-RPC notifications must not produce a response. Our auth gate
+    // respects this: an unauthenticated notifications/* doesn't leak a
+    // spurious error object.
+    const res = await handleMcpRequest(
+      mcpReq({ jsonrpc: "2.0", method: "notifications/initialized", params: {} }),
+      env,
+      logger,
+    );
+    expect(res.status).toBe(202);
   });
 });

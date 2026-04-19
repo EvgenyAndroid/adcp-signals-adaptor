@@ -25,6 +25,7 @@ import { getProposal, deleteProposal } from "../storage/proposalCache";
 import { operationId } from "../utils/ids";
 import type { Logger } from "../utils/logger";
 import type { CanonicalSignal } from "../types/signal";
+import { signWebhookBody } from "./webhookSigning";
 
 export async function activateSignalService(
   db: DB,
@@ -104,11 +105,17 @@ export async function activateSignalService(
  * Poll for task status.
  * Implements lazy state machine: on first poll, advance submitted → processing → completed.
  * Fires webhook on completion if configured and not already fired.
+ *
+ * @param signingSecret Optional HMAC secret (env.WEBHOOK_SIGNING_SECRET). When
+ * provided and non-empty, outbound webhook deliveries carry an
+ * `X-AdCP-Signature` header the receiver can verify. Unset ⇒ unsigned
+ * (backwards-compatible).
  */
 export async function getOperationService(
   db: DB,
   opId: string,
-  logger: Logger
+  logger: Logger,
+  signingSecret?: string,
 ): Promise<GetOperationResponse> {
   const operation = await findOperationById(db, opId);
   if (!operation) {
@@ -134,7 +141,15 @@ export async function getOperationService(
     operation.webhookUrl &&
     !operation.webhookFired
   ) {
-    await fireWebhook(db, opId, operation.signalId, operation.destination, operation.webhookUrl, logger);
+    await fireWebhook(
+      db,
+      opId,
+      operation.signalId,
+      operation.destination,
+      operation.webhookUrl,
+      logger,
+      signingSecret,
+    );
   }
 
   const platformSegmentId = `${operation.destination}_${operation.signalId}`;
@@ -190,6 +205,15 @@ function isValidWebhookUrl(raw: string): boolean {
 /**
  * Fire webhook with activation completion payload.
  * Non-fatal: logs error but doesn't throw.
+ *
+ * When `signingSecret` is a non-empty string, the outbound request carries:
+ *
+ *     X-AdCP-Signature: t=<unix-seconds>,v1=<hex-sha256>
+ *
+ * computed over `"<t>.<exact-request-body>"`. Receivers SHOULD reject if
+ * `|now - t| > 300s`. See src/domain/webhookSigning.ts for the verification
+ * helper (and the documented format). An empty secret means deliveries go
+ * out unsigned (backwards-compatible with callers that don't verify yet).
  */
 async function fireWebhook(
   db: DB,
@@ -197,7 +221,8 @@ async function fireWebhook(
   signalId: string,
   destination: string,
   webhookUrl: string,
-  logger: Logger
+  logger: Logger,
+  signingSecret?: string,
 ): Promise<void> {
   if (!isValidWebhookUrl(webhookUrl)) {
     logger.warn("webhook_rejected", {
@@ -230,15 +255,36 @@ async function fireWebhook(
       completed_at: new Date().toISOString(),
     };
 
+    // IMPORTANT: stringify once. We sign the exact byte sequence that goes
+    // on the wire — if we re-serialize inside signWebhookBody and the two
+    // JSON encodings differ (object key ordering, whitespace, Number
+    // precision), receivers will fail to verify.
+    const bodyString = JSON.stringify(payload);
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "User-Agent": "adcp-signals-adaptor/1.0",
+    };
+    let signed = false;
+    if (signingSecret && signingSecret.length > 0) {
+      const sig = await signWebhookBody(signingSecret, bodyString);
+      headers["X-AdCP-Signature"] = sig.headerValue;
+      signed = true;
+    }
+
     const res = await fetch(webhookUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "User-Agent": "adcp-signals-adaptor/1.0" },
-      body: JSON.stringify(payload),
+      headers,
+      body: bodyString,
       signal: controller.signal,
     });
 
     await markWebhookFired(db, opId);
-    logger.info("webhook_fired", { operationId: opId, statusCode: res.status });
+    logger.info("webhook_fired", {
+      operationId: opId,
+      statusCode: res.status,
+      signed,
+    });
   } catch (err) {
     logger.error("webhook_failed", { operationId: opId, error: String(err) });
     // Non-fatal — caller can re-poll

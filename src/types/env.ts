@@ -24,4 +24,11 @@ export interface Env {
   LINKEDIN_CLIENT_ID: string;
   LINKEDIN_CLIENT_SECRET: string;
   LINKEDIN_AD_ACCOUNT_ID: string;
+
+  // Optional — when set, outbound activation webhooks carry an
+  // X-AdCP-Signature: t=<unix-secs>,v1=<hex-hmac-sha256> header so
+  // receivers can verify origin and detect tampering. Unset ⇒ unsigned
+  // deliveries (backwards-compatible). Provision via:
+  //   wrangler secret put WEBHOOK_SIGNING_SECRET
+  WEBHOOK_SIGNING_SECRET?: string;
 }

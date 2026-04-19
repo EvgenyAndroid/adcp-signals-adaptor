@@ -454,7 +454,7 @@ Storage (Cloudflare D1 + KV)
 |---|---|---|
 | `signal_agent_segment_id` | Yes | Also accepts `signal_id`. |
 | `deliver_to` | Yes | `{ deployments, countries }` |
-| `webhook_url` | No | POST callback on completion. |
+| `webhook_url` | No | POST callback on completion. Signed with HMAC-SHA256 when `WEBHOOK_SIGNING_SECRET` is provisioned — see [Webhook signatures](#webhook-signatures). |
 
 ### `get_concept` / `search_concepts`
 
@@ -474,6 +474,40 @@ Storage (Cloudflare D1 + KV)
 | `buyer_agent_id` | No | Optional identifier for the buyer agent. |
 
 ---
+
+## Webhook signatures
+
+When `WEBHOOK_SIGNING_SECRET` is set as a Worker secret, outbound activation webhooks carry an `X-AdCP-Signature` header the receiver can verify.
+
+**Header format**
+
+    X-AdCP-Signature: t=<unix-seconds>,v1=<hex-sha256>
+
+**Signed string**
+
+    "<t>.<exact-request-body>"
+
+**Algorithm** — HMAC-SHA256 over UTF-8 bytes, hex-encoded.
+
+**Receiver pseudocode** (Node):
+
+```js
+import crypto from "crypto";
+
+function verify(secret, body, header) {
+  const parts = Object.fromEntries(header.split(",").map(p => p.split("=")));
+  const t = Number(parts.t);
+  if (Math.abs(Date.now() / 1000 - t) > 300) return false; // 5 min window
+  const expected = crypto.createHmac("sha256", secret)
+    .update(`${t}.${body}`)
+    .digest("hex");
+  return crypto.timingSafeEqual(Buffer.from(parts.v1), Buffer.from(expected));
+}
+```
+
+Receivers should re-sign the **raw request body** (not a re-serialized JSON object) and reject if the timestamp is more than 5 minutes off wall-clock. The `v1=` prefix is intentional — future versions (e.g. `v2=<ed25519...>`) can be added without breaking receivers pinned to v1.
+
+Unset secret ⇒ deliveries go out unsigned. Enabling it is a one-way decision in the sense that receivers who verify will start rejecting unsigned replays against a compromised URL.
 
 ## Running Locally
 
@@ -496,6 +530,10 @@ npm run deploy
 # Required secrets
 wrangler secret put ANTHROPIC_API_KEY
 wrangler secret put OPENAI_API_KEY
+
+# Optional: enable HMAC-SHA256 signatures on outbound activation webhooks.
+# Without it, deliveries go out unsigned. See "Webhook signatures" above.
+wrangler secret put WEBHOOK_SIGNING_SECRET
 
 # Required wrangler.toml var for real embeddings
 # [vars]

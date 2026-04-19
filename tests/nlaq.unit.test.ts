@@ -11,16 +11,28 @@
 
 import { describe, it, expect } from "vitest";
 import { flattenLeafs, extractExclusions } from "../src/domain/queryParser.js";
-import type { AudienceQueryAST, AudienceQueryNode } from "../src/domain/queryParser.js";
+import type { AudienceQueryAST, AudienceQueryNode, AudienceQueryLeaf } from "../src/domain/queryParser.js";
 import { QueryResolver } from "../src/domain/queryResolver.js";
-import type { CatalogSignal } from "../src/domain/queryResolver.js";
+import type { CatalogSignal, ResolvedLeaf } from "../src/domain/queryResolver.js";
 import { CompositeScorer, buildResolutionMap } from "../src/domain/compositeScorer.js";
+import { adaptToLeafResolutions } from "../src/domain/nlQueryHandler.js";
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
-const MOCK_CATALOG: CatalogSignal[] = [
+// Fixture IDs match the live SIGNAL_RULE_MAP in queryResolver.ts so Pass 1
+// (exact_rule match) can fire. Signals whose dimensions aren't covered by
+// that map (`interest`, `geo`) still live in the catalog and are resolved
+// via Pass 3 (lexical description similarity).
+//
+// Fixtures intentionally mirror the D1 wire shape (`signal_agent_segment_id`,
+// `category_type`, `estimated_audience_size`) rather than the in-memory
+// `CatalogSignal` interface (`id`, `category`). The runtime resolver reads
+// both via fallbacks in getSignalId / catalog adapters, but the structural
+// type is too narrow for both shapes — typed as `any[]` here so the fixture
+// stays readable and matches what production sees from D1.
+const MOCK_CATALOG: any[] = [
   {
-    signal_agent_segment_id: "sig_family_with_kids",
+    signal_agent_segment_id: "sig_families_with_children",
     name: "Households with Children",
     category_type: "demographic",
     estimated_audience_size: 38_400_000,
@@ -29,7 +41,7 @@ const MOCK_CATALOG: CatalogSignal[] = [
     description: "households with school-age children family kids parents",
   },
   {
-    signal_agent_segment_id: "sig_35_44",
+    signal_agent_segment_id: "sig_age_35_44",
     name: "Adults 35-44",
     category_type: "demographic",
     estimated_audience_size: 43_200_000,
@@ -64,15 +76,41 @@ const MOCK_CATALOG: CatalogSignal[] = [
     description: "coffee drinkers enthusiasts café morning beverage",
   },
   {
-    signal_agent_segment_id: "sig_high_income",
+    signal_agent_segment_id: "sig_high_income_households",
     name: "High Income Households",
     category_type: "demographic",
     estimated_audience_size: 28_800_000,
     coverage_percentage: 0.12,
-    rules: [{ dimension: "income_band", operator: "eq", value: "150k_plus" }],
+    rules: [{ dimension: "income_band", operator: "eq", value: "150k+" }],
     description: "high income households 150k plus affluent wealthy",
   },
 ];
+
+// Shared helpers — convert between the public resolver API (resolveAST
+// returns ResolvedAST with per-leaf matches) and the per-leaf shape the
+// old tests were written against. resolveOneLeaf wraps a leaf into an AST,
+// awaits, and returns the single ResolvedLeaf. buildCatalogMap mirrors
+// what nlQueryHandler does in production so the CompositeScorer adapter
+// sees consistent data.
+async function resolveOneLeaf(
+  resolver: QueryResolver,
+  leaf: AudienceQueryLeaf,
+): Promise<ResolvedLeaf> {
+  const resolved = await resolver.resolveAST(leaf);
+  expect(resolved.resolvedLeaves.length).toBe(1);
+  return resolved.resolvedLeaves[0]!;
+}
+
+function buildCatalogMap(catalog: CatalogSignal[]): Map<string, CatalogSignal> {
+  return new Map(catalog.map(s => [(s as any).signal_agent_segment_id ?? s.id ?? "", s]));
+}
+
+async function resolveAndScore(resolver: QueryResolver, ast: AudienceQueryAST, hints: string[] = []) {
+  const { resolvedLeaves } = await resolver.resolveAST(ast.root);
+  const leafResolutions = adaptToLeafResolutions(resolvedLeaves, buildCatalogMap(MOCK_CATALOG));
+  const scorer = new CompositeScorer(buildResolutionMap(leafResolutions as any));
+  return scorer.score(ast, hints);
+}
 
 function makeAST(root: AudienceQueryNode, nl = "test query"): AudienceQueryAST {
   return {
@@ -134,7 +172,7 @@ describe("extractExclusions", () => {
     };
     const excl = extractExclusions(tree);
     expect(excl).toHaveLength(1);
-    expect(excl[0].value).toBe("coffee");
+    expect(excl[0]?.value).toBe("coffee");
   });
 
   it("returns empty for no NOT nodes", () => {
@@ -150,80 +188,108 @@ describe("extractExclusions", () => {
 
 // ─── QueryResolver ────────────────────────────────────────────────────────────
 
-// QUARANTINED — these blocks call the QueryResolver / CompositeScorer with a
-// mock catalog using legacy signal IDs (`sig_family_with_kids`, `sig_35_44`)
-// and a `resolver.resolveLeaf(leaf, false)` shape that the current resolver
-// no longer exposes (only `resolveAST(ast)` is public). Real behaviour is
-// covered end-to-end by tests/security.test.ts, tests/proposal-cache.test.ts,
-// and the live runner (`npm run test:live`). Re-enable after re-aligning the
-// fixtures with the actual D1 catalog IDs and the public resolver API.
-describe.skip("QueryResolver — exact rule match", () => {
+// Re-aligned: the public resolver API is `resolveAST(ast)` (async) which
+// returns ResolvedAST.resolvedLeaves with a flat LeafMatch[] per leaf.
+// See resolveOneLeaf helper above; it wraps a single leaf in resolveAST
+// and returns the one ResolvedLeaf so per-leaf tests stay concise.
+describe("QueryResolver — exact rule match", () => {
   const resolver = new QueryResolver(MOCK_CATALOG);
 
-  it("matches age_band leaf to correct signal", () => {
-    const leaf = { op: "LEAF" as const, dimension: "age_band" as const, value: "35-44", description: "adults 35 to 44", confidence: 0.95 };
-    const res = resolver.resolveLeaf(leaf, false);
-    expect(res.matches[0].signal.signal_agent_segment_id).toBe("sig_35_44");
-    expect(res.matches[0].match_score).toBeGreaterThan(0.7);
-    expect(res.is_exclusion).toBe(false);
+  it("matches age_band leaf to correct signal", async () => {
+    const leaf: AudienceQueryLeaf = {
+      op: "LEAF", dimension: "age_band", value: "35-44",
+      description: "adults 35 to 44", confidence: 0.95,
+    };
+    const res = await resolveOneLeaf(resolver, leaf);
+    expect(res.matches[0]?.signal_agent_segment_id).toBe("sig_age_35_44");
+    expect(res.matches[0]?.match_score).toBeGreaterThan(0.7);
+    expect(res.matches[0]?.is_exclusion).toBe(false);
   });
 
-  it("matches household_type leaf", () => {
-    const leaf = { op: "LEAF" as const, dimension: "household_type" as const, value: "family_with_kids", description: "family with school-age children", confidence: 0.9 };
-    const res = resolver.resolveLeaf(leaf, false);
-    expect(res.matches[0].signal.signal_agent_segment_id).toBe("sig_family_with_kids");
+  it("matches household_type leaf", async () => {
+    const leaf: AudienceQueryLeaf = {
+      op: "LEAF", dimension: "household_type", value: "family_with_kids",
+      description: "family with school-age children", confidence: 0.9,
+    };
+    const res = await resolveOneLeaf(resolver, leaf);
+    expect(res.matches[0]?.signal_agent_segment_id).toBe("sig_families_with_children");
   });
 
-  it("marks exclusion leaf correctly", () => {
-    const leaf = { op: "LEAF" as const, dimension: "interest" as const, value: "coffee", description: "coffee drinkers", confidence: 0.88 };
-    const res = resolver.resolveLeaf(leaf, true);
-    expect(res.is_exclusion).toBe(true);
-    expect(res.matches[0].signal.signal_agent_segment_id).toBe("sig_coffee_enthusiasts");
+  it("marks exclusion leaf correctly", async () => {
+    // is_exclusion now lives on the leaf itself (not as a second arg to the
+    // old resolveLeaf). Pass 3 lexical fallback resolves "coffee" against
+    // the coffee_enthusiasts description.
+    const leaf: AudienceQueryLeaf = {
+      op: "LEAF", dimension: "interest", value: "coffee",
+      description: "coffee drinkers café morning", confidence: 0.88,
+      is_exclusion: true,
+    };
+    const res = await resolveOneLeaf(resolver, leaf);
+    expect(res.matches[0]?.is_exclusion).toBe(true);
+    expect(res.matches[0]?.signal_agent_segment_id).toBe("sig_coffee_enthusiasts");
   });
 
-  it("handles geo leaf via description similarity", () => {
-    const leaf = { op: "LEAF" as const, dimension: "geo" as const, value: "DMA-659", description: "Nashville Tennessee metro area residents", confidence: 0.97 };
-    const res = resolver.resolveLeaf(leaf, false);
+  it("handles geo leaf via description similarity", async () => {
+    const leaf: AudienceQueryLeaf = {
+      op: "LEAF", dimension: "geo", value: "DMA-659",
+      description: "Nashville Tennessee metro area residents",
+      confidence: 0.97,
+    };
+    const res = await resolveOneLeaf(resolver, leaf);
     expect(res.matches.length).toBeGreaterThan(0);
-    expect(res.matches[0].signal.signal_agent_segment_id).toBe("sig_nashville_geo");
+    expect(res.matches[0]?.signal_agent_segment_id).toBe("sig_nashville_geo");
   });
 });
 
 describe("QueryResolver — archetype expansion", () => {
   const resolver = new QueryResolver(MOCK_CATALOG);
 
-  // QUARANTINED — see the comment on the "exact rule match" describe.skip
-  // above. Same root cause: legacy fixture IDs + removed `resolveLeaf` API.
-  it.skip("expands soccer_mom archetype", () => {
-    const leaf = { op: "LEAF" as const, dimension: "archetype" as const, value: "soccer_mom", description: "soccer mom suburban female with kids", confidence: 0.91 };
-    const res = resolver.resolveLeaf(leaf, false);
-    expect(res.archetype_expansion).toBeDefined();
-    expect(res.archetype_expansion!.length).toBeGreaterThan(0);
-    // Should surface family_with_kids and age_band signals
-    const ids = res.matches.map(m => m.signal.signal_agent_segment_id);
-    expect(ids.some(id => id.includes("family") || id.includes("35"))).toBe(true);
-    expect(res.matches[0].match_method).toBe("archetype_expansion");
+  // Archetype expansion now surfaces via match_method === "archetype_expansion"
+  // on the leaf's matches (the dedicated `archetype_expansion` field on the
+  // old ResolvedLeaf shape is gone — the expansion runs internally and
+  // aggregates weighted matches into the normal matches array).
+  it("expands soccer_mom archetype", async () => {
+    const leaf: AudienceQueryLeaf = {
+      op: "LEAF", dimension: "archetype", value: "soccer_mom",
+      description: "soccer mom suburban female with kids", confidence: 0.91,
+    };
+    const res = await resolveOneLeaf(resolver, leaf);
+    expect(res.matches.length).toBeGreaterThan(0);
+    // Should surface families_with_children and age_band 35-44 signals from
+    // the soccer_mom archetype constituents (see ARCHETYPE_TABLE in
+    // queryResolver.ts).
+    const ids = res.matches.map(m => m.signal_agent_segment_id);
+    expect(ids.some(id => id.includes("families") || id.includes("35_44"))).toBe(true);
+    expect(res.matches[0]?.match_method).toBe("archetype_expansion");
   });
 
-  it("falls back to description similarity for unknown archetype", () => {
-    const leaf = { op: "LEAF" as const, dimension: "archetype" as const, value: "crypto_bro", description: "young male crypto investor tech enthusiast", confidence: 0.6 };
-    const res = resolver.resolveLeaf(leaf, false);
-    // Should not throw — just returns whatever similarity finds
+  it("falls back to description similarity for unknown archetype", async () => {
+    const leaf: AudienceQueryLeaf = {
+      op: "LEAF", dimension: "archetype", value: "crypto_bro",
+      description: "young male crypto investor tech enthusiast", confidence: 0.6,
+    };
+    const res = await resolveOneLeaf(resolver, leaf);
+    // Unknown archetype falls through to the dimension-leaf path internally
+    // but `resolveArchetype` re-tags the matches as `archetype_expansion`
+    // regardless. The test's real job: the resolver doesn't throw and
+    // returns a well-formed ResolvedLeaf.
     expect(res).toBeDefined();
-    expect(res.archetype_expansion).toBeUndefined();
+    expect(res.leaf).toBe(leaf);
+    expect(Array.isArray(res.matches)).toBe(true);
   });
 });
 
 // ─── CompositeScorer ──────────────────────────────────────────────────────────
 
-// QUARANTINED — these CompositeScorer blocks build resolutions via the same
-// removed `resolveLeaf` API path; quarantine them as a group with the same
-// rationale as the QueryResolver blocks above.
-describe.skip("CompositeScorer — AND intersection", () => {
+// Re-aligned: resolveAST is async and returns ResolvedAST (not LeafResolution[]).
+// buildResolutionMap expects the old nested LeafResolution shape, so we run
+// the output through adaptToLeafResolutions (the same adapter production
+// uses in nlQueryHandler). resolveAndScore() wraps the whole pipeline.
+describe("CompositeScorer — AND intersection", () => {
   const resolver = new QueryResolver(MOCK_CATALOG);
 
-  it("estimates intersection of two demographic leafs", () => {
-    // family_with_kids (16%) AND age_band 35-44 (18%)
+  it("estimates intersection of two demographic leafs", async () => {
+    // families_with_children (16%) AND age_band 35-44 (18%)
     // expected ≈ 240M × 0.16 × 0.18 × 0.70 = ~4.8M
     const ast = makeAST({
       op: "AND",
@@ -232,17 +298,14 @@ describe.skip("CompositeScorer — AND intersection", () => {
         { op: "LEAF", dimension: "age_band", value: "35-44", description: "adults 35 to 44", confidence: 0.9 },
       ],
     });
-    const resolutions = resolver.resolveAST(ast);
-    const resMap = buildResolutionMap(resolutions);
-    const scorer = new CompositeScorer(resMap);
-    const result = scorer.score(ast, []);
+    const result = await resolveAndScore(resolver, ast);
 
     expect(result.estimated_size).toBeGreaterThan(1_000_000);
     expect(result.estimated_size).toBeLessThan(20_000_000);
     expect(result.matched_signals.length).toBeGreaterThan(0);
   });
 
-  it("deep AND narrows audience (Nashville × drama × family)", () => {
+  it("deep AND narrows audience (Nashville × drama × family)", async () => {
     const ast = makeAST({
       op: "AND",
       children: [
@@ -251,34 +314,28 @@ describe.skip("CompositeScorer — AND intersection", () => {
         { op: "LEAF", dimension: "household_type", value: "family_with_kids", description: "households with children", confidence: 0.9 },
       ],
     });
-    const resolutions = resolver.resolveAST(ast);
-    const resMap = buildResolutionMap(resolutions);
-    const result = new CompositeScorer(resMap).score(ast, []);
+    const result = await resolveAndScore(resolver, ast);
 
-    // Should be quite narrow
     expect(result.estimated_size).toBeLessThan(5_000_000);
     expect(["low", "narrow", "medium"]).toContain(result.confidence_tier);
   });
 });
 
-describe.skip("CompositeScorer — NOT exclusion", () => {
+describe("CompositeScorer — NOT exclusion", () => {
   const resolver = new QueryResolver(MOCK_CATALOG);
 
-  it("moves NOT leaf matches to exclude_signals", () => {
+  it("moves NOT leaf matches to exclude_signals", async () => {
     const ast = makeAST({
       op: "AND",
       children: [
         { op: "LEAF", dimension: "age_band", value: "35-44", description: "adults 35 to 44", confidence: 0.9 },
         { op: "NOT", children: [
-          { op: "LEAF", dimension: "interest", value: "coffee", description: "coffee enthusiasts drinkers", confidence: 0.88 },
+          { op: "LEAF", dimension: "interest", value: "coffee", description: "coffee enthusiasts drinkers", confidence: 0.88, is_exclusion: true },
         ]},
       ],
     });
-    const resolutions = resolver.resolveAST(ast);
-    const resMap = buildResolutionMap(resolutions);
-    const result = new CompositeScorer(resMap).score(ast, []);
+    const result = await resolveAndScore(resolver, ast);
 
-    // Coffee should be in exclude, not matched
     const matchedIds = result.matched_signals.map(s => s.signal_agent_segment_id);
     const excludedIds = result.exclude_signals.map(s => s.signal_agent_segment_id);
 
@@ -286,25 +343,22 @@ describe.skip("CompositeScorer — NOT exclusion", () => {
     expect(matchedIds).not.toContain("sig_coffee_enthusiasts");
   });
 
-  it("negation reduces confidence by 20%", () => {
+  it("negation reduces confidence by 20%", async () => {
     const ast = makeAST({
       op: "NOT",
       children: [
-        { op: "LEAF", dimension: "interest", value: "coffee", description: "coffee drinkers", confidence: 1.0 },
+        { op: "LEAF", dimension: "interest", value: "coffee", description: "coffee drinkers", confidence: 1.0, is_exclusion: true },
       ],
     });
-    const resolutions = resolver.resolveAST(ast);
-    const resMap = buildResolutionMap(resolutions);
-    const result = new CompositeScorer(resMap).score(ast, []);
-    // Confidence should be less than 1.0 due to 0.80 negation penalty
+    const result = await resolveAndScore(resolver, ast);
     expect(result.confidence).toBeLessThan(1.0);
   });
 });
 
-describe.skip("CompositeScorer — OR union", () => {
+describe("CompositeScorer — OR union", () => {
   const resolver = new QueryResolver(MOCK_CATALOG);
 
-  it("OR is larger than either child alone", () => {
+  it("OR is larger than either child alone", async () => {
     const ast = makeAST({
       op: "OR",
       children: [
@@ -312,9 +366,7 @@ describe.skip("CompositeScorer — OR union", () => {
         { op: "LEAF", dimension: "household_type", value: "family_with_kids", description: "families with children", confidence: 0.9 },
       ],
     });
-    const resolutions = resolver.resolveAST(ast);
-    const resMap = buildResolutionMap(resolutions);
-    const result = new CompositeScorer(resMap).score(ast, []);
+    const result = await resolveAndScore(resolver, ast);
 
     // 35-44: 18% = 43.2M, family: 16% = 38.4M, union < sum
     expect(result.estimated_size).toBeGreaterThan(43_200_000);
@@ -322,35 +374,31 @@ describe.skip("CompositeScorer — OR union", () => {
   });
 });
 
-describe.skip("CompositeScorer — confidence tier", () => {
+describe("CompositeScorer — confidence tier", () => {
   const resolver = new QueryResolver(MOCK_CATALOG);
 
-  it("high income signal alone → high confidence tier", () => {
+  it("high income signal alone → high confidence tier", async () => {
     const ast = makeAST({
-      op: "LEAF", dimension: "income_band", value: "150k_plus",
+      op: "LEAF", dimension: "income_band", value: "150k+",
       description: "high income households 150k plus affluent", confidence: 0.99,
     });
-    const resolutions = resolver.resolveAST(ast);
-    const resMap = buildResolutionMap(resolutions);
-    const result = new CompositeScorer(resMap).score(ast, []);
+    const result = await resolveAndScore(resolver, ast);
     expect(["high", "medium"]).toContain(result.confidence_tier);
   });
 
-  it("unresolved hint surfaces in warnings", () => {
+  it("unresolved hint surfaces in warnings", async () => {
     const ast = makeAST({
       op: "LEAF", dimension: "age_band", value: "35-44", description: "adults", confidence: 0.9,
     });
-    const resolutions = resolver.resolveAST(ast);
-    const resMap = buildResolutionMap(resolutions);
-    const result = new CompositeScorer(resMap).score(ast, ["afternoon crypto viewers in Wyoming"]);
+    const result = await resolveAndScore(resolver, ast, ["afternoon crypto viewers in Wyoming"]);
     expect(result.warnings.some(w => w.includes("afternoon crypto"))).toBe(true);
   });
 });
 
-describe.skip("CompositeScorer — soccer mom composite (full E2E without API)", () => {
+describe("CompositeScorer — soccer mom composite (full E2E without API)", () => {
   const resolver = new QueryResolver(MOCK_CATALOG);
 
-  it("resolves soccer_mom archetype + Nashville + drama + NOT coffee", () => {
+  it("resolves soccer_mom archetype + Nashville + drama + NOT coffee", async () => {
     const ast = makeAST(
       {
         op: "AND",
@@ -359,16 +407,14 @@ describe.skip("CompositeScorer — soccer mom composite (full E2E without API)",
           { op: "LEAF", dimension: "geo", value: "DMA-659", description: "Nashville Tennessee metro area residents", confidence: 0.97 },
           { op: "LEAF", dimension: "content_genre", value: "drama", description: "afternoon drama television viewers", confidence: 0.95, temporal: { daypart: "afternoon", timezone_inference: "geo" } },
           { op: "NOT", children: [
-            { op: "LEAF", dimension: "interest", value: "coffee", description: "coffee enthusiasts drinkers", confidence: 0.88 },
+            { op: "LEAF", dimension: "interest", value: "coffee", description: "coffee enthusiasts drinkers", confidence: 0.88, is_exclusion: true },
           ]},
         ],
       },
       "soccer moms in Nashville who watch drama in the afternoon and don't like coffee"
     );
 
-    const resolutions = resolver.resolveAST(ast);
-    const resMap = buildResolutionMap(resolutions);
-    const result = new CompositeScorer(resMap).score(ast, []);
+    const result = await resolveAndScore(resolver, ast);
 
     // Coffee excluded
     expect(result.exclude_signals.some(s => s.signal_agent_segment_id === "sig_coffee_enthusiasts")).toBe(true);
@@ -376,18 +422,10 @@ describe.skip("CompositeScorer — soccer mom composite (full E2E without API)",
     expect(result.matched_signals.length).toBeGreaterThan(0);
     // Narrow audience given geo + archetype + genre
     expect(result.estimated_size).toBeLessThan(10_000_000);
-    // Temporal scope preserved on drama signal
+    // Temporal scope preserved on drama signal (when the signal matches)
     const drama = result.matched_signals.find(s => s.signal_agent_segment_id === "sig_drama_viewers");
     if (drama) {
       expect(drama.temporal_scope?.daypart).toBe("afternoon");
     }
-
-    console.log("\n=== Soccer Mom Composite Result ===");
-    console.log("Estimated size:", result.estimated_size.toLocaleString());
-    console.log("Confidence:", result.confidence.toFixed(2), `(${result.confidence_tier})`);
-    console.log("Matched signals:", result.matched_signals.map(s => `${s.name} [${s.match_score.toFixed(2)}]`).join(", "));
-    console.log("Excluded signals:", result.exclude_signals.map(s => s.name).join(", "));
-    console.log("Dimension breakdown:");
-    result.dimension_breakdown.forEach(d => console.log(`  ${d.dimension}=${d.value} → ${d.top_match ?? "none"} (${d.match_score.toFixed(2)})`));
   });
 });

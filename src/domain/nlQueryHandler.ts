@@ -117,7 +117,7 @@ export async function handleNLQuery(
  * If a signal ID is not found in the catalog we build a minimal stub
  * so the scorer does not crash.
  */
-function adaptToLeafResolutions(
+export function adaptToLeafResolutions(
   resolvedLeaves: ResolvedLeaf[],
   catalogById: Map<string, CatalogSignal>,
 ): any[] {

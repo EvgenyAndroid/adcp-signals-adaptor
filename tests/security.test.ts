@@ -74,6 +74,13 @@ describe("MCP tool definitions — outputSchema", () => {
     expect(schema.required).toContain("supported_protocols");
   });
 
+  it("get_adcp_capabilities inputSchema advertises both `protocols` (array) and `protocol` (singular alias)", () => {
+    const schema = getToolByName("get_adcp_capabilities")!.inputSchema;
+    const props = schema.properties as Record<string, { type?: string }>;
+    expect(props.protocols?.type).toBe("array");
+    expect(props.protocol?.type).toBe("string");
+  });
+
   it("activate_signal outputSchema requires task_id, status, signal_agent_segment_id", () => {
     const schema = getToolByName("activate_signal")!.outputSchema!;
     expect(schema.required).toEqual(

@@ -523,6 +523,9 @@ curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/concepts/se
 npm test                                                # unit (no API key)
 ANTHROPIC_API_KEY=sk-ant-... npm run test:integration  # integration
 bash test-nlaq-live.sh                                 # live smoke tests
+npm run test:live                                       # full live API suite (35 checks against the deployed Worker)
+# Override target/key for staging:
+BASE=https://staging.example.workers.dev API_KEY=xxx npm run test:live
 ```
 
 57 unit tests + NLAQ test suite covering: ID utilities, estimation, taxonomy loader, rule engine, signal catalog, DTS v1.2, MCP tool definitions (8 tools), NL query AST, three-pass resolver, archetype expansion, title inference, unresolved handling, cosine similarity, mixed-space detection.

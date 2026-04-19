@@ -250,10 +250,16 @@ async function callGetCapabilities(
     args: Record<string, unknown>,
     env: Env
 ): Promise<unknown> {
-    const raw = args["protocols"];
-    const protocols = Array.isArray(raw)
-        ? raw.filter((p): p is string => typeof p === "string")
-        : undefined;
+    // Accept both `protocols` (array, canonical) and `protocol` (string, singular
+    // alias) — some clients/evaluators send the singular form. Same intent.
+    const rawArr = args["protocols"];
+    const rawSingle = args["protocol"];
+    let protocols: string[] | undefined;
+    if (Array.isArray(rawArr)) {
+        protocols = rawArr.filter((p): p is string => typeof p === "string");
+    } else if (typeof rawSingle === "string" && rawSingle.length > 0) {
+        protocols = [rawSingle];
+    }
     const caps = await getCapabilities(env.SIGNALS_CACHE, protocols);
     return toolResult(JSON.stringify(caps, null, 2), caps);
 }

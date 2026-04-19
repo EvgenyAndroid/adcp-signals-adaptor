@@ -8,6 +8,7 @@
     "deploy": "wrangler deploy",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:live": "bash scripts/test-live.sh",
     "type-check": "tsc --noEmit",
     "db:migrate": "wrangler d1 migrations apply adcp-signals-db",
     "db:seed": "wrangler d1 execute adcp-signals-db --file=./migrations/seed.sql",

@@ -70,6 +70,13 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                         enum: [...PROTOCOL_ENUM],
                     },
                 },
+                protocol: {
+                    type: "string",
+                    description:
+                        "Singular alias for `protocols` — accepts a single protocol name. " +
+                        "Provided for compatibility with clients that use the singular form.",
+                    enum: [...PROTOCOL_ENUM],
+                },
             },
         },
         outputSchema: {

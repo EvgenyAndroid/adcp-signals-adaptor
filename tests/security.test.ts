@@ -8,6 +8,92 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { constantTimeEqual, requireAuth } from "../src/routes/shared";
 import { escapeHtml, escapeHtmlAttr, handleLinkedInAuthInit, handleLinkedInAuthCallback } from "../src/activations/auth/linkedin";
 import { corsHeaders } from "../src/index";
+import { ADCP_TOOLS, getToolByName } from "../src/mcp/tools";
+import { toolResult } from "../src/mcp/server";
+
+// ── toolResult helper: structuredContent + backwards-compat text ──────────────
+
+describe("toolResult", () => {
+  function firstText(r: unknown): string {
+    const block = (r as { content?: { type?: string; text?: string }[] }).content?.[0];
+    if (!block || typeof block.text !== "string") throw new Error("expected text content block");
+    return block.text;
+  }
+
+  it("emits content[].text and isError when called with text only", () => {
+    const r = toolResult("hello") as { isError: boolean; structuredContent?: unknown };
+    expect(firstText(r)).toBe("hello");
+    expect(r.isError).toBe(false);
+    expect(r.structuredContent).toBeUndefined();
+  });
+
+  it("emits both content[].text AND structuredContent when given structured data", () => {
+    const obj = { adcp: { major_versions: [3] }, supported_protocols: ["signals"] };
+    const r = toolResult(JSON.stringify(obj), obj) as { structuredContent: unknown };
+    expect(r.structuredContent).toEqual(obj);
+    expect(JSON.parse(firstText(r))).toEqual(obj);
+  });
+
+  it("backwards compat: stringified text always parses to the same object as structuredContent", () => {
+    const obj = { task_id: "op_x", status: "pending", signal_agent_segment_id: "sig_y", deployments: [] };
+    const r = toolResult(JSON.stringify(obj, null, 2), obj) as { structuredContent: unknown };
+    expect(JSON.parse(firstText(r))).toEqual(r.structuredContent);
+  });
+});
+
+// ── MCP tool definitions: outputSchema presence ───────────────────────────────
+//
+// MCP 2025-06-18 §Tools: tools that return structured data SHOULD declare an
+// `outputSchema` so clients can validate `structuredContent`. AdCP-style
+// schema-validating evaluators read the structuredContent field directly;
+// without outputSchema + structuredContent, they see a stringified text block
+// and fail validation.
+
+describe("MCP tool definitions — outputSchema", () => {
+  const STRUCTURED_TOOLS = [
+    "get_adcp_capabilities",
+    "get_signals",
+    "activate_signal",
+    "get_operation_status",
+    "get_similar_signals",
+    "query_signals_nl",
+    "get_concept",
+    "search_concepts",
+  ];
+
+  it.each(STRUCTURED_TOOLS)("'%s' declares an outputSchema", (toolName) => {
+    const tool = getToolByName(toolName);
+    expect(tool).toBeDefined();
+    expect(tool!.outputSchema).toBeDefined();
+    expect(tool!.outputSchema!.type).toBe("object");
+  });
+
+  it("get_adcp_capabilities outputSchema requires adcp + supported_protocols (matches v3)", () => {
+    const schema = getToolByName("get_adcp_capabilities")!.outputSchema!;
+    expect(schema.required).toContain("adcp");
+    expect(schema.required).toContain("supported_protocols");
+  });
+
+  it("activate_signal outputSchema requires task_id, status, signal_agent_segment_id", () => {
+    const schema = getToolByName("activate_signal")!.outputSchema!;
+    expect(schema.required).toEqual(
+      expect.arrayContaining(["task_id", "status", "signal_agent_segment_id"])
+    );
+  });
+
+  it("get_operation_status outputSchema requires task_id, status, signal_agent_segment_id", () => {
+    const schema = getToolByName("get_operation_status")!.outputSchema!;
+    expect(schema.required).toEqual(
+      expect.arrayContaining(["task_id", "status", "signal_agent_segment_id"])
+    );
+  });
+
+  it("every advertised tool is round-trippable via getToolByName", () => {
+    for (const t of ADCP_TOOLS) {
+      expect(getToolByName(t.name)).toBe(t);
+    }
+  });
+});
 
 // ── CORS headers ──────────────────────────────────────────────────────────────
 //

@@ -61,11 +61,14 @@ export async function searchSignalsService(
     req.brief ? rankByRelevance(signals, req.brief).slice(0, limit) : signals
   );
 
-  // Filter deployments by requested destinations array
-  if (req.destinations && req.destinations.length > 0) {
-    const requestedPlatforms = req.destinations
-      .filter((d) => d.type === "platform" && d.platform)
-      .map((d) => d.platform as string);
+  // Filter deployments by requested platforms. The request field is
+  // `deployments` on SearchSignalsRequest (not `destinations` — that was
+  // a typo from an earlier iteration that made this entire filter a silent
+  // no-op because the property didn't exist).
+  if (req.deployments && req.deployments.length > 0) {
+    const requestedPlatforms = req.deployments
+      .filter((d: { type: string; platform?: string }) => d.type === "platform" && d.platform)
+      .map((d: { platform?: string }) => d.platform as string);
     if (requestedPlatforms.length > 0) {
       summaries = summaries
         .map((s) => ({
@@ -360,15 +363,23 @@ export async function getAllSignalsForCatalog(db: DB): Promise<CatalogSignal[]> 
   const { signals } = await searchSignals(db, { limit: 500, offset: 0 });
 
   return signals.map((s): CatalogSignal => ({
+    // CatalogSignal's typed field is `id` (see semanticResolver's
+    // CatalogSignalForSemantic); production code reads signal.id throughout
+    // the resolver/scorer. We set both `id` (spec-aligned) and
+    // `signal_agent_segment_id` (D1 wire-name) so consumers reading either
+    // — including the nlQueryHandler catalog-map builder that checks both —
+    // see the same value.
+    id: s.signalId,
     signal_agent_segment_id: s.signalId,
     name: s.name,
+    category: s.categoryType,
     category_type: s.categoryType,
     estimated_audience_size: s.estimatedAudienceSize ?? 0,
     coverage_percentage: s.estimatedAudienceSize
       ? s.estimatedAudienceSize / TOTAL_ADDRESSABLE
       : 0,
     description: s.description,
-    iab_taxonomy_ids: s.taxonomyId ? [s.taxonomyId] : undefined,
+    ...(s.externalTaxonomyId ? { iab_taxonomy_ids: [s.externalTaxonomyId] } : {}),
     rules: inferRulesFromSignalId(s.signalId),
   }));
 }

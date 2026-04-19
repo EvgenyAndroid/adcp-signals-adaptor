@@ -117,6 +117,10 @@ export interface UcpCapabilityDeclaration {
     embedding_endpoint_template: string;       // "/signals/{signal_id}/embedding"
     similarity_search: boolean;      // true when get_similar_signals tool present
     phase: UcpEmbeddingPhase;
+    // Optional: GTS (Golden Test Set) version advertised by /ucp/gts so
+    // capability_discovery responses can declare which GTS pair set they
+    // align with.
+    gts_version?: string;
 }
 
 // ── Similarity Search ─────────────────────────────────────────────────────────

@@ -17,8 +17,43 @@
  *   Floor: 50K households (below this → "narrow" confidence tier).
  */
 
-import type { AudienceQueryNode, AudienceQueryLeaf, AudienceQueryBranch, AudienceQueryAST } from "./queryParser.js";
-import type { LeafResolution, ResolvedSignal, CatalogSignal } from "./queryResolver.js";
+import type { AudienceQueryNode, AudienceQueryLeaf, AudienceQueryBranch, AudienceQueryAST, TemporalScope } from "./queryParser.js";
+import type { CatalogSignal } from "./queryResolver.js";
+
+// LeafResolution + ResolvedSignal were previously imported from queryResolver
+// but were removed when QueryResolver was refactored to its current
+// resolveAST / ResolvedLeaf / LeafMatch shape. The CompositeScorer still
+// consumes the older nested shape, populated by adaptToLeafResolutions in
+// nlQueryHandler — these declarations describe what that adapter produces.
+//
+// The nested `signal` field is typed loosely because the adapter normalises
+// several sources of truth (D1 rows, CatalogSignal objects, stubs for unknown
+// IDs) into a minimal superset — tightening the type here would cascade
+// through 10+ call sites for no correctness benefit, since the scorer's
+// consumers (`topMatch.signal.coverage_percentage`, etc.) supply their own
+// defaults inline.
+export interface ResolvedSignal {
+  signal: {
+    signal_agent_segment_id: string;
+    name: string;
+    description?: string;
+    coverage_percentage: number;
+    estimated_audience_size: number;
+    iab_taxonomy_ids?: string[];
+    category?: string;
+    [key: string]: unknown;
+  };
+  match_score: number;
+  match_method: string;
+  is_exclusion: boolean;
+  temporal_scope?: TemporalScope;
+}
+
+export interface LeafResolution {
+  leaf: AudienceQueryLeaf;
+  matches: ResolvedSignal[];
+  is_exclusion: boolean;
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -179,6 +214,7 @@ export class CompositeScorer {
     }
 
     const topMatch = resolution.matches[0];
+    if (!topMatch) return emptyNode(leaf.confidence * 0.3);
     const size = Math.round(topMatch.signal.coverage_percentage * US_ADULT_BASELINE);
     return {
       signals: resolution.matches,
@@ -262,7 +298,11 @@ export class CompositeScorer {
   private scoreNOT(branch: AudienceQueryBranch): AudienceNode {
     // NOT nodes flip the match into exclude_signals; we score the child
     // but return it in exclude_signals rather than signals.
-    const child = this.scoreNode(branch.children[0]);
+    const firstChild = branch.children[0];
+    if (!firstChild) {
+      return { signals: [], estimated_size: US_ADULT_BASELINE, confidence: 0, exclude_signals: [] };
+    }
+    const child = this.scoreNode(firstChild);
     const invertedSize = US_ADULT_BASELINE - child.estimated_size;
     return {
       signals: [],
@@ -330,7 +370,7 @@ export function buildResolutionMap(resolutions: LeafResolution[]): Map<string, L
     const key = `${r.leaf.dimension}::${r.leaf.value}`;
     // Keep highest-confidence resolution if same key appears twice (archetype expansion)
     const existing = map.get(key);
-    if (!existing || r.matches[0]?.match_score > (existing.matches[0]?.match_score ?? 0)) {
+    if (!existing || (r.matches[0]?.match_score ?? 0) > (existing.matches[0]?.match_score ?? 0)) {
       map.set(key, r);
     }
   }

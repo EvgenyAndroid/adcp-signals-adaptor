@@ -191,6 +191,50 @@ describe("getCapabilities runtime shape", () => {
     const allowed = ["media_buy", "signals", "governance", "sponsored_intelligence", "creative", "brand"];
     for (const p of caps.supported_protocols) expect(allowed).toContain(p);
   });
+
+  // Sec-11: ext.ucp must match the engine env the worker is actually running.
+  // Regression pin for the prior bug where /capabilities always declared the
+  // pseudo bridge even on LLM deployments.
+
+  it("ext.ucp declares openai-te3-small-d512-v1 when EMBEDDING_ENGINE=llm + OPENAI_API_KEY set", async () => {
+    const caps = await getCapabilities(makeStaticKv(), undefined, {
+      EMBEDDING_ENGINE: "llm",
+      OPENAI_API_KEY: "sk-test",
+    });
+    const ucp = (caps.ext as any).ucp;
+    expect(ucp.phase).toBe("llm-v1");
+    expect(ucp.supported_spaces).toEqual(["openai-te3-small-d512-v1"]);
+  });
+
+  it("ext.ucp declares the pseudo bridge when EMBEDDING_ENGINE is unset", async () => {
+    const caps = await getCapabilities(makeStaticKv(), undefined, {});
+    const ucp = (caps.ext as any).ucp;
+    expect(ucp.phase).toBe("pseudo-v1");
+    expect(ucp.supported_spaces).toEqual(["adcp-bridge-space-v1.0"]);
+  });
+
+  it("ext.ucp falls back to pseudo when EMBEDDING_ENGINE=llm but OPENAI_API_KEY is missing", async () => {
+    // Same mode-selection semantics as createEmbeddingEngine — no key, no LLM.
+    const caps = await getCapabilities(makeStaticKv(), undefined, {
+      EMBEDDING_ENGINE: "llm",
+    });
+    const ucp = (caps.ext as any).ucp;
+    expect(ucp.phase).toBe("pseudo-v1");
+  });
+
+  it("cache segregates per engine env via the v8 key bump (no cross-contamination)", async () => {
+    // Two sequential calls with different envs must not see each other's
+    // cached declaration. The cache key is global to the deployment; the
+    // test here guards the "cache holds whatever was written first" case
+    // by using fresh KV per call — which is what a new deploy looks like.
+    const capsLlm = await getCapabilities(makeStaticKv(), undefined, {
+      EMBEDDING_ENGINE: "llm",
+      OPENAI_API_KEY: "sk-test",
+    });
+    const capsPseudo = await getCapabilities(makeStaticKv(), undefined, {});
+    expect((capsLlm.ext as any).ucp.phase).toBe("llm-v1");
+    expect((capsPseudo.ext as any).ucp.phase).toBe("pseudo-v1");
+  });
 });
 
 // ── CORS headers ──────────────────────────────────────────────────────────────

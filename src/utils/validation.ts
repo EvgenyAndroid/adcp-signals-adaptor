@@ -83,7 +83,12 @@ export function validateActivateRequest(body: unknown): ValidationResult {
     return fail("MISSING_DESTINATION", "destination is required");
   }
 
-  if (!VALID_DESTINATIONS.has(req.destination)) {
+  // Platform destinations must be in our supported set. Agent destinations
+  // are caller-supplied URLs ("https://...") that don't appear in
+  // VALID_DESTINATIONS by design — every signals agent MUST accept
+  // type=agent per docs/signals/specification.mdx:186, so we skip the
+  // membership check when destinationType === "agent".
+  if (req.destinationType !== "agent" && !VALID_DESTINATIONS.has(req.destination)) {
     return fail(
       "INVALID_DESTINATION",
       `destination must be one of: ${[...VALID_DESTINATIONS].join(", ")}`

@@ -506,6 +506,63 @@ describe("OAuth state lifecycle", () => {
     expect(await res.text()).toContain("Invalid State");
   });
 
+  // Sec-14: status-code pins. Body contents stay the same; the status
+  // codes let monitoring + edge cache distinguish caller vs server vs
+  // provider failures.
+  it("Invalid State returns HTTP 400 (caller-side bad state)", async () => {
+    const { db } = makeOAuthDb();
+    const env = makeEnv(makeKv(), db);
+    const res = await handleLinkedInAuthCallback(
+      new Request("https://example.com/cb?state=fabricated"),
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("Invalid State (no state at all) returns HTTP 400", async () => {
+    const { db } = makeOAuthDb();
+    const env = makeEnv(makeKv(), db);
+    const res = await handleLinkedInAuthCallback(
+      new Request("https://example.com/cb"),
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("Authorization Failed (provider error) returns HTTP 502", async () => {
+    const { db } = makeOAuthDb();
+    const env = makeEnv(makeKv(), db);
+    // Issue a state we can spend so we get past the state-check branch
+    // and into the `if (error)` branch.
+    const initRes = await handleLinkedInAuthInit(env);
+    const html = await initRes.text();
+    const m = html.match(/href="([^"]*linkedin\.com[^"]*)"/);
+    if (!m || !m[1]) throw new Error("authorize URL not found");
+    const state = extractState(m[1].replace(/&amp;/g, "&"));
+    const res = await handleLinkedInAuthCallback(
+      new Request(`https://example.com/cb?state=${state}&error=access_denied`),
+      env,
+    );
+    expect(res.status).toBe(502);
+    expect(await res.text()).toContain("Authorization Failed");
+  });
+
+  it("Missing Code (no code, no error) returns HTTP 400", async () => {
+    const { db } = makeOAuthDb();
+    const env = makeEnv(makeKv(), db);
+    const initRes = await handleLinkedInAuthInit(env);
+    const html = await initRes.text();
+    const m = html.match(/href="([^"]*linkedin\.com[^"]*)"/);
+    if (!m || !m[1]) throw new Error("authorize URL not found");
+    const state = extractState(m[1].replace(/&amp;/g, "&"));
+    const res = await handleLinkedInAuthCallback(
+      new Request(`https://example.com/cb?state=${state}`), // no code, no error
+      env,
+    );
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain("Missing Code");
+  });
+
   it("callback escapes provider-supplied error_description", async () => {
     const { db } = makeOAuthDb();
     const env = makeEnv(makeKv(), db);

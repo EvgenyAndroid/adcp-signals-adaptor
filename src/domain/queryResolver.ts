@@ -45,7 +45,11 @@ export interface LeafMatch {
   match_score: number;
   match_method: MatchMethod;
   is_exclusion: boolean;
-  concept_id?: string;
+  // Required-but-nullable rather than optional, so downstream pushes
+  // can pass `leaf.concept_id` (already string | undefined) without
+  // tripping exactOptionalPropertyTypes. Consumers that previously
+  // checked `if (m.concept_id)` keep working — undefined is falsy.
+  concept_id: string | undefined;
 }
 
 export interface ResolvedLeaf {

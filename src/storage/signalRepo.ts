@@ -1,6 +1,6 @@
 // src/storage/signalRepo.ts
 
-import type { CanonicalSignal } from "../types/signal";
+import type { CanonicalSignal, SegmentRule } from "../types/signal";
 import type { SearchSignalsRequest } from "../types/api";
 import { queryAll, queryFirst, execute, executeBatch, type DB } from "./db";
 
@@ -67,8 +67,16 @@ function rowToSignal(row: SignalRow, rules: RuleRow[] = []): CanonicalSignal {
       ? { estimatedAudienceSize: row.estimated_audience_size }
       : {}),
     ...(row.geography ? { geography: safeJsonParse<string[]>(row.geography, []) } : {}),
+    // pricing parsed via safeJsonParse — the fallback (`undefined`) never
+    // fires here because we just checked row.pricing is non-null. Cast to
+    // NonNullable so the spread satisfies exactOptionalPropertyTypes.
     ...(row.pricing
-      ? { pricing: safeJsonParse<CanonicalSignal["pricing"]>(row.pricing, undefined as CanonicalSignal["pricing"]) }
+      ? {
+          pricing: safeJsonParse<NonNullable<CanonicalSignal["pricing"]>>(
+            row.pricing,
+            { model: "mock_cpm" } as NonNullable<CanonicalSignal["pricing"]>,
+          ),
+        }
       : {}),
     ...(row.freshness ? { freshness: row.freshness } : {}),
     accessPolicy: row.access_policy as CanonicalSignal["accessPolicy"],
@@ -79,13 +87,11 @@ function rowToSignal(row: SignalRow, rules: RuleRow[] = []): CanonicalSignal {
       : {}),
     ...(rules.length > 0
       ? {
-          rules: rules.map((r) => ({
-            dimension: r.dimension as CanonicalSignal["rules"] extends Array<infer R>
-              ? R["dimension"]
-              : never,
-            operator: r.operator as CanonicalSignal["rules"] extends Array<infer R>
-              ? R["operator"]
-              : never,
+          // Use the SegmentRule type directly instead of the Array<infer R>
+          // dance that TS couldn't index. Same runtime shape, simpler types.
+          rules: rules.map((r): SegmentRule => ({
+            dimension: r.dimension as SegmentRule["dimension"],
+            operator: r.operator as SegmentRule["operator"],
             value: safeJsonParse<string | number | string[]>(r.value, r.value as string),
             ...(r.weight !== null ? { weight: r.weight } : {}),
           })),

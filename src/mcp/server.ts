@@ -6,6 +6,7 @@
 
 import type { Env } from "../types/env";
 import type { Logger } from "../utils/logger";
+import type { SearchSignalsRequest } from "../types/api";
 import { requireAuth } from "../routes/shared";
 import { ADCP_TOOLS, getToolByName } from "./tools";
 import { getCapabilities } from "../domain/capabilityService";
@@ -26,6 +27,7 @@ import { toSignalSummary } from "../mappers/signalMapper";
 import { getAllSignalsForCatalog } from "../domain/signalService";
 import { handleNLQuery } from "../domain/nlQueryHandler";
 import { handleConceptToolCall } from "../domain/conceptHandler";
+import { compactObj } from "../utils/objects";
 
 // ── JSON-RPC 2.0 types ────────────────────────────────────────────────────────
 
@@ -336,12 +338,14 @@ async function callGetSignals(
     const pagination = args["pagination"] as Record<string, unknown> | undefined;
 
     const req = {
-        brief: (args["signal_spec"] ?? args["brief"]) as string | undefined,
-        query: (filters?.["query"] ?? args["query"]) as string | undefined,
-        categoryType: (filters?.["category_type"] ?? args["categoryType"]) as string | undefined,
-        generationMode: (filters?.["generation_mode"] ?? args["generationMode"]) as string | undefined,
-        taxonomyId: (filters?.["taxonomy_id"] ?? args["taxonomyId"]) as string | undefined,
-        destination: args["destination"] as string | undefined,
+        ...compactObj({
+            brief: (args["signal_spec"] ?? args["brief"]) as string | undefined,
+            query: (filters?.["query"] ?? args["query"]) as string | undefined,
+            categoryType: (filters?.["category_type"] ?? args["categoryType"]) as string | undefined,
+            generationMode: (filters?.["generation_mode"] ?? args["generationMode"]) as string | undefined,
+            taxonomyId: (filters?.["taxonomy_id"] ?? args["taxonomyId"]) as string | undefined,
+            destination: args["destination"] as string | undefined,
+        }),
         // Use `!= null` (matches both null and undefined) instead of truthy
         // checks so a literal 0 isn't silently replaced by the default.
         limit: numArg(args["max_results"], numArg(args["limit"], 20)),
@@ -349,7 +353,11 @@ async function callGetSignals(
     };
 
     const db = getDb(env);
-    const result = await searchSignalsService(db, env.SIGNALS_CACHE, req);
+    // The compactObj-stripped req widens enum-typed fields (categoryType,
+    // generationMode) to plain string. The runtime values are still the
+    // canonical AdCP enum members — cast to satisfy the stricter typed
+    // signature on searchSignalsService.
+    const result = await searchSignalsService(db, env.SIGNALS_CACHE, req as SearchSignalsRequest);
 
     // Echo back the request's context block. Signals storyboard validates
     // `context.correlation_id` round-trips. Per /schemas/core/context.json,
@@ -400,10 +408,12 @@ async function callActivateSignal(
         signalId,
         destination: resolvedDestination,
         destinationType,
-        accountId: args["accountId"] as string | undefined,
-        campaignId: args["campaignId"] as string | undefined,
-        notes: args["notes"] as string | undefined,
-        webhookUrl,
+        ...compactObj({
+            accountId: args["accountId"] as string | undefined,
+            campaignId: args["campaignId"] as string | undefined,
+            notes: args["notes"] as string | undefined,
+            webhookUrl,
+        }),
     };
 
     const validation = validateActivateRequest(req);

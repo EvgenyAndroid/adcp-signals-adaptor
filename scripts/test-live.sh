@@ -193,10 +193,11 @@ run "linkedin status requires auth"       401 ''  "$BASE/auth/linkedin/status"
 run "linkedin status with auth reachable" 200 ''  -H "Authorization: Bearer $KEY" "$BASE/auth/linkedin/status"
 # /callback is intentionally public: LinkedIn's 302 back to the worker
 # carries only the OAuth state param, no bearer. The state mechanism
-# (single-use UUID in KV, issued on /init, consumed on /callback) is the
-# defense. A fabricated state must be rejected with the "Invalid State"
-# HTML page rather than proceeding to token exchange.
-run "linkedin callback fabricated state → Invalid State" 200 '' \
+# (single-use UUID in D1, issued on /init, consumed on /callback) is the
+# defense. A fabricated state is rejected with the "Invalid State"
+# HTML page AND now returns HTTP 400 (Sec-14) — caller-supplied bad
+# state is a 4xx, not a server-side success.
+run "linkedin callback fabricated state → 400 + Invalid State" 400 '' \
     "$BASE/auth/linkedin/callback?state=fabricated-by-attacker"
 # Additional correctness check — response body is the Invalid State page,
 # not some generic success. Shell-side since the body is HTML, not JSON.

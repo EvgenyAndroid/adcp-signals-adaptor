@@ -182,27 +182,35 @@ export async function handleLinkedInAuthCallback(
       has_error: !!error,
       ua: request.headers.get('user-agent') ?? null,
     }));
+    // 400: caller-side bug or replay. State was missing, expired, or already
+    // consumed — none of these are server faults; the client (LinkedIn redirect
+    // chain) supplied a value we can't honor.
     return htmlResponse('Invalid State', `
       <p style="color:#ef4444">OAuth state missing, expired, or already used.</p>
       <p>This protects against CSRF. Start the flow fresh.</p>
       <p>Restart the flow by calling <code>GET /auth/linkedin/init</code> with your API key.</p>
-    `);
+    `, 400);
   }
 
   if (error) {
+    // 502: LinkedIn (the upstream provider) returned an OAuth error response.
+    // The status code lets uptime/observability distinguish "we're down" from
+    // "user declined / scope rejected at LinkedIn."
     return htmlResponse('Authorization Failed', `
       <p style="color:#ef4444">LinkedIn returned an error:</p>
       <pre style="color:#fb923c">${escapeHtml(error)}: ${escapeHtml(errorDesc ?? '')}</pre>
       <p>Common causes: user denied access, or scopes not approved on your app.</p>
       <p>Restart the flow by calling <code>GET /auth/linkedin/init</code> with your API key.</p>
-    `);
+    `, 502);
   }
 
   if (!code) {
+    // 400: malformed callback — the redirect should always carry either a
+    // `code` or an `error`. Missing both means the client URL was tampered.
     return htmlResponse('Missing Code', `
       <p style="color:#ef4444">No authorization code in callback URL.</p>
       <p>Restart the flow by calling <code>GET /auth/linkedin/init</code> with your API key.</p>
-    `);
+    `, 400);
   }
 
   let tokenSet: LinkedInTokenSet;
@@ -210,12 +218,15 @@ export async function handleLinkedInAuthCallback(
     tokenSet = await exchangeCodeForTokens(code, env);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    // 502: the LinkedIn token endpoint failed for us (network, 5xx, or
+    // bad client secret). Distinguishes server-side breakage from the
+    // 400 cases above (which are caller / URL problems).
     return htmlResponse('Token Exchange Failed', `
       <p style="color:#ef4444">Failed to exchange code for tokens:</p>
       <pre style="color:#fb923c">${escapeHtml(msg)}</pre>
       <p>Check LINKEDIN_CLIENT_SECRET is set correctly.</p>
       <p>Restart the flow by calling <code>GET /auth/linkedin/init</code> with your API key.</p>
-    `);
+    `, 502);
   }
 
   // Overwrite observability: the token KV keys are global (see
@@ -486,7 +497,20 @@ async function storeTokens(
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function htmlResponse(title: string, content: string): Response {
+/**
+ * Render the OAuth-callback HTML body with the right HTTP status.
+ *
+ * Default 200 (success page); error paths pass an explicit status so
+ * monitoring + cache-control behave correctly:
+ *   - Invalid State / Missing Code  → 400 (caller-side bug or replay)
+ *   - Authorization Failed (provider) → 502 (upstream returned an error)
+ *   - Token Exchange Failed         → 502 (upstream call failed)
+ *
+ * The HTML body remains identical between a 4xx/5xx and a 200 — browsers
+ * still render the same actionable error page; status is for non-browser
+ * observers (uptime probes, edge cache, log dashboards).
+ */
+function htmlResponse(title: string, content: string, status = 200): Response {
   return new Response(`<!DOCTYPE html>
 <html>
 <head>
@@ -508,7 +532,7 @@ function htmlResponse(title: string, content: string): Response {
   <h1>${title}</h1>
   ${content}
 </body>
-</html>`, { status: 200, headers: { 'Content-Type': 'text/html' } });
+</html>`, { status, headers: { 'Content-Type': 'text/html' } });
 }
 
 function json(body: unknown): Response {

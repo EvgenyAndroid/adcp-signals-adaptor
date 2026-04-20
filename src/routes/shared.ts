@@ -28,6 +28,51 @@ export function errorResponse(
   return jsonResponse(body, status);
 }
 
+/**
+ * Result of attempting to parse a JSON request body. Three distinct cases:
+ *   - empty   : caller sent no body (e.g. GET, or POST with content-length 0)
+ *   - parsed  : body was valid JSON, returned as `data`
+ *   - invalid : body was non-empty but didn't parse — caller probably has a bug
+ *
+ * The caller decides what to do per-case. Most search/list routes treat
+ * empty as "no filters" and parsed as "use these filters"; both should
+ * succeed. invalid is the case that previously got silently coerced to
+ * empty (returning unfiltered results for malformed POSTs) — the new
+ * shape forces routes to handle it explicitly, typically as 400.
+ */
+export type JsonBodyResult<T> =
+  | { kind: "empty" }
+  | { kind: "parsed"; data: T }
+  | { kind: "invalid"; reason: string };
+
+export async function readJsonBody<T>(request: Request): Promise<JsonBodyResult<T>> {
+  const cl = request.headers.get("content-length");
+  if (cl === "0") return { kind: "empty" };
+
+  // Read the raw text once so we can tell empty-but-no-content-length apart
+  // from non-empty-but-malformed. request.json() throws on both, which is
+  // why the old parseJsonBody collapsed them.
+  let raw: string;
+  try {
+    raw = await request.text();
+  } catch (e) {
+    return { kind: "invalid", reason: `body read failed: ${String(e)}` };
+  }
+  if (raw.length === 0) return { kind: "empty" };
+
+  try {
+    return { kind: "parsed", data: JSON.parse(raw) as T };
+  } catch (e) {
+    return { kind: "invalid", reason: `body is not valid JSON: ${String(e)}` };
+  }
+}
+
+/**
+ * @deprecated Use `readJsonBody` to distinguish empty vs malformed. This
+ * helper silently treats a malformed body as `null` (same as no body),
+ * which can cause routes to ignore caller bugs. Kept for back-compat
+ * during the migration window.
+ */
 export async function parseJsonBody<T>(request: Request): Promise<T | null> {
   try {
     return (await request.json()) as T;

@@ -4,7 +4,7 @@ import type { Env } from "../types/env";
 import type { SearchSignalsRequest } from "../types/api";
 import { searchSignalsService } from "../domain/signalService";
 import { validateSearchRequest } from "../utils/validation";
-import { jsonResponse, errorResponse, parseJsonBody } from "./shared";
+import { jsonResponse, errorResponse, readJsonBody } from "./shared";
 import { getDb } from "../storage/db";
 import type { Logger } from "../utils/logger";
 
@@ -13,7 +13,16 @@ export async function handleSearchSignals(
   env: Env,
   logger: Logger
 ): Promise<Response> {
-  const body = await parseJsonBody<SearchSignalsRequest>(request);
+  // Distinguish "no body" (GET, or POST with empty body) from "bad body"
+  // (POST with non-JSON content). The previous parseJsonBody collapsed
+  // both into null, so a malformed POST silently returned the full
+  // unfiltered catalog — surprising to callers with a bug in their JSON
+  // serializer.
+  const bodyResult = await readJsonBody<SearchSignalsRequest>(request);
+  if (bodyResult.kind === "invalid") {
+    return errorResponse("INVALID_BODY", bodyResult.reason, 400);
+  }
+  const body = bodyResult.kind === "parsed" ? bodyResult.data : null;
 
   // Support GET-style query params too
   const url = new URL(request.url);

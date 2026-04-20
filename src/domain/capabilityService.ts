@@ -10,10 +10,11 @@
 // Cache key bumped to v6 for the v3-conformant shape (ucp moved to ext)
 // then v7 for the HEAD-schema-conformant shape (adds adcp.idempotency).
 
-// Cache key bumped to v9 — idempotency sub-schema in HEAD switched to a
-// discriminated union requiring `supported: true`; any v8 cache entry
-// would fail schema validation against the HEAD spec. Evict on deploy.
-const CACHE_KEY = "adcp_capabilities_v9";
+// Cache key bumped to v10 — Sec-25b adds signals.limits.default_max_results
+// (the default rows get_signals returns when callers omit max_results);
+// a v9 cache entry would omit the hint and callers couldn't discover it
+// without reading the source. Evict on deploy.
+const CACHE_KEY = "adcp_capabilities_v10";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
@@ -90,6 +91,11 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       limits: {
         max_signals_per_request: 100,
         max_rules_per_segment: 6,
+        // Sec-25b: advertise the default page size so callers know what
+        // they'll get when they omit `max_results`. Rich DTS+UCP payloads
+        // make 5 rows ≈50 KB; larger pages need an explicit `max_results`.
+        // Follows the same shape as the other declared limits.
+        default_max_results: 5,
       },
     },
     ext: {

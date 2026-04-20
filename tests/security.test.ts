@@ -837,6 +837,32 @@ describe("handleMcpRequest — auth gate", () => {
     expect(byId[11].error?.code).toBe(-32001);
   });
 
+  it("Sec-25c: fully-authed batch (all messages require auth) stays HTTP 200 + per-message -32001", async () => {
+    // Boundary case: every message in the batch requires auth and none are
+    // authed. The single-request HTTP 401 path MUST NOT short-circuit here —
+    // JSON-RPC 2.0 batching processes messages independently, and blocking a
+    // batch at the transport layer would break clients that correctly expect
+    // per-message errors. Each tools/call message gets its own -32001 in the
+    // response array; HTTP stays 200.
+    const { status, body, res } = await callAndParse(
+      mcpReq([
+        { jsonrpc: "2.0", id: 30, method: "tools/call", params: { name: "get_adcp_capabilities", arguments: {} } },
+        { jsonrpc: "2.0", id: 31, method: "tools/call", params: { name: "get_signals", arguments: {} } },
+        { jsonrpc: "2.0", id: 32, method: "tools/call", params: { name: "activate_signal", arguments: {} } },
+      ]),
+    );
+    expect(status).toBe(200);
+    // No WWW-Authenticate on batched 200 — that header only appears on the
+    // single-request 401 path.
+    expect(res.headers.get("WWW-Authenticate")).toBeNull();
+    expect(Array.isArray(body)).toBe(true);
+    expect(body).toHaveLength(3);
+    for (const msg of body) {
+      expect(msg.error?.code).toBe(-32001);
+      expect(msg.result).toBeUndefined();
+    }
+  });
+
   it("oversized body (>1MB via Content-Length) rejected pre-parse with -32600", async () => {
     // We lie about Content-Length to avoid allocating a real 1MB body in the
     // test. The guard reads the header before touching request.json().

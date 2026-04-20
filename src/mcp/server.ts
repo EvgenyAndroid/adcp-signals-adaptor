@@ -531,21 +531,37 @@ async function callCreateMediaBuy(args: Record<string, unknown>): Promise<unknow
     const startMs = startTime ? Date.parse(startTime) : Number.NaN;
     const endMs = endTime ? Date.parse(endTime) : Number.NaN;
 
-    let code: string;
-    let message: string;
-    if (!Number.isNaN(startMs) && startMs < now) {
-        code = "INVALID_REQUEST";
-        message = `start_time ${startTime} is in the past — flight must not begin before now.`;
-    } else if (!Number.isNaN(startMs) && !Number.isNaN(endMs) && endMs <= startMs) {
-        code = "INVALID_REQUEST";
-        message = `end_time ${endTime} must be strictly after start_time ${startTime}.`;
-    } else {
-        code = "UNSUPPORTED_OPERATION";
-        message = "This agent sells signals, not media — create_media_buy is stubbed for conformance only.";
-    }
+    // Sec-25a: `recovery` is an optional enum on core/error.json
+    // ("transient" | "correctable" | "terminal"). UNSUPPORTED_OPERATION is
+    // as terminal as it gets — we structurally don't implement the tool,
+    // so a retrying buyer should stop. We omit `recovery` on INVALID_REQUEST
+    // because the right classification depends on the specific violation
+    // (a past start_time is correctable by resubmitting with a future
+    // start; a malformed payload is terminal for this request) — omitting
+    // lets the caller decide rather than advertising the wrong signal.
+    const errEntry: { code: string; message: string; recovery?: "terminal" } =
+        (() => {
+            if (!Number.isNaN(startMs) && startMs < now) {
+                return {
+                    code: "INVALID_REQUEST",
+                    message: `start_time ${startTime} is in the past — flight must not begin before now.`,
+                };
+            }
+            if (!Number.isNaN(startMs) && !Number.isNaN(endMs) && endMs <= startMs) {
+                return {
+                    code: "INVALID_REQUEST",
+                    message: `end_time ${endTime} must be strictly after start_time ${startTime}.`,
+                };
+            }
+            return {
+                code: "UNSUPPORTED_OPERATION",
+                message: "This agent sells signals, not media — create_media_buy is stubbed for conformance only.",
+                recovery: "terminal",
+            };
+        })();
 
     const response = {
-        errors: [{ code, message }],
+        errors: [errEntry],
         ...contextEcho,
     };
     return toolResult(JSON.stringify(response, null, 2), response);

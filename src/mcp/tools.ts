@@ -553,6 +553,11 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                         properties: {
                             code: { type: "string" },
                             message: { type: "string" },
+                            // Sec-25a: optional recovery enum from core/error.json
+                            recovery: {
+                                type: "string",
+                                enum: ["transient", "correctable", "terminal"],
+                            },
                         },
                         additionalProperties: true,
                     },

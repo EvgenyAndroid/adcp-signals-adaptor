@@ -33,6 +33,7 @@ export class LinkedInAdapter {
   async activate(
     request: LinkedInActivationRequest,
     env: LinkedInAdapterEnv,
+    operatorId: string,
   ): Promise<LinkedInActivationResult> {
 
     if (!env.LINKEDIN_AD_ACCOUNT_ID) {
@@ -41,7 +42,7 @@ export class LinkedInAdapter {
 
     let accessToken: string;
     try {
-      accessToken = await getValidAccessToken(env);
+      accessToken = await getValidAccessToken(env, operatorId);
     } catch (err) {
       return this.error(err instanceof Error ? err.message : String(err));
     }

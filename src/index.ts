@@ -25,6 +25,7 @@ import {
     handleLinkedInAuthStatus,
 } from "./activations/auth/linkedin";
 import { handleActivateDispatch } from "./activations/routes/activate";
+import { operatorIdFromRequest } from "./utils/operatorId";
 
 // Seed data imported as text modules via wrangler assets
 import { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv } from "./seedData";
@@ -149,14 +150,32 @@ export default {
                 // DEMO_API_KEY-gated by the top-level auth check above. The
                 // callback's safety rests on the atomic D1 state-consume —
                 // see the publicPaths comment earlier in this file.
+                //
+                // Sec-18: token storage is namespaced per operator. We derive
+                // the operator_id from the bearer token on /init and /status
+                // (which are gated, so the bearer is guaranteed present).
+                // /callback can't derive from a bearer (it's public — no
+                // header), so it pulls operator_id from the consumed
+                // oauth_state row instead. /signals/activate/linkedin gets
+                // the operator_id passed through the dispatch.
             } else if (method === "GET" && path === "/auth/linkedin/init") {
-                response = await handleLinkedInAuthInit(env);
+                const opId = await operatorIdFromRequest(request);
+                if (!opId) {
+                    response = errorResponse("UNAUTHORIZED", "Bearer token required", 401);
+                } else {
+                    response = await handleLinkedInAuthInit(env, opId);
+                }
 
             } else if (method === "GET" && path === "/auth/linkedin/callback") {
                 response = await handleLinkedInAuthCallback(request, env);
 
             } else if (method === "GET" && path === "/auth/linkedin/status") {
-                response = await handleLinkedInAuthStatus(env);
+                const opId = await operatorIdFromRequest(request);
+                if (!opId) {
+                    response = errorResponse("UNAUTHORIZED", "Bearer token required", 401);
+                } else {
+                    response = await handleLinkedInAuthStatus(env, opId);
+                }
 
                 // ── UCP Concept Registry ─────────────────────────────────────────────
             } else if (path.startsWith("/ucp/concepts")) {
@@ -169,9 +188,17 @@ export default {
                 response = await handleNLQuery(body, catalog, env);
 
                 // ── Platform Activation (auth required) ──────────────────────────────
+                // Sec-18: forward operator_id to the activation dispatch so
+                // platform-specific routes (LinkedIn) can scope the calling
+                // operator's tokens correctly.
             } else if (method === "POST" && path.startsWith("/signals/activate/")) {
                 const platform = path.replace("/signals/activate/", "").split("/")[0] ?? "";
-                response = await handleActivateDispatch(request, env, platform);
+                const opId = await operatorIdFromRequest(request);
+                if (!opId) {
+                    response = errorResponse("UNAUTHORIZED", "Bearer token required", 401);
+                } else {
+                    response = await handleActivateDispatch(request, env, platform, opId);
+                }
 
                 // ── MCP ───────────────────────────────────────────────────────────────
                 // OPTIONS is handled by the early global preflight at the top of fetch.

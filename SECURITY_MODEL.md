@@ -85,23 +85,6 @@ Old plaintext entries continue to be readable via the legacy fallback in
 `decryptIfNeeded` and get re-encrypted on the next OAuth refresh. No
 migration script needed.
 
-## Callback HTTP status code disposition
-
-`/auth/linkedin/callback` error pages return HTTP 200 with HTML bodies
-that contain "Invalid State" / "Authorization Failed" / etc. instead of
-mapping to 4xx/5xx. This is **intentional for the demo posture**:
-
-- The page renders as a usable UI for the operator (back-link, error
-  detail) regardless of status.
-- The browser navigates to it as a top-level redirect from LinkedIn —
-  4xx would surface as a generic browser error page in some browsers,
-  hiding the actionable detail.
-
-If observability or cache-behaviour eventually warrants proper status
-codes (a 5xx page is implicitly cacheable as a "real" success in some
-edge configs), the fix is small (`htmlResponse(title, content, status)`).
-Logged for future cleanup, not currently a defect.
-
 ## What does NOT live here
 
 - Code-level auth gates: see inline comments around `publicPaths` in
@@ -110,7 +93,10 @@ Logged for future cleanup, not currently a defect.
 - Webhook signing format: see
   [src/domain/webhookSigning.ts](src/domain/webhookSigning.ts) and the
   "Webhook signatures" section of README.md.
-- Webhook retry policy: see [src/domain/activationService.ts](src/domain/activationService.ts)
-  `fireWebhook` — current implementation re-fires on every poll until
-  the receiver returns 2xx (no max-attempts cap). Bounded retries are
-  a known follow-up.
+- Webhook retry policy: bounded at 5 attempts with exponential backoff
+  (30s → 2m → 8m → 32m). See `MAX_WEBHOOK_ATTEMPTS` and `backoffSeconds`
+  in [src/domain/activationService.ts](src/domain/activationService.ts).
+- Callback error-page HTTP status codes: 400 for caller-side bad state
+  (Invalid State, Missing Code), 502 for upstream provider failures
+  (Authorization Failed, Token Exchange Failed). 200 only on success.
+  See `htmlResponse` in [src/activations/auth/linkedin.ts](src/activations/auth/linkedin.ts).

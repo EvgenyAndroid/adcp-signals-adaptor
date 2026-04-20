@@ -362,22 +362,7 @@ async function callGetSignals(
     env: Env
 ): Promise<unknown> {
     const filters = args["filters"] as Record<string, unknown> | undefined;
-    const deliverTo = args["deliver_to"] as Record<string, unknown> | undefined;
     const pagination = args["pagination"] as Record<string, unknown> | undefined;
-
-    // Probe-shaped request (security_baseline/api_key_path calls with an empty
-    // body per PROBE_TASK_ALLOWLIST semantics — auth-required, read-only,
-    // accepts empty). Full catalog with rich DTS + UCP payloads on every row
-    // serializes to ~200 KB; the runner's response ceiling is 65536 bytes.
-    // When nothing narrows the query, cap to 3 rows so a bare probe stays
-    // well under budget without changing the default for real callers.
-    const isProbeShape =
-        args["signal_spec"] === undefined &&
-        args["brief"] === undefined &&
-        args["signal_ids"] === undefined &&
-        (filters === undefined || Object.keys(filters).length === 0) &&
-        (deliverTo === undefined || Object.keys(deliverTo).length === 0);
-    const defaultLimit = isProbeShape ? 3 : 20;
 
     const req = {
         ...compactObj({
@@ -390,7 +375,15 @@ async function callGetSignals(
         }),
         // Use `!= null` (matches both null and undefined) instead of truthy
         // checks so a literal 0 isn't silently replaced by the default.
-        limit: numArg(args["max_results"], numArg(args["limit"], defaultLimit)),
+        //
+        // Sec-24b: global default of 5 (was 20 with a probe-shape carve-out
+        // to 3). Rich DTS + UCP payloads make 20-row responses >200 KB —
+        // breaking the security_baseline runner's 64 KB probe ceiling and
+        // many HTTP clients' default parse budgets. 5 rows serializes to
+        // ~50 KB, leaves headroom, and `hasMore` + `totalCount` in the
+        // response make pagination discoverable. Callers who want the
+        // bigger page still pass `max_results` explicitly.
+        limit: numArg(args["max_results"], numArg(args["limit"], 5)),
         offset: numArg(pagination?.["offset"], numArg(args["offset"], 0)),
     };
 
@@ -519,12 +512,13 @@ async function callActivateSignal(
     }
 }
 
-// Sec-22: stub create_media_buy — we're a signals provider, not a media-buy
-// seller. Returns an AdCP error envelope (L3 structured: `adcp_error.code`
-// AND top-level `error_code`) so the universal schema_validation storyboard's
-// past_start_reject_path can contribute `past_start_handled`. The runner
-// extracts error_code from `structuredContent.adcp_error.code` or `.error_code`
-// (validations.js:383). Context is echoed unchanged per /schemas/core/context.
+// Sec-22 / Sec-24c: stub create_media_buy — we're a signals provider, not a
+// media-buy seller. Returns the spec-canonical error envelope —
+// `{ errors: [{ code, message }], context }` — per the AdCP error-compliance
+// doc. Sec-24c: removed the non-spec `error_code` top-level and duplicate
+// `adcp_error` fields the earlier revision carried as belt-and-braces for
+// the permissive runner extractor; extras risk colliding with future spec
+// fields of the same name.
 async function callCreateMediaBuy(args: Record<string, unknown>): Promise<unknown> {
     const startTime = typeof args["start_time"] === "string" ? args["start_time"] : undefined;
     const endTime = typeof args["end_time"] === "string" ? args["end_time"] : undefined;
@@ -551,9 +545,7 @@ async function callCreateMediaBuy(args: Record<string, unknown>): Promise<unknow
     }
 
     const response = {
-        error_code: code,
-        adcp_error: { code, message },
-        message,
+        errors: [{ code, message }],
         ...contextEcho,
     };
     return toolResult(JSON.stringify(response, null, 2), response);

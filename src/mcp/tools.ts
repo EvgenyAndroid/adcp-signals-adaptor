@@ -542,11 +542,21 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
         },
         outputSchema: {
             type: "object",
-            required: ["error_code"],
+            required: ["errors"],
             properties: {
-                error_code: { type: "string" },
-                adcp_error: { type: "object", additionalProperties: true },
-                message: { type: "string" },
+                errors: {
+                    type: "array",
+                    minItems: 1,
+                    items: {
+                        type: "object",
+                        required: ["code", "message"],
+                        properties: {
+                            code: { type: "string" },
+                            message: { type: "string" },
+                        },
+                        additionalProperties: true,
+                    },
+                },
                 context: { type: "object", additionalProperties: true },
             },
             additionalProperties: true,

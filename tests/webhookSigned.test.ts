@@ -9,6 +9,7 @@ vi.mock("../src/storage/activationRepo", () => ({
   findOperationById: vi.fn(),
   updateJobStatus: vi.fn(async () => {}),
   markWebhookFired: vi.fn(async () => {}),
+  recordWebhookAttempt: vi.fn(async () => {}),
   createActivationJob: vi.fn(),
   appendEvent: vi.fn(),
   listJobsBySignal: vi.fn(),
@@ -33,6 +34,7 @@ function opWithWebhook(webhookUrl: string) {
     status: "working" as const,
     webhookUrl,
     webhookFired: false,
+    webhookAttempts: 0, // Sec-15: required field on OperationRecord
     submittedAt: "2026-04-19T00:00:00Z",
     updatedAt: "2026-04-19T00:00:00Z",
   };

@@ -182,6 +182,19 @@ export interface OperationRecord {
   campaignId?: string;
   webhookUrl?: string;
   webhookFired: boolean;
+  /**
+   * Sec-15: how many times we've attempted webhook delivery so far
+   * (0 = never attempted, MAX_WEBHOOK_ATTEMPTS = give up). Bounded
+   * to stop runaway redelivery against a perpetual 5xx.
+   */
+  webhookAttempts: number;
+  /**
+   * Sec-15: earliest UTC ISO timestamp the next attempt is allowed.
+   * The lazy poll-driven state machine checks this before re-firing,
+   * giving us exponential backoff without a real scheduler. Undefined
+   * = no backoff, fire on next poll.
+   */
+  webhookNextAttemptAt?: string;
   status: OperationStatus;
   submittedAt: string;
   updatedAt: string;

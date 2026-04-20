@@ -246,31 +246,31 @@ export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
     };
   });
 
-  const pricingCpm = signal.pricing?.model === "mock_cpm" ? signal.pricing.value ?? 0 : undefined;
+  const pricingCpm = signal.pricing?.model === "mock_cpm" ? signal.pricing.value ?? 0 : 0;
   const pricingCurrency = signal.pricing?.currency ?? "USD";
   const pricingOptionId = `opt-${signal.pricing?.model ?? "none"}-${signal.signalId}`.slice(0, 64);
 
-  // pricing_options is schema-required with minItems: 1. Emit a default
-  // sentinel option for signals that lack explicit pricing — buyers can
-  // still reference its pricing_option_id from the storyboard's
-  // context_outputs even when the signal is "free / contact for pricing".
-  const pricingOptions = signal.pricing
+  // Sec-21: HEAD pricing schema (/schemas/core/signal-pricing.json) is a
+  // discriminated union on `model`. CPM variant requires { model: "cpm",
+  // cpm: number >= 0, currency: ISO 4217 }. pricing_options is required
+  // with minItems: 1 — signals lacking explicit pricing get a default
+  // 0-cpm sentinel so buyers still have a pricing_option_id to reference
+  // in the storyboard's context_outputs.
+  const pricingOptions: SignalSummary["pricing_options"] = signal.pricing
     ? [
         {
           pricing_option_id: pricingOptionId,
-          pricing_model: signal.pricing.model === "mock_cpm" ? "cpm" : "flat_fee",
-          ...(pricingCpm !== undefined ? { rate: pricingCpm } : {}),
+          model: "cpm" as const,
+          cpm: pricingCpm,
           currency: pricingCurrency,
-          is_fixed: true,
         },
       ]
     : [
         {
           pricing_option_id: `opt-default-${signal.signalId}`.slice(0, 64),
-          pricing_model: "cpm",
-          rate: 0,
+          model: "cpm" as const,
+          cpm: 0,
           currency: pricingCurrency,
-          is_fixed: false,
         },
       ];
 

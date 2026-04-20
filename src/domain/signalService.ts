@@ -256,13 +256,13 @@ function generateProposalsFromBrief(brief: string): CustomSignalProposal[] {
     category_type: result.categoryType,
     estimated_audience_size: result.estimatedAudienceSize,
     coverage_percentage: coveragePct,
+    // Sec-21: HEAD schema pricing discriminated union.
     pricing_options: [
       {
         pricing_option_id: `opt-custom-${result.signalId}`.slice(0, 64),
-        pricing_model: "cpm",
-        rate: 4.0,
+        model: "cpm" as const,
+        cpm: 4.0,
         currency: "USD",
-        is_fixed: true,
       },
     ],
     deployments: ["mock_dsp", "mock_cleanroom", "mock_cdp", "mock_measurement"].map((dest) => ({

@@ -563,6 +563,31 @@ curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/concepts/se
   -H "Authorization: Bearer $DEMO_API_KEY"
 ```
 
+### Rollback note — capability cache key
+
+`/capabilities` responses are cached in KV under a versioned key
+(`adcp_capabilities_v10` at the time of writing, see
+`src/domain/capabilityService.ts`). The key is bumped on every
+capability shape change so a deploy serves the new shape immediately
+without a manual cache flush.
+
+Rolling back **across** a cache-key bump (e.g. reverting from v10 to
+v9 shape) is NOT free: KV entries at the old version key may still
+be in the cache for up to `CACHE_TTL_SECONDS` (1 hour) and will be
+served to callers that hit the old code path. Either:
+
+- wait out the TTL before validating the rollback, or
+- flush the namespace explicitly:
+
+  ```bash
+  wrangler kv key delete --binding=SIGNALS_CACHE adcp_capabilities_v10
+  ```
+
+(`adcp_capabilities_vN` — substitute the key the rolled-forward code
+wrote.) A rollback to a shape that removes a field that callers
+started depending on is the failure mode; everyone else is fine with
+staleness under 1 hour.
+
 ## Regenerating Embedding Vectors
 
 ```bash

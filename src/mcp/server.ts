@@ -512,6 +512,25 @@ async function callActivateSignal(
     }
 }
 
+// Sec-27a: shared response for "field X didn't parse as ISO-8601". Kept
+// inline with callCreateMediaBuy because it's stub-specific and the call
+// sites need the echoed context block already computed.
+function parseFailure(
+    field: "start_time" | "end_time",
+    rawValue: string,
+    contextEcho: { context?: Record<string, unknown> },
+): unknown {
+    const response = {
+        errors: [{
+            code: "INVALID_REQUEST",
+            message: `${field} ${JSON.stringify(rawValue)} is not a valid ISO-8601 timestamp.`,
+            recovery: "correctable" as const,
+        }],
+        ...contextEcho,
+    };
+    return toolResult(JSON.stringify(response, null, 2), response);
+}
+
 // Sec-22 / Sec-24c: stub create_media_buy — we're a signals provider, not a
 // media-buy seller. Returns the spec-canonical error envelope —
 // `{ errors: [{ code, message }], context }` — per the AdCP error-compliance
@@ -519,6 +538,15 @@ async function callActivateSignal(
 // `adcp_error` fields the earlier revision carried as belt-and-braces for
 // the permissive runner extractor; extras risk colliding with future spec
 // fields of the same name.
+//
+// Upstream note: the runner's validateErrorCode extractor (adcp-client
+// v5.2.0, dist/lib/testing/storyboard/validations.js:383) does NOT resolve
+// `data.errors[0].code` — it reads `adcp_error.code` / `error_code` /
+// `code` / `error.code`, then falls back to regex-extracting the code
+// from `taskResult.error`. Our `errors[]` envelope passes the storyboard
+// via the regex fallback on `errors[0].message`, which is fragile.
+// Tracking fix upstream at adcontextprotocol/adcp#2535 — once landed we
+// get typed-field extraction instead of string-regex.
 async function callCreateMediaBuy(args: Record<string, unknown>): Promise<unknown> {
     const startTime = typeof args["start_time"] === "string" ? args["start_time"] : undefined;
     const endTime = typeof args["end_time"] === "string" ? args["end_time"] : undefined;
@@ -530,6 +558,21 @@ async function callCreateMediaBuy(args: Record<string, unknown>): Promise<unknow
     const now = Date.now();
     const startMs = startTime ? Date.parse(startTime) : Number.NaN;
     const endMs = endTime ? Date.parse(endTime) : Number.NaN;
+
+    // Sec-27a: unparseable-date guard. Before the temporal comparisons,
+    // reject requests where `start_time` / `end_time` is supplied but
+    // doesn't parse. NaN comparisons silently evaluate to `false`, so
+    // without this guard `{ start_time: "banana" }` skipped both
+    // INVALID_REQUEST branches and fell through to UNSUPPORTED_OPERATION
+    // / recovery: "terminal" — semantically wrong (the caller can fix
+    // the payload by sending a valid ISO-8601 string; it's not "this
+    // agent doesn't sell media"). Explicit INVALID_REQUEST / correctable.
+    if (startTime !== undefined && Number.isNaN(startMs)) {
+        return parseFailure("start_time", startTime, contextEcho);
+    }
+    if (endTime !== undefined && Number.isNaN(endMs)) {
+        return parseFailure("end_time", endTime, contextEcho);
+    }
 
     // Sec-25a / Sec-26a: `recovery` is an optional enum on core/error.json
     // ("transient" | "correctable" | "terminal"). The spec does NOT define

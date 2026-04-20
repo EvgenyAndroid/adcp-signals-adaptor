@@ -10,10 +10,10 @@
 // Cache key bumped to v6 for the v3-conformant shape (ucp moved to ext)
 // then v7 for the HEAD-schema-conformant shape (adds adcp.idempotency).
 
-// Cache key bumped to v8 — the ext.ucp block is now engine-aware, so any
-// v7 cache entry written under the old static pseudo-declaring
-// UCP_CAPABILITY needs to be invalidated on next deploy.
-const CACHE_KEY = "adcp_capabilities_v8";
+// Cache key bumped to v9 — idempotency sub-schema in HEAD switched to a
+// discriminated union requiring `supported: true`; any v8 cache entry
+// would fail schema validation against the HEAD spec. Evict on deploy.
+const CACHE_KEY = "adcp_capabilities_v9";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
@@ -37,7 +37,7 @@ type AdcpCapabilities = {
      * absence; the live evaluator runs HEAD and does). Seller declares how
      * long a canonical response is retained for an idempotency_key.
      */
-    idempotency: { replay_ttl_seconds: number };
+    idempotency: { supported: true; replay_ttl_seconds: number };
   };
   supported_protocols: string[];
   signals?: unknown;
@@ -63,9 +63,11 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
   return {
     adcp: {
       major_versions: [2, 3],
-      // 24h replay window (recommended in the HEAD schema; min 3600, max 604800).
+      // HEAD schema models idempotency as a discriminated union keyed on
+      // `supported`. The IdempotencySupported variant requires both
+      // `supported: true` and `replay_ttl_seconds` (3600..604800 per spec).
       // Mutating tools (activate_signal) honour this — see activationRepo.
-      idempotency: { replay_ttl_seconds: 86400 },
+      idempotency: { supported: true, replay_ttl_seconds: 86400 },
     },
     supported_protocols: ["signals"],
     signals: {

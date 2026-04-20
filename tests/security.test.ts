@@ -120,12 +120,17 @@ describe("MCP tool definitions — outputSchema", () => {
     expect(props.context?.type).toBe("object");
   });
 
-  it("get_adcp_capabilities outputSchema requires adcp.idempotency.replay_ttl_seconds (HEAD schema)", () => {
+  it("get_adcp_capabilities outputSchema requires adcp.idempotency.{supported, replay_ttl_seconds} (HEAD schema discriminated union)", () => {
     const schema = getToolByName("get_adcp_capabilities")!.outputSchema!;
     const adcp = (schema.properties as Record<string, any>).adcp;
     expect(adcp.required).toContain("idempotency");
     const idempotency = adcp.properties.idempotency;
+    // Sec-20: HEAD schema made idempotency a discriminated union on
+    // `supported`. The supported=true variant (what we declare) requires
+    // both `supported: true` and `replay_ttl_seconds` in spec range.
+    expect(idempotency.required).toContain("supported");
     expect(idempotency.required).toContain("replay_ttl_seconds");
+    expect(idempotency.properties.supported.const).toBe(true);
     expect(idempotency.properties.replay_ttl_seconds.minimum).toBe(3600);
     expect(idempotency.properties.replay_ttl_seconds.maximum).toBe(604800);
   });
@@ -175,9 +180,10 @@ describe("getCapabilities runtime shape", () => {
     } as unknown as KVNamespace;
   }
 
-  it("includes adcp.idempotency.replay_ttl_seconds in spec range", async () => {
+  it("includes adcp.idempotency.{supported, replay_ttl_seconds} per HEAD discriminated-union schema (Sec-20)", async () => {
     const caps = await getCapabilities(makeStaticKv());
     expect(caps.adcp.idempotency).toBeDefined();
+    expect(caps.adcp.idempotency.supported).toBe(true);
     const ttl = caps.adcp.idempotency.replay_ttl_seconds;
     expect(typeof ttl).toBe("number");
     expect(ttl).toBeGreaterThanOrEqual(3600);

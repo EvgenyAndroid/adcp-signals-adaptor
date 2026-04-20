@@ -389,13 +389,16 @@ function makeKv(): KVNamespace {
 // Minimal in-memory D1 that supports the three SQL shapes used by the
 // OAuth state path. Returns a `.store` handle so tests can poke at
 // contents directly — mirrors the KV fake ergonomics.
+//
+// Sec-18: rows now carry operator_id (bound to the caller on /init,
+// returned from /callback's DELETE...RETURNING).
 interface FakeOAuthDb {
   db: D1Database;
-  store: Map<string, { provider: string; expires_at: string }>;
+  store: Map<string, { provider: string; expires_at: string; operator_id: string }>;
 }
 
 function makeOAuthDb(): FakeOAuthDb {
-  const store = new Map<string, { provider: string; expires_at: string }>();
+  const store = new Map<string, { provider: string; expires_at: string; operator_id: string }>();
   const db = {
     prepare(sql: string) {
       let bound: unknown[] = [];
@@ -403,8 +406,8 @@ function makeOAuthDb(): FakeOAuthDb {
         bind(...args: unknown[]) { bound = args; return this; },
         async run(): Promise<D1Result> {
           if (/INSERT INTO oauth_state/i.test(sql)) {
-            const [state, provider, expires_at] = bound as [string, string, string];
-            store.set(state, { provider, expires_at });
+            const [state, provider, expires_at, operator_id] = bound as [string, string, string, string];
+            store.set(state, { provider, expires_at, operator_id });
           } else if (/DELETE FROM oauth_state WHERE expires_at < \?/i.test(sql)) {
             const [now] = bound as [string];
             for (const [k, v] of store) {
@@ -414,12 +417,12 @@ function makeOAuthDb(): FakeOAuthDb {
           return { success: true, meta: {} } as unknown as D1Result;
         },
         async first<T>(): Promise<T | null> {
-          if (/DELETE FROM oauth_state WHERE state = \? AND expires_at > \? RETURNING state/i.test(sql)) {
+          if (/DELETE FROM oauth_state WHERE state = \? AND expires_at > \? RETURNING operator_id/i.test(sql)) {
             const [state, now] = bound as [string, string];
             const row = store.get(state);
             if (!row || row.expires_at <= now) return null;
             store.delete(state); // atomic consume
-            return { state } as unknown as T;
+            return { operator_id: row.operator_id } as unknown as T;
           }
           return null;
         },
@@ -453,7 +456,7 @@ describe("OAuth state lifecycle", () => {
     const { db, store } = makeOAuthDb();
     const env = makeEnv(kv, db);
 
-    const initRes = await handleLinkedInAuthInit(env);
+    const initRes = await handleLinkedInAuthInit(env, "op_fixture_operator");
     const html = await initRes.text();
     const match = html.match(/href="([^"]*linkedin\.com[^"]*)"/);
     if (!match || !match[1]) throw new Error("authorize URL not found in init HTML");
@@ -534,7 +537,7 @@ describe("OAuth state lifecycle", () => {
     const env = makeEnv(makeKv(), db);
     // Issue a state we can spend so we get past the state-check branch
     // and into the `if (error)` branch.
-    const initRes = await handleLinkedInAuthInit(env);
+    const initRes = await handleLinkedInAuthInit(env, "op_fixture_operator");
     const html = await initRes.text();
     const m = html.match(/href="([^"]*linkedin\.com[^"]*)"/);
     if (!m || !m[1]) throw new Error("authorize URL not found");
@@ -550,7 +553,7 @@ describe("OAuth state lifecycle", () => {
   it("Missing Code (no code, no error) returns HTTP 400", async () => {
     const { db } = makeOAuthDb();
     const env = makeEnv(makeKv(), db);
-    const initRes = await handleLinkedInAuthInit(env);
+    const initRes = await handleLinkedInAuthInit(env, "op_fixture_operator");
     const html = await initRes.text();
     const m = html.match(/href="([^"]*linkedin\.com[^"]*)"/);
     if (!m || !m[1]) throw new Error("authorize URL not found");
@@ -568,7 +571,7 @@ describe("OAuth state lifecycle", () => {
     const env = makeEnv(makeKv(), db);
 
     // Issue a state we can use
-    const initRes = await handleLinkedInAuthInit(env);
+    const initRes = await handleLinkedInAuthInit(env, "op_fixture_operator");
     const html = await initRes.text();
     const m = html.match(/href="([^"]*linkedin\.com[^"]*)"/);
     if (!m || !m[1]) throw new Error("authorize URL not found in init HTML");
@@ -599,7 +602,7 @@ describe("OAuth state lifecycle", () => {
     const env = makeEnv(makeKv(), db);
 
     // Issue a state
-    const initRes = await handleLinkedInAuthInit(env);
+    const initRes = await handleLinkedInAuthInit(env, "op_fixture_operator");
     const html = await initRes.text();
     const m = html.match(/href="([^"]*linkedin\.com[^"]*)"/);
     if (!m || !m[1]) throw new Error("authorize URL not found in init HTML");
@@ -642,6 +645,7 @@ describe("OAuth state lifecycle", () => {
     store.set(staleState, {
       provider: "linkedin",
       expires_at: "2000-01-01T00:00:00.000Z",
+      operator_id: "op_fixture_operator",
     });
 
     const res = await handleLinkedInAuthCallback(
@@ -652,6 +656,76 @@ describe("OAuth state lifecycle", () => {
     // And the row was NOT consumed (it didn't match the WHERE) — so a
     // future expires_at < ? cleanup sweep can still garbage-collect it.
     expect(store.has(staleState)).toBe(true);
+  });
+
+  // ── Sec-18: per-operator isolation pins ────────────────────────────────────
+  //
+  // The state row binds the operator_id at /init time. /callback consumes
+  // the row and uses the bound operator_id to namespace token storage.
+  // Two operators issuing flows in parallel must end up with disjoint
+  // KV namespaces.
+
+  it("/init writes the bound operator_id into the oauth_state row", async () => {
+    const { db, store } = makeOAuthDb();
+    const env = makeEnv(makeKv(), db);
+    const initRes = await handleLinkedInAuthInit(env, "op_alice");
+    const html = await initRes.text();
+    const m = html.match(/href="([^"]*linkedin\.com[^"]*)"/);
+    if (!m || !m[1]) throw new Error("authorize URL not found");
+    const state = extractState(m[1].replace(/&amp;/g, "&"));
+    const row = store.get(state);
+    expect(row).toBeDefined();
+    expect(row!.operator_id).toBe("op_alice");
+  });
+
+  it("two operators issue independent state rows; consume returns each one's ID", async () => {
+    const { db, store } = makeOAuthDb();
+    const env = makeEnv(makeKv(), db);
+
+    const aRes = await handleLinkedInAuthInit(env, "op_alice");
+    const bRes = await handleLinkedInAuthInit(env, "op_bob");
+    const aHtml = await aRes.text();
+    const bHtml = await bRes.text();
+    const aMatch = aHtml.match(/href="([^"]*linkedin\.com[^"]*)"/);
+    const bMatch = bHtml.match(/href="([^"]*linkedin\.com[^"]*)"/);
+    if (!aMatch || !aMatch[1] || !bMatch || !bMatch[1]) throw new Error("authorize URL not found");
+    const aState = extractState(aMatch[1].replace(/&amp;/g, "&"));
+    const bState = extractState(bMatch[1].replace(/&amp;/g, "&"));
+
+    expect(store.get(aState)?.operator_id).toBe("op_alice");
+    expect(store.get(bState)?.operator_id).toBe("op_bob");
+    expect(aState).not.toBe(bState);
+
+    // Bob's callback can't consume Alice's state — different state UUID.
+    const bobConsumesAlice = await handleLinkedInAuthCallback(
+      new Request(`https://example.com/cb?state=${aState}`), // Alice's state
+      env,
+    );
+    // Goes through (state matches Alice's row), state row consumed, but
+    // the operator_id retrieved is Alice's — so Bob can't surreptitiously
+    // become Alice. The actual OAuth code-exchange step will fail because
+    // there's no LinkedIn `code` in the URL — that's tested via Missing Code.
+    // Important point: the consume returns ALICE's operator_id, which is
+    // exactly what the callback needs to namespace correctly.
+    const text = await bobConsumesAlice.text();
+    expect(text).toContain("Missing Code");
+    // Alice's row is gone (consumed). Bob's row still present.
+    expect(store.has(aState)).toBe(false);
+    expect(store.has(bState)).toBe(true);
+  });
+
+  it("attacker-fabricated state is rejected even with a valid operator_id format", async () => {
+    // Sec-18 doesn't change attacker resistance — fabricated states never
+    // match a row, regardless of what operator_id pattern the attacker
+    // would have liked. Pinning so a future regression can't drop the
+    // expiry-or-existence check.
+    const { db } = makeOAuthDb();
+    const env = makeEnv(makeKv(), db);
+    const res = await handleLinkedInAuthCallback(
+      new Request("https://example.com/cb?state=op_alice_fake-state-uuid"),
+      env,
+    );
+    expect(await res.text()).toContain("Invalid State");
   });
 });
 

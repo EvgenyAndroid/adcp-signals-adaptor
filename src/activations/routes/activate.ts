@@ -20,6 +20,7 @@ export async function handleActivateDispatch(
   request: Request,
   env: Env,
   platform: string,
+  operatorId: string,
 ): Promise<Response> {
   if (!isSupportedPlatform(platform)) {
     return new Response(
@@ -33,7 +34,7 @@ export async function handleActivateDispatch(
 
   switch (platform) {
     case 'linkedin':
-      return handleLinkedInActivate(request, env);
+      return handleLinkedInActivate(request, env, operatorId);
     default:
       return new Response(
         JSON.stringify({ success: false, error: `Platform "${platform}" not yet implemented.` }),

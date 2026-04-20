@@ -87,6 +87,7 @@ function isFetchableImageUrl(raw: string): boolean {
 export async function handleLinkedInActivate(
   request: Request,
   env: LinkedInRouteEnv,
+  operatorId: string,
 ): Promise<Response> {
   const start = Date.now();
 
@@ -110,7 +111,7 @@ export async function handleLinkedInActivate(
     }
 
     // ── Live activation ────────────────────────────────────────────────────────
-    const result = await adapter.activate(body, env);
+    const result = await adapter.activate(body, env, operatorId);
 
     if (!result.success) {
       return jsonResponse({ success: false, result, duration_ms: Date.now() - start }, 400);
@@ -127,7 +128,7 @@ export async function handleLinkedInActivate(
         );
       } else {
         try {
-          const accessToken = await getValidAccessToken(env);
+          const accessToken = await getValidAccessToken(env, operatorId);
 
           // Fetch banner image from GitHub (or custom URL if provided).
           // The URL can be caller-supplied, so we gate it:

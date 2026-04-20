@@ -47,14 +47,18 @@ const LI_TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken';
 // w_organization_social required for dark post creation (creative pipeline)
 const LI_SCOPES = 'r_ads rw_ads r_organization_social w_organization_social';
 
-// KV key constants
-const KV_ACCESS_TOKEN  = 'linkedin:access_token';
-const KV_REFRESH_TOKEN = 'linkedin:refresh_token';
-const KV_TOKEN_EXPIRES = 'linkedin:token_expires';
-const KV_TOKEN_META    = 'linkedin:token_meta';
-// Note: OAuth state moved from KV to D1 in Sec-10 (atomic consume).
-// Any stray `linkedin:oauth_state:*` keys in KV from before the migration
-// will age out via the 10-min TTL; new flows never touch KV for state.
+// KV key constants — namespaced per operator (Sec-18). Each helper takes
+// the operator_id (12-char base64url, see src/utils/operatorId.ts) and
+// suffixes the key. Different operators get fully isolated token sets;
+// the previous "last-writer-wins" global keys are gone.
+function kvAccessToken(operatorId: string)  { return `linkedin:access_token:${operatorId}`; }
+function kvRefreshToken(operatorId: string) { return `linkedin:refresh_token:${operatorId}`; }
+function kvTokenExpires(operatorId: string) { return `linkedin:token_expires:${operatorId}`; }
+function kvTokenMeta(operatorId: string)    { return `linkedin:token_meta:${operatorId}`; }
+// Note: OAuth state moved from KV to D1 in Sec-10 (atomic consume), then
+// gained operator_id binding in Sec-18 (per-operator isolation).
+// Any stray `linkedin:oauth_state:*` or unscoped `linkedin:access_token`
+// keys in KV from before will age out via TTL.
 
 // Refresh buffer: refresh 5 minutes before expiry
 const REFRESH_BUFFER_MS = 5 * 60 * 1000;
@@ -95,23 +99,26 @@ export interface LinkedInTokenSet {
 
 // ─── Route: GET /auth/linkedin/init ──────────────────────────────────────────
 
-export async function handleLinkedInAuthInit(env: LinkedInAuthEnv): Promise<Response> {
+export async function handleLinkedInAuthInit(
+  env: LinkedInAuthEnv,
+  operatorId: string,
+): Promise<Response> {
   const state = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + OAUTH_STATE_TTL_SECONDS * 1000).toISOString();
-  // Persist state in D1 so the callback can verify — and atomically consume —
-  // in a single round-trip. CSRF + single-use protection live on the WHERE
-  // clause of the DELETE...RETURNING in consumeOAuthState below.
+  // Persist state in D1 — both for atomic consume (Sec-10) and operator
+  // binding (Sec-18). The operator_id captured here is what /callback
+  // uses to namespace token storage; /callback is public so it can't
+  // re-derive the operator from a bearer header. The state row is the
+  // trusted server-side carrier.
   //
-  // Opportunistic cleanup: drop any expired rows from prior flows on write.
-  // This keeps the table bounded without a scheduled cron. INSERT OR REPLACE
-  // wouldn't help here because the state UUID is always fresh; instead we
-  // trim the expired-rows subset.
+  // Opportunistic cleanup: drop any expired rows from prior flows on
+  // write. Bounds the table without a scheduled cron.
   await env.DB.prepare(
     'DELETE FROM oauth_state WHERE expires_at < ?'
   ).bind(new Date().toISOString()).run();
   await env.DB.prepare(
-    'INSERT INTO oauth_state (state, provider, expires_at) VALUES (?, ?, ?)'
-  ).bind(state, 'linkedin', expiresAt).run();
+    'INSERT INTO oauth_state (state, provider, expires_at, operator_id) VALUES (?, ?, ?, ?)'
+  ).bind(state, 'linkedin', expiresAt, operatorId).run();
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -165,7 +172,13 @@ export async function handleLinkedInAuthCallback(
   // Verify state first — rejects CSRF regardless of whether LinkedIn
   // returned an error or a code. Provider-supplied values are escaped
   // below because the error path still renders them.
-  if (!state || !(await consumeOAuthState(state, env.DB))) {
+  //
+  // Sec-18: consumeOAuthState now returns the operator_id that issued the
+  // state (or null if the state didn't exist / expired). The /callback
+  // route is public, so we can't re-derive the operator from a bearer
+  // header — the state row IS the trusted carrier of operator identity.
+  const operatorId = state ? await consumeOAuthState(state, env.DB) : null;
+  if (!state || operatorId === null) {
     // Observability: log unknown/expired/replayed state so a spike —
     // typically a sign of abuse or a misconfigured relay — is visible in
     // `wrangler tail`. The route is public (provider redirects carry no
@@ -229,12 +242,11 @@ export async function handleLinkedInAuthCallback(
     `, 502);
   }
 
-  // Overwrite observability: the token KV keys are global (see
-  // SECURITY_MODEL.md). If a prior token set exists, this callback is
-  // replacing it — which is legitimate on re-auth but is also the
-  // symptom of two operators stepping on each other. Log before write
-  // so every overwrite produces a tail signal.
-  const priorMetaRaw = await env.SIGNALS_CACHE.get(KV_TOKEN_META);
+  // Overwrite observability: per-operator now (Sec-18). A prior token
+  // set under THIS operator's namespace means this operator is re-
+  // authorizing — legitimate but worth a tail signal. Other operators'
+  // tokens live in their own namespaces and are untouched.
+  const priorMetaRaw = await env.SIGNALS_CACHE.get(kvTokenMeta(operatorId));
   if (priorMetaRaw) {
     let priorMeta: { scope?: string; obtained_at?: string } = {};
     try { priorMeta = JSON.parse(priorMetaRaw); } catch { /* treat as opaque */ }
@@ -242,6 +254,7 @@ export async function handleLinkedInAuthCallback(
       level: 'warn',
       event: 'linkedin_oauth_tokens_overwritten',
       ts: new Date().toISOString(),
+      operator_id: operatorId,
       prior_scope: priorMeta.scope ?? null,
       prior_obtained_at: priorMeta.obtained_at ?? null,
       new_scope: tokenSet.scope,
@@ -250,7 +263,7 @@ export async function handleLinkedInAuthCallback(
     }));
   }
 
-  await storeTokens(tokenSet, env.SIGNALS_CACHE, env.TOKEN_ENCRYPTION_KEY);
+  await storeTokens(tokenSet, env.SIGNALS_CACHE, operatorId, env.TOKEN_ENCRYPTION_KEY);
 
   // Truth-in-UI: the prior "stored securely" wording was only true when
   // TOKEN_ENCRYPTION_KEY is provisioned. On deployments where it's unset
@@ -294,25 +307,32 @@ export async function handleLinkedInAuthCallback(
  * a clock rewind or a missed cleanup) can't be induced to accept something
  * the CSRF window had already closed on.
  */
-async function consumeOAuthState(state: string, db: D1Database): Promise<boolean> {
+/**
+ * Sec-18: also returns the operator_id that issued the state — null if
+ * the state didn't exist / expired / was already consumed. The /callback
+ * handler uses this ID to namespace token storage; without it, every
+ * operator's tokens would still land under the same global keys.
+ */
+async function consumeOAuthState(state: string, db: D1Database): Promise<string | null> {
   const now = new Date().toISOString();
   const row = await db
-    .prepare('DELETE FROM oauth_state WHERE state = ? AND expires_at > ? RETURNING state')
+    .prepare('DELETE FROM oauth_state WHERE state = ? AND expires_at > ? RETURNING operator_id')
     .bind(state, now)
-    .first<{ state: string }>();
-  return row !== null;
+    .first<{ operator_id: string }>();
+  return row?.operator_id ?? null;
 }
 
 // ─── Route: GET /auth/linkedin/status ────────────────────────────────────────
 
 export async function handleLinkedInAuthStatus(
   env: LinkedInAuthEnv,
+  operatorId: string,
 ): Promise<Response> {
   const [rawAccess, rawRefresh, expiresAt, metaRaw] = await Promise.all([
-    env.SIGNALS_CACHE.get(KV_ACCESS_TOKEN),
-    env.SIGNALS_CACHE.get(KV_REFRESH_TOKEN),
-    env.SIGNALS_CACHE.get(KV_TOKEN_EXPIRES),
-    env.SIGNALS_CACHE.get(KV_TOKEN_META),
+    env.SIGNALS_CACHE.get(kvAccessToken(operatorId)),
+    env.SIGNALS_CACHE.get(kvRefreshToken(operatorId)),
+    env.SIGNALS_CACHE.get(kvTokenExpires(operatorId)),
+    env.SIGNALS_CACHE.get(kvTokenMeta(operatorId)),
   ]);
 
   const [accessToken, refreshToken] = await Promise.all([
@@ -352,11 +372,14 @@ export async function handleLinkedInAuthStatus(
 
 // ─── Token manager ────────────────────────────────────────────────────────────
 
-export async function getValidAccessToken(env: LinkedInAuthEnv): Promise<string> {
+export async function getValidAccessToken(
+  env: LinkedInAuthEnv,
+  operatorId: string,
+): Promise<string> {
   const [rawAccess, rawRefresh, expiresAt] = await Promise.all([
-    env.SIGNALS_CACHE.get(KV_ACCESS_TOKEN),
-    env.SIGNALS_CACHE.get(KV_REFRESH_TOKEN),
-    env.SIGNALS_CACHE.get(KV_TOKEN_EXPIRES),
+    env.SIGNALS_CACHE.get(kvAccessToken(operatorId)),
+    env.SIGNALS_CACHE.get(kvRefreshToken(operatorId)),
+    env.SIGNALS_CACHE.get(kvTokenExpires(operatorId)),
   ]);
 
   const [accessToken, refreshToken] = await Promise.all([
@@ -365,7 +388,7 @@ export async function getValidAccessToken(env: LinkedInAuthEnv): Promise<string>
   ]);
 
   if (!accessToken || !refreshToken) {
-    throw new Error('LinkedIn not authorized. Call `GET /auth/linkedin/init` with your API key to complete setup.');
+    throw new Error('LinkedIn not authorized for this operator. Call `GET /auth/linkedin/init` with your API key to complete setup.');
   }
 
   const needsRefresh = !expiresAt
@@ -374,7 +397,7 @@ export async function getValidAccessToken(env: LinkedInAuthEnv): Promise<string>
   if (!needsRefresh) return accessToken;
 
   const newTokenSet = await refreshAccessToken(refreshToken, env);
-  await storeTokens(newTokenSet, env.SIGNALS_CACHE, env.TOKEN_ENCRYPTION_KEY);
+  await storeTokens(newTokenSet, env.SIGNALS_CACHE, operatorId, env.TOKEN_ENCRYPTION_KEY);
   return newTokenSet.access_token;
 }
 
@@ -471,6 +494,7 @@ async function refreshAccessToken(
 async function storeTokens(
   tokenSet: LinkedInTokenSet,
   kv: KVNamespace,
+  operatorId: string,
   encryptionKey?: string,
 ): Promise<void> {
   const ttl90Days   = 90  * 24 * 60 * 60;
@@ -484,11 +508,13 @@ async function storeTokens(
     encryptIfConfigured(tokenSet.refresh_token, encryptionKey),
   ]);
 
+  // Sec-18: KV keys are namespaced per operator, so concurrent operators
+  // don't overwrite each other's tokens.
   await Promise.all([
-    kv.put(KV_ACCESS_TOKEN,  encryptedAccess,  { expirationTtl: ttl90Days }),
-    kv.put(KV_REFRESH_TOKEN, encryptedRefresh, { expirationTtl: ttl12Months }),
-    kv.put(KV_TOKEN_EXPIRES, tokenSet.expires_at),
-    kv.put(KV_TOKEN_META, JSON.stringify({
+    kv.put(kvAccessToken(operatorId),  encryptedAccess,  { expirationTtl: ttl90Days }),
+    kv.put(kvRefreshToken(operatorId), encryptedRefresh, { expirationTtl: ttl12Months }),
+    kv.put(kvTokenExpires(operatorId), tokenSet.expires_at),
+    kv.put(kvTokenMeta(operatorId), JSON.stringify({
       scope:       tokenSet.scope,
       obtained_at: tokenSet.obtained_at,
     })),

@@ -531,26 +531,33 @@ async function callCreateMediaBuy(args: Record<string, unknown>): Promise<unknow
     const startMs = startTime ? Date.parse(startTime) : Number.NaN;
     const endMs = endTime ? Date.parse(endTime) : Number.NaN;
 
-    // Sec-25a: `recovery` is an optional enum on core/error.json
-    // ("transient" | "correctable" | "terminal"). UNSUPPORTED_OPERATION is
-    // as terminal as it gets — we structurally don't implement the tool,
-    // so a retrying buyer should stop. We omit `recovery` on INVALID_REQUEST
-    // because the right classification depends on the specific violation
-    // (a past start_time is correctable by resubmitting with a future
-    // start; a malformed payload is terminal for this request) — omitting
-    // lets the caller decide rather than advertising the wrong signal.
-    const errEntry: { code: string; message: string; recovery?: "terminal" } =
+    // Sec-25a / Sec-26a: `recovery` is an optional enum on core/error.json
+    // ("transient" | "correctable" | "terminal"). The spec does NOT define
+    // a default for absent `recovery`, so every buyer implementation is
+    // free to interpret absence differently. Omitting it was ambiguous —
+    // a buyer that defaults to "transient" would hammer us on a malformed
+    // payload; one that defaults to "terminal" would give up on a past
+    // start_time a resubmit would fix. So we always classify explicitly:
+    //
+    //   - INVALID_REQUEST (temporal / shape) → "correctable": the caller
+    //     can either resubmit with valid dates or fix the payload. Neither
+    //     case requires human intervention, so "terminal" is wrong here.
+    //   - UNSUPPORTED_OPERATION → "terminal": we structurally don't
+    //     implement the tool, so a retrying buyer must stop.
+    const errEntry: { code: string; message: string; recovery: "correctable" | "terminal" } =
         (() => {
             if (!Number.isNaN(startMs) && startMs < now) {
                 return {
                     code: "INVALID_REQUEST",
                     message: `start_time ${startTime} is in the past — flight must not begin before now.`,
+                    recovery: "correctable",
                 };
             }
             if (!Number.isNaN(startMs) && !Number.isNaN(endMs) && endMs <= startMs) {
                 return {
                     code: "INVALID_REQUEST",
                     message: `end_time ${endTime} must be strictly after start_time ${startTime}.`,
+                    recovery: "correctable",
                 };
             }
             return {

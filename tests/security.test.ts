@@ -837,6 +837,45 @@ describe("handleMcpRequest — auth gate", () => {
     expect(byId[11].error?.code).toBe(-32001);
   });
 
+  // Sec-26b: broaden mixed-auth batch isolation coverage beyond tools/list.
+  // The existing tools/list+tools/call test proves per-message isolation
+  // for one public-method pair. These pin the invariant across the other
+  // public methods (initialize, ping) so a refactor that special-cases
+  // tools/list accidentally would still fail here.
+  it("Sec-26b: mixed batch [initialize, tools/call] — public succeeds, tool-call gets -32001", async () => {
+    const { status, body } = await callAndParse(
+      mcpReq([
+        { jsonrpc: "2.0", id: 40, method: "initialize", params: { protocolVersion: "2024-11-05", clientInfo: { name: "t", version: "1" } } },
+        { jsonrpc: "2.0", id: 41, method: "tools/call", params: { name: "get_adcp_capabilities", arguments: {} } },
+      ]),
+    );
+    expect(status).toBe(200);
+    expect(Array.isArray(body)).toBe(true);
+    const byId = Object.fromEntries(body.map((m: any) => [m.id, m]));
+    expect(byId[40].result?.serverInfo).toBeDefined();
+    expect(byId[40].error).toBeUndefined();
+    expect(byId[41].error?.code).toBe(-32001);
+    expect(byId[41].result).toBeUndefined();
+  });
+
+  it("Sec-26b: mixed batch [ping, tools/call] — public succeeds, tool-call gets -32001", async () => {
+    const { status, body } = await callAndParse(
+      mcpReq([
+        { jsonrpc: "2.0", id: 50, method: "ping", params: {} },
+        { jsonrpc: "2.0", id: 51, method: "tools/call", params: { name: "get_signals", arguments: {} } },
+      ]),
+    );
+    expect(status).toBe(200);
+    expect(Array.isArray(body)).toBe(true);
+    const byId = Object.fromEntries(body.map((m: any) => [m.id, m]));
+    // ping returns an empty object on success — presence of `result` is the
+    // signal, not any specific field inside it.
+    expect(byId[50].result).toBeDefined();
+    expect(byId[50].error).toBeUndefined();
+    expect(byId[51].error?.code).toBe(-32001);
+    expect(byId[51].result).toBeUndefined();
+  });
+
   it("Sec-25c: fully-authed batch (all messages require auth) stays HTTP 200 + per-message -32001", async () => {
     // Boundary case: every message in the batch requires auth and none are
     // authed. The single-request HTTP 401 path MUST NOT short-circuit here —

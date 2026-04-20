@@ -291,6 +291,8 @@ async function handleToolCall(
             const conceptResult = handleConceptToolCall(resolvedName, args);
             return toolResult(JSON.stringify(conceptResult, null, 2), conceptResult);
         }
+        case "create_media_buy":
+            return callCreateMediaBuy(args);
         default:
             throw new McpToolError(`Tool not implemented: ${name}`);
     }
@@ -475,6 +477,46 @@ async function callActivateSignal(
         }
         throw err;
     }
+}
+
+// Sec-22: stub create_media_buy — we're a signals provider, not a media-buy
+// seller. Returns an AdCP error envelope (L3 structured: `adcp_error.code`
+// AND top-level `error_code`) so the universal schema_validation storyboard's
+// past_start_reject_path can contribute `past_start_handled`. The runner
+// extracts error_code from `structuredContent.adcp_error.code` or `.error_code`
+// (validations.js:383). Context is echoed unchanged per /schemas/core/context.
+async function callCreateMediaBuy(args: Record<string, unknown>): Promise<unknown> {
+    const startTime = typeof args["start_time"] === "string" ? args["start_time"] : undefined;
+    const endTime = typeof args["end_time"] === "string" ? args["end_time"] : undefined;
+    const ctx = args["context"];
+    const contextEcho = ctx && typeof ctx === "object" && !Array.isArray(ctx)
+        ? { context: ctx as Record<string, unknown> }
+        : {};
+
+    const now = Date.now();
+    const startMs = startTime ? Date.parse(startTime) : Number.NaN;
+    const endMs = endTime ? Date.parse(endTime) : Number.NaN;
+
+    let code: string;
+    let message: string;
+    if (!Number.isNaN(startMs) && startMs < now) {
+        code = "INVALID_REQUEST";
+        message = `start_time ${startTime} is in the past — flight must not begin before now.`;
+    } else if (!Number.isNaN(startMs) && !Number.isNaN(endMs) && endMs <= startMs) {
+        code = "INVALID_REQUEST";
+        message = `end_time ${endTime} must be strictly after start_time ${startTime}.`;
+    } else {
+        code = "UNSUPPORTED_OPERATION";
+        message = "This agent sells signals, not media — create_media_buy is stubbed for conformance only.";
+    }
+
+    const response = {
+        error_code: code,
+        adcp_error: { code, message },
+        message,
+        ...contextEcho,
+    };
+    return toolResult(JSON.stringify(response, null, 2), response);
 }
 
 async function callGetOperation(

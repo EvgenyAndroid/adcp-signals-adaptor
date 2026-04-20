@@ -26,6 +26,10 @@ import {
 } from "./activations/auth/linkedin";
 import { handleActivateDispatch } from "./activations/routes/activate";
 import { operatorIdFromRequest } from "./utils/operatorId";
+import {
+    handleProtectedResourceMetadata,
+    handleAuthorizationServerMetadata,
+} from "./routes/wellKnown";
 
 // Seed data imported as text modules via wrangler assets
 import { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv } from "./seedData";
@@ -105,6 +109,10 @@ export default {
             "/ucp/gts",
             "/ucp/simulate-handshake",
             "/auth/linkedin/callback",
+            // RFC 9728 + 8414: OAuth discovery metadata MUST be reachable
+            // without authentication so clients can bootstrap the flow.
+            "/.well-known/oauth-protected-resource",
+            "/.well-known/oauth-authorization-server",
         ];
         const isPublic = publicPaths.some((p) => path === p || path.startsWith(p + "/"));
 
@@ -129,6 +137,16 @@ export default {
 
             if (method === "GET" && path === "/health") {
                 response = jsonResponse({ status: "ok", version: "3.0-rc" });
+
+            } else if (method === "GET" && path.startsWith("/.well-known/oauth-protected-resource")) {
+                // RFC 9728: resource path is the suffix after the well-known
+                // prefix. `/.well-known/oauth-protected-resource/mcp` advertises
+                // metadata for the agent's /mcp endpoint.
+                const resourcePath = path.slice("/.well-known/oauth-protected-resource".length) || "/";
+                response = handleProtectedResourceMetadata(request, resourcePath);
+
+            } else if (method === "GET" && path === "/.well-known/oauth-authorization-server") {
+                response = handleAuthorizationServerMetadata(request);
 
             } else if (method === "GET" && path === "/capabilities") {
                 response = await handleGetCapabilities(request, env, logger);

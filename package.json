@@ -9,13 +9,14 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:live": "bash scripts/test-live.sh",
+    "compliance": "node scripts/run-compliance.mjs",
     "type-check": "tsc --noEmit",
     "db:migrate": "wrangler d1 migrations apply adcp-signals-db",
     "db:seed": "wrangler d1 execute adcp-signals-db --file=./migrations/seed.sql",
     "lint": "eslint src --ext .ts"
   },
   "devDependencies": {
-    "@adcp/client": "^4.5.2",
+    "@adcp/client": "^5.2.0",
     "@cloudflare/workers-types": "^4.20241022.0",
     "@vitest/coverage-v8": "^2.0.0",
     "typescript": "^5.5.0",

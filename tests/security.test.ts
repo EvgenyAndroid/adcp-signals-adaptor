@@ -763,10 +763,10 @@ describe("handleMcpRequest — auth gate", () => {
     return new Request("https://example.com/mcp", { method: "POST", headers, body });
   }
 
-  async function callAndParse(req: Request): Promise<{ status: number; body: any }> {
+  async function callAndParse(req: Request): Promise<{ status: number; body: any; res: Response }> {
     const res = await handleMcpRequest(req, env, logger);
     const text = await res.text();
-    return { status: res.status, body: text ? JSON.parse(text) : null };
+    return { status: res.status, body: text ? JSON.parse(text) : null, res };
   }
 
   it("tools/list with no Authorization header succeeds (discovery is public)", async () => {
@@ -791,8 +791,11 @@ describe("handleMcpRequest — auth gate", () => {
     expect(body.result?.serverInfo).toBeDefined();
   });
 
-  it("tools/call with no Authorization header returns -32001", async () => {
-    const { status, body } = await callAndParse(
+  it("tools/call with no Authorization header returns HTTP 401 + WWW-Authenticate", async () => {
+    // Sec-23: single-request auth failures surface at the HTTP layer per
+    // RFC 6750 so standard MCP clients and conformance probes detect the
+    // auth failure via transport. JSON-RPC body still carries -32001.
+    const { status, body, res } = await callAndParse(
       mcpReq({
         jsonrpc: "2.0",
         id: 3,
@@ -800,19 +803,20 @@ describe("handleMcpRequest — auth gate", () => {
         params: { name: "get_adcp_capabilities", arguments: {} },
       }),
     );
-    expect(status).toBe(200);
+    expect(status).toBe(401);
+    expect(res.headers.get("WWW-Authenticate")).toContain("Bearer");
     expect(body.error?.code).toBe(-32001);
-    // No successful result leaked alongside the error
     expect(body.result).toBeUndefined();
   });
 
-  it("tools/call with wrong API key returns -32001", async () => {
-    const { body } = await callAndParse(
+  it("tools/call with wrong API key returns HTTP 401 + -32001", async () => {
+    const { status, body } = await callAndParse(
       mcpReq(
         { jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "get_adcp_capabilities", arguments: {} } },
         "Bearer not-the-key",
       ),
     );
+    expect(status).toBe(401);
     expect(body.error?.code).toBe(-32001);
   });
 

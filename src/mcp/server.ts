@@ -124,6 +124,10 @@ export async function handleMcpRequest(
     const isAuthed = requireAuth(request, env.DEMO_API_KEY);
 
     if (Array.isArray(body)) {
+        // Batched requests — mixed auth per message stays as JSON-RPC 200 OK
+        // with per-message errors. Raising HTTP 401 here would block the
+        // discovery messages that legitimately succeed alongside unauth'd
+        // tools/call attempts in the same batch.
         const responses = await Promise.all(
             body.map((msg) => handleSingleMessage(msg, env, logger, isAuthed))
         );
@@ -134,7 +138,29 @@ export async function handleMcpRequest(
     if (response === null) {
         return new Response(null, { status: 202 });
     }
+    // RFC 6750 §3: Bearer-token failures on single-request tools/call surface
+    // at the HTTP layer (401 + WWW-Authenticate) so standard OAuth/MCP
+    // clients — and conformance probes like security_baseline/probe_unauth —
+    // can detect the auth failure without parsing JSON-RPC error codes. The
+    // JSON body is still a well-formed JSON-RPC error so polyglot clients
+    // see both the transport signal and the protocol signal.
+    if (isJsonRpcAuthError(response)) {
+        return new Response(JSON.stringify(response), {
+            status: 401,
+            headers: {
+                "Content-Type": "application/json",
+                "WWW-Authenticate": `Bearer realm="adcp-signals-adaptor", error="invalid_token"`,
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization, Mcp-Session-Id",
+            },
+        });
+    }
     return jsonResponse(response);
+}
+
+function isJsonRpcAuthError(resp: JsonRpcResponse): boolean {
+    return "error" in resp && resp.error.code === RPC_UNAUTHORIZED;
 }
 
 async function handleSingleMessage(
@@ -291,6 +317,8 @@ async function handleToolCall(
             const conceptResult = handleConceptToolCall(resolvedName, args);
             return toolResult(JSON.stringify(conceptResult, null, 2), conceptResult);
         }
+        case "create_media_buy":
+            return callCreateMediaBuy(args);
         default:
             throw new McpToolError(`Tool not implemented: ${name}`);
     }
@@ -337,6 +365,20 @@ async function callGetSignals(
     const deliverTo = args["deliver_to"] as Record<string, unknown> | undefined;
     const pagination = args["pagination"] as Record<string, unknown> | undefined;
 
+    // Probe-shaped request (security_baseline/api_key_path calls with an empty
+    // body per PROBE_TASK_ALLOWLIST semantics — auth-required, read-only,
+    // accepts empty). Full catalog with rich DTS + UCP payloads on every row
+    // serializes to ~200 KB; the runner's response ceiling is 65536 bytes.
+    // When nothing narrows the query, cap to 3 rows so a bare probe stays
+    // well under budget without changing the default for real callers.
+    const isProbeShape =
+        args["signal_spec"] === undefined &&
+        args["brief"] === undefined &&
+        args["signal_ids"] === undefined &&
+        (filters === undefined || Object.keys(filters).length === 0) &&
+        (deliverTo === undefined || Object.keys(deliverTo).length === 0);
+    const defaultLimit = isProbeShape ? 3 : 20;
+
     const req = {
         ...compactObj({
             brief: (args["signal_spec"] ?? args["brief"]) as string | undefined,
@@ -348,7 +390,7 @@ async function callGetSignals(
         }),
         // Use `!= null` (matches both null and undefined) instead of truthy
         // checks so a literal 0 isn't silently replaced by the default.
-        limit: numArg(args["max_results"], numArg(args["limit"], 20)),
+        limit: numArg(args["max_results"], numArg(args["limit"], defaultLimit)),
         offset: numArg(pagination?.["offset"], numArg(args["offset"], 0)),
     };
 
@@ -475,6 +517,46 @@ async function callActivateSignal(
         }
         throw err;
     }
+}
+
+// Sec-22: stub create_media_buy — we're a signals provider, not a media-buy
+// seller. Returns an AdCP error envelope (L3 structured: `adcp_error.code`
+// AND top-level `error_code`) so the universal schema_validation storyboard's
+// past_start_reject_path can contribute `past_start_handled`. The runner
+// extracts error_code from `structuredContent.adcp_error.code` or `.error_code`
+// (validations.js:383). Context is echoed unchanged per /schemas/core/context.
+async function callCreateMediaBuy(args: Record<string, unknown>): Promise<unknown> {
+    const startTime = typeof args["start_time"] === "string" ? args["start_time"] : undefined;
+    const endTime = typeof args["end_time"] === "string" ? args["end_time"] : undefined;
+    const ctx = args["context"];
+    const contextEcho = ctx && typeof ctx === "object" && !Array.isArray(ctx)
+        ? { context: ctx as Record<string, unknown> }
+        : {};
+
+    const now = Date.now();
+    const startMs = startTime ? Date.parse(startTime) : Number.NaN;
+    const endMs = endTime ? Date.parse(endTime) : Number.NaN;
+
+    let code: string;
+    let message: string;
+    if (!Number.isNaN(startMs) && startMs < now) {
+        code = "INVALID_REQUEST";
+        message = `start_time ${startTime} is in the past — flight must not begin before now.`;
+    } else if (!Number.isNaN(startMs) && !Number.isNaN(endMs) && endMs <= startMs) {
+        code = "INVALID_REQUEST";
+        message = `end_time ${endTime} must be strictly after start_time ${startTime}.`;
+    } else {
+        code = "UNSUPPORTED_OPERATION";
+        message = "This agent sells signals, not media — create_media_buy is stubbed for conformance only.";
+    }
+
+    const response = {
+        error_code: code,
+        adcp_error: { code, message },
+        message,
+        ...contextEcho,
+    };
+    return toolResult(JSON.stringify(response, null, 2), response);
 }
 
 async function callGetOperation(

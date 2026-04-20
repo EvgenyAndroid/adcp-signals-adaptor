@@ -1,19 +1,16 @@
 // tests/mcp.test.ts
 // MCP server unit tests
 //
-// Bug #3 fix: tool count updated to 8 (matches README protocol compliance table):
-//   get_adcp_capabilities, get_signals, activate_signal, get_operation_status,
-//   get_similar_signals, query_signals_nl, get_concept, search_concepts
-//
-// Bug #10 fix: activate_signal required field is "deliver_to" not "deployments"
-// Removed: stale generate_custom_signal references (tool was removed)
+// Tool count is 9: 4 AdCP signals core + get_similar_signals + query_signals_nl
+// + get_concept + search_concepts + create_media_buy (Sec-22 conformance stub
+// for universal schema_validation storyboard).
 
 import { describe, it, expect } from "vitest";
 import { ADCP_TOOLS, getToolByName } from "../src/mcp/tools";
 
 describe("MCP tool definitions", () => {
-  it("exposes exactly 8 tools (4 AdCP core + get_similar_signals + query_signals_nl + get_concept + search_concepts)", () => {
-    expect(ADCP_TOOLS).toHaveLength(8);
+  it("exposes exactly 9 tools (signals core + UCP + create_media_buy conformance stub)", () => {
+    expect(ADCP_TOOLS).toHaveLength(9);
   });
 
   it("all tools have required fields", () => {
@@ -24,7 +21,7 @@ describe("MCP tool definitions", () => {
     }
   });
 
-  it("getToolByName finds all 8 tools", () => {
+  it("getToolByName finds all 9 tools", () => {
     expect(getToolByName("get_signals")).toBeDefined();
     expect(getToolByName("activate_signal")).toBeDefined();
     expect(getToolByName("get_adcp_capabilities")).toBeDefined();
@@ -33,6 +30,7 @@ describe("MCP tool definitions", () => {
     expect(getToolByName("query_signals_nl")).toBeDefined();
     expect(getToolByName("get_concept")).toBeDefined();
     expect(getToolByName("search_concepts")).toBeDefined();
+    expect(getToolByName("create_media_buy")).toBeDefined();
   });
 
   it("getToolByName returns undefined for unknown tool", () => {

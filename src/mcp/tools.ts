@@ -517,56 +517,6 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
         },
     },
 
-    // Sec-22: stubbed to satisfy the universal schema_validation storyboard's
-    // past_start_enforcement assertion. We're a signals agent, not a media-buy
-    // seller, so every call returns an AdCP error envelope — INVALID_REQUEST
-    // for temporal violations (past start_time or reversed dates), and
-    // UNSUPPORTED_OPERATION otherwise. The storyboard's `past_start_reject_path`
-    // only needs the past-start branch to fire to contribute `past_start_handled`.
-    {
-        name: "create_media_buy",
-        description:
-            "Stubbed for storyboard conformance — this agent is a signals provider, not a media-buy seller. " +
-            "Returns INVALID_REQUEST when temporal constraints are violated (past start_time, reversed dates); " +
-            "returns UNSUPPORTED_OPERATION for every other call.",
-        inputSchema: {
-            type: "object",
-            properties: {
-                start_time: { type: "string", description: "ISO-8601 flight start." },
-                end_time: { type: "string", description: "ISO-8601 flight end." },
-                packages: { type: "array", items: { type: "object", additionalProperties: true } },
-                idempotency_key: { type: "string" },
-                context: { type: "object", additionalProperties: true },
-            },
-            additionalProperties: true,
-        },
-        outputSchema: {
-            type: "object",
-            required: ["errors"],
-            properties: {
-                errors: {
-                    type: "array",
-                    minItems: 1,
-                    items: {
-                        type: "object",
-                        required: ["code", "message"],
-                        properties: {
-                            code: { type: "string" },
-                            message: { type: "string" },
-                            // Sec-25a: optional recovery enum from core/error.json
-                            recovery: {
-                                type: "string",
-                                enum: ["transient", "correctable", "terminal"],
-                            },
-                        },
-                        additionalProperties: true,
-                    },
-                },
-                context: { type: "object", additionalProperties: true },
-            },
-            additionalProperties: true,
-        },
-    },
 ];
 
 export function getToolByName(name: string): McpToolDefinition | undefined {

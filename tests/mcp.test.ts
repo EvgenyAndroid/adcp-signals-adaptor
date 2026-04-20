@@ -1,16 +1,19 @@
 // tests/mcp.test.ts
 // MCP server unit tests
 //
-// Tool count is 9: 4 AdCP signals core + get_similar_signals + query_signals_nl
-// + get_concept + search_concepts + create_media_buy (Sec-22 conformance stub
-// for universal schema_validation storyboard).
+// Tool count is 8: 4 AdCP signals core + get_similar_signals + query_signals_nl
+// + get_concept + search_concepts.
+// The Sec-22 create_media_buy stub was removed in Sec-28 — adcp-client v5.6.0
+// client-side-gates on supported_protocols, so the universal
+// schema_validation storyboard correctly skips create_media_buy probes for
+// signals-only agents. The stub is no longer exercised and was dead code.
 
 import { describe, it, expect } from "vitest";
 import { ADCP_TOOLS, getToolByName } from "../src/mcp/tools";
 
 describe("MCP tool definitions", () => {
-  it("exposes exactly 9 tools (signals core + UCP + create_media_buy conformance stub)", () => {
-    expect(ADCP_TOOLS).toHaveLength(9);
+  it("exposes exactly 8 tools (signals core + UCP)", () => {
+    expect(ADCP_TOOLS).toHaveLength(8);
   });
 
   it("all tools have required fields", () => {
@@ -21,7 +24,7 @@ describe("MCP tool definitions", () => {
     }
   });
 
-  it("getToolByName finds all 9 tools", () => {
+  it("getToolByName finds all 8 tools", () => {
     expect(getToolByName("get_signals")).toBeDefined();
     expect(getToolByName("activate_signal")).toBeDefined();
     expect(getToolByName("get_adcp_capabilities")).toBeDefined();
@@ -30,7 +33,15 @@ describe("MCP tool definitions", () => {
     expect(getToolByName("query_signals_nl")).toBeDefined();
     expect(getToolByName("get_concept")).toBeDefined();
     expect(getToolByName("search_concepts")).toBeDefined();
-    expect(getToolByName("create_media_buy")).toBeDefined();
+  });
+
+  it("create_media_buy is NOT present (Sec-28: stub removed)", () => {
+    // The Sec-22 conformance stub was removed once adcp-client v5.6.0
+    // started enforcing client-side protocol gating — the universal
+    // schema_validation storyboard correctly skips create_media_buy probes
+    // for agents declaring signals-only supported_protocols. The stub
+    // became dead code existing only to satisfy a runner bug.
+    expect(getToolByName("create_media_buy")).toBeUndefined();
   });
 
   it("getToolByName returns undefined for unknown tool", () => {

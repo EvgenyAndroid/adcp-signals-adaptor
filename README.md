@@ -588,6 +588,30 @@ wrote.) A rollback to a shape that removes a field that callers
 started depending on is the failure mode; everyone else is fine with
 staleness under 1 hour.
 
+### Upgrading `@adcp/client`
+
+`@adcp/client` is pinned to an exact version (`"5.2.0"`, not `^5.2.0`)
+so compliance-runner behavior can't drift under us silently. Before
+bumping:
+
+1. Read the upstream release notes:
+   `https://github.com/adcontextprotocol/adcp-client/releases`.
+2. Check whether [adcontextprotocol/adcp#2535](https://github.com/adcontextprotocol/adcp/issues/2535)
+   landed. If it did, the runner's `validateErrorCode` now resolves
+   `data.errors[0].code` directly — the regex-on-message fallback
+   comment on `callCreateMediaBuy` in [src/mcp/server.ts](src/mcp/server.ts)
+   can be removed.
+
+   Quick check without an issue-watch:
+   ```bash
+   grep -n "errors\\?\\.\\[0\\]\\?\\.code" \
+     node_modules/@adcp/client/dist/lib/testing/storyboard/validations.js
+   ```
+   A match means the extractor was updated.
+
+3. Re-run `npm run compliance` before merging the bump — any storyboard
+   regression is almost certainly new spec / new probe, not our code.
+
 ## Regenerating Embedding Vectors
 
 ```bash

@@ -317,8 +317,6 @@ async function handleToolCall(
             const conceptResult = handleConceptToolCall(resolvedName, args);
             return toolResult(JSON.stringify(conceptResult, null, 2), conceptResult);
         }
-        case "create_media_buy":
-            return callCreateMediaBuy(args);
         default:
             throw new McpToolError(`Tool not implemented: ${name}`);
     }
@@ -510,111 +508,6 @@ async function callActivateSignal(
         }
         throw err;
     }
-}
-
-// Sec-27a: shared response for "field X didn't parse as ISO-8601". Kept
-// inline with callCreateMediaBuy because it's stub-specific and the call
-// sites need the echoed context block already computed.
-function parseFailure(
-    field: "start_time" | "end_time",
-    rawValue: string,
-    contextEcho: { context?: Record<string, unknown> },
-): unknown {
-    const response = {
-        errors: [{
-            code: "INVALID_REQUEST",
-            message: `${field} ${JSON.stringify(rawValue)} is not a valid ISO-8601 timestamp.`,
-            recovery: "correctable" as const,
-        }],
-        ...contextEcho,
-    };
-    return toolResult(JSON.stringify(response, null, 2), response);
-}
-
-// Sec-22 / Sec-24c: stub create_media_buy — we're a signals provider, not a
-// media-buy seller. Returns the spec-canonical error envelope —
-// `{ errors: [{ code, message }], context }` — per the AdCP error-compliance
-// doc. Sec-24c: removed the non-spec `error_code` top-level and duplicate
-// `adcp_error` fields the earlier revision carried as belt-and-braces for
-// the permissive runner extractor; extras risk colliding with future spec
-// fields of the same name.
-//
-// Upstream note: the runner's validateErrorCode extractor (adcp-client
-// v5.2.0, dist/lib/testing/storyboard/validations.js:383) does NOT resolve
-// `data.errors[0].code` — it reads `adcp_error.code` / `error_code` /
-// `code` / `error.code`, then falls back to regex-extracting the code
-// from `taskResult.error`. Our `errors[]` envelope passes the storyboard
-// via the regex fallback on `errors[0].message`, which is fragile.
-// Tracking fix upstream at adcontextprotocol/adcp#2535 — once landed we
-// get typed-field extraction instead of string-regex.
-async function callCreateMediaBuy(args: Record<string, unknown>): Promise<unknown> {
-    const startTime = typeof args["start_time"] === "string" ? args["start_time"] : undefined;
-    const endTime = typeof args["end_time"] === "string" ? args["end_time"] : undefined;
-    const ctx = args["context"];
-    const contextEcho = ctx && typeof ctx === "object" && !Array.isArray(ctx)
-        ? { context: ctx as Record<string, unknown> }
-        : {};
-
-    const now = Date.now();
-    const startMs = startTime ? Date.parse(startTime) : Number.NaN;
-    const endMs = endTime ? Date.parse(endTime) : Number.NaN;
-
-    // Sec-27a: unparseable-date guard. Before the temporal comparisons,
-    // reject requests where `start_time` / `end_time` is supplied but
-    // doesn't parse. NaN comparisons silently evaluate to `false`, so
-    // without this guard `{ start_time: "banana" }` skipped both
-    // INVALID_REQUEST branches and fell through to UNSUPPORTED_OPERATION
-    // / recovery: "terminal" — semantically wrong (the caller can fix
-    // the payload by sending a valid ISO-8601 string; it's not "this
-    // agent doesn't sell media"). Explicit INVALID_REQUEST / correctable.
-    if (startTime !== undefined && Number.isNaN(startMs)) {
-        return parseFailure("start_time", startTime, contextEcho);
-    }
-    if (endTime !== undefined && Number.isNaN(endMs)) {
-        return parseFailure("end_time", endTime, contextEcho);
-    }
-
-    // Sec-25a / Sec-26a: `recovery` is an optional enum on core/error.json
-    // ("transient" | "correctable" | "terminal"). The spec does NOT define
-    // a default for absent `recovery`, so every buyer implementation is
-    // free to interpret absence differently. Omitting it was ambiguous —
-    // a buyer that defaults to "transient" would hammer us on a malformed
-    // payload; one that defaults to "terminal" would give up on a past
-    // start_time a resubmit would fix. So we always classify explicitly:
-    //
-    //   - INVALID_REQUEST (temporal / shape) → "correctable": the caller
-    //     can either resubmit with valid dates or fix the payload. Neither
-    //     case requires human intervention, so "terminal" is wrong here.
-    //   - UNSUPPORTED_OPERATION → "terminal": we structurally don't
-    //     implement the tool, so a retrying buyer must stop.
-    const errEntry: { code: string; message: string; recovery: "correctable" | "terminal" } =
-        (() => {
-            if (!Number.isNaN(startMs) && startMs < now) {
-                return {
-                    code: "INVALID_REQUEST",
-                    message: `start_time ${startTime} is in the past — flight must not begin before now.`,
-                    recovery: "correctable",
-                };
-            }
-            if (!Number.isNaN(startMs) && !Number.isNaN(endMs) && endMs <= startMs) {
-                return {
-                    code: "INVALID_REQUEST",
-                    message: `end_time ${endTime} must be strictly after start_time ${startTime}.`,
-                    recovery: "correctable",
-                };
-            }
-            return {
-                code: "UNSUPPORTED_OPERATION",
-                message: "This agent sells signals, not media — create_media_buy is stubbed for conformance only.",
-                recovery: "terminal",
-            };
-        })();
-
-    const response = {
-        errors: [errEntry],
-        ...contextEcho,
-    };
-    return toolResult(JSON.stringify(response, null, 2), response);
 }
 
 async function callGetOperation(

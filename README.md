@@ -590,27 +590,25 @@ staleness under 1 hour.
 
 ### Upgrading `@adcp/client`
 
-`@adcp/client` is pinned to an exact version (`"5.2.0"`, not `^5.2.0`)
+`@adcp/client` is pinned to an exact version (`"5.6.0"`, not `^5.6.0`)
 so compliance-runner behavior can't drift under us silently. Before
 bumping:
 
 1. Read the upstream release notes:
    `https://github.com/adcontextprotocol/adcp-client/releases`.
-2. Check whether [adcontextprotocol/adcp#2535](https://github.com/adcontextprotocol/adcp/issues/2535)
-   landed. If it did, the runner's `validateErrorCode` now resolves
-   `data.errors[0].code` directly — the regex-on-message fallback
-   comment on `callCreateMediaBuy` in [src/mcp/server.ts](src/mcp/server.ts)
-   can be removed.
-
-   Quick check without an issue-watch:
-   ```bash
-   grep -n "errors\\?\\.\\[0\\]\\?\\.code" \
-     node_modules/@adcp/client/dist/lib/testing/storyboard/validations.js
-   ```
-   A match means the extractor was updated.
-
-3. Re-run `npm run compliance` before merging the bump — any storyboard
-   regression is almost certainly new spec / new probe, not our code.
+2. Re-run `npm run compliance` before merging the bump — any storyboard
+   regression on a version bump is usually new spec / new probe
+   behavior, not our code. Two historical examples:
+   - 5.2.0 → 5.6.0 (adcp#2535): the `validateErrorCode` extractor
+     tightened to read `data.errors[0].code` only when
+     `taskResult.success === false`. That requires the agent's MCP
+     tool responses to set `isError: true` when returning error
+     envelopes — which `callCreateMediaBuy` already does. An agent
+     returning errors[] with the default `isError: false` would
+     silently regress on this bump.
+   - Any bump that adds a new storyboard track (e.g. 5.2.0 added
+     security_baseline + signals_baseline) will surface new probes
+     as either advisory items or real failures.
 
 ## Regenerating Embedding Vectors
 

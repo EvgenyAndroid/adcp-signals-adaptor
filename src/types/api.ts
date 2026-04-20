@@ -58,7 +58,9 @@ export interface SearchSignalsResponse {
   hasMore: boolean;
 }
 
-// A proposed custom signal — not persisted until activated
+// A proposed custom signal — not persisted until activated. Shares the
+// pricing_options shape with SignalSummary (both validated on the wire
+// against /schemas/core/vendor-pricing-option.json).
 export interface CustomSignalProposal {
   signal_agent_segment_id: string;   // deterministic ID, valid for activation
   name: string;
@@ -67,13 +69,7 @@ export interface CustomSignalProposal {
   category_type: string;
   estimated_audience_size: number;
   coverage_percentage: number;
-  pricing_options: Array<{
-    pricing_option_id: string;
-    pricing_model: string;
-    rate?: number;
-    currency?: string;
-    is_fixed?: boolean;
-  }>;
+  pricing_options: SignalSummary["pricing_options"];
   deployments: SignalDeployment[];
   generation_rationale: string;      // why this segment matches the brief
 }
@@ -106,14 +102,19 @@ export interface SignalSummary {
   data_provider: string;
   coverage_percentage: number;
   deployments: SignalDeployment[];
+  /**
+   * Pricing options per /schemas/core/vendor-pricing-option.json.
+   * HEAD schema is a discriminated union on `model`. We only ship the
+   * CPM variant today (sufficient for demo / mock_cpm signals); the
+   * union here keeps the shape open for future flat_fee / per_unit
+   * expansions without another type change.
+   */
   pricing_options: Array<{
     pricing_option_id: string;
-    pricing_model: string;
-    rate?: number;
-    flat_fee?: number;
-    currency?: string;
-    is_fixed?: boolean;
-  }>;
+  } & (
+    | { model: "cpm"; cpm: number; currency: string }
+    | { model: "flat_fee"; amount: number; period: "monthly" | "quarterly" | "annual" | "campaign"; currency: string }
+  )>;
   category_type: SignalCategoryType;
   taxonomy_system: string;
   external_taxonomy_id?: string;

@@ -29,6 +29,7 @@ import { operatorIdFromRequest } from "./utils/operatorId";
 import {
     handleProtectedResourceMetadata,
     handleAuthorizationServerMetadata,
+    handleOAuthTokenStub,
 } from "./routes/wellKnown";
 
 // Seed data imported as text modules via wrangler assets
@@ -113,6 +114,10 @@ export default {
             // without authentication so clients can bootstrap the flow.
             "/.well-known/oauth-protected-resource",
             "/.well-known/oauth-authorization-server",
+            // Sec-24a: OAuth token endpoint is a documented 501 stub — must
+            // be reachable without auth so clients following the well-known
+            // advertisement get the terminal error rather than 401.
+            "/oauth/token",
         ];
         const isPublic = publicPaths.some((p) => path === p || path.startsWith(p + "/"));
 
@@ -147,6 +152,9 @@ export default {
 
             } else if (method === "GET" && path === "/.well-known/oauth-authorization-server") {
                 response = handleAuthorizationServerMetadata(request);
+
+            } else if (method === "POST" && path === "/oauth/token") {
+                response = handleOAuthTokenStub();
 
             } else if (method === "GET" && path === "/capabilities") {
                 response = await handleGetCapabilities(request, env, logger);

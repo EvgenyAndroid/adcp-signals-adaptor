@@ -64,6 +64,44 @@ per-operator secret, or an explicit `X-Operator-Id` header). Callback,
 `getValidAccessToken`, `/status`, and the activation route all resolve
 the namespace from the same source.
 
+## Token encryption at rest
+
+LinkedIn OAuth tokens in KV are AES-GCM encrypted when
+`TOKEN_ENCRYPTION_KEY` is provisioned. **Currently provisioned on the
+deployed worker** — the success page (post-OAuth callback) reflects this:
+"Tokens stored encrypted in KV (AES-GCM at rest)."
+
+Implementation lives in [src/utils/tokenCrypto.ts](src/utils/tokenCrypto.ts):
+
+- `enc:v1:` envelope prefix so legacy plaintext values still read.
+- 12-byte random IV per write; AES-GCM auth tag bundled in the ciphertext.
+- 256-bit AES key derived via SHA-256 over the passphrase.
+- 32-character minimum on the passphrase enforced at `deriveKey` time —
+  throws `WeakPassphraseError` on shorter values. See `MIN_PASSPHRASE_LENGTH`.
+  PBKDF2 is NOT used; the SHA-256-on-passphrase approach is correct only
+  for high-entropy random secrets (Wrangler-secret posture).
+
+Old plaintext entries continue to be readable via the legacy fallback in
+`decryptIfNeeded` and get re-encrypted on the next OAuth refresh. No
+migration script needed.
+
+## Callback HTTP status code disposition
+
+`/auth/linkedin/callback` error pages return HTTP 200 with HTML bodies
+that contain "Invalid State" / "Authorization Failed" / etc. instead of
+mapping to 4xx/5xx. This is **intentional for the demo posture**:
+
+- The page renders as a usable UI for the operator (back-link, error
+  detail) regardless of status.
+- The browser navigates to it as a top-level redirect from LinkedIn —
+  4xx would surface as a generic browser error page in some browsers,
+  hiding the actionable detail.
+
+If observability or cache-behaviour eventually warrants proper status
+codes (a 5xx page is implicitly cacheable as a "real" success in some
+edge configs), the fix is small (`htmlResponse(title, content, status)`).
+Logged for future cleanup, not currently a defect.
+
 ## What does NOT live here
 
 - Code-level auth gates: see inline comments around `publicPaths` in
@@ -72,6 +110,7 @@ the namespace from the same source.
 - Webhook signing format: see
   [src/domain/webhookSigning.ts](src/domain/webhookSigning.ts) and the
   "Webhook signatures" section of README.md.
-- Token encryption: see
-  [src/utils/tokenCrypto.ts](src/utils/tokenCrypto.ts); unset
-  `TOKEN_ENCRYPTION_KEY` means plaintext storage (legacy-compatible).
+- Webhook retry policy: see [src/domain/activationService.ts](src/domain/activationService.ts)
+  `fireWebhook` — current implementation re-fires on every poll until
+  the receiver returns 2xx (no max-attempts cap). Bounded retries are
+  a known follow-up.

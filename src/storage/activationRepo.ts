@@ -13,6 +13,8 @@ interface JobRow {
   status: string;
   webhook_url: string | null;
   webhook_fired: number;
+  webhook_attempts: number | null;
+  webhook_next_attempt_at: string | null;
   submitted_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -29,6 +31,8 @@ function rowToOperation(row: JobRow): OperationRecord {
     status: row.status as OperationStatus,
     ...(row.webhook_url ? { webhookUrl: row.webhook_url } : {}),
     webhookFired: row.webhook_fired === 1,
+    webhookAttempts: row.webhook_attempts ?? 0,
+    ...(row.webhook_next_attempt_at ? { webhookNextAttemptAt: row.webhook_next_attempt_at } : {}),
     submittedAt: row.submitted_at,
     updatedAt: row.updated_at,
     ...(row.completed_at ? { completedAt: row.completed_at } : {}),
@@ -108,6 +112,28 @@ export async function markWebhookFired(db: DB, operationId: string): Promise<voi
     db,
     "UPDATE activation_jobs SET webhook_fired = 1 WHERE operation_id = ?",
     [operationId]
+  );
+}
+
+/**
+ * Sec-15: record a webhook delivery attempt that did NOT succeed.
+ * Increments the attempts counter and writes the next-allowed retry time
+ * (caller computes the backoff). The lazy poll-driven state machine
+ * checks `webhook_next_attempt_at` before re-firing, so this gives us
+ * exponential backoff without a real scheduler.
+ */
+export async function recordWebhookAttempt(
+  db: DB,
+  operationId: string,
+  attempts: number,
+  nextAttemptAt: string | null,
+): Promise<void> {
+  await execute(
+    db,
+    `UPDATE activation_jobs
+     SET webhook_attempts = ?, webhook_next_attempt_at = ?
+     WHERE operation_id = ?`,
+    [attempts, nextAttemptAt, operationId],
   );
 }
 

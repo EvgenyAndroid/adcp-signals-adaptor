@@ -19,6 +19,7 @@ import {
   findOperationById,
   updateJobStatus,
   markWebhookFired,
+  recordWebhookAttempt,
 } from "../storage/activationRepo";
 import { findSignalById, upsertSignal } from "../storage/signalRepo";
 import { getProposal, deleteProposal } from "../storage/proposalCache";
@@ -148,11 +149,15 @@ export async function getOperationService(
     currentStatus = "completed";
   }
 
-  // Fire webhook if URL provided and not yet fired
+  // Fire webhook if URL provided, not yet fired, retry budget remaining,
+  // and we're past any backoff window. Sec-15 bounded the runaway-redelivery
+  // path (was: re-fired on every poll until receiver returned 2xx).
   if (
     currentStatus === "completed" &&
     operation.webhookUrl &&
-    !operation.webhookFired
+    !operation.webhookFired &&
+    operation.webhookAttempts < MAX_WEBHOOK_ATTEMPTS &&
+    isPastBackoffWindow(operation.webhookNextAttemptAt)
   ) {
     await fireWebhook(
       db,
@@ -160,9 +165,25 @@ export async function getOperationService(
       operation.signalId,
       operation.destination,
       operation.webhookUrl,
+      operation.webhookAttempts,
       logger,
       signingSecret,
     );
+  } else if (
+    currentStatus === "completed" &&
+    operation.webhookUrl &&
+    !operation.webhookFired &&
+    operation.webhookAttempts >= MAX_WEBHOOK_ATTEMPTS
+  ) {
+    // Once we hit the cap, log it the first time and never again from
+    // this code path — markWebhookFired below would short-circuit
+    // future polls. We don't mark it fired (operator can still tell
+    // the difference: webhookFired=false, webhookAttempts=MAX).
+    logger.warn("webhook_attempts_exhausted", {
+      operationId: opId,
+      attempts: operation.webhookAttempts,
+      max: MAX_WEBHOOK_ATTEMPTS,
+    });
   }
 
   const platformSegmentId = `${operation.destination}_${operation.signalId}`;
@@ -197,6 +218,26 @@ export async function getOperationService(
 
 // 5-second timeout — webhooks should be quick acks, not long-running work.
 const WEBHOOK_TIMEOUT_MS = 5000;
+
+// Sec-15: bounded retry policy. Receiver gets at most this many delivery
+// attempts before we stop firing. Five matches Stripe / GitHub Webhooks
+// defaults — enough for transient network blips and brief receiver
+// outages without hammering a permanently-broken URL forever.
+const MAX_WEBHOOK_ATTEMPTS = 5;
+
+// Exponential backoff: 30s, 2m, 8m, 32m. Each delay is the gap before
+// the NEXT attempt — there's no delay before attempt #1 (initial fire).
+// The lazy poll-driven state machine honors `webhook_next_attempt_at`,
+// so backoff happens "for free" without a scheduler.
+function backoffSeconds(attemptsCompleted: number): number {
+  // attemptsCompleted = 1 → 30s, 2 → 120, 3 → 480, 4 → 1920
+  return 30 * Math.pow(4, attemptsCompleted - 1);
+}
+
+function isPastBackoffWindow(nextAttemptAt: string | undefined): boolean {
+  if (!nextAttemptAt) return true;
+  return Date.now() >= new Date(nextAttemptAt).getTime();
+}
 
 /**
  * Validate that a webhook URL is safe to call.
@@ -242,6 +283,7 @@ async function fireWebhook(
   signalId: string,
   destination: string,
   webhookUrl: string,
+  attemptsBefore: number,
   logger: Logger,
   signingSecret?: string,
 ): Promise<void> {
@@ -289,6 +331,8 @@ async function fireWebhook(
     signed = true;
   }
 
+  const attemptNumber = attemptsBefore + 1;
+
   try {
     const res = await fetchWithTimeout(webhookUrl, {
       method: "POST",
@@ -299,23 +343,49 @@ async function fireWebhook(
 
     if (res.ok) {
       await markWebhookFired(db, opId);
+      // Also bump the attempts counter for observability — operator can
+      // tell from /operations/<id> whether the receiver acked first try
+      // or limped through 4 retries.
+      await recordWebhookAttempt(db, opId, attemptNumber, null);
       logger.info("webhook_fired", {
         operationId: opId,
         statusCode: res.status,
         signed,
+        attempt: attemptNumber,
       });
     } else {
-      // Receiver rejected the delivery. Leave the flag clear so the next
-      // poll retries — don't burn the single attempt on a transient 5xx.
+      // Receiver rejected. Record the attempt + schedule next backoff.
+      // If we just hit MAX_WEBHOOK_ATTEMPTS, no next time — clear the
+      // backoff field and let the gate in getOperationService do the
+      // exhaustion log on the next poll.
+      const exhausted = attemptNumber >= MAX_WEBHOOK_ATTEMPTS;
+      const nextAttemptAt = exhausted
+        ? null
+        : new Date(Date.now() + backoffSeconds(attemptNumber) * 1000).toISOString();
+      await recordWebhookAttempt(db, opId, attemptNumber, nextAttemptAt);
       logger.warn("webhook_non_2xx", {
         operationId: opId,
         statusCode: res.status,
         signed,
+        attempt: attemptNumber,
+        exhausted,
+        ...(nextAttemptAt ? { next_attempt_at: nextAttemptAt } : {}),
       });
     }
   } catch (err) {
-    // Network error or timeout — treat as retriable.
-    logger.error("webhook_failed", { operationId: opId, error: String(err), signed });
+    // Network error or timeout — treat as retriable, same backoff path.
+    const exhausted = attemptNumber >= MAX_WEBHOOK_ATTEMPTS;
+    const nextAttemptAt = exhausted
+      ? null
+      : new Date(Date.now() + backoffSeconds(attemptNumber) * 1000).toISOString();
+    await recordWebhookAttempt(db, opId, attemptNumber, nextAttemptAt);
+    logger.error("webhook_failed", {
+      operationId: opId,
+      error: String(err),
+      signed,
+      attempt: attemptNumber,
+      exhausted,
+    });
   }
 }
 

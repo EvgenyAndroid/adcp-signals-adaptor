@@ -101,9 +101,12 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                             minItems: 1,
                         },
                         idempotency: {
+                            // HEAD schema: discriminated union on `supported`.
+                            // We always declare the supported=true variant.
                             type: "object",
-                            required: ["replay_ttl_seconds"],
+                            required: ["supported", "replay_ttl_seconds"],
                             properties: {
+                                supported: { type: "boolean", const: true },
                                 replay_ttl_seconds: {
                                     type: "integer",
                                     minimum: 3600,

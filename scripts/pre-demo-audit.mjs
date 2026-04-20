@@ -135,7 +135,19 @@ async function checkNlQuery() {
       body: JSON.stringify({ query: q, limit: 3 }),
     });
     const count = body.result?.matched_signals?.length ?? 0;
-    log(`nl-query — "${q.slice(0, 40)}..."`, status === 200 && body.success === true && count > 0, `${count} matches`);
+    const hasEstimate = typeof body.result?.estimated_size === 'number';
+    // NLAQ returns success=true in two shapes:
+    //   - Direct catalog matches (count > 0)
+    //   - Dimension-resolved estimate with no exact catalog match
+    //     (count=0 but estimated_size populated — valid for composite
+    //     queries like "graduate educated adults who are not low income")
+    // Same acceptance rule the live runner uses.
+    const ok = status === 200 && body.success === true && (count > 0 || hasEstimate);
+    log(
+      `nl-query — "${q.slice(0, 40)}..."`,
+      ok,
+      count > 0 ? `${count} matches` : hasEstimate ? `estimate: ${body.result.estimated_size}` : 'empty',
+    );
   }
 }
 
@@ -254,8 +266,11 @@ async function checkSecurity() {
   ]);
   log('linkedin/init unauth 401', li[0].status === 401);
   log('linkedin/status unauth 401', li[1].status === 401);
-  log('linkedin/callback public + state-invalid HTML',
-    li[2].status === 200 && li[2].raw.includes('Invalid State'));
+  // Sec-14 changed this from 200 → 400 (caller-side bad state, not a
+  // server-success). Body still contains "Invalid State" HTML for the
+  // browser; status now correctly distinguishes from real 200s.
+  log('linkedin/callback public + state-invalid HTML (400)',
+    li[2].status === 400 && li[2].raw.includes('Invalid State'));
   const liAuth = await fetchJson(`${BASE}/auth/linkedin/status`, { headers: auth });
   log('linkedin/status authed 200', liAuth.status === 200);
 
@@ -293,9 +308,16 @@ async function checkCors() {
 // ── Error paths (fail loudly, don't leak) ────────────────────────────────────
 
 async function checkErrors() {
-  const notFound = await fetchJson(`${BASE}/does-not-exist`);
-  log('error — 404 with clean JSON',
-    notFound.status === 404 && typeof notFound.body.error === 'string' && !notFound.body.error.includes('stack'));
+  // Intentional posture: top-level auth gate runs BEFORE route
+  // matching, so an unauth'd caller hitting an unknown path gets 401
+  // (can't enumerate routes). With auth, unknown routes get a clean
+  // 404 JSON. Both shapes are correct.
+  const notFoundUnauth = await fetchJson(`${BASE}/does-not-exist`);
+  log('error — unauth unknown path → 401 (no route enumeration)',
+    notFoundUnauth.status === 401);
+  const notFoundAuth = await fetchJson(`${BASE}/does-not-exist`, { headers: auth });
+  log('error — authed unknown path → 404 with clean JSON',
+    notFoundAuth.status === 404 && typeof notFoundAuth.body.error === 'string' && !notFoundAuth.body.error.includes('stack'));
   const badJson = await fetch(`${BASE}/signals/search`, {
     method: 'POST', headers: { ...auth, ...json }, body: 'not json',
   });

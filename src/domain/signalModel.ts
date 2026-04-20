@@ -4,6 +4,7 @@
 import type { CanonicalSignal } from "../types/signal";
 import { signalIdFromSlug } from "../utils/ids";
 import { estimateSeededSize } from "../utils/estimation";
+import { compactObj } from "../utils/objects";
 
 const NOW = "2025-01-01T00:00:00Z";
 const DEFAULT_DESTINATIONS = ["mock_dsp", "mock_cleanroom", "mock_cdp", "mock_measurement"];
@@ -35,7 +36,7 @@ function seeded(
     pricing: { model: "mock_cpm", value: 2.5, currency: "USD" },
     createdAt: NOW,
     updatedAt: NOW,
-    ...opts,
+    ...compactObj(opts as Record<string, unknown>),
   };
 }
 
@@ -63,10 +64,10 @@ function derived(
     status: "available",
     freshness: "7d",
     pricing: { model: "mock_cpm", value: 3.5, currency: "USD" },
-    rules,
+    ...(rules ? { rules } : {}),
     createdAt: NOW,
     updatedAt: NOW,
-    ...opts,
+    ...compactObj(opts as Record<string, unknown>),
   };
 }
 

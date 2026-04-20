@@ -101,8 +101,12 @@ export interface RankedSignal {
   match_method: string;
   estimated_audience_size: number;
   coverage_percentage: number;
-  temporal_scope?: AudienceQueryLeaf["temporal"];
-  concept_id?: string;
+  // Required-but-nullable so caller construction sites can pass through
+  // upstream values that are already `T | undefined` without
+  // exactOptionalPropertyTypes objections. Consumers reading these
+  // fields treat undefined as missing — same semantics as `?:`.
+  temporal_scope: AudienceQueryLeaf["temporal"] | undefined;
+  concept_id: string | undefined;
 }
 
 export interface DimensionBreakdown {

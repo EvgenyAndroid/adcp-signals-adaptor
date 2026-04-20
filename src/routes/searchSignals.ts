@@ -5,6 +5,7 @@ import type { SearchSignalsRequest } from "../types/api";
 import { searchSignalsService } from "../domain/signalService";
 import { validateSearchRequest } from "../utils/validation";
 import { jsonResponse, errorResponse, readJsonBody } from "./shared";
+import { compactObj } from "../utils/objects";
 import { getDb } from "../storage/db";
 import type { Logger } from "../utils/logger";
 
@@ -30,15 +31,17 @@ export async function handleSearchSignals(
   // for brief; pull it via an indexed access since the typed field is `brief`.
   const bodyAny = body as Record<string, unknown> | null;
   const req: SearchSignalsRequest = {
-    brief: body?.brief
-      ?? (typeof bodyAny?.["signal_spec"] === "string" ? (bodyAny["signal_spec"] as string) : undefined)
-      ?? url.searchParams.get("brief")
-      ?? undefined,
-    query: body?.query ?? url.searchParams.get("query") ?? undefined,
-    categoryType: body?.categoryType ?? (url.searchParams.get("categoryType") as SearchSignalsRequest["categoryType"]) ?? undefined,
-    generationMode: body?.generationMode ?? (url.searchParams.get("generationMode") as SearchSignalsRequest["generationMode"]) ?? undefined,
-    taxonomyId: body?.taxonomyId ?? url.searchParams.get("taxonomyId") ?? undefined,
-    destination: body?.destination ?? url.searchParams.get("destination") ?? undefined,
+    ...compactObj({
+      brief: body?.brief
+        ?? (typeof bodyAny?.["signal_spec"] === "string" ? (bodyAny["signal_spec"] as string) : undefined)
+        ?? url.searchParams.get("brief")
+        ?? undefined,
+      query: body?.query ?? url.searchParams.get("query") ?? undefined,
+      categoryType: body?.categoryType ?? (url.searchParams.get("categoryType") as SearchSignalsRequest["categoryType"]) ?? undefined,
+      generationMode: body?.generationMode ?? (url.searchParams.get("generationMode") as SearchSignalsRequest["generationMode"]) ?? undefined,
+      taxonomyId: body?.taxonomyId ?? url.searchParams.get("taxonomyId") ?? undefined,
+      destination: body?.destination ?? url.searchParams.get("destination") ?? undefined,
+    }),
     limit: body?.limit ?? parseInt(url.searchParams.get("limit") ?? "20", 10),
     offset: body?.offset ?? parseInt(url.searchParams.get("offset") ?? "0", 10),
   };

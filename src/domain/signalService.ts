@@ -9,6 +9,7 @@ import type {
 import type { DB } from "../storage/db";
 import { searchSignals, findSignalById } from "../storage/signalRepo";
 import { putProposal } from "../storage/proposalCache";
+import { compactObj } from "../utils/objects";
 import { toSignalSummary, toSignalSummaries } from "../mappers/signalMapper";
 import { validateRules, generateSegment } from "./ruleEngine";
 import { estimateAudienceSize } from "../utils/estimation";
@@ -45,12 +46,14 @@ export async function searchSignalsService(
   const fetchLimit = req.brief ? Math.min(200, MAX_LIMIT * 4) : limit;
 
   const { signals, totalCount } = await searchSignals(db, {
-    query: req.query,
-    categoryType: req.categoryType,
-    generationMode: req.generationMode,
-    taxonomyId: req.taxonomyId,
-    destination: req.destination,
-    activationSupported: req.activationSupported,
+    ...compactObj({
+      query: req.query,
+      categoryType: req.categoryType,
+      generationMode: req.generationMode,
+      taxonomyId: req.taxonomyId,
+      destination: req.destination,
+      activationSupported: req.activationSupported,
+    }),
     limit: fetchLimit,
     offset: req.brief ? 0 : offset,  // always fetch from top when re-ranking
   });

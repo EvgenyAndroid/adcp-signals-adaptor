@@ -381,6 +381,10 @@ ${STYLES}
               <svg class="ico"><use href="#icon-check"/></svg>
               <span>Copy JSON</span>
             </button>
+            <a class="btn-secondary" href="/capabilities" target="_blank" rel="noopener" id="caps-open">
+              <svg class="ico"><use href="#icon-arrow-right"/></svg>
+              <span>Open /capabilities</span>
+            </a>
           </div>
         </div>
 
@@ -1336,6 +1340,10 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   overflow-x: auto; overflow-y: auto;
   max-height: 480px;
   line-height: 1.55;
+  /* Honor the 2-space indentation from JSON.stringify — without this
+     all the newlines collapse and the block renders as one wrapped blob. */
+  white-space: pre;
+  tab-size: 2;
 }
 .caps-raw-json .json-key     { color: var(--accent-hot); }
 .caps-raw-json .json-str     { color: var(--success); }

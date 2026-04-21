@@ -327,10 +327,16 @@ ${STYLES}
           <div class="builder-rules-col">
             <div class="builder-section-label">Rules <span style="color:var(--text-mut);font-weight:400;font-family:var(--font-mono)">(max 6)</span></div>
             <div class="builder-rules" id="builder-rules"></div>
-            <button class="btn-secondary" id="add-rule-btn">
-              <svg class="ico"><use href="#icon-plus"/></svg>
-              <span>Add rule</span>
-            </button>
+            <div class="builder-row-actions">
+              <button class="btn-secondary" id="add-rule-btn">
+                <svg class="ico"><use href="#icon-plus"/></svg>
+                <span>Add rule</span>
+              </button>
+              <button class="btn-secondary" id="reset-rules-btn" title="Clear all rules">
+                <svg class="ico"><use href="#icon-close"/></svg>
+                <span>Reset</span>
+              </button>
+            </div>
 
             <div class="builder-section-label" style="margin-top:20px">Segment name</div>
             <input id="builder-name" class="builder-input" placeholder="Auto-generated from rules" />
@@ -1208,6 +1214,10 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   padding: 8px 10px; font-size: 13px; font-family: inherit; outline: none;
 }
 .builder-input:focus { border-color: var(--border-focus); }
+.builder-row-actions { display: flex; gap: 8px; }
+.builder-row-actions .btn-secondary { flex: 1; justify-content: center; }
+#reset-rules-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+#reset-rules-btn:hover:not(:disabled) { border-color: var(--error); color: var(--error); }
 .builder-note {
   margin-top: 8px; font-size: 11.5px; color: var(--text-mut);
   font-family: var(--font-mono); line-height: 1.5;
@@ -2249,6 +2259,11 @@ function renderBuilderRules() {
     addBtn.disabled = state.builder.rules.length >= MAX_RULES;
     addBtn.title = state.builder.rules.length >= MAX_RULES ? "Maximum of 6 rules" : "";
   }
+  const resetBtn = document.getElementById("reset-rules-btn");
+  if (resetBtn) {
+    const nameVal = document.getElementById("builder-name")?.value || "";
+    resetBtn.disabled = state.builder.rules.length === 0 && nameVal.length === 0;
+  }
 }
 
 function renderBuilderRule(rule, idx) {
@@ -2300,6 +2315,21 @@ document.getElementById("add-rule-btn").addEventListener("click", () => {
   state.builder.rules.push({ dimension: nextDim.key, operator: "eq", value: nextDim.values[0] });
   renderBuilderRules();
   debouncedEstimate();
+});
+
+// Reset — clear all rules, segment name, and any "generated" banner so
+// the builder is back to the initial empty state. Preview returns to the
+// 240M baseline via runEstimate on empty rules.
+document.getElementById("reset-rules-btn").addEventListener("click", () => {
+  if (state.builder.rules.length === 0 && !document.getElementById("builder-name").value) return;
+  state.builder.rules = [];
+  document.getElementById("builder-name").value = "";
+  const note = document.getElementById("generate-note");
+  note.className = "builder-note";
+  note.textContent = "";
+  state.builder.generatedSegment = null;
+  renderBuilderRules();
+  runEstimate();
 });
 
 function debouncedEstimate() {

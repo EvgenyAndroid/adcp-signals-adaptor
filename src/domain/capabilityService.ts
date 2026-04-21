@@ -10,12 +10,12 @@
 // Cache key bumped to v6 for the v3-conformant shape (ucp moved to ext)
 // then v7 for the HEAD-schema-conformant shape (adds adcp.idempotency).
 
-// Cache key bumped to v11 — Sec-32 follow-up adds ext.dts declaring IAB
-// Data Transparency Standard v1.2 support at the capabilities level.
-// Every signal already carries a full x_dts label; this hoists that
-// capability into the handshake so buyer agents can detect DTS support
-// before pulling the catalog.
-const CACHE_KEY = "adcp_capabilities_v11";
+// Cache key bumped to v13 — Sec-38 C9 adds TTD + DV360 sandbox
+// destinations (activation_supported=false until OAuth wired). v12
+// baseline: three ext blocks (id_resolution, measurement, governance).
+// v11 baseline: ext.dts declaring IAB Data Transparency Standard v1.2.
+// v10 baseline: ext.ucp declaring UCP embedding bridge + concept registry.
+const CACHE_KEY = "adcp_capabilities_v13";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
@@ -88,6 +88,13 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
         { id: "mock_cleanroom",   name: "Mock Clean Room",            type: "cleanroom",   activation_supported: true  },
         { id: "mock_cdp",         name: "Mock CDP",                   type: "cdp",         activation_supported: true  },
         { id: "mock_measurement", name: "Mock Measurement Platform",  type: "measurement", activation_supported: false },
+        // Sec-38 C9: DSP-stage destinations. TTD sandbox + DV360 sandbox
+        // are declared activation_supported=false because no real OAuth
+        // handshake is wired yet — buyer agents should fall through to
+        // mock_dsp for actual activation in this demo. Listing them at
+        // capability level signals the integration roadmap.
+        { id: "ttd_sandbox",      name: "The Trade Desk (sandbox)",   type: "dsp",         activation_supported: false },
+        { id: "dv360_sandbox",    name: "DV360 (sandbox)",            type: "dsp",         activation_supported: false },
       ],
       limits: {
         max_signals_per_request: 100,
@@ -132,6 +139,90 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
         // Document URL the label references for the data-provider's
         // privacy practices
         provider_privacy_policy_url: "https://adcp-signals-adaptor.evgeny-193.workers.dev/privacy",
+      },
+      // ext.id_resolution — cookieless posture + supported ID types.
+      // The signal-level x_dts.data_sources + audience_precision_levels
+      // already encode per-signal identity granularity; this hoists the
+      // provider-wide posture into the handshake so a buyer agent knows
+      // what IDs we can resolve before pulling rows. Graph partners are
+      // declared as `stage` = sandbox|roadmap|live; none are live today
+      // because this adaptor is a reference implementation.
+      id_resolution: {
+        supported: true,
+        cookieless_ready: true,
+        id_types_supported: [
+          "cookie_3p",
+          "maid_ios",
+          "maid_android",
+          "ctv_device",
+          "uid2",
+          "ramp_id",
+          "id5",
+          "hashed_email",
+          "ip_only",
+        ],
+        graph_partners: [
+          { name: "UID 2.0", stage: "sandbox", endpoint: null },
+          { name: "ID5", stage: "sandbox", endpoint: null },
+          { name: "LiveRamp RampID", stage: "roadmap", endpoint: null },
+          { name: "Yahoo ConnectID", stage: "roadmap", endpoint: null },
+        ],
+        resolution_method: "derived_from_dts",
+        resolution_surface:
+          "/signals/{signal_agent_segment_id} x_dts.data_sources + audience_precision_levels",
+      },
+      // ext.measurement — reach/overlap/lift/delivery surfaces. Reach and
+      // overlap are live (UI + /signals/overlap endpoint); lift and
+      // delivery-sim are declared as "mock" because the demo renders
+      // placeholder panels backed by synthetic numbers. Partner roadmap
+      // lists the measurement vendors this adaptor is architected to
+      // integrate with once connected.
+      measurement: {
+        supported: true,
+        reach_forecasting: {
+          supported: true,
+          endpoint: "/signals/{id} (detail panel)",
+          methodology: "logistic saturation against declared CPM + budget",
+        },
+        overlap_analysis: {
+          supported: true,
+          endpoint: "/signals/overlap",
+          methodology: "category_affinity × min/max Jaccard heuristic",
+        },
+        lift_measurement: {
+          supported: "mock",
+          partners_roadmap: ["Nielsen", "IAS", "DV", "Kantar", "Circana"],
+        },
+        delivery_simulation: {
+          supported: "mock",
+          surface: "/signals/{id} detail panel (post-activation)",
+        },
+      },
+      // ext.governance — audit log, sensitive-category flagging, opt-out.
+      // The D1-backed tool log (migrations/0006_mcp_tool_calls.sql) retains
+      // 7 days of MCP tool calls with 4KB arg truncation; buyer agents can
+      // export via CSV. Sensitive categories (health/financial/political)
+      // are surfaced via x_governance.sensitive on individual signals and
+      // rendered as a pill in the UI.
+      governance: {
+        audit_log: {
+          supported: true,
+          endpoint: "/mcp/recent",
+          retention_days: 7,
+          export_format: "csv_download",
+        },
+        sensitive_category_flagging: {
+          supported: true,
+          categories_flagged: ["health", "financial", "political"],
+          surface:
+            "x_governance.sensitive block on signal + UI pill in signal detail",
+        },
+        opt_out_url:
+          "https://adcp-signals-adaptor.evgeny-193.workers.dev/privacy#opt-out",
+        audience_bias_governance_schema: {
+          supported: true,
+          version: "adcp_3.0_rc",
+        },
       },
     },
   };

@@ -10,6 +10,7 @@ import { handleGetEmbedding } from "./routes/getEmbedding";
 import { handleGetGts } from "./routes/gts";
 import { handleSimulateHandshake } from "./routes/handshake";
 import { handleGetProjector } from "./routes/getProjector";
+import { handleUcpProjection, handleUcpSimilarity } from "./routes/ucpProjection";
 import { handleMcpRequest } from "./mcp/server";
 import { jsonResponse, errorResponse, requireAuth } from "./routes/shared";
 import { createLogger } from "./utils/logger";
@@ -132,6 +133,11 @@ export default {
             "/ucp/concepts",
             "/ucp/gts",
             "/ucp/simulate-handshake",
+            // Sec-38 B5: 2D projection + pairwise cosine heatmap. Public
+            // because the underlying data (real 512-d vectors) is already
+            // public via /signals/{id}/embedding.
+            "/ucp/projection",
+            "/ucp/similarity",
             "/auth/linkedin/callback",
             // RFC 9728 + 8414: OAuth discovery metadata MUST be reachable
             // without authentication so clients can bootstrap the flow.
@@ -205,6 +211,14 @@ export default {
                 // ── UCP Projector ─────────────────────────────────────────────────────
             } else if (method === "GET" && path === "/ucp/projector") {
                 response = handleGetProjector();
+
+                // ── UCP 2D Projection (for visualization) ─────────────────────────────
+            } else if (method === "GET" && path === "/ucp/projection") {
+                response = handleUcpProjection();
+
+                // ── UCP Pairwise Similarity Matrix ────────────────────────────────────
+            } else if (method === "GET" && path === "/ucp/similarity") {
+                response = handleUcpSimilarity(url);
 
                 // ── LinkedIn OAuth ────────────────────────────────────────────────────
                 // Only /callback is in publicPaths. /init and /status are

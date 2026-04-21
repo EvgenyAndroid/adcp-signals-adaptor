@@ -103,6 +103,9 @@ ${STYLES}
       <button class="nav-item" data-tab="overlap">
         <svg class="ico"><use href="#icon-network"/></svg><span>Overlap</span>
       </button>
+      <button class="nav-item" data-tab="embedding">
+        <svg class="ico"><use href="#icon-chart"/></svg><span>Embedding</span>
+      </button>
       <button class="nav-item" data-tab="activations">
         <svg class="ico"><use href="#icon-activations"/></svg><span>Activations</span>
         <span class="nav-count" id="nav-activations-count">—</span>
@@ -111,6 +114,9 @@ ${STYLES}
       <div class="nav-group-label">Reference</div>
       <button class="nav-item" data-tab="capabilities">
         <svg class="ico"><use href="#icon-info"/></svg><span>Capabilities</span>
+      </button>
+      <button class="nav-item" data-tab="devkit">
+        <svg class="ico"><use href="#icon-book"/></svg><span>Dev kit</span>
       </button>
       <button class="nav-item" data-tab="toollog">
         <svg class="ico"><use href="#icon-activations"/></svg><span>Tool Log</span>
@@ -144,6 +150,7 @@ ${STYLES}
       <div class="topbar-meta">
         <span class="pill pill-muted mono">Sandbox</span>
         <span class="pill pill-muted mono" id="topbar-version">...</span>
+        <button class="kbd-hint" id="kbd-hint-btn" title="Keyboard shortcuts (press ?)">?</button>
       </div>
     </header>
 
@@ -447,6 +454,30 @@ ${STYLES}
             <div class="funnel-chart" id="funnel-chart">
               <div class="empty-state" style="padding:24px"><div class="empty-desc">Add a rule to see the funnel.</div></div>
             </div>
+
+            <!-- Sec-38 B6: Multi-signal audience stack. Lets a planner -->
+            <!-- combine several marketplace signals into an OR union and -->
+            <!-- see combined unique reach (deduplicated by category      -->
+            <!-- affinity × size ratio), total cost, blended CPM.         -->
+            <div class="builder-section-label" style="margin-top:24px">
+              Multi-signal audience stack
+              <span style="color:var(--text-mut);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px;font-family:var(--font-mono)">OR union · dedupe via heuristic Jaccard</span>
+            </div>
+            <div class="stack-search">
+              <svg class="ico"><use href="#icon-search"/></svg>
+              <input id="stack-search-input" placeholder="Type to add a signal by name…" autocomplete="off"/>
+            </div>
+            <div class="stack-suggestions" id="stack-suggestions"></div>
+            <div class="stack-list" id="stack-list">
+              <div class="empty-state" style="padding:14px"><div class="empty-desc">Pick 2-8 catalog signals to model a stacked audience. Useful when one rule-set can't cleanly capture the target.</div></div>
+            </div>
+            <div class="stack-summary" id="stack-summary" style="display:none">
+              <div class="stack-stat"><div class="stack-stat-label">Combined unique reach</div><div class="stack-stat-value" id="stack-unique">—</div></div>
+              <div class="stack-stat"><div class="stack-stat-label">Sum of signal sizes</div><div class="stack-stat-value" id="stack-sum">—</div></div>
+              <div class="stack-stat"><div class="stack-stat-label">Overlap waste</div><div class="stack-stat-value" id="stack-overlap">—</div></div>
+              <div class="stack-stat"><div class="stack-stat-label">Blended CPM</div><div class="stack-stat-value" id="stack-cpm">—</div></div>
+            </div>
+            <div class="stack-bar-wrap" id="stack-bar-wrap"></div>
           </div>
         </div>
       </section>
@@ -478,6 +509,49 @@ ${STYLES}
               <svg class="empty-icon"><use href="#icon-network"/></svg>
               <div class="empty-title">Select 2+ signals</div>
               <div class="empty-desc">Pairwise Jaccard scores render as a heat-matrix; 3+ signals also render an UpSet-style subset chart.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── TAB: Embedding (Sec-38 B5) ─────────────────────────────────── -->
+      <!-- Three panels:                                                        -->
+      <!--   1) 2D scatter   — JL random-projection of 26 real 512-d vectors   -->
+      <!--   2) Heatmap      — pairwise cosine similarity (20×20)              -->
+      <!--   3) Cross-tax Sankey — bridge IAB 1.1 → IAB 3.0 → LR/TTD/Nielsen   -->
+      <section class="tab-pane" data-tab="embedding">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Embedding space</h1>
+            <p class="pane-subtitle">Live view of the UCP semantic space powering semantic discovery. Real 512-dim <code>text-embedding-3-small</code> vectors, projected for inspection. Tight clusters = semantically adjacent audiences.</p>
+          </div>
+          <div class="activations-controls">
+            <button class="btn-secondary" id="emb-refresh">
+              <svg class="ico"><use href="#icon-chart"/></svg><span>Refresh</span>
+            </button>
+            <a class="btn-secondary" href="/ucp/projection" target="_blank" rel="noopener">
+              <svg class="ico"><use href="#icon-arrow-right"/></svg><span>/ucp/projection</span>
+            </a>
+          </div>
+        </div>
+        <div class="emb-grid">
+          <div class="emb-panel">
+            <div class="emb-panel-title">2D projection <span class="pill pill-muted mono" style="margin-left:8px">JL · 512→2</span></div>
+            <div id="emb-scatter" class="emb-scatter">
+              <div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading projection…</div></div>
+            </div>
+            <div class="emb-legend" id="emb-legend"></div>
+          </div>
+          <div class="emb-panel">
+            <div class="emb-panel-title">Pairwise cosine similarity <span class="pill pill-muted mono" style="margin-left:8px">20×20</span></div>
+            <div id="emb-heatmap" class="emb-heatmap">
+              <div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading heatmap…</div></div>
+            </div>
+          </div>
+          <div class="emb-panel emb-panel-wide">
+            <div class="emb-panel-title">Cross-taxonomy Sankey <span class="pill pill-muted mono" style="margin-left:8px">IAB 1.1 → 3.0 → LR/TTD/MC/Nielsen</span></div>
+            <div id="emb-sankey" class="emb-sankey">
+              <div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading bridge…</div></div>
             </div>
           </div>
         </div>
@@ -515,6 +589,60 @@ ${STYLES}
         </div>
       </section>
 
+      <!-- ── TAB: Dev kit (Sec-38 B7 — C5 sandbox keys + C7 SDK snippets) ── -->
+      <section class="tab-pane" data-tab="devkit">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Dev kit</h1>
+            <p class="pane-subtitle">Everything a buyer-agent engineer needs to integrate. Sandbox API key, SDK snippets in TypeScript / Python / Go / curl, and the full endpoint reference.</p>
+          </div>
+        </div>
+        <div class="devkit-grid">
+          <div class="devkit-panel">
+            <div class="devkit-panel-title">Sandbox API key</div>
+            <div class="devkit-key-shell">
+              <code id="devkit-key" class="devkit-key">—</code>
+              <button class="btn-secondary" id="devkit-key-reveal" style="padding:4px 12px;font-size:12px">Reveal</button>
+              <button class="btn-secondary" id="devkit-key-copy" style="padding:4px 12px;font-size:12px">Copy</button>
+            </div>
+            <div style="font-size:11px;color:var(--text-mut);margin-top:8px">Public demo key — read-only on catalog, write-once on /mcp activate_signal. Rate-limited at 60 req/min/IP. Rotate via Cloudflare Worker secret (DEMO_API_KEY).</div>
+          </div>
+          <div class="devkit-panel devkit-panel-wide">
+            <div class="devkit-panel-title">SDK snippets — <code>get_signals</code> with brief</div>
+            <div class="devkit-tabs">
+              <button class="devkit-tab active" data-lang="typescript">TypeScript</button>
+              <button class="devkit-tab" data-lang="python">Python</button>
+              <button class="devkit-tab" data-lang="go">Go</button>
+              <button class="devkit-tab" data-lang="curl">curl</button>
+            </div>
+            <pre class="devkit-code" id="devkit-code"></pre>
+            <div class="devkit-actions">
+              <button class="btn-secondary" id="devkit-copy-code" style="padding:4px 12px;font-size:12px">Copy snippet</button>
+            </div>
+          </div>
+          <div class="devkit-panel devkit-panel-wide">
+            <div class="devkit-panel-title">Endpoints</div>
+            <div class="devkit-endpoints">
+              <div class="ep-row"><span class="ep-method">POST</span><code>/mcp</code><span class="ep-note">JSON-RPC 2.0 · 8 tools · bearer auth</span></div>
+              <div class="ep-row"><span class="ep-method">GET</span><code>/capabilities</code><span class="ep-note">AdCP 3.0-rc capabilities handshake · public</span></div>
+              <div class="ep-row"><span class="ep-method">GET</span><code>/signals/search</code><span class="ep-note">Catalog search with filters · bearer</span></div>
+              <div class="ep-row"><span class="ep-method">POST</span><code>/signals/estimate</code><span class="ep-note">Rule-based audience sizing · public</span></div>
+              <div class="ep-row"><span class="ep-method">POST</span><code>/signals/overlap</code><span class="ep-note">Multi-signal Jaccard overlap · public</span></div>
+              <div class="ep-row"><span class="ep-method">GET</span><code>/signals/{id}/embedding</code><span class="ep-note">512-d UCP vector · public</span></div>
+              <div class="ep-row"><span class="ep-method">GET</span><code>/ucp/concepts</code><span class="ep-note">Concept registry · public</span></div>
+              <div class="ep-row"><span class="ep-method">GET</span><code>/ucp/gts</code><span class="ep-note">GTS anchors · public</span></div>
+              <div class="ep-row"><span class="ep-method">GET</span><code>/ucp/projection</code><span class="ep-note">2D JL projection of embedding space · public</span></div>
+              <div class="ep-row"><span class="ep-method">GET</span><code>/ucp/similarity?n=20</code><span class="ep-note">Pairwise cosine matrix · public</span></div>
+              <div class="ep-row"><span class="ep-method">GET</span><code>/openapi.json</code><span class="ep-note">Full OpenAPI 3.1 spec · public</span></div>
+              <div class="ep-row"><span class="ep-method">GET</span><code>/mcp/recent</code><span class="ep-note">Recent MCP tool calls (7-day retention) · public</span></div>
+              <div class="ep-row"><span class="ep-method">GET</span><code>/privacy</code><span class="ep-note">Provider privacy policy (DTS-referenced) · public</span></div>
+              <div class="ep-row"><span class="ep-method">GET</span><code>/.well-known/oauth-protected-resource/mcp</code><span class="ep-note">RFC 9728 metadata · public</span></div>
+              <div class="ep-row"><span class="ep-method">GET</span><code>/.well-known/oauth-authorization-server</code><span class="ep-note">RFC 8414 metadata · public</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ── TAB: Tool Log (agent observability) ────────────────────────── -->
       <section class="tab-pane" data-tab="toollog">
         <div class="pane-header">
@@ -545,6 +673,10 @@ ${STYLES}
             <button class="btn-secondary" id="toollog-refresh">
               <svg class="ico"><use href="#icon-activations"/></svg>
               <span>Refresh</span>
+            </button>
+            <button class="btn-secondary" id="toollog-export">
+              <svg class="ico"><use href="#icon-book"/></svg>
+              <span>Export CSV</span>
             </button>
           </div>
         </div>
@@ -653,6 +785,23 @@ ${STYLES}
 </div>
 
 <div id="toast" class="toast"></div>
+
+<!-- Keyboard shortcuts cheat-sheet (Sec-38 A7). Opened via \`?\`. -->
+<div id="kbd-overlay" class="kbd-overlay" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+  <div class="kbd-card">
+    <h3>Keyboard shortcuts</h3>
+    <div class="kbd-row"><span>Open Discover</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">d</span></span></div>
+    <div class="kbd-row"><span>Open Catalog</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">c</span></span></div>
+    <div class="kbd-row"><span>Open Builder</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">b</span></span></div>
+    <div class="kbd-row"><span>Open Treemap</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">t</span></span></div>
+    <div class="kbd-row"><span>Open Overlap</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">o</span></span></div>
+    <div class="kbd-row"><span>Open Embedding</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">e</span></span></div>
+    <div class="kbd-row"><span>Open Capabilities</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">k</span></span></div>
+    <div class="kbd-row"><span>Open Dev kit</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">v</span></span></div>
+    <div class="kbd-row"><span>Close detail panel</span><span class="kbd-keys"><span class="kbd-key">Esc</span></span></div>
+    <div class="kbd-row"><span>Toggle this sheet</span><span class="kbd-keys"><span class="kbd-key">?</span></span></div>
+  </div>
+</div>
 
 ${SCRIPT_TAG(safeKey)}
 </body>
@@ -1019,6 +1168,12 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 }
 .nl-match-card:hover { background: var(--bg-hover); border-color: var(--border-strong); }
 .nl-match-card .nl-m-name { font-weight: 500; font-size: 13.5px; }
+.nl-match-card .nl-m-reason {
+  display: flex; gap: 5px; align-items: center;
+  font-size: 11px; color: var(--text-mut);
+  margin-top: 4px; font-family: var(--font-mono);
+}
+.nl-match-card .nl-m-reason .ico { width: 12px; height: 12px; opacity: 0.6; }
 .nl-match-card .nl-m-sub { font-size: 11.5px; color: var(--text-mut); font-family: var(--font-mono); margin-top: 2px; }
 .nl-match-card .nl-m-method { font-size: 10.5px; padding: 2px 8px; border-radius: 8px; font-family: var(--font-mono); white-space: nowrap; }
 .nl-match-card .nl-m-method.exact_rule { background: var(--success-dim); color: var(--success); }
@@ -2020,6 +2175,235 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   font-family: var(--font-mono); font-size: 12px; outline: none;
 }
 
+/* Data lineage graph (Sec-38 B8 / C4) */
+.lineage-graph {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px;
+}
+.lineage-graph svg { width: 100%; height: auto; display: block; }
+
+/* Keyboard shortcut hint button in topbar (Sec-38 A7) */
+.kbd-hint {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  color: var(--text-mut); font-family: var(--font-mono); font-size: 12px;
+  cursor: pointer; transition: all 0.12s;
+}
+.kbd-hint:hover { color: var(--text); border-color: var(--accent-border); }
+
+/* Keyboard shortcuts cheat-sheet (Sec-38 A7) */
+.kbd-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+  z-index: 200; display: none; align-items: center; justify-content: center;
+}
+.kbd-overlay.open { display: flex; animation: fadeIn 0.18s ease; }
+.kbd-card {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 20px 24px;
+  min-width: 420px; max-width: 640px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.kbd-card h3 { margin: 0 0 14px 0; font-size: 15px; font-weight: 600; }
+.kbd-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 0; border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+}
+.kbd-row:last-child { border-bottom: 0; }
+.kbd-keys { display: flex; gap: 4px; }
+.kbd-key {
+  font-family: var(--font-mono); font-size: 11px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 3px; padding: 2px 8px; color: var(--text);
+}
+
+/* Dev kit tab (Sec-38 B7) */
+.devkit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.devkit-panel {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 14px 16px;
+}
+.devkit-panel-wide { grid-column: 1 / span 2; }
+.devkit-panel-title {
+  font-size: 12px; font-weight: 600; color: var(--text);
+  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px;
+}
+.devkit-key-shell {
+  display: flex; gap: 8px; align-items: center;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 12px;
+}
+.devkit-key {
+  flex: 1; font-family: var(--font-mono); font-size: 12px;
+  color: var(--text); user-select: all;
+}
+.devkit-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+.devkit-tab {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  color: var(--text-mut); padding: 5px 12px; border-radius: 4px;
+  cursor: pointer; font-size: 11.5px; font-family: var(--font-mono);
+}
+.devkit-tab.active { color: var(--text); border-color: var(--accent-border); background: var(--accent-dim); }
+.devkit-code {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+  color: var(--text); font-family: var(--font-mono); font-size: 12px;
+  white-space: pre; overflow-x: auto; max-height: 380px; line-height: 1.55;
+}
+.devkit-actions { margin-top: 10px; display: flex; justify-content: flex-end; }
+.devkit-endpoints { display: flex; flex-direction: column; gap: 4px; }
+.ep-row {
+  display: grid; grid-template-columns: 60px 320px 1fr; gap: 10px; align-items: center;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 6px 10px;
+  font-size: 11.5px;
+}
+.ep-method { font-family: var(--font-mono); font-size: 10.5px; color: var(--accent); font-weight: 600; }
+.ep-row code { font-family: var(--font-mono); font-size: 11.5px; color: var(--text); }
+.ep-note { color: var(--text-mut); font-size: 11px; }
+
+/* Builder multi-signal stack (Sec-38 B6) */
+.stack-search {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 6px 10px; margin-bottom: 6px;
+}
+.stack-search input {
+  flex: 1; background: transparent; border: 0; color: var(--text); outline: none;
+  font-size: 12.5px;
+}
+.stack-suggestions {
+  display: none; background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); margin-bottom: 10px; max-height: 280px; overflow-y: auto;
+}
+.stack-sugg {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 10px; border-bottom: 1px solid var(--border); cursor: pointer;
+}
+.stack-sugg:last-child { border-bottom: 0; }
+.stack-sugg:hover { background: var(--bg-hover); }
+.stack-sugg-name { font-size: 12px; color: var(--text); }
+.stack-sugg-meta { font-size: 10.5px; color: var(--text-mut); font-family: var(--font-mono); }
+.stack-sugg-empty { padding: 8px 12px; color: var(--text-mut); font-size: 11.5px; font-style: italic; }
+.stack-list { display: flex; flex-direction: column; gap: 6px; }
+.stack-chip {
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 10px;
+}
+.stack-chip-name { font-size: 12px; color: var(--text); }
+.stack-chip-meta { font-size: 10.5px; color: var(--text-mut); font-family: var(--font-mono); }
+.stack-remove {
+  background: transparent; border: 0; color: var(--text-mut); cursor: pointer;
+  padding: 4px; border-radius: 4px;
+}
+.stack-remove:hover { color: var(--text); background: var(--bg-raised); }
+.stack-summary {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px;
+}
+.stack-stat {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 10px;
+}
+.stack-stat-label { font-size: 10px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.06em; }
+.stack-stat-value { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.stack-bar-wrap { margin-top: 8px; }
+
+/* Embedding tab — 2D scatter + heatmap + Sankey (Sec-38 B5) */
+.emb-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.emb-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+.emb-panel-wide { grid-column: 1 / span 2; }
+.emb-panel-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+}
+.emb-scatter, .emb-heatmap, .emb-sankey {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  min-height: 300px;
+  padding: 8px;
+}
+.emb-scatter svg, .emb-heatmap svg, .emb-sankey svg {
+  width: 100%; height: auto; display: block;
+}
+.emb-legend {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  margin-top: 10px;
+}
+.emb-legend-item {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--text-mut); font-family: var(--font-mono);
+}
+.emb-legend-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  display: inline-block;
+}
+
+/* Measurement block — lift + delivery simulator + campaign overlap (Sec-38 B4) */
+.meas-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.meas-cell {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 10px;
+}
+.delivery-bars {
+  display: flex; gap: 2px; align-items: flex-end; height: 48px;
+  padding: 4px 0; background: var(--bg-input);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding-left: 6px; padding-right: 6px;
+}
+.delivery-bar {
+  flex: 1 1 0; min-width: 3px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-dim));
+  border-radius: 1px;
+}
+.campaign-overlap { display: flex; flex-direction: column; gap: 4px; }
+.campaign-row {
+  display: grid; grid-template-columns: 180px 1fr 40px; gap: 10px; align-items: center;
+  font-size: 11.5px;
+}
+.campaign-name { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.campaign-bar-wrap {
+  height: 10px; background: var(--bg-raised); border-radius: 3px; overflow: hidden;
+}
+.campaign-bar {
+  height: 100%; background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+  min-width: 1%;
+}
+.campaign-pct { font-family: var(--font-mono); font-size: 11px; text-align: right; color: var(--text-mut); }
+
+/* Cross-taxonomy bridge (Sec-38 B2) */
+.cross-tax-grid { display: flex; flex-direction: column; gap: 4px; }
+.cross-tax-row {
+  display: grid; grid-template-columns: 200px 1fr 90px; gap: 10px; align-items: center;
+  padding: 6px 10px; background: var(--bg-input);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 11.5px;
+}
+.cross-tax-sys { color: var(--text-mut); font-family: var(--font-mono); font-size: 11px; }
+.cross-tax-id code {
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--text);
+  background: var(--bg-raised); padding: 2px 6px; border-radius: 3px;
+}
+.cross-tax-stage { text-align: right; }
+.pill-mut { color: var(--text-mut); background: var(--bg-raised); border: 1px solid var(--border); padding: 2px 6px; border-radius: 3px; font-size: 11px; }
+.pill-info { color: var(--accent); background: var(--accent-dim); border: 1px solid var(--accent-border); padding: 2px 6px; border-radius: 3px; font-size: 11px; }
+
 /* MCP inspector drawer (Sec-37 B7) */
 .mcp-inspect-btn {
   color: var(--text-mut); font-family: var(--font-mono);
@@ -2366,6 +2750,7 @@ function switchTab(name) {
     discover: "Discover", catalog: "Catalog", concepts: "Concepts",
     treemap: "Treemap", builder: "Builder", activations: "Activations",
     capabilities: "Capabilities", toollog: "Tool Log", overlap: "Overlap",
+    embedding: "Embedding space", devkit: "Dev kit",
   };
   document.getElementById("crumb-current").textContent = crumbMap[name] || name;
 
@@ -2376,6 +2761,8 @@ function switchTab(name) {
   if (name === "builder") ensureBuilder();
   if (name === "capabilities") loadCapabilities();
   if (name === "overlap") ensureOverlap();
+  if (name === "embedding") ensureEmbedding();
+  if (name === "devkit") ensureDevkit();
 
   // Activations tab: start polling when visible, stop when hidden
   if (name === "activations") startActivationsPolling();
@@ -2610,15 +2997,56 @@ function renderNlMatchCard(m) {
   const method = m.match_method || "embedding";
   const score = typeof m.match_score === "number" ? m.match_score.toFixed(2) : "—";
   const audience = m.estimated_audience_size != null ? fmtNumber(m.estimated_audience_size) : "—";
+  // Sec-38 B7 (C2): explain-this-match. Builds a short human-readable
+  // reason string from match_method + any matched tokens/rules the
+  // resolver echoed back. Shown as a tooltip-style sub-line so the
+  // planner understands *why* this signal scored.
+  const reason = explainMatch(m);
   return '' +
     '<div class="nl-match-card" data-sid="' + escapeHtml(sid) + '">' +
       '<div>' +
         '<div class="nl-m-name">' + escapeHtml(m.name || "(unnamed)") + dtsPill(m) + freshnessPill(m) + sensitivePill(m) + '</div>' +
         '<div class="nl-m-sub">' + escapeHtml(sid) + ' · ' + audience + ' audience</div>' +
+        (reason ? '<div class="nl-m-reason"><svg class="ico"><use href="#icon-info"/></svg><span>' + escapeHtml(reason) + '</span></div>' : "") +
       '</div>' +
       '<span class="nl-m-method ' + escapeHtml(method) + '">' + escapeHtml(method.replace(/_/g, " ")) + '</span>' +
       '<span class="nl-m-score">' + score + '</span>' +
     '</div>';
+}
+
+// Sec-38 B7 (C2): synthesize a human-readable explanation for why the
+// resolver matched this signal. Uses whatever breadcrumbs the resolver
+// emits (match_method + match_dimensions / matched_rules / matched_terms
+// / score_breakdown) and falls back to a method-class description.
+function explainMatch(m) {
+  const method = m.match_method || "embedding";
+  const parts = [];
+  if (Array.isArray(m.matched_dimensions) && m.matched_dimensions.length) {
+    parts.push("matched " + m.matched_dimensions.slice(0, 3).join(", "));
+  }
+  if (Array.isArray(m.matched_terms) && m.matched_terms.length) {
+    parts.push("lexical overlap: " + m.matched_terms.slice(0, 3).join(", "));
+  }
+  if (Array.isArray(m.matched_rules) && m.matched_rules.length) {
+    parts.push(m.matched_rules.length + " rules matched");
+  }
+  if (typeof m.match_score === "number") {
+    if (method === "embedding" || method === "semantic") {
+      parts.push("cos=" + m.match_score.toFixed(2));
+    } else if (method === "exact_rule" || method === "rule") {
+      parts.push("rule-exact");
+    } else if (method === "lexical") {
+      parts.push("token match");
+    }
+  }
+  if (parts.length === 0) {
+    // Method-class fallback
+    if (method === "embedding" || method === "semantic") return "Ranked by semantic similarity in the UCP embedding space.";
+    if (method === "exact_rule" || method === "rule") return "Matched directly on declared targeting rules.";
+    if (method === "lexical") return "Token-level overlap with the query.";
+    return "";
+  }
+  return parts.join(" · ");
 }
 
 function wireNlCardClicks() {
@@ -3040,6 +3468,47 @@ function openDetail(sig) {
       '<div class="detail-section-label">Reach &amp; frequency <span style="color:var(--text-mut);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">@</span> <span class="reach-budget-input" style="display:inline-flex"><span style="color:var(--text-mut)">$</span><input id="reach-budget" type="number" value="10000" min="500" max="10000000" step="500"/><span style="color:var(--text-mut)">/ 30d</span></span></div>' +
       '<div class="reach-block" id="reach-block"></div>' +
     '</div>' +
+    // Sec-38 B4: Measurement & lift mock. Three sub-panels:
+    //   • Lift forecast     — synthetic baseline/exposed-group brand-lift
+    //   • Delivery simulator — daily pacing curve over 30-day flight
+    //   • Campaign overlap   — placeholder that would query advertiser's
+    //                          1P campaign IDs via cleanroom when wired
+    // All clearly labeled "mock" — the ext.measurement capability block
+    // declares them as supported:"mock" until a measurement partner lands.
+    '<div class="detail-section">' +
+      '<div class="detail-section-label">Measurement &amp; lift <span class="pill pill-mut" style="margin-left:8px;font-size:10px">mock</span></div>' +
+      '<div id="measurement-block" class="reach-block"></div>' +
+    '</div>' +
+    // Sec-38 B2: Cross-taxonomy bridge. Shows predicted IDs in IAB 3.0,
+    // LiveRamp AbiliTec, TTD DMP, Mastercard SpendingPulse, Nielsen so a
+    // HoldCo planner can locate the equivalent audience in their own
+    // taxonomy without manual translation.
+    (sig.x_cross_taxonomy && sig.x_cross_taxonomy.length
+      ? '<div class="detail-section">' +
+          '<div class="detail-section-label">Cross-taxonomy bridge <span style="color:var(--text-mut);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">' + sig.x_cross_taxonomy.length + ' systems</span></div>' +
+          '<div class="cross-tax-grid">' +
+            sig.x_cross_taxonomy.map(function (e) {
+              var stageClass = e.stage === "live" ? "pill-success" : e.stage === "modeled" ? "pill-info" : "pill-mut";
+              return '<div class="cross-tax-row">' +
+                '<div class="cross-tax-sys">' + escapeHtml(e.system) + '</div>' +
+                '<div class="cross-tax-id"><code>' + escapeHtml(e.id) + '</code></div>' +
+                '<div class="cross-tax-stage"><span class="pill ' + stageClass + '" style="font-size:10px">' + escapeHtml(e.stage) + '</span></div>' +
+              '</div>';
+            }).join("") +
+          '</div>' +
+        '</div>'
+      : "") +
+    // Sec-38 B8 (C4): Data lineage graph. Visualizes the path from raw
+    // data sources → DTS methodology → audience surface → distribution.
+    // Renders as a 4-node horizontal flow derived from x_dts fields that
+    // the signal already carries (data_sources, inclusion_methodology,
+    // refresh_cadence, distribution platforms).
+    (sig.x_dts
+      ? '<div class="detail-section">' +
+          '<div class="detail-section-label">Data lineage <span style="color:var(--text-mut);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">provenance chain</span></div>' +
+          renderLineageGraph(sig) +
+        '</div>'
+      : "") +
     // Sec-36: "More like this" — lazy-loads get_similar_signals on
     // click so the detail panel opens instantly. Cosine scores from
     // the UCP embedding index are shown per neighbor.
@@ -3080,6 +3549,7 @@ function openDetail(sig) {
 
   // Reach forecaster — pure compute, re-renders on budget input change
   renderReachBlock(sig);
+  renderMeasurementBlock(sig);
   const budgetInput = document.getElementById("reach-budget");
   if (budgetInput) {
     budgetInput.addEventListener("input", (e) => {
@@ -3087,6 +3557,7 @@ function openDetail(sig) {
       if (Number.isFinite(v) && v > 0) {
         state.reach.budgetUsd = v;
         renderReachBlock(sig);
+        renderMeasurementBlock(sig);
       }
     });
   }
@@ -3135,6 +3606,181 @@ function renderReachBlock(sig) {
       '<path d="' + path + ' L 300,50 L 0,50 Z" fill="var(--accent-dim)"/>' +
     '</svg></div>' +
     '<div style="font-size:10.5px;color:var(--text-mut);margin-top:8px">Methodology: CPM @ $' + cpm.toFixed(2) + ' · reach capped at 80% of addressable audience · logistic saturation τ=7 days. Mock — plug measurement partner for actuals.</div>';
+}
+
+// Sec-38 B8 (C4): Data lineage graph. Renders a horizontal 4-node flow
+// summarizing the signal's provenance chain from x_dts fields the signal
+// already carries. Nodes: (1) raw sources, (2) inclusion methodology,
+// (3) audience expression, (4) distribution deployments. Connectors are
+// simple SVG paths; no external graph library.
+function renderLineageGraph(sig) {
+  var dts = sig.x_dts || {};
+  var sources = Array.isArray(dts.data_sources) ? dts.data_sources : ["Online Survey"];
+  var methodology = dts.audience_inclusion_methodology || "Modeled";
+  var refresh = dts.audience_refresh || "Static";
+  var depPlatforms = (sig.deployments || []).map(function (d) { return d.platform || d.type; }).filter(Boolean);
+  var categoryType = sig.category_type || "—";
+  var size = sig.estimated_audience_size || 0;
+
+  var nodes = [
+    {
+      label: "Raw sources",
+      lines: sources.slice(0, 3),
+      extra: sources.length > 3 ? "+" + (sources.length - 3) + " more" : "",
+      color: "#2bd4a0",
+    },
+    {
+      label: "Methodology",
+      lines: [methodology, "Refresh: " + refresh],
+      extra: "",
+      color: "#4f8eff",
+    },
+    {
+      label: "Audience",
+      lines: [categoryType, fmtNumber(size) + " people"],
+      extra: "",
+      color: "#8b6eff",
+    },
+    {
+      label: "Distribution",
+      lines: depPlatforms.slice(0, 3),
+      extra: depPlatforms.length > 3 ? "+" + (depPlatforms.length - 3) + " more" : "",
+      color: "#ff7a5c",
+    },
+  ];
+
+  var W = 680, H = 130;
+  var nodeW = 140, nodeH = 74;
+  var gap = (W - nodes.length * nodeW) / (nodes.length - 1);
+  var yMid = (H - nodeH) / 2;
+  var nodesSvg = nodes.map(function (n, i) {
+    var x = i * (nodeW + gap);
+    return '<g transform="translate(' + x + ',' + yMid + ')">' +
+      '<rect x="0" y="0" width="' + nodeW + '" height="' + nodeH + '" rx="6" fill="' + n.color + '" fill-opacity="0.14" stroke="' + n.color + '" stroke-opacity="0.7" stroke-width="1.2"/>' +
+      '<text x="10" y="18" fill="' + n.color + '" font-size="10.5" font-weight="700" font-family="ui-sans-serif" text-transform="uppercase">' + escapeHtml(n.label) + '</text>' +
+      n.lines.map(function (ln, li) {
+        return '<text x="10" y="' + (34 + li * 13) + '" fill="var(--text)" font-size="11" font-family="ui-monospace">' + escapeHtml(String(ln).slice(0, 22)) + '</text>';
+      }).join("") +
+      (n.extra ? '<text x="10" y="' + (34 + n.lines.length * 13) + '" fill="var(--text-mut)" font-size="10" font-family="ui-monospace">' + escapeHtml(n.extra) + '</text>' : "") +
+    '</g>';
+  }).join("");
+
+  var connectorsSvg = "";
+  for (var i = 0; i < nodes.length - 1; i++) {
+    var x1 = i * (nodeW + gap) + nodeW;
+    var x2 = (i + 1) * (nodeW + gap);
+    var y = yMid + nodeH / 2;
+    connectorsSvg += '<path d="M' + x1 + ',' + y + ' C' + (x1 + gap / 2) + ',' + y + ' ' + (x1 + gap / 2) + ',' + y + ' ' + x2 + ',' + y + '" ' +
+      'fill="none" stroke="var(--text-mut)" stroke-opacity="0.4" stroke-width="1.2" marker-end="url(#lineage-arrow)"/>';
+  }
+
+  return '<div class="lineage-graph">' +
+    '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
+      '<defs><marker id="lineage-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="var(--text-mut)" fill-opacity="0.5"/></marker></defs>' +
+      connectorsSvg + nodesSvg +
+    '</svg>' +
+  '</div>';
+}
+
+// Sec-38 B4: Measurement & lift mock panel. Three sub-panels:
+//   1) Lift forecast  — baseline vs exposed brand-awareness / purchase-intent
+//                       delta modeled as a function of signal specificity.
+//   2) Delivery sim   — daily pacing bars over 30 days (mock smooth delivery).
+//   3) Campaign over  — overlap-with-existing-campaigns placeholder tile.
+// All numbers are synthesized from (audience_size, cpm, budget) and the
+// signal's specificity (category_type + has rules). Clearly mock.
+function renderMeasurementBlock(sig) {
+  var host = document.getElementById("measurement-block");
+  if (!host) return;
+  var audience = sig.estimated_audience_size || 0;
+  var cpmOpt = fmtCPM(sig);
+  var cpm = cpmOpt.cpm || 5.0;
+  var budget = state.reach.budgetUsd;
+  var impressions = (budget * 1000) / cpm;
+
+  // Specificity score 0..1 — tightly-defined signals get higher lift.
+  // Purchase-intent composites > interest > demographic > geo.
+  var specScore =
+    sig.category_type === "purchase_intent" ? 0.85
+    : sig.category_type === "composite" ? 0.80
+    : sig.category_type === "interest" ? 0.65
+    : sig.category_type === "demographic" ? 0.45
+    : 0.40;
+  // Smaller audiences = more specific = higher lift (diminishing at extremes)
+  var sizeFactor = audience > 0 ? Math.min(1, 50_000_000 / (audience + 1_000_000)) : 0.5;
+  var liftPct = Math.max(2, Math.min(28, Math.round(specScore * sizeFactor * 32 * 10) / 10));
+  var baselineCTR = 0.12;
+  var exposedCTR = baselineCTR * (1 + liftPct / 100);
+
+  // Delivery simulator — 30-day bars with weekend dip + small noise
+  var bars = [];
+  for (var d = 0; d < 30; d++) {
+    var weekend = (d % 7 === 5 || d % 7 === 6) ? 0.75 : 1.0;
+    var noise = 0.85 + (Math.sin(d * 0.7 + sig.signal_agent_segment_id.length) + 1) * 0.12;
+    bars.push(weekend * noise);
+  }
+  var barMax = Math.max.apply(null, bars);
+  var dailyImps = impressions / 30;
+
+  // Campaign overlap — placeholder showing how a cleanroom match would work.
+  // We draw 3 fake campaign rows with synthesized overlap % derived from
+  // signal ID hash so it's stable per signal.
+  function hashFrac(s, salt) {
+    var h = 5381;
+    var str = s + salt;
+    for (var i = 0; i < str.length; i++) { h = ((h << 5) + h) ^ str.charCodeAt(i); h = h >>> 0; }
+    return (h % 1000) / 1000;
+  }
+  var sid = sig.signal_agent_segment_id || "";
+  var campaigns = [
+    { name: "Q1 Awareness · Display",   overlap: Math.round(hashFrac(sid, "q1d") * 24 + 4) },
+    { name: "Always-On · Retargeting",  overlap: Math.round(hashFrac(sid, "aor") * 38 + 10) },
+    { name: "CTV · Brand Pulse",        overlap: Math.round(hashFrac(sid, "ctv") * 18 + 2) },
+  ];
+
+  var liftColor = liftPct >= 15 ? "var(--ok)" : liftPct >= 8 ? "var(--accent)" : "var(--warn)";
+
+  host.innerHTML = '' +
+    // Lift forecast
+    '<div class="meas-row">' +
+      '<div class="meas-cell">' +
+        '<div class="reach-stat-label">Predicted brand-lift</div>' +
+        '<div class="reach-stat-value" style="color:' + liftColor + '">+' + liftPct.toFixed(1) + '%</div>' +
+        '<div style="font-size:10.5px;color:var(--text-mut);margin-top:2px">vs unexposed baseline</div>' +
+      '</div>' +
+      '<div class="meas-cell">' +
+        '<div class="reach-stat-label">Exposed CTR (mock)</div>' +
+        '<div class="reach-stat-value">' + (exposedCTR * 100).toFixed(2) + '%</div>' +
+        '<div style="font-size:10.5px;color:var(--text-mut);margin-top:2px">baseline ' + (baselineCTR * 100).toFixed(2) + '%</div>' +
+      '</div>' +
+      '<div class="meas-cell">' +
+        '<div class="reach-stat-label">Specificity score</div>' +
+        '<div class="reach-stat-value">' + (specScore * 100).toFixed(0) + '</div>' +
+        '<div style="font-size:10.5px;color:var(--text-mut);margin-top:2px">0-100 · drives lift</div>' +
+      '</div>' +
+    '</div>' +
+    // Delivery simulator
+    '<div style="font-size:10.5px;color:var(--text-mut);text-transform:uppercase;letter-spacing:0.08em;margin-top:14px;margin-bottom:6px">Delivery simulator — 30-day pacing</div>' +
+    '<div class="delivery-bars">' +
+      bars.map(function (b, i) {
+        var h = Math.max(4, Math.round((b / barMax) * 42));
+        var isWknd = (i % 7 === 5 || i % 7 === 6);
+        return '<div class="delivery-bar" title="Day ' + (i + 1) + ' · ~' + fmtNumber(Math.round(dailyImps * b)) + ' imps" style="height:' + h + 'px;opacity:' + (isWknd ? 0.55 : 1) + '"></div>';
+      }).join("") +
+    '</div>' +
+    '<div style="font-size:10.5px;color:var(--text-mut);margin-top:4px">Smooth pacing · ~' + fmtNumber(Math.round(dailyImps)) + ' imps/day avg · weekends dip ~25%</div>' +
+    // Campaign overlap placeholder
+    '<div style="font-size:10.5px;color:var(--text-mut);text-transform:uppercase;letter-spacing:0.08em;margin-top:14px;margin-bottom:6px">Overlap with existing campaigns <span style="text-transform:none;letter-spacing:0">(cleanroom-matched mock)</span></div>' +
+    '<div class="campaign-overlap">' +
+      campaigns.map(function (c) {
+        return '<div class="campaign-row">' +
+          '<div class="campaign-name">' + escapeHtml(c.name) + '</div>' +
+          '<div class="campaign-bar-wrap"><div class="campaign-bar" style="width:' + c.overlap + '%"></div></div>' +
+          '<div class="campaign-pct">' + c.overlap + '%</div>' +
+        '</div>';
+      }).join("") +
+    '</div>' +
+    '<div style="font-size:10.5px;color:var(--text-mut);margin-top:8px">Methodology: lift modeled from signal specificity × size-coverage. Plug a measurement partner (Nielsen / IAS / DV / Kantar / Circana) for actuals. Campaign overlap would resolve via your 1P campaign IDs in a cleanroom.</div>';
 }
 
 // Sec-37 B7: MCP inspector. Shows the get_signals{signal_ids:[sid]}
@@ -3553,6 +4199,133 @@ const MAX_RULES = 6;
 function ensureBuilder() {
   renderBuilderRules();
   debouncedEstimate();
+  ensureBuilderStack();
+}
+
+//────────────────────────────────────────────────────────────────────────
+// Sec-38 B6 — Builder multi-signal audience stack
+//────────────────────────────────────────────────────────────────────────
+var _builderStack = { selected: [], suggestions: [] };
+async function ensureBuilderStack() {
+  if (state.catalog.all.length === 0) await loadCatalog();
+  renderStackList();
+  renderStackSuggestions("");
+  var inp = document.getElementById("stack-search-input");
+  if (inp && !inp.__wired) {
+    inp.__wired = true;
+    inp.addEventListener("input", function (e) { renderStackSuggestions(e.target.value.toLowerCase()); });
+  }
+}
+function renderStackSuggestions(q) {
+  var host = document.getElementById("stack-suggestions");
+  if (!host) return;
+  if (!q || q.length < 2) { host.innerHTML = ""; host.style.display = "none"; return; }
+  var selectedIds = new Set(_builderStack.selected.map(function (s) { return s.signal_agent_segment_id; }));
+  var hits = state.catalog.all
+    .filter(function (s) { return !selectedIds.has(s.signal_agent_segment_id) && (s.name || "").toLowerCase().includes(q); })
+    .slice(0, 8);
+  if (!hits.length) { host.innerHTML = '<div class="stack-sugg-empty">No matches</div>'; host.style.display = "block"; return; }
+  host.innerHTML = hits.map(function (s) {
+    return '<div class="stack-sugg" data-sid="' + escapeHtml(s.signal_agent_segment_id) + '">' +
+      '<div><div class="stack-sugg-name">' + escapeHtml(s.name) + '</div>' +
+      '<div class="stack-sugg-meta">' + fmtNumber(s.estimated_audience_size) + ' · ' + escapeHtml(s.category_type || "") + '</div></div>' +
+      '<button class="btn-secondary" style="padding:2px 10px;font-size:11px">+ add</button>' +
+    '</div>';
+  }).join("");
+  host.style.display = "block";
+  host.querySelectorAll(".stack-sugg").forEach(function (el) {
+    el.addEventListener("click", function () {
+      var sid = el.dataset.sid;
+      var sig = state.catalog.all.find(function (x) { return x.signal_agent_segment_id === sid; });
+      if (sig && _builderStack.selected.length < 8) {
+        _builderStack.selected.push(sig);
+        document.getElementById("stack-search-input").value = "";
+        renderStackSuggestions("");
+        renderStackList();
+      }
+    });
+  });
+}
+function renderStackList() {
+  var host = document.getElementById("stack-list");
+  if (!host) return;
+  if (_builderStack.selected.length === 0) {
+    host.innerHTML = '<div class="empty-state" style="padding:14px"><div class="empty-desc">Pick 2-8 catalog signals to model a stacked audience. Useful when one rule-set can\\'t cleanly capture the target.</div></div>';
+    document.getElementById("stack-summary").style.display = "none";
+    document.getElementById("stack-bar-wrap").innerHTML = "";
+    return;
+  }
+  host.innerHTML = _builderStack.selected.map(function (s, i) {
+    return '<div class="stack-chip">' +
+      '<div><div class="stack-chip-name">' + escapeHtml(s.name) + '</div>' +
+      '<div class="stack-chip-meta">' + fmtNumber(s.estimated_audience_size) + ' · ' + escapeHtml(s.category_type || "") + '</div></div>' +
+      '<button class="stack-remove" data-idx="' + i + '"><svg class="ico"><use href="#icon-close"/></svg></button>' +
+    '</div>';
+  }).join("");
+  host.querySelectorAll(".stack-remove").forEach(function (b) {
+    b.addEventListener("click", function () {
+      _builderStack.selected.splice(parseInt(b.dataset.idx, 10), 1);
+      renderStackList();
+    });
+  });
+  computeStackSummary();
+}
+function computeStackSummary() {
+  var sigs = _builderStack.selected;
+  if (sigs.length < 2) {
+    document.getElementById("stack-summary").style.display = "none";
+    document.getElementById("stack-bar-wrap").innerHTML = "";
+    return;
+  }
+  var sum = 0, costWeighted = 0;
+  sigs.forEach(function (s) {
+    var sz = s.estimated_audience_size || 0;
+    var cpm = fmtCPM(s).cpm || 5;
+    sum += sz;
+    costWeighted += sz * cpm;
+  });
+  // Heuristic pairwise overlap via category affinity (same as overlap.ts)
+  function affinity(a, b) {
+    if (a.category_type === b.category_type) return 0.55;
+    return 0.20;
+  }
+  var overlap = 0;
+  for (var i = 0; i < sigs.length; i++) {
+    for (var j = i + 1; j < sigs.length; j++) {
+      var a = sigs[i], b = sigs[j];
+      var aff = affinity(a, b);
+      var minSz = Math.min(a.estimated_audience_size || 0, b.estimated_audience_size || 0);
+      overlap += aff * minSz * 0.6; // 0.6 dampener for higher-order dedupe
+    }
+  }
+  var uniqueReach = Math.max(0, sum - overlap);
+  var blendedCpm = sum > 0 ? costWeighted / sum : 0;
+
+  document.getElementById("stack-summary").style.display = "grid";
+  document.getElementById("stack-unique").textContent = fmtNumber(Math.round(uniqueReach));
+  document.getElementById("stack-sum").textContent = fmtNumber(Math.round(sum));
+  document.getElementById("stack-overlap").textContent = fmtNumber(Math.round(overlap)) + " (" + ((overlap / sum) * 100).toFixed(1) + "%)";
+  document.getElementById("stack-cpm").textContent = "$" + blendedCpm.toFixed(2);
+
+  // Stacked bar visualization — per signal contribution, overlap striped
+  var W = 520, H = 32;
+  var stackSvg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="width:100%;height:40px">';
+  var xPos = 0;
+  sigs.forEach(function (s, i) {
+    var sz = s.estimated_audience_size || 0;
+    var w = (sz / sum) * W;
+    var hue = (i * 47) % 360;
+    stackSvg += '<rect x="' + xPos + '" y="0" width="' + w.toFixed(1) + '" height="' + H + '" fill="hsl(' + hue + ' 60% 55%)" fill-opacity="0.85"><title>' + escapeHtml(s.name) + ': ' + fmtNumber(sz) + '</title></rect>';
+    xPos += w;
+  });
+  // Overlap stripe overlay
+  var overlapFrac = sum > 0 ? overlap / sum : 0;
+  stackSvg += '<pattern id="ov-stripe" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="rgba(0,0,0,0.5)" stroke-width="3"/></pattern>';
+  stackSvg += '<rect x="' + ((1 - overlapFrac) * W).toFixed(1) + '" y="0" width="' + (overlapFrac * W).toFixed(1) + '" height="' + H + '" fill="url(#ov-stripe)"/>';
+  stackSvg += '</svg>';
+  document.getElementById("stack-bar-wrap").innerHTML =
+    stackSvg +
+    '<div style="font-size:10.5px;color:var(--text-mut);margin-top:6px">Each block ∝ signal size · striped area ∝ estimated overlap · unique reach = sum − overlap</div>';
 }
 
 function renderBuilderRules() {
@@ -4052,6 +4825,212 @@ async function ensureOverlap() {
   if (state.catalog.all.length === 0) await loadCatalog();
   renderOverlapChips();
   renderOverlapSuggestions("");
+}
+
+//────────────────────────────────────────────────────────────────────────
+// Sec-38 B5 — Embedding tab: 2D scatter + similarity heatmap + cross-tax Sankey
+//────────────────────────────────────────────────────────────────────────
+var _embeddingLoaded = false;
+async function ensureEmbedding() {
+  if (_embeddingLoaded) return;
+  _embeddingLoaded = true;
+  renderEmbeddingScatter();
+  renderEmbeddingHeatmap();
+  renderEmbeddingSankey();
+}
+document.getElementById("emb-refresh").addEventListener("click", function () {
+  _embeddingLoaded = false;
+  ensureEmbedding();
+});
+
+async function renderEmbeddingScatter() {
+  var host = document.getElementById("emb-scatter");
+  var legend = document.getElementById("emb-legend");
+  try {
+    var r = await fetch("/ucp/projection");
+    var data = await r.json();
+    var points = data.points || [];
+    if (!points.length) { host.innerHTML = '<div class="empty-state"><div class="empty-title">No embeddings</div></div>'; return; }
+    var xs = points.map(function (p) { return p.x; });
+    var ys = points.map(function (p) { return p.y; });
+    var xMin = Math.min.apply(null, xs), xMax = Math.max.apply(null, xs);
+    var yMin = Math.min.apply(null, ys), yMax = Math.max.apply(null, ys);
+    var pad = 0.1;
+    var W = 640, H = 380;
+    function sx(x) { return 40 + ((x - xMin) / (xMax - xMin + 1e-9)) * (W - 80); }
+    function sy(y) { return H - 30 - ((y - yMin) / (yMax - yMin + 1e-9)) * (H - 60); }
+    var colorMap = {
+      demographic:     "#4f8eff",
+      interest:        "#8b6eff",
+      purchase_intent: "#ff7a5c",
+      geo:             "#2bd4a0",
+      composite:       "#ffcb5c",
+    };
+    var svgDots = points.map(function (p) {
+      var color = colorMap[p.category] || "#8892a6";
+      return '<circle cx="' + sx(p.x).toFixed(1) + '" cy="' + sy(p.y).toFixed(1) + '" r="5" ' +
+        'fill="' + color + '" fill-opacity="0.85" stroke="rgba(255,255,255,0.2)" stroke-width="0.8">' +
+        '<title>' + escapeHtml(p.name) + ' (' + escapeHtml(p.category) + ')&#10;' + escapeHtml(p.description) + '</title>' +
+      '</circle>';
+    }).join("");
+    var svgLabels = points.map(function (p) {
+      var shortName = p.name.length > 22 ? p.name.slice(0, 20) + "…" : p.name;
+      return '<text x="' + (sx(p.x) + 8).toFixed(1) + '" y="' + (sy(p.y) + 4).toFixed(1) + '" ' +
+        'fill="var(--text-mut)" font-size="10" font-family="ui-sans-serif" paint-order="stroke fill" ' +
+        'stroke="var(--bg-surface)" stroke-width="2.5">' + escapeHtml(shortName) + '</text>';
+    }).join("");
+    host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
+      '<line x1="40" y1="' + (H - 30) + '" x2="' + (W - 40) + '" y2="' + (H - 30) + '" stroke="var(--border)" stroke-width="1"/>' +
+      '<line x1="40" y1="20" x2="40" y2="' + (H - 30) + '" stroke="var(--border)" stroke-width="1"/>' +
+      '<text x="' + (W - 40) + '" y="' + (H - 10) + '" text-anchor="end" fill="var(--text-mut)" font-size="10" font-family="ui-monospace">UCP₁ (random projection)</text>' +
+      '<text x="8" y="18" fill="var(--text-mut)" font-size="10" font-family="ui-monospace">UCP₂</text>' +
+      svgDots + svgLabels +
+    '</svg>';
+    var cats = Object.keys(colorMap);
+    legend.innerHTML = cats.map(function (c) {
+      return '<span class="emb-legend-item"><span class="emb-legend-dot" style="background:' + colorMap[c] + '"></span>' + escapeHtml(c) + '</span>';
+    }).join("");
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title">Could not load projection</div><div class="empty-desc">' + escapeHtml(String(e)) + '</div></div>';
+  }
+}
+
+async function renderEmbeddingHeatmap() {
+  var host = document.getElementById("emb-heatmap");
+  try {
+    var r = await fetch("/ucp/similarity?n=20");
+    var data = await r.json();
+    var n = data.n;
+    var matrix = data.matrix || [];
+    var names = data.signal_names || [];
+    var cell = 18;
+    var margin = 140;
+    var W = margin + n * cell + 20;
+    var H = margin + n * cell + 20;
+    function colorFor(v) {
+      // v in [-1, 1]. Diagonal = 1 (self). Map to a cool-warm scale.
+      var t = (v + 1) / 2; // 0..1
+      // lerp between dark blue and warm orange through white
+      if (t > 0.5) {
+        var f = (t - 0.5) * 2;
+        var rr = Math.round(255 * f + 60 * (1 - f));
+        var gg = Math.round(128 * f + 100 * (1 - f));
+        var bb = Math.round(90 * f + 200 * (1 - f));
+        return "rgb(" + rr + "," + gg + "," + bb + ")";
+      } else {
+        var f2 = t * 2;
+        var rr2 = Math.round(60 * f2 + 22 * (1 - f2));
+        var gg2 = Math.round(100 * f2 + 52 * (1 - f2));
+        var bb2 = Math.round(200 * f2 + 120 * (1 - f2));
+        return "rgb(" + rr2 + "," + gg2 + "," + bb2 + ")";
+      }
+    }
+    var svgCells = "";
+    for (var i = 0; i < n; i++) {
+      for (var j = 0; j < n; j++) {
+        var v = matrix[i * n + j];
+        svgCells += '<rect x="' + (margin + j * cell) + '" y="' + (margin + i * cell) + '" width="' + cell + '" height="' + cell + '" ' +
+          'fill="' + colorFor(v) + '" stroke="var(--bg-surface)" stroke-width="0.4">' +
+          '<title>' + escapeHtml(names[i] || "") + ' × ' + escapeHtml(names[j] || "") + ': cos=' + v.toFixed(3) + '</title>' +
+        '</rect>';
+      }
+    }
+    var svgRowLabels = names.map(function (nm, i) {
+      var shortName = nm.length > 22 ? nm.slice(0, 20) + "…" : nm;
+      return '<text x="' + (margin - 6) + '" y="' + (margin + i * cell + cell / 2 + 3) + '" text-anchor="end" fill="var(--text-mut)" font-size="9.5" font-family="ui-monospace">' + escapeHtml(shortName) + '</text>';
+    }).join("");
+    var svgColLabels = names.map(function (nm, j) {
+      var shortName = nm.length > 22 ? nm.slice(0, 20) + "…" : nm;
+      return '<text transform="rotate(-55 ' + (margin + j * cell + cell / 2) + ' ' + (margin - 6) + ')" x="' + (margin + j * cell + cell / 2) + '" y="' + (margin - 6) + '" text-anchor="start" fill="var(--text-mut)" font-size="9.5" font-family="ui-monospace">' + escapeHtml(shortName) + '</text>';
+    }).join("");
+    host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMinYMin meet">' +
+      svgCells + svgRowLabels + svgColLabels +
+    '</svg>' +
+    '<div style="margin-top:10px;display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-mut);font-family:var(--font-mono)">' +
+      '<span>cos=-1</span><span>0</span><span>+1 (self)</span>' +
+    '</div>';
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title">Could not load heatmap</div></div>';
+  }
+}
+
+async function renderEmbeddingSankey() {
+  // Uses x_cross_taxonomy from the live catalog. Visualizes the bridge
+  // IAB 1.1 → IAB 3.0 → {LR, TTD, MC, Nielsen} as left-to-right flows
+  // aggregated by unique iab_3_0 topic. No external libs — pure SVG.
+  var host = document.getElementById("emb-sankey");
+  try {
+    if (state.catalog.all.length === 0) await loadCatalog();
+    var signals = state.catalog.all.slice(0, 50); // limit for readability
+    // Build flows: left=categoryType, mid=iab_content_3_0 label, right=system
+    var midCounts = {};    // iab30 label -> count
+    var rightFromMid = {}; // mid -> { system -> count }
+    signals.forEach(function (s) {
+      var tx = s.x_cross_taxonomy || [];
+      var iab30 = tx.find(function (e) { return e.system === "iab_content_3_0"; });
+      if (!iab30) return;
+      var midLabel = iab30.label;
+      midCounts[midLabel] = (midCounts[midLabel] || 0) + 1;
+      if (!rightFromMid[midLabel]) rightFromMid[midLabel] = {};
+      tx.forEach(function (e) {
+        if (e.system === "iab_content_3_0" || e.system === "iab_audience_1_1") return;
+        rightFromMid[midLabel][e.system] = (rightFromMid[midLabel][e.system] || 0) + 1;
+      });
+    });
+    var mids = Object.keys(midCounts).sort(function (a, b) { return midCounts[b] - midCounts[a]; }).slice(0, 8);
+    var rightSystems = ["liveramp_abilitec", "ttd_dmp", "nielsen_category", "mastercard_spendingpulse"];
+    var W = 960, H = 420;
+    var leftX = 40, midX = 360, rightX = 760;
+    var nodeW = 18;
+    var midSpace = (H - 40) / (mids.length || 1);
+    var rightSpace = (H - 40) / rightSystems.length;
+    // Nodes
+    var nodes = "";
+    mids.forEach(function (m, i) {
+      var y = 20 + i * midSpace;
+      var size = Math.max(16, Math.min(midSpace - 8, midCounts[m] * 6));
+      nodes += '<rect x="' + midX + '" y="' + y + '" width="' + nodeW + '" height="' + size + '" fill="var(--accent)" fill-opacity="0.7"/>' +
+        '<text x="' + (midX + nodeW + 8) + '" y="' + (y + size / 2 + 4) + '" fill="var(--text)" font-size="11" font-family="ui-sans-serif">' + escapeHtml(m) + ' · ' + midCounts[m] + '</text>';
+    });
+    rightSystems.forEach(function (sys, i) {
+      var y = 20 + i * rightSpace;
+      var size = Math.max(20, rightSpace - 20);
+      var totalForSys = 0;
+      mids.forEach(function (m) { totalForSys += (rightFromMid[m] && rightFromMid[m][sys]) || 0; });
+      nodes += '<rect x="' + rightX + '" y="' + y + '" width="' + nodeW + '" height="' + size + '" fill="#8b6eff" fill-opacity="0.7"/>' +
+        '<text x="' + (rightX + nodeW + 8) + '" y="' + (y + size / 2 + 4) + '" fill="var(--text)" font-size="11" font-family="ui-sans-serif">' + escapeHtml(sys) + ' · ' + totalForSys + '</text>';
+    });
+    // Left-column anchor
+    nodes += '<rect x="' + leftX + '" y="20" width="' + nodeW + '" height="' + (H - 40) + '" fill="#2bd4a0" fill-opacity="0.5"/>' +
+      '<text x="' + (leftX + nodeW + 8) + '" y="40" fill="var(--text)" font-size="11" font-family="ui-sans-serif">IAB Audience 1.1</text>' +
+      '<text x="' + (leftX + nodeW + 8) + '" y="56" fill="var(--text-mut)" font-size="10" font-family="ui-monospace">' + signals.length + ' signals</text>';
+    // Flows: left → mid (all one color), mid → right (colored per mid)
+    var flows = "";
+    mids.forEach(function (m, mi) {
+      var yMid = 20 + mi * midSpace + Math.min(midSpace - 8, midCounts[m] * 6) / 2;
+      // left→mid
+      var yLeft = 20 + (H - 40) / 2 + (mi - mids.length / 2) * 10;
+      var cx1 = leftX + nodeW + (midX - leftX - nodeW) / 2;
+      flows += '<path d="M' + (leftX + nodeW) + ',' + yLeft + ' C' + cx1 + ',' + yLeft + ' ' + cx1 + ',' + yMid + ' ' + midX + ',' + yMid + '" ' +
+        'fill="none" stroke="#2bd4a0" stroke-opacity="0.3" stroke-width="' + Math.max(1, midCounts[m] * 1.5) + '"/>';
+      // mid→right(s)
+      var rfm = rightFromMid[m] || {};
+      rightSystems.forEach(function (sys, ri) {
+        var count = rfm[sys] || 0;
+        if (!count) return;
+        var yRight = 20 + ri * rightSpace + rightSpace / 2;
+        var cx2 = midX + nodeW + (rightX - midX - nodeW) / 2;
+        flows += '<path d="M' + (midX + nodeW) + ',' + yMid + ' C' + cx2 + ',' + yMid + ' ' + cx2 + ',' + yRight + ' ' + rightX + ',' + yRight + '" ' +
+          'fill="none" stroke="#8b6eff" stroke-opacity="0.25" stroke-width="' + Math.max(1, count * 1.2) + '"/>';
+      });
+    });
+    host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
+      flows + nodes +
+    '</svg>' +
+    '<div style="font-size:10.5px;color:var(--text-mut);margin-top:8px">Left column: native IAB Audience 1.1 catalog. Middle: mapped IAB Content 3.0 topics. Right: buyer-side DMP / onboarder / measurement systems. Widths ∝ signal count. Stage flags (live/modeled/roadmap) surfaced in signal detail panel.</div>';
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title">Could not load bridge</div></div>';
+  }
 }
 
 document.getElementById("overlap-search-input").addEventListener("input", (e) => {
@@ -4868,6 +5847,181 @@ function wireToolLogExpanders() {
   });
 }
 
+// Sec-38 B7 — Dev kit tab (C5 sandbox keys + C7 SDK snippets)
+var _devkitLang = "typescript";
+var _devkitKeyShown = false;
+function ensureDevkit() {
+  renderDevkitCode();
+  updateDevkitKeyDisplay();
+}
+function updateDevkitKeyDisplay() {
+  var el = document.getElementById("devkit-key");
+  if (!el) return;
+  el.textContent = _devkitKeyShown ? DEMO_KEY : DEMO_KEY.slice(0, 8) + "••••••••••••••";
+  document.getElementById("devkit-key-reveal").textContent = _devkitKeyShown ? "Hide" : "Reveal";
+}
+(function wireDevkit() {
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (!(t instanceof Element)) return;
+    if (t.closest("#devkit-key-reveal")) {
+      _devkitKeyShown = !_devkitKeyShown; updateDevkitKeyDisplay(); return;
+    }
+    if (t.closest("#devkit-key-copy")) {
+      navigator.clipboard.writeText(DEMO_KEY).then(function () { showToast("Key copied"); }).catch(function () { showToast("Copy failed", true); });
+      return;
+    }
+    if (t.closest("#devkit-copy-code")) {
+      var code = document.getElementById("devkit-code")?.textContent || "";
+      navigator.clipboard.writeText(code).then(function () { showToast("Snippet copied"); }).catch(function () { showToast("Copy failed", true); });
+      return;
+    }
+    var tab = t.closest(".devkit-tab");
+    if (tab) {
+      _devkitLang = tab.dataset.lang;
+      document.querySelectorAll(".devkit-tab").forEach(function (b) { b.classList.toggle("active", b === tab); });
+      renderDevkitCode();
+    }
+  });
+})();
+function renderDevkitCode() {
+  var pre = document.getElementById("devkit-code");
+  if (!pre) return;
+  var origin = location.origin;
+  var snippets = {
+    typescript:
+      "// npm install @adcp/client\\n" +
+      "import { AdcpClient } from \\"@adcp/client\\";\\n" +
+      "\\n" +
+      "const client = new AdcpClient({\\n" +
+      "  endpoint: \\"" + origin + "/mcp\\",\\n" +
+      "  apiKey: process.env.ADCP_KEY!,  // bearer token\\n" +
+      "});\\n" +
+      "\\n" +
+      "const res = await client.getSignals({\\n" +
+      "  brief: \\"affluent families 35-44 interested in luxury travel\\",\\n" +
+      "  deliver_to: { deployments: [{ type: \\"platform\\", platform: \\"mock_dsp\\" }], countries: [\\"US\\"] },\\n" +
+      "  max_results: 10,\\n" +
+      "});\\n" +
+      "console.log(res.signals.length, \\"matches\\");\\n" +
+      "console.log(res.signals[0].x_cross_taxonomy);  // Sec-38 bridge IDs",
+    python:
+      "# pip install requests\\n" +
+      "import os, requests\\n" +
+      "\\n" +
+      "resp = requests.post(\\n" +
+      "    \\"" + origin + "/mcp\\",\\n" +
+      "    headers={\\"Authorization\\": f\\"Bearer {os.environ['ADCP_KEY']}\\"},\\n" +
+      "    json={\\n" +
+      "        \\"jsonrpc\\": \\"2.0\\", \\"id\\": 1, \\"method\\": \\"tools/call\\",\\n" +
+      "        \\"params\\": {\\n" +
+      "            \\"name\\": \\"get_signals\\",\\n" +
+      "            \\"arguments\\": {\\n" +
+      "                \\"brief\\": \\"affluent families 35-44 interested in luxury travel\\",\\n" +
+      "                \\"deliver_to\\": {\\"deployments\\": [{\\"type\\": \\"platform\\", \\"platform\\": \\"mock_dsp\\"}], \\"countries\\": [\\"US\\"]},\\n" +
+      "                \\"max_results\\": 10,\\n" +
+      "            },\\n" +
+      "        },\\n" +
+      "    },\\n" +
+      "    timeout=30,\\n" +
+      ")\\n" +
+      "print(resp.json()[\\"result\\"][\\"structuredContent\\"][\\"count\\"])",
+    go:
+      "package main\\n" +
+      "\\n" +
+      "import (\\n" +
+      "    \\"bytes\\"\\n" +
+      "    \\"encoding/json\\"\\n" +
+      "    \\"fmt\\"\\n" +
+      "    \\"net/http\\"\\n" +
+      "    \\"os\\"\\n" +
+      ")\\n" +
+      "\\n" +
+      "func main() {\\n" +
+      "    body, _ := json.Marshal(map[string]any{\\n" +
+      "        \\"jsonrpc\\": \\"2.0\\", \\"id\\": 1, \\"method\\": \\"tools/call\\",\\n" +
+      "        \\"params\\": map[string]any{\\n" +
+      "            \\"name\\": \\"get_signals\\",\\n" +
+      "            \\"arguments\\": map[string]any{\\n" +
+      "                \\"brief\\": \\"affluent families 35-44 interested in luxury travel\\",\\n" +
+      "                \\"deliver_to\\": map[string]any{\\"deployments\\": []any{map[string]any{\\"type\\": \\"platform\\", \\"platform\\": \\"mock_dsp\\"}}, \\"countries\\": []string{\\"US\\"}},\\n" +
+      "                \\"max_results\\": 10,\\n" +
+      "            },\\n" +
+      "        },\\n" +
+      "    })\\n" +
+      "    req, _ := http.NewRequest(\\"POST\\", \\"" + origin + "/mcp\\", bytes.NewReader(body))\\n" +
+      "    req.Header.Set(\\"Authorization\\", \\"Bearer \\"+os.Getenv(\\"ADCP_KEY\\"))\\n" +
+      "    req.Header.Set(\\"Content-Type\\", \\"application/json\\")\\n" +
+      "    resp, err := http.DefaultClient.Do(req)\\n" +
+      "    if err != nil { panic(err) }\\n" +
+      "    defer resp.Body.Close()\\n" +
+      "    var out map[string]any\\n" +
+      "    json.NewDecoder(resp.Body).Decode(&out)\\n" +
+      "    fmt.Println(out[\\"result\\"])\\n" +
+      "}",
+    curl:
+      "curl -s -X POST " + origin + "/mcp \\\\\\n" +
+      "  -H \\"Authorization: Bearer $ADCP_KEY\\" \\\\\\n" +
+      "  -H \\"Content-Type: application/json\\" \\\\\\n" +
+      "  -d '{\\n" +
+      "    \\"jsonrpc\\": \\"2.0\\", \\"id\\": 1, \\"method\\": \\"tools/call\\",\\n" +
+      "    \\"params\\": {\\n" +
+      "      \\"name\\": \\"get_signals\\",\\n" +
+      "      \\"arguments\\": {\\n" +
+      "        \\"brief\\": \\"affluent families 35-44 interested in luxury travel\\",\\n" +
+      "        \\"deliver_to\\": {\\"deployments\\":[{\\"type\\":\\"platform\\",\\"platform\\":\\"mock_dsp\\"}],\\"countries\\":[\\"US\\"]},\\n" +
+      "        \\"max_results\\": 10\\n" +
+      "      }\\n" +
+      "    }\\n" +
+      "  }'",
+  };
+  pre.textContent = snippets[_devkitLang] || "";
+}
+
+// Sec-38 A7: keyboard shortcuts. Two-key "go to" prefix (g+x). Single
+// keys: ? toggles the cheat sheet, Esc closes overlays + detail panel.
+// Ignore shortcuts while typing in an input/textarea.
+var _kbdPrefix = null, _kbdPrefixTimer = null;
+function _isEditable(el) {
+  if (!el) return false;
+  var t = el.tagName;
+  return t === "INPUT" || t === "TEXTAREA" || t === "SELECT" || el.isContentEditable;
+}
+document.addEventListener("keydown", function (ev) {
+  if (_isEditable(document.activeElement)) return;
+  var overlay = document.getElementById("kbd-overlay");
+  if (ev.key === "?" && !ev.ctrlKey && !ev.metaKey) {
+    overlay.classList.toggle("open");
+    ev.preventDefault();
+    return;
+  }
+  if (ev.key === "Escape") {
+    if (overlay.classList.contains("open")) { overlay.classList.remove("open"); return; }
+    var panel = document.getElementById("detail-panel");
+    if (panel && panel.classList.contains("open")) { closeDetail(); return; }
+    var drawer = document.getElementById("mcp-drawer");
+    if (drawer && drawer.classList.contains("open")) { drawer.classList.remove("open"); return; }
+    return;
+  }
+  if (_kbdPrefix === "g") {
+    var map = { d: "discover", c: "catalog", b: "builder", t: "treemap", o: "overlap", e: "embedding", k: "capabilities", v: "devkit", l: "toollog", a: "activations" };
+    var tab = map[ev.key.toLowerCase()];
+    if (tab) { switchTab(tab); _kbdPrefix = null; if (_kbdPrefixTimer) clearTimeout(_kbdPrefixTimer); return; }
+    _kbdPrefix = null;
+  }
+  if (ev.key === "g" && !ev.ctrlKey && !ev.metaKey) {
+    _kbdPrefix = "g";
+    if (_kbdPrefixTimer) clearTimeout(_kbdPrefixTimer);
+    _kbdPrefixTimer = setTimeout(function () { _kbdPrefix = null; }, 1200);
+  }
+});
+document.getElementById("kbd-overlay").addEventListener("click", function (ev) {
+  if (ev.target.id === "kbd-overlay") ev.currentTarget.classList.remove("open");
+});
+document.getElementById("kbd-hint-btn").addEventListener("click", function () {
+  document.getElementById("kbd-overlay").classList.toggle("open");
+});
+
 // Prime tool-log count in nav on first render
 (async () => {
   try {
@@ -4878,6 +6032,37 @@ function wireToolLogExpanders() {
     }
   } catch {}
 })();
+
+// Sec-38 B7: Tool Log CSV export. Downloads the currently-loaded entries
+// as CSV with the same field set rendered in the table (no PII, args
+// stripped to top-level keys by the server).
+document.getElementById("toollog-export").addEventListener("click", () => {
+  const rows = state.toolLog?.data || [];
+  if (!rows.length) { showToast("No entries to export"); return; }
+  const header = ["timestamp", "tool", "latency_ms", "resp_bytes", "caller", "status", "arg_keys"];
+  function csvEscape(v) {
+    const s = v === null || v === undefined ? "" : String(v);
+    return /[",\\n\\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  const body = rows.map((e) => [
+    e.timestamp || e.ts || "",
+    e.tool || "",
+    e.latency_ms || "",
+    e.response_bytes || "",
+    e.caller || "",
+    e.status || (e.error ? "error" : "ok"),
+    Array.isArray(e.arg_keys) ? e.arg_keys.join("|") : (e.args_redacted || ""),
+  ].map(csvEscape).join(","));
+  const csv = header.join(",") + "\\n" + body.join("\\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "mcp-tool-log-" + new Date().toISOString().slice(0, 10) + ".csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast("CSV downloaded");
+});
 
 // Initial load hook: prime activations count in nav on first render so
 // operators see the real number without having to visit the tab.

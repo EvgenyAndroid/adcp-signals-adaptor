@@ -100,6 +100,9 @@ ${STYLES}
       <button class="nav-item" data-tab="builder">
         <svg class="ico"><use href="#icon-builder"/></svg><span>Builder</span>
       </button>
+      <button class="nav-item" data-tab="overlap">
+        <svg class="ico"><use href="#icon-network"/></svg><span>Overlap</span>
+      </button>
       <button class="nav-item" data-tab="activations">
         <svg class="ico"><use href="#icon-activations"/></svg><span>Activations</span>
         <span class="nav-count" id="nav-activations-count">—</span>
@@ -448,6 +451,38 @@ ${STYLES}
         </div>
       </section>
 
+      <!-- ── TAB: Overlap ───────────────────────────────────────────────── -->
+      <section class="tab-pane" data-tab="overlap">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Audience overlap</h1>
+            <p class="pane-subtitle">Pick 2-6 signals. Jaccard intersection is approximated using category affinity × size ratio — refinable with real embedding cosine in a production deployment. Useful for "can I dedupe these" and "how much do these compete for the same impressions."</p>
+          </div>
+        </div>
+        <div class="overlap-shell">
+          <div class="overlap-picker" id="overlap-picker">
+            <div class="builder-section-label">Selected signals <span style="color:var(--text-mut);font-weight:400;font-family:var(--font-mono)" id="overlap-count">0 / 6</span></div>
+            <div class="overlap-chips" id="overlap-chips"></div>
+            <div class="overlap-search">
+              <svg class="ico"><use href="#icon-search"/></svg>
+              <input id="overlap-search-input" placeholder="Type to search catalog by name…" autocomplete="off"/>
+            </div>
+            <div class="overlap-suggestions" id="overlap-suggestions"></div>
+            <button class="btn-primary" id="overlap-run" disabled style="margin-top:14px;width:100%;justify-content:center">
+              <svg class="ico"><use href="#icon-network"/></svg>
+              <span>Compute overlap</span>
+            </button>
+          </div>
+          <div class="overlap-results" id="overlap-results">
+            <div class="empty-state">
+              <svg class="empty-icon"><use href="#icon-network"/></svg>
+              <div class="empty-title">Select 2+ signals</div>
+              <div class="empty-desc">Pairwise Jaccard scores render as a heat-matrix; 3+ signals also render an UpSet-style subset chart.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ── TAB: Capabilities ──────────────────────────────────────────── -->
       <section class="tab-pane" data-tab="capabilities">
         <div class="pane-header">
@@ -467,6 +502,10 @@ ${STYLES}
             <a class="btn-secondary" href="/capabilities" target="_blank" rel="noopener" id="caps-open">
               <svg class="ico"><use href="#icon-arrow-right"/></svg>
               <span>Open /capabilities</span>
+            </a>
+            <a class="btn-secondary" href="/openapi.json" target="_blank" rel="noopener" id="caps-openapi">
+              <svg class="ico"><use href="#icon-book"/></svg>
+              <span>OpenAPI 3.1</span>
             </a>
           </div>
         </div>
@@ -593,6 +632,23 @@ ${STYLES}
   </aside>
 
   <div class="backdrop" id="backdrop"></div>
+
+  <!-- MCP inspector drawer (Sec-37 B7) -->
+  <aside class="mcp-drawer" id="mcp-drawer" aria-hidden="true">
+    <div class="mcp-drawer-header">
+      <span class="mcp-drawer-title" id="mcp-drawer-title">MCP exchange</span>
+      <button class="detail-close" id="mcp-drawer-close" aria-label="Close">
+        <svg class="ico"><use href="#icon-close"/></svg>
+      </button>
+    </div>
+    <div class="mcp-drawer-body" id="mcp-drawer-body"></div>
+    <div class="mcp-drawer-footer">
+      <button class="btn-primary" id="mcp-drawer-run">
+        <svg class="ico"><use href="#icon-bolt"/></svg>
+        <span>Run live</span>
+      </button>
+    </div>
+  </aside>
 
 </div>
 
@@ -1071,6 +1127,31 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   font-family: var(--font-mono); font-size: 10px; padding: 2px 7px;
   border-radius: 8px; text-transform: uppercase; letter-spacing: 0.04em;
   white-space: nowrap; flex-shrink: 0; font-weight: 500;
+}
+.pill-dts {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--success);
+  font-size: 9.5px;
+  font-family: var(--font-mono);
+  padding: 1px 6px;
+  border-radius: 6px;
+  margin-left: 4px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.pill-freshness {
+  font-size: 9.5px; font-family: var(--font-mono);
+  padding: 1px 6px; border-radius: 6px;
+  margin-left: 4px; font-weight: 500; letter-spacing: 0.04em;
+}
+.pill-fresh-7d      { background: rgba(79,142,255,0.12); color: var(--accent); }
+.pill-fresh-30d     { background: rgba(139,92,246,0.12); color: var(--violet); }
+.pill-fresh-static  { background: var(--bg-raised); color: var(--text-mut); }
+.pill-sensitive {
+  background: rgba(245,158,11,0.15); color: var(--warning);
+  font-size: 9.5px; font-family: var(--font-mono);
+  padding: 1px 6px; border-radius: 6px;
+  margin-left: 4px; font-weight: 500; letter-spacing: 0.04em;
 }
 .sc-type-badge.marketplace { background: var(--accent-dim); color: var(--accent); }
 .sc-type-badge.custom { background: var(--warning-dim); color: var(--warning); }
@@ -1855,6 +1936,149 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   margin-top: 2px;
 }
 
+/* Overlap tab (Sec-37 B1) */
+.overlap-shell { display: grid; grid-template-columns: 340px 1fr; gap: 20px; }
+@media (max-width: 960px) { .overlap-shell { grid-template-columns: 1fr; } }
+.overlap-picker, .overlap-results {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 18px;
+}
+.overlap-chips { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; min-height: 20px; }
+.overlap-chip {
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 8px; align-items: center;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 6px 10px;
+}
+.overlap-chip .oc-name { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.overlap-chip .oc-remove {
+  color: var(--text-mut); padding: 2px;
+  line-height: 0;
+}
+.overlap-chip .oc-remove:hover { color: var(--error); }
+.overlap-search {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 0 10px;
+}
+.overlap-search:focus-within { border-color: var(--border-focus); }
+.overlap-search .ico { color: var(--text-mut); }
+.overlap-search input {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: var(--text); font-size: 13px; padding: 8px 0;
+  font-family: inherit;
+}
+.overlap-suggestions {
+  max-height: 220px; overflow-y: auto; margin-top: 6px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.overlap-suggestion {
+  padding: 6px 10px; font-size: 12px; cursor: pointer;
+  border-radius: var(--radius-sm); border: 1px solid transparent;
+}
+.overlap-suggestion:hover { background: var(--bg-raised); border-color: var(--border); }
+.overlap-suggestion .sub { color: var(--text-mut); font-size: 10.5px; margin-top: 1px; }
+
+/* Overlap heat-matrix */
+.overlap-matrix { border-collapse: collapse; font-size: 11px; }
+.overlap-matrix th, .overlap-matrix td {
+  border: 1px solid var(--border); padding: 6px 8px; text-align: center;
+  font-family: var(--font-mono);
+}
+.overlap-matrix th { background: var(--bg-raised); color: var(--text-dim); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.overlap-matrix td.jcell { color: #000; font-weight: 600; }
+
+/* UpSet-ish bars */
+.upset-row { display: grid; grid-template-columns: 1fr 120px 80px; gap: 10px; align-items: center; padding: 4px 0; border-bottom: 1px dashed var(--border); }
+.upset-row:last-child { border-bottom: none; }
+.upset-sets { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); display: flex; gap: 4px; flex-wrap: wrap; }
+.upset-sets .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; }
+.upset-bar { position: relative; height: 14px; background: var(--bg-raised); border-radius: 3px; overflow: hidden; }
+.upset-bar-fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); }
+.upset-val { font-family: var(--font-mono); font-size: 11.5px; text-align: right; color: var(--text); }
+
+/* Reach & frequency forecaster in detail panel (Sec-37 B2) */
+.reach-block {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 12px 14px;
+}
+.reach-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.reach-stat {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 10px;
+}
+.reach-stat-label { font-size: 10px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.06em; }
+.reach-stat-value { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.reach-curve { margin-top: 10px; height: 50px; }
+.reach-curve svg { width: 100%; height: 100%; display: block; }
+.reach-budget-input {
+  display: flex; gap: 8px; align-items: center; font-size: 12px;
+}
+.reach-budget-input input {
+  width: 90px; background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text); padding: 4px 8px; border-radius: var(--radius-sm);
+  font-family: var(--font-mono); font-size: 12px; outline: none;
+}
+
+/* MCP inspector drawer (Sec-37 B7) */
+.mcp-inspect-btn {
+  color: var(--text-mut); font-family: var(--font-mono);
+  font-size: 11px; padding: 2px 6px;
+  border-radius: 4px; background: var(--bg-raised); border: 1px solid var(--border);
+  cursor: pointer; transition: all 0.12s; vertical-align: middle;
+}
+.mcp-inspect-btn:hover { color: var(--accent); border-color: var(--accent-border); }
+.mcp-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 560px;
+  background: var(--bg-surface); border-left: 1px solid var(--border);
+  box-shadow: -20px 0 60px rgba(0,0,0,0.5);
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.32,0.72,0,1);
+  z-index: 110;
+  display: flex; flex-direction: column;
+}
+.mcp-drawer.open { transform: translateX(0); }
+.mcp-drawer-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+}
+.mcp-drawer-title { font-size: 14px; font-weight: 600; }
+.mcp-drawer-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+.mcp-drawer-section { margin-bottom: 16px; }
+.mcp-drawer-label {
+  font-size: 10.5px; color: var(--text-mut);
+  text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500;
+  margin-bottom: 6px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.mcp-drawer-label button.copy-btn {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-mut); padding: 1px 6px;
+  border-radius: 4px; background: var(--bg-raised); border: 1px solid var(--border);
+  cursor: pointer; text-transform: none; letter-spacing: 0;
+}
+.mcp-drawer-label button.copy-btn:hover { color: var(--accent); }
+.mcp-drawer-footer { padding: 12px 20px; border-top: 1px solid var(--border); }
+.mcp-drawer-footer .btn-primary { width: 100%; justify-content: center; }
+
+/* Loading skeletons (Sec-37 A4) */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.7; }
+}
+.skeleton-bar {
+  height: 12px; border-radius: 4px;
+  background: linear-gradient(90deg, var(--bg-raised) 0%, var(--bg-hover) 50%, var(--bg-raised) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+.skeleton-card {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px; margin-bottom: 10px;
+}
+.skeleton-card .skeleton-bar { margin-bottom: 8px; }
+.skeleton-card .skeleton-bar:last-child { margin-bottom: 0; }
+
 /* ── Scrollbars ──────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -1916,6 +2140,8 @@ const state = {
   },
   activations: { pollTimer: null, data: [] },
   toolLog: { pollTimer: null, data: [], paused: false, filter: "", expanded: new Set() },
+  overlap: { selected: [], lastResult: null, searchQ: "" },
+  reach: { budgetUsd: 10_000 },
 };
 
 async function callTool(name, args) {
@@ -1949,6 +2175,74 @@ function fmtNumber(n) {
   if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
   if (n >= 1e3) return (n / 1e3).toFixed(0) + "K";
   return String(n);
+}
+
+// Sec-37 B4: derive ID-resolution surface per signal from the DTS
+// label's data_sources + precision_levels. Keeps the canonical schema
+// untouched — we're inferring what identifiers the signal can key off,
+// which is exactly what a tier-1 data-council reviewer asks.
+function idTypesFor(sig) {
+  const dts = sig?.x_dts || {};
+  const sources = Array.isArray(dts.data_sources) ? dts.data_sources : [];
+  const levels = Array.isArray(dts.audience_precision_levels) ? dts.audience_precision_levels : [];
+  const ids = new Set(["ip_only"]); // universal baseline
+  const hasAny = (arr, needles) => arr.some((x) => needles.some((n) => String(x).toLowerCase().includes(n)));
+  if (hasAny(sources, ["app behavior", "app usage"])) { ids.add("maid_ios"); ids.add("maid_android"); }
+  if (hasAny(sources, ["tv ott", "stb device"])) ids.add("ctv_device");
+  if (hasAny(sources, ["web usage"])) { ids.add("cookie_3p"); ids.add("hashed_email"); }
+  if (hasAny(sources, ["online ecommerce", "online transaction", "email"])) {
+    ids.add("hashed_email"); ids.add("ramp_id"); ids.add("uid2"); ids.add("id5");
+  }
+  if (hasAny(sources, ["offline survey", "offline transaction", "public record"])) {
+    ids.add("hashed_email"); ids.add("ramp_id");
+  }
+  if (hasAny(sources, ["loyalty card", "credit data"])) {
+    ids.add("hashed_email"); ids.add("ramp_id"); ids.add("uid2");
+  }
+  if (levels.some((l) => String(l).toLowerCase() === "device")) { ids.add("maid_ios"); ids.add("maid_android"); }
+  if (levels.some((l) => String(l).toLowerCase() === "household")) ids.add("ramp_id");
+  if (levels.some((l) => String(l).toLowerCase() === "browser")) ids.add("cookie_3p");
+  // Fallback if x_dts was sparse — derive from category_type
+  if (ids.size === 1) {
+    const c = (sig?.category_type || "").toLowerCase();
+    if (c === "interest" || c === "purchase_intent") { ids.add("cookie_3p"); ids.add("maid_ios"); ids.add("maid_android"); }
+    if (c === "demographic") { ids.add("ramp_id"); ids.add("hashed_email"); }
+    if (c === "geo") { ids.add("maid_ios"); ids.add("maid_android"); ids.add("ctv_device"); }
+    if (c === "composite") { ids.add("cookie_3p"); ids.add("ramp_id"); ids.add("hashed_email"); }
+  }
+  return [...ids];
+}
+const ID_LABELS = {
+  cookie_3p: "3P cookie",
+  maid_ios: "iOS MAID",
+  maid_android: "Android MAID",
+  ctv_device: "CTV device ID",
+  uid2: "UID 2.0",
+  ramp_id: "RampID",
+  id5: "ID5",
+  hashed_email: "Hashed email",
+  ip_only: "IP only",
+};
+function idTypePills(sig) {
+  const ids = idTypesFor(sig);
+  const cookieless = !ids.includes("cookie_3p");
+  const pills = ids.map((i) => '<span class="pill pill-muted mono" style="font-size:10.5px">' + escapeHtml(ID_LABELS[i] || i) + '</span>').join(" ");
+  const cookielessPill = cookieless
+    ? '<span class="pill pill-success" style="font-size:10.5px">cookieless ready</span>'
+    : '<span class="pill pill-warning" style="font-size:10.5px">cookie-dependent</span>';
+  return { pills, cookielessPill, count: ids.length };
+}
+
+// Sec-37 A4: loading skeletons — rectangle-pulse placeholders in
+// place of spinners in catalog / treemap / capabilities.
+function skeletonRows(count, colCount) {
+  let rows = "";
+  for (let i = 0; i < count; i++) {
+    let cells = "";
+    for (let c = 0; c < colCount; c++) cells += '<td><div class="skeleton-bar"></div></td>';
+    rows += '<tr>' + cells + '</tr>';
+  }
+  return rows;
 }
 
 function fmtCPM(signal) {
@@ -2023,6 +2317,37 @@ function showToast(msg, isError) {
 
 function typeBadge(t) { return '<span class="sc-type-badge ' + escapeHtml(t) + '">' + escapeHtml(t) + '</span>'; }
 
+// Sec-37 A1/A2: compact pills that surface compliance + freshness at
+// a glance on every card. Read the same fields the detail panel uses;
+// render as 9.5px mono pills so they don't dominate the card.
+function dtsPill(sig) {
+  if (sig && sig.x_dts && sig.x_dts.dts_version) {
+    return ' <span class="pill-dts">DTS ' + escapeHtml(String(sig.x_dts.dts_version)) + '</span>';
+  }
+  return "";
+}
+function freshnessPill(sig) {
+  const f = sig && (sig.freshness || sig.x_dts?.audience_refresh);
+  if (!f) return "";
+  const v = String(f).toLowerCase();
+  const cls = v === "7d" ? "pill-fresh-7d" : v === "30d" ? "pill-fresh-30d" : "pill-fresh-static";
+  const label = v === "7d" || v === "30d" ? v : (v === "static" ? "static" : v);
+  return ' <span class="pill-freshness ' + cls + '">' + escapeHtml(label) + '</span>';
+}
+function sensitivePill(sig) {
+  if (sig && sig.sensitive_category && sig.sensitive_category.is_sensitive) {
+    return ' <span class="pill-sensitive" title="Sensitive category">⚐ sensitive</span>';
+  }
+  return "";
+}
+// Sec-37 A3: confidence → range label. Tier maps to percentage bands.
+function confidenceRange(size, tier) {
+  if (!Number.isFinite(size) || size <= 0) return null;
+  const pct = tier === "high" ? 0.10 : tier === "medium" ? 0.25 : 0.50;
+  const delta = Math.round(size * pct);
+  return { lo: size - delta, hi: size + delta, pct: Math.round(pct * 100), delta };
+}
+
 //────────────────────────────────────────────────────────────────────────
 // Tab switching
 //────────────────────────────────────────────────────────────────────────
@@ -2040,7 +2365,7 @@ function switchTab(name) {
   const crumbMap = {
     discover: "Discover", catalog: "Catalog", concepts: "Concepts",
     treemap: "Treemap", builder: "Builder", activations: "Activations",
-    capabilities: "Capabilities", toollog: "Tool Log",
+    capabilities: "Capabilities", toollog: "Tool Log", overlap: "Overlap",
   };
   document.getElementById("crumb-current").textContent = crumbMap[name] || name;
 
@@ -2050,6 +2375,7 @@ function switchTab(name) {
   if (name === "treemap") ensureTreemap();
   if (name === "builder") ensureBuilder();
   if (name === "capabilities") loadCapabilities();
+  if (name === "overlap") ensureOverlap();
 
   // Activations tab: start polling when visible, stop when hidden
   if (name === "activations") startActivationsPolling();
@@ -2287,7 +2613,7 @@ function renderNlMatchCard(m) {
   return '' +
     '<div class="nl-match-card" data-sid="' + escapeHtml(sid) + '">' +
       '<div>' +
-        '<div class="nl-m-name">' + escapeHtml(m.name || "(unnamed)") + '</div>' +
+        '<div class="nl-m-name">' + escapeHtml(m.name || "(unnamed)") + dtsPill(m) + freshnessPill(m) + sensitivePill(m) + '</div>' +
         '<div class="nl-m-sub">' + escapeHtml(sid) + ' · ' + audience + ' audience</div>' +
       '</div>' +
       '<span class="nl-m-method ' + escapeHtml(method) + '">' + escapeHtml(method.replace(/_/g, " ")) + '</span>' +
@@ -2341,7 +2667,7 @@ function renderDiscoverCard(s) {
   return '' +
     '<div class="signal-card" data-sid="' + escapeHtml(sid) + '">' +
       '<div class="sc-row-1">' +
-        '<div class="sc-name">' + escapeHtml(s.name || "(unnamed)") + '</div>' +
+        '<div class="sc-name">' + escapeHtml(s.name || "(unnamed)") + dtsPill(s) + freshnessPill(s) + sensitivePill(s) + '</div>' +
         typeBadge(type) +
       '</div>' +
       '<div class="sc-desc">' + escapeHtml(s.description || "") + '</div>' +
@@ -2377,7 +2703,7 @@ const _origRunDiscover = runDiscover;
 //────────────────────────────────────────────────────────────────────────
 async function loadCatalog() {
   const tbody = document.getElementById("catalog-tbody");
-  tbody.innerHTML = '<tr><td colspan="7" class="table-empty"><span class="spinner"></span> loading catalog…</td></tr>';
+  tbody.innerHTML = skeletonRows(6, 7);
 
   try {
     // Page through 100-at-a-time until we have the whole catalog
@@ -2523,7 +2849,7 @@ function renderCatalog() {
     const price = fmtCPM(s);
     return '' +
       '<tr data-sid="' + escapeHtml(sid) + '">' +
-        '<td class="td-name"><div>' + escapeHtml(s.name || "") + '</div><span class="signal-id">' + escapeHtml(sid) + '</span></td>' +
+        '<td class="td-name"><div>' + escapeHtml(s.name || "") + dtsPill(s) + freshnessPill(s) + sensitivePill(s) + '</div><span class="signal-id">' + escapeHtml(sid) + '</span></td>' +
         '<td class="td-vertical">' + escapeHtml(verticalOf(s)) + '</td>' +
         '<td>' + typeBadge(s.signal_type || "marketplace") + ' <span style="color:var(--text-mut);font-size:11.5px;margin-left:4px">' + escapeHtml(s.category_type || "") + '</span></td>' +
         '<td class="td-numeric">' + fmtNumber(s.estimated_audience_size) + '</td>' +
@@ -2655,7 +2981,12 @@ function openDetail(sig) {
 
   document.getElementById("detail-type").textContent = type;
   document.getElementById("detail-type").className = "detail-type-badge sc-type-badge " + type;
-  document.getElementById("detail-name").textContent = sig.name || "(unnamed)";
+  // Sec-37 B7: tiny {} affordance next to the title opens the MCP
+  // exchange drawer for this signal — agents + humans can see the
+  // exact request/response on the wire.
+  document.getElementById("detail-name").innerHTML =
+    escapeHtml(sig.name || "(unnamed)") +
+    ' <button class="mcp-inspect-btn" id="detail-mcp-inspect" title="Inspect MCP exchange">{…}</button>';
 
   const body = document.getElementById("detail-body");
   body.innerHTML = '' +
@@ -2689,6 +3020,25 @@ function openDetail(sig) {
           ? sig.deployments.map((d) => '<div class="detail-deployment"><span class="dep-platform">' + escapeHtml(d.platform || d.type) + '</span><span class="dep-live ' + (d.is_live ? "yes" : "") + '">' + (d.is_live ? "live" : "ready") + '</span></div>').join("")
           : '<div class="dep-live">No deployments declared</div>') +
       '</div>' +
+    '</div>' +
+    // Sec-37 B4: ID resolution matrix — derived from DTS data_sources
+    // + precision_levels. Shows what identifiers a buyer's integration
+    // layer would need to match this audience, plus a cookieless-ready
+    // pill that's increasingly evaluation-critical post-Chrome.
+    (() => {
+      const idInfo = idTypePills(sig);
+      return '<div class="detail-section">' +
+        '<div class="detail-section-label">ID resolution <span style="color:var(--text-mut);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">' + idInfo.count + ' supported</span></div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">' + idInfo.pills + ' ' + idInfo.cookielessPill + '</div>' +
+        '<div style="margin-top:8px;font-size:11px;color:var(--text-mut);font-family:var(--font-mono)">Derived from DTS data_sources + audience_precision_levels. Refinable by the data provider.</div>' +
+      '</div>';
+    })() +
+    // Sec-37 B2: Reach & frequency forecaster. Pure compute, no
+    // endpoint — shows what a $10K / 30-day flight would achieve
+    // against this signal. Budget adjustable inline.
+    '<div class="detail-section">' +
+      '<div class="detail-section-label">Reach &amp; frequency <span style="color:var(--text-mut);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">@</span> <span class="reach-budget-input" style="display:inline-flex"><span style="color:var(--text-mut)">$</span><input id="reach-budget" type="number" value="10000" min="500" max="10000000" step="500"/><span style="color:var(--text-mut)">/ 30d</span></span></div>' +
+      '<div class="reach-block" id="reach-block"></div>' +
     '</div>' +
     // Sec-36: "More like this" — lazy-loads get_similar_signals on
     // click so the detail panel opens instantly. Cosine scores from
@@ -2727,7 +3077,146 @@ function openDetail(sig) {
   // signal as reference; scores come from cosine over the UCP embedding.
   const simBtn = document.getElementById("detail-similar-btn");
   if (simBtn) simBtn.addEventListener("click", () => loadSimilarForDetail(sig));
+
+  // Reach forecaster — pure compute, re-renders on budget input change
+  renderReachBlock(sig);
+  const budgetInput = document.getElementById("reach-budget");
+  if (budgetInput) {
+    budgetInput.addEventListener("input", (e) => {
+      const v = parseFloat(e.target.value);
+      if (Number.isFinite(v) && v > 0) {
+        state.reach.budgetUsd = v;
+        renderReachBlock(sig);
+      }
+    });
+  }
+
+  // MCP inspector wire
+  const mcpBtn = document.getElementById("detail-mcp-inspect");
+  if (mcpBtn) mcpBtn.addEventListener("click", () => openMcpInspector(sig));
 }
+
+// Sec-37 B2: Reach & frequency math. Inputs: audience size, CPM,
+// budget. Output: reach (cap 80% of universe), avg frequency, daily
+// impressions + unique-reach curve. Curve is a logistic-style
+// saturation (reach grows fast early, asymptotes).
+function renderReachBlock(sig) {
+  const host = document.getElementById("reach-block");
+  if (!host) return;
+  const audience = sig.estimated_audience_size || 0;
+  const cpmOpt = fmtCPM(sig);
+  const cpm = cpmOpt.cpm ?? 5.0;
+  const budget = state.reach.budgetUsd;
+  const impressions = (budget * 1000) / cpm;
+  const rawReach = audience > 0 ? Math.min(0.8, (impressions / (audience * 3))) : 0;
+  const reach = Math.round(audience * rawReach);
+  const freq = reach > 0 ? Math.min(8, impressions / reach) : 0;
+  const daily = impressions / 30;
+
+  // 30-day cumulative-reach curve: logistic saturation
+  const curvePts = [];
+  for (let day = 0; day <= 30; day++) {
+    const fraction = 1 - Math.exp(-day / 7);
+    curvePts.push({ x: day, y: reach * fraction });
+  }
+  const maxY = reach || 1;
+  const path = curvePts.map((p, i) => (i === 0 ? "M" : "L") + (p.x * (300 / 30)) + "," + (50 - (p.y / maxY) * 45)).join(" ");
+
+  host.innerHTML = '' +
+    '<div class="reach-stats">' +
+      '<div class="reach-stat"><div class="reach-stat-label">Unique reach</div><div class="reach-stat-value">' + fmtNumber(reach) + '</div></div>' +
+      '<div class="reach-stat"><div class="reach-stat-label">Avg frequency</div><div class="reach-stat-value">' + freq.toFixed(1) + 'x</div></div>' +
+      '<div class="reach-stat"><div class="reach-stat-label">Total impressions</div><div class="reach-stat-value">' + fmtNumber(Math.round(impressions)) + '</div></div>' +
+      '<div class="reach-stat"><div class="reach-stat-label">Daily delivery</div><div class="reach-stat-value">' + fmtNumber(Math.round(daily)) + '</div></div>' +
+    '</div>' +
+    '<div style="font-size:10.5px;color:var(--text-mut);text-transform:uppercase;letter-spacing:0.08em;margin-top:10px;margin-bottom:4px">30-day cumulative reach</div>' +
+    '<div class="reach-curve"><svg viewBox="0 0 300 50" preserveAspectRatio="none">' +
+      '<path d="' + path + '" fill="none" stroke="var(--accent)" stroke-width="1.5"/>' +
+      '<path d="' + path + ' L 300,50 L 0,50 Z" fill="var(--accent-dim)"/>' +
+    '</svg></div>' +
+    '<div style="font-size:10.5px;color:var(--text-mut);margin-top:8px">Methodology: CPM @ $' + cpm.toFixed(2) + ' · reach capped at 80% of addressable audience · logistic saturation τ=7 days. Mock — plug measurement partner for actuals.</div>';
+}
+
+// Sec-37 B7: MCP inspector. Shows the get_signals{signal_ids:[sid]}
+// exchange as it would appear on the wire. "Run live" replays it
+// against /mcp and swaps the response with the actual result.
+function openMcpInspector(sig) {
+  const drawer = document.getElementById("mcp-drawer");
+  const body = document.getElementById("mcp-drawer-body");
+  const sid = sig.signal_agent_segment_id || sig.signal_id?.id || "";
+  document.getElementById("mcp-drawer-title").textContent = "MCP exchange · " + sig.name;
+  const request = {
+    jsonrpc: "2.0", id: 1, method: "tools/call",
+    params: {
+      name: "get_signals",
+      arguments: {
+        signal_ids: [sid],
+        deliver_to: { deployments: [{ type: "platform", platform: "mock_dsp" }], countries: ["US"] },
+        max_results: 1,
+      },
+    },
+  };
+  // Synthesize the expected response shape from the signal we already have
+  const response = {
+    jsonrpc: "2.0", id: 1,
+    result: {
+      content: [{ type: "text", text: "[synthesized — run live to fetch]" }],
+      isError: false,
+      structuredContent: {
+        message: "Found 1 signal",
+        context_id: "inspect_" + Date.now(),
+        signals: [sig],
+        count: 1,
+        totalCount: 1,
+        offset: 0,
+        hasMore: false,
+      },
+    },
+  };
+  body.innerHTML = '' +
+    '<div class="mcp-drawer-section">' +
+      '<div class="mcp-drawer-label"><span>Request — POST /mcp</span><button class="copy-btn" data-copy="req">copy</button></div>' +
+      '<pre class="caps-raw-json" id="mcp-req" style="max-height:280px">' + highlightJson(JSON.stringify(request, null, 2)) + '</pre>' +
+    '</div>' +
+    '<div class="mcp-drawer-section">' +
+      '<div class="mcp-drawer-label"><span>Response (synthesized)</span><button class="copy-btn" data-copy="resp">copy</button></div>' +
+      '<pre class="caps-raw-json" id="mcp-resp" style="max-height:420px">' + highlightJson(JSON.stringify(response, null, 2)) + '</pre>' +
+    '</div>';
+  drawer.classList.add("open");
+  drawer.setAttribute("aria-hidden", "false");
+  // Copy buttons
+  body.querySelectorAll(".copy-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const key = btn.dataset.copy;
+      const payload = key === "req" ? request : response;
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+        showToast((key === "req" ? "Request" : "Response") + " copied");
+      } catch { showToast("Copy failed", true); }
+    });
+  });
+  // Run-live replaces the synthesized response with the actual one
+  document.getElementById("mcp-drawer-run").onclick = async () => {
+    const respEl = document.getElementById("mcp-resp");
+    respEl.innerHTML = '<span class="spinner"></span> firing /mcp…';
+    try {
+      const r = await fetch("/mcp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + DEMO_KEY },
+        body: JSON.stringify(request),
+      });
+      const actual = await r.json();
+      respEl.innerHTML = highlightJson(JSON.stringify(actual, null, 2));
+      document.querySelector("#mcp-drawer-body .mcp-drawer-section:last-child .mcp-drawer-label span").textContent = "Response — live " + r.status;
+    } catch (e) {
+      respEl.innerHTML = '<span style="color:var(--error)">' + escapeHtml(e.message) + '</span>';
+    }
+  };
+}
+
+document.getElementById("mcp-drawer-close").addEventListener("click", () => {
+  document.getElementById("mcp-drawer").classList.remove("open");
+});
 
 async function loadSimilarForDetail(sig) {
   const shell = document.getElementById("detail-similar-shell");
@@ -3382,7 +3871,13 @@ async function runEstimate() {
     }
     heroEl.classList.remove("loading");
     heroEl.textContent = fmtNumber(data.estimated_audience_size);
-    document.getElementById("preview-sub").textContent = data.estimated_audience_size.toLocaleString() + " adults";
+    // Sec-37 A3: render a ± range derived from the confidence tier so
+    // a tier-1 reviewer sees honest uncertainty on every estimate.
+    const range = confidenceRange(data.estimated_audience_size, data.confidence);
+    const rangeText = range
+      ? data.estimated_audience_size.toLocaleString() + " adults · ±" + range.pct + "% range: " + fmtNumber(range.lo) + "–" + fmtNumber(range.hi)
+      : data.estimated_audience_size.toLocaleString() + " adults";
+    document.getElementById("preview-sub").textContent = rangeText;
     document.getElementById("coverage-fill").style.width = Math.min(100, data.coverage_percentage) + "%";
     document.getElementById("preview-meta").textContent = data.rule_count + " rule" + (data.rule_count === 1 ? "" : "s") + " · " + data.coverage_percentage + "% of US adults · dimensions: " + (data.dimensions_used.join(", ") || "(none)");
     // Sec-33: confidence pill, floor warning, NL explain
@@ -3548,6 +4043,177 @@ async function generateSegment() {
   } finally {
     btn.disabled = false;
   }
+}
+
+//────────────────────────────────────────────────────────────────────────
+// §5b Overlap — pick 2-6 signals, compute Jaccard via /signals/overlap
+//────────────────────────────────────────────────────────────────────────
+async function ensureOverlap() {
+  if (state.catalog.all.length === 0) await loadCatalog();
+  renderOverlapChips();
+  renderOverlapSuggestions("");
+}
+
+document.getElementById("overlap-search-input").addEventListener("input", (e) => {
+  state.overlap.searchQ = e.target.value.toLowerCase();
+  renderOverlapSuggestions(state.overlap.searchQ);
+});
+document.getElementById("overlap-run").addEventListener("click", runOverlap);
+
+function renderOverlapChips() {
+  const host = document.getElementById("overlap-chips");
+  const count = state.overlap.selected.length;
+  document.getElementById("overlap-count").textContent = count + " / 6";
+  document.getElementById("overlap-run").disabled = count < 2;
+  if (count === 0) {
+    host.innerHTML = '<div style="color:var(--text-mut);font-size:11.5px;padding:8px 0;font-style:italic">No signals selected yet.</div>';
+    return;
+  }
+  host.innerHTML = state.overlap.selected.map((s, i) => {
+    const sid = s.signal_agent_segment_id || s.signal_id?.id || "";
+    return '<div class="overlap-chip" data-sid="' + escapeHtml(sid) + '">' +
+      '<div><div class="oc-name">' + escapeHtml(s.name) + '</div><div style="font-size:10.5px;color:var(--text-mut);font-family:var(--font-mono)">' + fmtNumber(s.estimated_audience_size) + ' · ' + escapeHtml(s.category_type || "—") + '</div></div>' +
+      '<button class="oc-remove" data-idx="' + i + '"><svg class="ico"><use href="#icon-close"/></svg></button>' +
+    '</div>';
+  }).join("");
+  host.querySelectorAll(".oc-remove").forEach((b) => {
+    b.addEventListener("click", () => {
+      state.overlap.selected.splice(Number(b.dataset.idx), 1);
+      renderOverlapChips();
+      renderOverlapSuggestions(state.overlap.searchQ);
+    });
+  });
+}
+
+function renderOverlapSuggestions(q) {
+  const host = document.getElementById("overlap-suggestions");
+  if (state.overlap.selected.length >= 6) {
+    host.innerHTML = '<div style="color:var(--text-mut);font-size:11px;padding:6px 0">Max 6 signals. Remove one to add another.</div>';
+    return;
+  }
+  const selectedIds = new Set(state.overlap.selected.map((s) => s.signal_agent_segment_id || s.signal_id?.id));
+  let rows = state.catalog.all;
+  if (q) rows = rows.filter((s) => (s.name || "").toLowerCase().includes(q) || (s.description || "").toLowerCase().includes(q));
+  rows = rows.filter((s) => !selectedIds.has(s.signal_agent_segment_id || s.signal_id?.id)).slice(0, 12);
+  if (rows.length === 0) {
+    host.innerHTML = '<div style="color:var(--text-mut);font-size:11.5px;padding:6px 0">No catalog matches.</div>';
+    return;
+  }
+  host.innerHTML = rows.map((s) => {
+    const sid = s.signal_agent_segment_id || s.signal_id?.id || "";
+    return '<div class="overlap-suggestion" data-sid="' + escapeHtml(sid) + '">' +
+      '<div>' + escapeHtml(s.name) + '</div>' +
+      '<div class="sub">' + fmtNumber(s.estimated_audience_size) + ' · ' + escapeHtml(s.category_type || "—") + ' · ' + escapeHtml(verticalOf(s)) + '</div>' +
+    '</div>';
+  }).join("");
+  host.querySelectorAll(".overlap-suggestion").forEach((el) => {
+    el.addEventListener("click", () => {
+      const sid = el.dataset.sid;
+      const sig = state.catalog.all.find((x) => (x.signal_agent_segment_id || x.signal_id?.id) === sid);
+      if (sig && state.overlap.selected.length < 6) {
+        state.overlap.selected.push(sig);
+        renderOverlapChips();
+        renderOverlapSuggestions(state.overlap.searchQ);
+      }
+    });
+  });
+}
+
+async function runOverlap() {
+  const host = document.getElementById("overlap-results");
+  if (state.overlap.selected.length < 2) return;
+  host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Computing pairwise + subset overlaps…</div></div>';
+  const ids = state.overlap.selected.map((s) => s.signal_agent_segment_id || s.signal_id?.id);
+  try {
+    const res = await fetch("/signals/overlap", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ signal_ids: ids }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || "HTTP " + res.status);
+    state.overlap.lastResult = data;
+    host.innerHTML = renderOverlapResult(data);
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
+  }
+}
+
+function renderOverlapResult(data) {
+  const sigs = data.signals || [];
+  const pairs = data.pairwise || [];
+  const upset = (data.upset || []).filter((u) => u.sets.length >= 2).sort((a, b) => b.estimate - a.estimate).slice(0, 20);
+
+  // Build index by id for matrix rendering
+  const byId = new Map();
+  for (const s of sigs) byId.set(s.signal_agent_segment_id, s);
+
+  // Heat-matrix
+  let matrix = '<div style="font-size:11px;color:var(--text-mut);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Pairwise Jaccard (approximated)</div>';
+  matrix += '<div style="overflow:auto;margin-bottom:24px"><table class="overlap-matrix"><thead><tr><th></th>';
+  for (const s of sigs) matrix += '<th title="' + escapeHtml(s.name) + '">' + escapeHtml(truncate(s.name, 18)) + '</th>';
+  matrix += '</tr></thead><tbody>';
+  for (const a of sigs) {
+    matrix += '<tr><th>' + escapeHtml(truncate(a.name, 20)) + '</th>';
+    for (const b of sigs) {
+      if (a.signal_agent_segment_id === b.signal_agent_segment_id) {
+        matrix += '<td style="color:var(--text-mut)">1.000</td>';
+      } else {
+        const p = pairs.find((x) =>
+          (x.a_id === a.signal_agent_segment_id && x.b_id === b.signal_agent_segment_id) ||
+          (x.b_id === a.signal_agent_segment_id && x.a_id === b.signal_agent_segment_id)
+        );
+        const j = p ? p.jaccard : 0;
+        const hue = 220 - (j * 160); // high Jaccard = red-ish, low = blue-ish
+        const bg = "hsl(" + hue + " 60% " + (40 + j * 30) + "%)";
+        matrix += '<td class="jcell" style="background:' + bg + '" title="J=' + j.toFixed(3) + ' · intersection=' + fmtNumber(p?.intersection || 0) + '">' + j.toFixed(3) + '</td>';
+      }
+    }
+    matrix += '</tr>';
+  }
+  matrix += '</tbody></table></div>';
+
+  // Pair list with affinity reasons
+  let pairList = '<div style="font-size:11px;color:var(--text-mut);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Pair breakdown</div>';
+  pairList += pairs.map((p) => {
+    const pct = (p.jaccard * 100).toFixed(1);
+    return '<div style="background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;margin-bottom:6px">' +
+      '<div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:4px">' +
+        '<div style="font-size:12.5px"><strong>' + escapeHtml(p.a_name) + '</strong> ∩ <strong>' + escapeHtml(p.b_name) + '</strong></div>' +
+        '<div style="font-family:var(--font-mono);font-weight:600;color:var(--accent-hot)">J ' + p.jaccard.toFixed(3) + '</div>' +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--text-mut);font-family:var(--font-mono)">' +
+        'intersection ~' + fmtNumber(p.intersection) + ' · union ~' + fmtNumber(p.union) + ' · affinity ' + p.category_affinity.toFixed(2) + ' (' + escapeHtml(p.affinity_reason) + ')' +
+      '</div>' +
+    '</div>';
+  }).join("");
+
+  // UpSet-style bar rows (for 3+)
+  let upsetBlock = "";
+  if (upset.length > 0 && sigs.length >= 3) {
+    const maxEst = Math.max(...upset.map((u) => u.estimate));
+    upsetBlock = '<div style="font-size:11px;color:var(--text-mut);text-transform:uppercase;letter-spacing:0.08em;margin:24px 0 10px">UpSet — subset estimates (top ' + upset.length + ')</div>';
+    upsetBlock += upset.map((u) => {
+      const pct = maxEst > 0 ? (u.estimate / maxEst) * 100 : 0;
+      return '<div class="upset-row">' +
+        '<div class="upset-sets">' + u.names.map((n) => '<span>' + escapeHtml(truncate(n, 28)) + "</span>").join(" <span style='color:var(--text-mut)'>&cap;</span> ") + "</div>" +
+        '<div class="upset-bar"><div class="upset-bar-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="upset-val">' + fmtNumber(u.estimate) + '</div>' +
+      '</div>';
+    }).join("");
+  }
+
+  const methodologyNote = '<div style="margin-top:24px;padding:10px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;color:var(--text-mut);font-family:var(--font-mono)">' +
+    '<strong style="color:var(--text-dim)">Methodology</strong> · ' + escapeHtml(data.note || "") +
+    '</div>';
+
+  return matrix + pairList + upsetBlock + methodologyNote;
+}
+
+function truncate(s, n) {
+  if (!s) return "";
+  if (s.length <= n) return s;
+  return s.slice(0, n - 1) + "…";
 }
 
 //────────────────────────────────────────────────────────────────────────

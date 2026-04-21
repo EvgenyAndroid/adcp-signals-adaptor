@@ -38,6 +38,8 @@ import { handleListOperations } from "./routes/listOperations";
 import { handleGenerateSegment } from "./routes/generateSegment";
 import { handlePrivacy } from "./routes/privacy";
 import { handleToolLog } from "./routes/toolLog";
+import { handleOverlap } from "./routes/overlap";
+import { handleOpenApi } from "./routes/openApi";
 
 // Seed data imported as text modules via wrangler assets
 import { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv } from "./seedData";
@@ -118,11 +120,15 @@ export default {
             // deliberately public for audience-transparency (same posture
             // as /capabilities + /signals/search).
             "/signals/estimate",
+            // Sec-37: overlap is read-only sizing like /estimate.
+            "/signals/overlap",
             // Sec-33: static privacy page referenced from ext.dts, and
             // public tool-call observability endpoint for agent usage
             // transparency (no arg values leak — see mcp/toolLog.ts).
             "/privacy",
             "/mcp/recent",
+            // Sec-37 B9: machine-readable API reference.
+            "/openapi.json",
             "/ucp/concepts",
             "/ucp/gts",
             "/ucp/simulate-handshake",
@@ -279,6 +285,14 @@ export default {
                 // does NOT return a segment_id.
             } else if (method === "POST" && path === "/signals/estimate") {
                 response = await handleEstimate(request, env, logger);
+
+                // ── Signal overlap (Sec-37, public, read-only) ───────────────────────
+            } else if (method === "POST" && path === "/signals/overlap") {
+                response = await handleOverlap(request, env, logger);
+
+                // ── OpenAPI spec (Sec-37 B9) ─────────────────────────────────────────
+            } else if (method === "GET" && path === "/openapi.json") {
+                response = handleOpenApi(request);
 
                 // ── Signal generate (persist a composite from rules) ─────────────────
                 // Sec-32: auth-gated persist counterpart to /estimate. Builder UI

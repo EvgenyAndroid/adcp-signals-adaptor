@@ -32,6 +32,7 @@ import {
     handleOAuthTokenStub,
 } from "./routes/wellKnown";
 import { handleAdminReseed } from "./routes/adminReseed";
+import { handleDemo } from "./routes/demo";
 
 // Seed data imported as text modules via wrangler assets
 import { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv } from "./seedData";
@@ -104,6 +105,7 @@ export default {
         // deploying this code to any new environment, or /init and
         // /callback will throw on first use.
         const publicPaths = [
+            "/",
             "/capabilities",
             "/health",
             "/mcp",
@@ -141,7 +143,13 @@ export default {
 
             // ── Route matching ────────────────────────────────────────────────────
 
-            if (method === "GET" && path === "/health") {
+            if (method === "GET" && path === "/") {
+                // Sec-31: DSP-style interactive demo UI. Landing at the bare
+                // root surfaces a product-quality UI for exec/buyer demos;
+                // programmatic clients already know to go to /mcp or /capabilities.
+                response = handleDemo(env);
+
+            } else if (method === "GET" && path === "/health") {
                 response = jsonResponse({ status: "ok", version: "3.0-rc" });
 
             } else if (method === "GET" && path.startsWith("/.well-known/oauth-protected-resource")) {

@@ -2261,11 +2261,39 @@ function wireNlCardClicks() {
   document.querySelectorAll(".nl-match-card").forEach((card) => {
     card.addEventListener("click", () => {
       const sid = card.dataset.sid;
-      const sig = state.catalog.all.find((x) => (x.signal_agent_segment_id || x.signal_id?.id) === sid)
-               || _lastDiscoverSignals.find((x) => (x.signal_agent_segment_id || x.signal_id?.id) === sid);
-      if (sig) openDetail(sig);
+      const partial = _lastDiscoverSignals.find((x) => (x.signal_agent_segment_id || x.signal_id?.id) === sid);
+      openDetailHydrated(sid, partial);
     });
   });
+}
+
+// Some panels open with only an abridged signal object — query_signals_nl
+// returns {name, signal_agent_segment_id, match_score, match_method,
+// estimated_audience_size, coverage_percentage} and nothing else. The
+// detail panel renders "—" for category / deployments / DTS when given
+// this shape. Hydrate via get_signals {signal_ids: [sid]} first so the
+// panel shows the full picture.
+async function openDetailHydrated(sid, fallback) {
+  // Fast path: full record already in catalog cache
+  const fromCatalog = state.catalog.all.find((x) => (x.signal_agent_segment_id || x.signal_id?.id) === sid);
+  if (fromCatalog && Array.isArray(fromCatalog.deployments)) {
+    openDetail(fromCatalog);
+    return;
+  }
+  // Open with the skinny record immediately so the panel feels
+  // responsive, then upgrade in place once the full record arrives.
+  if (fallback) openDetail(fallback);
+  try {
+    const data = await callTool("get_signals", {
+      signal_ids: [sid],
+      deliver_to: { deployments: [{ type: "platform", platform: "mock_dsp" }], countries: ["US"] },
+      max_results: 1,
+    });
+    const full = (data?.signals || []).find((s) => (s.signal_agent_segment_id || s.signal_id?.id) === sid);
+    if (full && state.detail && (state.detail.signal_agent_segment_id || state.detail.signal_id?.id) === sid) {
+      openDetail(full);
+    }
+  } catch { /* leave the skinny panel in place */ }
 }
 
 function renderDiscoverCard(s) {

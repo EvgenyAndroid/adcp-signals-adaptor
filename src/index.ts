@@ -33,6 +33,8 @@ import {
     handleOAuthTokenStub,
 } from "./routes/wellKnown";
 import { handleAdminReseed } from "./routes/adminReseed";
+import { handleAdminPurge } from "./routes/adminPurge";
+import { runScheduledPurge } from "./storage/scheduledPurge";
 import { handleDemo } from "./routes/demo";
 import { handleEstimate } from "./routes/estimate";
 import { handleListOperations } from "./routes/listOperations";
@@ -341,6 +343,13 @@ export default {
             } else if (method === "POST" && path === "/admin/reseed") {
                 response = await handleAdminReseed(request, env, logger);
 
+                // ── Admin purge (Sec-40, auth-gated) ──────────────────────────────────
+                // Manual trigger for the weekly D1 housekeeping sweep. Same bearer
+                // gate as /admin/reseed. Cron-scheduled counterpart is wired via
+                // the `scheduled()` handler below.
+            } else if (method === "POST" && path === "/admin/purge") {
+                response = await handleAdminPurge(request, env, logger);
+
                 // ── Signal embedding ─────────────────────────────────────────────────
             } else if (method === "GET" && path.match(/^\/signals\/[^/]+\/embedding$/)) {
                 const signalId = path.split("/")[2] ?? "";
@@ -366,6 +375,32 @@ export default {
                 errorResponse("INTERNAL_ERROR", "An unexpected error occurred", 500)
             );
         }
+    },
+
+    // Sec-40: weekly D1 housekeeping.
+    //
+    // Triggered by the cron schedule declared in wrangler.toml under
+    // [triggers].crons. Cloudflare invokes this outside the request path with
+    // a synthetic ScheduledEvent; anyone hitting the public URL can never
+    // reach it (it's not HTTP-addressable), so there's no auth concern here.
+    //
+    // ctx.waitUntil keeps the isolate alive until the purge finishes without
+    // blocking Cloudflare's scheduler callback. Errors are logged but never
+    // thrown — a failed housekeeping run must not take down subsequent
+    // cron firings.
+    async scheduled(
+        event: ScheduledEvent,
+        env: Env,
+        ctx: ExecutionContext,
+    ): Promise<void> {
+        const reqId = requestId();
+        const logger = createLogger(reqId);
+        logger.info("cron_fired", { cron: event.cron, scheduled: new Date(event.scheduledTime).toISOString() });
+        ctx.waitUntil(
+            runScheduledPurge(env, logger)
+                .then((r) => logger.info("cron_purge_done", { deleted: r.deleted, duration_ms: r.duration_ms, errors: r.errors.length }))
+                .catch((err) => logger.error("cron_purge_failed", { error: String(err) }))
+        );
     },
 };
 

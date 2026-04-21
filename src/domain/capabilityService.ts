@@ -10,14 +10,14 @@
 // Cache key bumped to v6 for the v3-conformant shape (ucp moved to ext)
 // then v7 for the HEAD-schema-conformant shape (adds adcp.idempotency).
 
-// Cache key bumped to v14 — Sec-39 expands every destination entry with
-// integration metadata (stage, auth, activation_pattern, data_format,
-// latency, segment_refresh_sla, use_cases, docs_url, onboarding).
+// Cache key bumped to v15 — Sec-40 adds ext.governance.data_hygiene
+// declaring the weekly scheduled D1 purge (Sundays 06:00 UTC) + retention
+// windows for each table. v14 enriched destination entries.
 // v13 added TTD + DV360 sandbox destinations.
 // v12 added three ext blocks (id_resolution, measurement, governance).
 // v11 added ext.dts declaring IAB Data Transparency Standard v1.2.
 // v10 added ext.ucp declaring UCP embedding bridge + concept registry.
-const CACHE_KEY = "adcp_capabilities_v14";
+const CACHE_KEY = "adcp_capabilities_v15";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
@@ -343,6 +343,31 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
         audience_bias_governance_schema: {
           supported: true,
           version: "adcp_3.0_rc",
+        },
+        // Sec-40: data hygiene — public-URL demo hygiene. Declares what
+        // we keep vs sweep, the cadence, and how to trigger it manually.
+        // Retention values live in src/storage/scheduledPurge.ts
+        // (RETENTION object) — authoritative.
+        data_hygiene: {
+          supported: true,
+          schedule: { cron: "0 6 * * SUN", cadence: "weekly", timezone: "UTC" },
+          retention: {
+            dynamic_signals_days: 7,
+            activation_jobs_days: 30,
+            tool_call_log_days: 7,
+            oauth_state_minutes: 10,
+          },
+          preserved: [
+            "seeded signals (canonical catalog)",
+            "derived signals (shipped with code)",
+            "taxonomy nodes",
+            "source records",
+          ],
+          manual_trigger: {
+            method: "POST",
+            endpoint: "/admin/purge",
+            auth: "DEMO_API_KEY bearer",
+          },
         },
       },
     },

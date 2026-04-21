@@ -10,11 +10,12 @@
 // Cache key bumped to v6 for the v3-conformant shape (ucp moved to ext)
 // then v7 for the HEAD-schema-conformant shape (adds adcp.idempotency).
 
-// Cache key bumped to v10 — Sec-25b adds signals.limits.default_max_results
-// (the default rows get_signals returns when callers omit max_results);
-// a v9 cache entry would omit the hint and callers couldn't discover it
-// without reading the source. Evict on deploy.
-const CACHE_KEY = "adcp_capabilities_v10";
+// Cache key bumped to v11 — Sec-32 follow-up adds ext.dts declaring IAB
+// Data Transparency Standard v1.2 support at the capabilities level.
+// Every signal already carries a full x_dts label; this hoists that
+// capability into the handshake so buyer agents can detect DTS support
+// before pulling the catalog.
+const CACHE_KEY = "adcp_capabilities_v11";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
@@ -104,6 +105,34 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       // so /capabilities contradicted /ucp/gts and /mcp serverInfo.ucp
       // on any deployment where EMBEDDING_ENGINE=llm.
       ucp: buildUcpCapability(env),
+      // IAB Tech Lab Data Transparency Standard v1.2 (April 2024 "Privacy
+      // Update"). Declares handshake-level support so a buyer agent can
+      // detect compliance before pulling the catalog. Every signal
+      // returned by get_signals carries the full per-row x_dts label —
+      // provider info, audience criteria, privacy mechanisms, precision
+      // levels, data sources, inclusion methodology, and onboarder
+      // details when the source is offline. Label shape lives in
+      // src/types/api.ts DtsV12Label.
+      dts: {
+        supported: true,
+        version: "1.2",
+        iab_techlab_compliant: true,
+        label_field: "x_dts",
+        // Which privacy-framework signals we emit on every label
+        privacy_compliance_mechanisms: [
+          "TCF (Europe)", "GPP", "MSPA", "USPrivacy", "GPC",
+        ],
+        // Declared precision levels this agent's audiences resolve to
+        supported_precision_levels: [
+          "Individual", "Household", "Device", "Browser", "Geography",
+        ],
+        // Whether we serve offline-sourced audiences (onboarder section
+        // of the label becomes populated rather than "N/A")
+        offline_sources_supported: true,
+        // Document URL the label references for the data-provider's
+        // privacy practices
+        provider_privacy_policy_url: "https://adcp-signals-adaptor.evgeny-193.workers.dev/privacy",
+      },
     },
   };
 }

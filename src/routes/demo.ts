@@ -1416,6 +1416,31 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 .caps-raw-json details summary { cursor: pointer; color: var(--text-dim); outline: none; list-style: none; }
 .caps-raw-json details summary::-webkit-details-marker { display: none; }
 
+/* DTS label block in signal detail panel */
+.dts-block summary::-webkit-details-marker { display: none; }
+.dts-block summary { list-style: none; outline: none; padding: 6px 0; }
+.dts-block[open] summary { margin-bottom: 10px; }
+.dts-groups { display: flex; flex-direction: column; gap: 14px; }
+.dts-group {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 10px 14px;
+}
+.dts-group-title {
+  font-size: 10.5px; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
+  margin-bottom: 8px;
+}
+.dts-kv-list { font-size: 12.5px; }
+.dts-kv {
+  display: grid; grid-template-columns: 150px 1fr;
+  gap: 10px; padding: 4px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.dts-kv:last-child { border-bottom: none; }
+.dts-k { color: var(--text-mut); font-size: 11.5px; padding-top: 1px; }
+.dts-v { color: var(--text-dim); font-family: var(--font-mono); font-size: 11.5px; word-break: break-word; }
+.dts-v a { color: var(--accent); }
+
 /* ── Activations ─────────────────────────────────────────────────────── */
 .activations-controls { display: flex; gap: 8px; align-items: center; }
 .status-dot.submitted { background: var(--text-mut); }
@@ -2063,7 +2088,21 @@ function openDetail(sig) {
           ? sig.deployments.map((d) => '<div class="detail-deployment"><span class="dep-platform">' + escapeHtml(d.platform || d.type) + '</span><span class="dep-live ' + (d.is_live ? "yes" : "") + '">' + (d.is_live ? "live" : "ready") + '</span></div>').join("")
           : '<div class="dep-live">No deployments declared</div>') +
       '</div>' +
-    '</div>';
+    '</div>' +
+    // IAB DTS v1.2 label — collapsible because 27 fields would overwhelm
+    // the panel otherwise. Opens on demand for compliance review.
+    (sig.x_dts
+      ? '<div class="detail-section">' +
+          '<details class="dts-block">' +
+            '<summary class="detail-section-label" style="cursor:pointer;user-select:none">' +
+              '<span class="pill pill-success" style="margin-right:8px">DTS v' + escapeHtml(String(sig.x_dts.dts_version || "1.2")) + '</span>' +
+              'IAB Data Transparency Label ' +
+              '<span style="color:var(--text-mut);font-weight:400;text-transform:none;letter-spacing:0">(click to expand)</span>' +
+            '</summary>' +
+            renderDtsLabel(sig.x_dts) +
+          '</details>' +
+        '</div>'
+      : "");
 
   document.getElementById("detail-footer").innerHTML =
     '<button class="btn-primary" id="detail-activate"><svg class="ico"><use href="#icon-bolt"/></svg><span>Activate to mock_dsp</span></button>' +
@@ -2616,6 +2655,7 @@ function renderCapabilitiesHtml(caps) {
   const adcp = caps.adcp || {};
   const sig = caps.signals || {};
   const ucp = caps.ext?.ucp || {};
+  const dts = caps.ext?.dts || {};
   const dests = Array.isArray(sig.destinations) ? sig.destinations : [];
   const limits = sig.limits || {};
   const protos = Array.isArray(caps.supported_protocols) ? caps.supported_protocols : [];
@@ -2735,10 +2775,124 @@ function renderCapabilitiesHtml(caps) {
         '</div>'
       : "") +
 
+    // ─── DTS extension (IAB Data Transparency Standard v1.2) ───
+    // Signal-level compliance: every row in the catalog carries a full
+    // x_dts label. Capabilities-level declaration tells buyer agents
+    // up-front whether to expect those fields + which privacy
+    // mechanisms this agent emits.
+    (Object.keys(dts).length
+      ? '<div class="caps-section">' +
+          '<div class="caps-section-title">DTS extension (ext.dts) — IAB Data Transparency Standard</div>' +
+          '<div class="caps-grid">' +
+            card("DTS version", '<span class="mono">v' + escapeHtml(String(dts.version || "—")) + '</span>', true) +
+            card("Support",
+              dts.supported
+                ? '<span class="pill pill-success">enabled</span>'
+                : '<span class="pill pill-muted">off</span>', true) +
+            card("IAB Tech Lab compliant",
+              dts.iab_techlab_compliant
+                ? '<span class="pill pill-success">yes</span>'
+                : '<span class="pill pill-muted">no</span>', true) +
+            card("Label field", '<span class="mono" style="color:var(--accent-hot)">' + escapeHtml(dts.label_field || "x_dts") + '</span>', true) +
+            card("Offline sources",
+              dts.offline_sources_supported
+                ? '<span class="pill pill-success">supported</span>'
+                : '<span class="pill pill-muted">online only</span>', true) +
+            (Array.isArray(dts.privacy_compliance_mechanisms) && dts.privacy_compliance_mechanisms.length
+              ? card("Privacy mechanisms",
+                  dts.privacy_compliance_mechanisms.map((m) => '<span class="pill pill-muted mono">' + escapeHtml(m) + '</span>').join(" "),
+                  true)
+              : "") +
+            (Array.isArray(dts.supported_precision_levels) && dts.supported_precision_levels.length
+              ? card("Precision levels",
+                  dts.supported_precision_levels.map((p) => '<span class="pill pill-muted mono">' + escapeHtml(p) + '</span>').join(" "),
+                  true)
+              : "") +
+            (dts.provider_privacy_policy_url
+              ? card("Privacy policy",
+                  '<a href="' + escapeHtml(dts.provider_privacy_policy_url) + '" target="_blank" rel="noopener" class="mono" style="font-size:11.5px;word-break:break-all">' + escapeHtml(dts.provider_privacy_policy_url) + '</a>',
+                  true)
+              : "") +
+          '</div>' +
+        '</div>'
+      : "") +
+
     // ─── Raw JSON (collapsible) ───
     '<div class="caps-section">' +
       '<div class="caps-section-title">Raw JSON</div>' +
       '<div class="caps-raw-json">' + highlightJson(JSON.stringify(caps, null, 2)) + '</div>' +
+    '</div>';
+}
+
+// Render a DTS v1.2 label as a grouped KV list. Fields are ordered by the
+// IAB spec sections: Core, Audience, Data Sources, Onboarder. Long lists
+// (data_sources, privacy mechanisms) render as pill chips.
+function renderDtsLabel(dts) {
+  if (!dts) return "";
+  const groups = [
+    {
+      title: "Provider & audience",
+      rows: [
+        ["Provider", dts.provider_name],
+        ["Domain", dts.provider_domain],
+        ["Email", dts.provider_email],
+        ["Audience name", dts.audience_name],
+        ["Audience ID", dts.audience_id],
+        ["Audience size", dts.audience_size != null ? dts.audience_size.toLocaleString() : null],
+        ["Taxonomy IDs", dts.taxonomy_id_list],
+        ["Originating domain", dts.originating_domain],
+      ],
+    },
+    {
+      title: "Audience details",
+      rows: [
+        ["Criteria", dts.audience_criteria],
+        ["Scope", dts.audience_scope],
+        ["Inclusion methodology", dts.audience_inclusion_methodology],
+        ["Precision levels", Array.isArray(dts.audience_precision_levels) ? dts.audience_precision_levels.join(", ") : null],
+        ["ID types", Array.isArray(dts.id_types) ? dts.id_types.join(", ") : null],
+        ["Data sources", Array.isArray(dts.data_sources) ? dts.data_sources.join(", ") : null],
+        ["Audience expansion", dts.audience_expansion],
+        ["Device expansion", dts.device_expansion],
+        ["Audience refresh", dts.audience_refresh],
+        ["Lookback window", dts.lookback_window],
+        ["Geocode list", dts.geocode_list],
+      ],
+    },
+    {
+      title: "Privacy & compliance",
+      rows: [
+        ["Privacy mechanisms", Array.isArray(dts.privacy_compliance_mechanisms) ? dts.privacy_compliance_mechanisms.join(", ") : null],
+        ["Privacy policy", dts.privacy_policy_url ? '<a href="' + escapeHtml(dts.privacy_policy_url) + '" target="_blank" rel="noopener">' + escapeHtml(dts.privacy_policy_url) + "</a>" : null],
+        ["IAB Tech Lab compliant", dts.iab_techlab_compliant],
+      ],
+    },
+    {
+      title: "Onboarder (offline sources)",
+      rows: [
+        ["Match keys", dts.onboarder_match_keys],
+        ["Audience expansion", dts.onboarder_audience_expansion],
+        ["Device expansion", dts.onboarder_device_expansion],
+        ["Precision level", dts.onboarder_audience_precision_level],
+      ],
+    },
+  ];
+
+  return '<div class="dts-groups">' +
+    groups.map((g) => {
+      const rows = g.rows.filter(([, v]) => v != null && v !== "");
+      if (rows.length === 0) return "";
+      return '' +
+        '<div class="dts-group">' +
+          '<div class="dts-group-title">' + escapeHtml(g.title) + '</div>' +
+          '<div class="dts-kv-list">' +
+            rows.map(([k, v]) => {
+              const val = typeof v === "string" && v.startsWith("<a ") ? v : escapeHtml(String(v));
+              return '<div class="dts-kv"><span class="dts-k">' + escapeHtml(k) + '</span><span class="dts-v">' + val + '</span></div>';
+            }).join("") +
+          '</div>' +
+        '</div>';
+    }).join("") +
     '</div>';
 }
 

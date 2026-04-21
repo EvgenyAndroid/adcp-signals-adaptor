@@ -151,7 +151,22 @@ ${STYLES}
         <div class="pane-header">
           <div>
             <h1 class="pane-title">Brief-driven discovery</h1>
-            <p class="pane-subtitle">Describe an audience in natural language. Catalog matches and AI-generated custom proposals return inline, activatable.</p>
+            <p class="pane-subtitle">
+              <strong id="discover-mode-subtitle">Brief mode</strong> —
+              <span id="discover-mode-desc">semantic similarity via the UCP embedding engine. Returns catalog matches + AI-generated custom proposals alongside each other.</span>
+            </p>
+          </div>
+          <div class="mode-toggle" id="discover-mode-toggle">
+            <button class="mode-btn active" data-mode="brief">
+              <svg class="ico"><use href="#icon-radar"/></svg>
+              <span>Brief</span>
+              <span class="mode-tool mono">get_signals</span>
+            </button>
+            <button class="mode-btn" data-mode="nl">
+              <svg class="ico"><use href="#icon-network"/></svg>
+              <span>NL Query</span>
+              <span class="mode-tool mono">query_signals_nl</span>
+            </button>
           </div>
         </div>
 
@@ -159,7 +174,7 @@ ${STYLES}
           <div class="brief-input-shell">
             <textarea id="brief" rows="3" placeholder="e.g. affluent families 35-44 in top-10 DMAs interested in luxury travel"></textarea>
             <div class="brief-actions">
-              <div class="brief-hints">
+              <div class="brief-hints" id="brief-hints">
                 <span class="hint-label">Try</span>
                 <button class="hint" data-brief="luxury automotive intenders 45+ in top DMAs">luxury auto intenders</button>
                 <button class="hint" data-brief="new parents in the last 12 months">new parents 0-12mo</button>
@@ -169,7 +184,7 @@ ${STYLES}
               </div>
               <button class="btn-primary" id="discover-btn">
                 <svg class="ico"><use href="#icon-radar"/></svg>
-                <span>Find signals</span>
+                <span id="discover-btn-label">Find signals</span>
               </button>
             </div>
           </div>
@@ -846,6 +861,103 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   margin-top: 6px; height: 24px;
 }
 .kpi-spark svg { width: 100%; height: 100%; display: block; }
+
+/* Mode toggle — switches between get_signals and query_signals_nl */
+.mode-toggle {
+  display: flex; gap: 0;
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 3px;
+}
+.mode-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 14px; font-size: 12.5px; font-weight: 500;
+  color: var(--text-dim);
+  border-radius: var(--radius-sm);
+  transition: all 0.12s;
+}
+.mode-btn:hover { color: var(--text); background: var(--bg-raised); }
+.mode-btn.active {
+  background: var(--accent); color: #fff;
+}
+.mode-btn.active:hover { background: var(--accent-hot); }
+.mode-btn .ico { width: 13px; height: 13px; }
+.mode-btn .mode-tool {
+  font-size: 10px; opacity: 0.7;
+  padding: 1px 6px; border-radius: 8px;
+  background: rgba(255,255,255,0.08);
+}
+.mode-btn.active .mode-tool { background: rgba(0,0,0,0.2); }
+
+/* NL Query result block — different shape from brief results */
+.nl-result-shell { margin-top: 8px; }
+.nl-result-hero {
+  background: linear-gradient(135deg, rgba(79,142,255,0.1) 0%, rgba(139,92,246,0.1) 100%);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-lg); padding: 18px 22px;
+  margin-bottom: 16px;
+  display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: center;
+}
+.nl-result-hero .nl-size { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: var(--accent-hot); font-variant-numeric: tabular-nums; }
+.nl-result-hero .nl-size-label { font-size: 10.5px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500; }
+.nl-result-hero .nl-conf { display: flex; flex-direction: column; gap: 3px; }
+.nl-result-hero .nl-conf-value { font-family: var(--font-mono); font-size: 14px; font-weight: 600; }
+.nl-ast-block {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 14px;
+}
+.nl-ast-block summary { cursor: pointer; list-style: none; outline: none; }
+.nl-ast-block summary::-webkit-details-marker { display: none; }
+.nl-ast-block summary .label { font-size: 11px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500; }
+.nl-ast-tree { margin-top: 10px; font-family: var(--font-mono); font-size: 11.5px; line-height: 1.7; color: var(--text-dim); }
+.nl-ast-tree .op { color: var(--warning); font-weight: 600; }
+.nl-ast-tree .leaf { color: var(--text); }
+.nl-ast-tree .depth-1 { padding-left: 14px; }
+.nl-ast-tree .depth-2 { padding-left: 28px; }
+.nl-ast-tree .depth-3 { padding-left: 42px; }
+
+.nl-match-card {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 14px;
+  align-items: center;
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 12px 16px;
+  margin-bottom: 8px; cursor: pointer;
+  transition: all 0.12s;
+}
+.nl-match-card:hover { background: var(--bg-hover); border-color: var(--border-strong); }
+.nl-match-card .nl-m-name { font-weight: 500; font-size: 13.5px; }
+.nl-match-card .nl-m-sub { font-size: 11.5px; color: var(--text-mut); font-family: var(--font-mono); margin-top: 2px; }
+.nl-match-card .nl-m-method { font-size: 10.5px; padding: 2px 8px; border-radius: 8px; font-family: var(--font-mono); white-space: nowrap; }
+.nl-match-card .nl-m-method.exact_rule { background: var(--success-dim); color: var(--success); }
+.nl-match-card .nl-m-method.embedding { background: var(--accent-dim); color: var(--accent); }
+.nl-match-card .nl-m-method.lexical { background: var(--warning-dim); color: var(--warning); }
+.nl-match-card .nl-m-score { font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; color: var(--accent-hot); min-width: 54px; text-align: right; }
+
+/* Similar-signals block in signal detail panel */
+.detail-similar {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 12px 14px;
+}
+.detail-similar-btn {
+  width: 100%; background: transparent; color: var(--accent);
+  padding: 4px 0; font-size: 12.5px; font-weight: 500;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.detail-similar-btn:hover { color: var(--accent-hot); }
+.detail-similar-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.detail-similar-item {
+  display: grid; grid-template-columns: 1fr auto; gap: 10px;
+  align-items: center; padding: 8px 10px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); cursor: pointer;
+  transition: all 0.12s;
+}
+.detail-similar-item:hover { border-color: var(--accent-border); background: var(--bg-hover); }
+.detail-similar-item .ds-name { font-size: 12.5px; font-weight: 500; }
+.detail-similar-item .ds-score {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  padding: 2px 7px; border-radius: 8px;
+  background: var(--accent-dim); color: var(--accent);
+}
 
 /* ── Discover tab ────────────────────────────────────────────────────── */
 .discover-hero { margin-bottom: 24px; }
@@ -1925,16 +2037,70 @@ function switchTab(name) {
 })();
 
 //────────────────────────────────────────────────────────────────────────
-// §1 Discover
+// §1 Discover — two modes: Brief (get_signals) and NL Query (query_signals_nl)
 //────────────────────────────────────────────────────────────────────────
 const briefEl = document.getElementById("brief");
-document.querySelectorAll(".discover-hero .hint").forEach((b) => {
-  b.addEventListener("click", () => { briefEl.value = b.dataset.brief; briefEl.focus(); });
+let _discoverMode = "brief"; // "brief" | "nl"
+
+const BRIEF_HINTS = [
+  { text: "luxury automotive intenders 45+ in top DMAs", label: "luxury auto intenders" },
+  { text: "new parents in the last 12 months", label: "new parents 0-12mo" },
+  { text: "cord-cutters 25-44 with high streaming affinity", label: "cord-cutters 25-44" },
+  { text: "B2B IT decision makers at mid-market companies", label: "IT decision makers" },
+  { text: "health conscious affluent millennials in urban metros", label: "health-conscious urban" },
+];
+const NL_HINTS = [
+  { text: "soccer moms 35+ who stream heavily", label: "soccer moms 35+" },
+  { text: "urban professionals without children who watch sci-fi", label: "sci-fi urban pros" },
+  { text: "affluent families 35-44 in top DMAs", label: "affluent families" },
+  { text: "college-educated adults 25-34 with high streaming", label: "educated streamers" },
+  { text: "seniors interested in documentary content", label: "docu seniors" },
+];
+
+function renderBriefHints() {
+  const hints = _discoverMode === "nl" ? NL_HINTS : BRIEF_HINTS;
+  const host = document.getElementById("brief-hints");
+  host.innerHTML = '<span class="hint-label">Try</span>' +
+    hints.map((h) => '<button class="hint" data-brief="' + escapeHtml(h.text) + '">' + escapeHtml(h.label) + '</button>').join("");
+  host.querySelectorAll(".hint").forEach((b) => {
+    b.addEventListener("click", () => { briefEl.value = b.dataset.brief; briefEl.focus(); });
+  });
+}
+renderBriefHints();
+
+// Mode toggle wiring
+document.querySelectorAll("#discover-mode-toggle .mode-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    _discoverMode = btn.dataset.mode;
+    document.querySelectorAll("#discover-mode-toggle .mode-btn").forEach((b) => b.classList.toggle("active", b.dataset.mode === _discoverMode));
+    // Update header copy + placeholder + button label + hints per mode
+    if (_discoverMode === "nl") {
+      document.getElementById("discover-mode-subtitle").textContent = "NL Query mode";
+      document.getElementById("discover-mode-desc").innerHTML = "boolean-AST decomposition via <code>query_signals_nl</code>. Resolves each dimension against the catalog with hybrid rule + embedding + lexical matching. Returns matched signals with per-match method and a compositional audience-size estimate.";
+      briefEl.placeholder = "e.g. soccer moms 35+ who stream heavily";
+      document.getElementById("discover-btn-label").textContent = "Run NL query";
+    } else {
+      document.getElementById("discover-mode-subtitle").textContent = "Brief mode";
+      document.getElementById("discover-mode-desc").innerHTML = "semantic similarity via the UCP embedding engine. Returns catalog matches + AI-generated custom proposals alongside each other.";
+      briefEl.placeholder = "e.g. affluent families 35-44 in top-10 DMAs interested in luxury travel";
+      document.getElementById("discover-btn-label").textContent = "Find signals";
+    }
+    renderBriefHints();
+    // Clear any prior results so the mode switch is obvious
+    document.getElementById("discover-results").innerHTML = '<div class="empty-state"><svg class="empty-icon"><use href="#icon-' + (_discoverMode === "nl" ? "network" : "radar") + '"/></svg><div class="empty-title">Run a ' + (_discoverMode === "nl" ? "query" : "brief") + ' to see matches</div><div class="empty-desc">' + (_discoverMode === "nl" ? "Boolean decomposition shows the AST, matched signals with per-match method, and a composite audience size." : "Catalog signals rank by semantic match. AI-generated proposals appear beside them for briefs that don\\'t map cleanly.") + '</div></div>';
+    document.getElementById("discover-status").textContent = "";
+  });
 });
-document.getElementById("discover-btn").addEventListener("click", runDiscover);
+
+document.getElementById("discover-btn").addEventListener("click", runDiscoverDispatch);
 briefEl.addEventListener("keydown", (e) => {
-  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") runDiscover();
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") runDiscoverDispatch();
 });
+
+function runDiscoverDispatch() {
+  if (_discoverMode === "nl") return runNlQuery();
+  return runDiscover();
+}
 
 async function runDiscover() {
   const brief = briefEl.value.trim();
@@ -1984,6 +2150,122 @@ async function runDiscover() {
   } finally {
     btn.disabled = false;
   }
+}
+
+// NL Query mode — calls query_signals_nl, renders the boolean AST +
+// matched signals with per-match method + composite audience size.
+// Different shape from get_signals so gets its own renderer.
+async function runNlQuery() {
+  const q = briefEl.value.trim();
+  if (!q) { showToast("Enter a query first", true); return; }
+  const btn = document.getElementById("discover-btn");
+  const status = document.getElementById("discover-status");
+  const results = document.getElementById("discover-results");
+  btn.disabled = true;
+  status.innerHTML = '<span class="spinner"></span>decomposing query + resolving dimensions…';
+  results.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Running NL query…</div></div>';
+
+  try {
+    const t0 = performance.now();
+    const data = await callTool("query_signals_nl", { query: q, limit: 8 });
+    const elapsed = Math.round(performance.now() - t0);
+    // query_signals_nl response lives under data.result (handler wraps
+    // the tool output in {success,result}). Unwrap carefully.
+    const payload = data?.result ?? data;
+    const matches = payload?.matched_signals || [];
+    const estSize = payload?.estimated_size;
+    const confTier = payload?.confidence_tier;
+    const confScalar = payload?.confidence;
+    const ast = payload?.resolved_ast;
+
+    status.textContent = matches.length + " matched signal" + (matches.length === 1 ? "" : "s") + " · " +
+      (estSize != null ? fmtNumber(estSize) + " composite" : "no composite") + " · " + elapsed + "ms";
+    _lastDiscoverSignals = matches.slice();
+
+    results.innerHTML = renderNlResult({ payload, matches, estSize, confTier, confScalar, ast });
+    wireNlCardClicks();
+  } catch (e) {
+    showToast("NL query failed: " + e.message, true);
+    status.textContent = "error";
+    results.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderNlResult({ matches, estSize, confTier, confScalar, ast }) {
+  const confStr = confTier
+    ? confTier + (typeof confScalar === "number" ? " (" + (confScalar * 100).toFixed(0) + "%)" : "")
+    : (typeof confScalar === "number" ? (confScalar * 100).toFixed(0) + "%" : "—");
+  const hero = '' +
+    '<div class="nl-result-hero">' +
+      '<div>' +
+        '<div class="nl-size-label">Composite audience</div>' +
+        '<div class="nl-size">' + (estSize != null ? fmtNumber(estSize) : "—") + '</div>' +
+      '</div>' +
+      '<div class="nl-conf">' +
+        '<span class="nl-size-label">Confidence</span>' +
+        '<span class="nl-conf-value">' + escapeHtml(confStr) + '</span>' +
+      '</div>' +
+      '<div>' +
+        '<div class="nl-size-label">Matches</div>' +
+        '<div class="nl-size" style="font-size:20px">' + matches.length + '</div>' +
+      '</div>' +
+    '</div>';
+
+  const astBlock = ast
+    ? '<details class="nl-ast-block" open>' +
+        '<summary><span class="label">Resolved boolean AST</span></summary>' +
+        '<div class="nl-ast-tree">' + renderAst(ast, 0) + '</div>' +
+      '</details>'
+    : "";
+
+  const matchList = matches.length
+    ? '<div class="result-col-header" style="margin-top:18px"><span class="result-col-title">Matched signals</span><span class="result-col-count">' + matches.length + '</span></div>' +
+      matches.map(renderNlMatchCard).join("")
+    : '<div class="empty-state" style="margin-top:18px"><div class="empty-desc">No signals matched this NL query. Try a broader phrasing.</div></div>';
+
+  return '<div class="nl-result-shell">' + hero + astBlock + matchList + '</div>';
+}
+
+function renderAst(node, depth) {
+  if (!node || typeof node !== "object") return "";
+  const cls = "depth-" + Math.min(depth, 3);
+  if (node.op && Array.isArray(node.children)) {
+    const kids = node.children.map((c) => renderAst(c, depth + 1)).join("");
+    return '<div class="' + cls + '"><span class="op">' + escapeHtml(String(node.op).toUpperCase()) + '</span></div>' + kids;
+  }
+  // Leaf
+  const label = node.label || node.dimension || node.concept_id || "";
+  const value = node.value != null ? " = " + (Array.isArray(node.value) ? node.value.join(" / ") : node.value) : "";
+  return '<div class="' + cls + '"><span class="leaf">' + escapeHtml(String(label)) + escapeHtml(String(value)) + '</span></div>';
+}
+
+function renderNlMatchCard(m) {
+  const sid = m.signal_agent_segment_id || m.signal_id?.id || "";
+  const method = m.match_method || "embedding";
+  const score = typeof m.match_score === "number" ? m.match_score.toFixed(2) : "—";
+  const audience = m.estimated_audience_size != null ? fmtNumber(m.estimated_audience_size) : "—";
+  return '' +
+    '<div class="nl-match-card" data-sid="' + escapeHtml(sid) + '">' +
+      '<div>' +
+        '<div class="nl-m-name">' + escapeHtml(m.name || "(unnamed)") + '</div>' +
+        '<div class="nl-m-sub">' + escapeHtml(sid) + ' · ' + audience + ' audience</div>' +
+      '</div>' +
+      '<span class="nl-m-method ' + escapeHtml(method) + '">' + escapeHtml(method.replace(/_/g, " ")) + '</span>' +
+      '<span class="nl-m-score">' + score + '</span>' +
+    '</div>';
+}
+
+function wireNlCardClicks() {
+  document.querySelectorAll(".nl-match-card").forEach((card) => {
+    card.addEventListener("click", () => {
+      const sid = card.dataset.sid;
+      const sig = state.catalog.all.find((x) => (x.signal_agent_segment_id || x.signal_id?.id) === sid)
+               || _lastDiscoverSignals.find((x) => (x.signal_agent_segment_id || x.signal_id?.id) === sid);
+      if (sig) openDetail(sig);
+    });
+  });
 }
 
 function renderDiscoverCard(s) {
@@ -2342,6 +2624,18 @@ function openDetail(sig) {
           : '<div class="dep-live">No deployments declared</div>') +
       '</div>' +
     '</div>' +
+    // Sec-36: "More like this" — lazy-loads get_similar_signals on
+    // click so the detail panel opens instantly. Cosine scores from
+    // the UCP embedding index are shown per neighbor.
+    '<div class="detail-section">' +
+      '<div class="detail-section-label">Similar signals</div>' +
+      '<div class="detail-similar" id="detail-similar-shell">' +
+        '<button class="detail-similar-btn" id="detail-similar-btn">' +
+          '<svg class="ico"><use href="#icon-network"/></svg>' +
+          '<span>Find neighbors via <code style="font-size:11px">get_similar_signals</code></span>' +
+        '</button>' +
+      '</div>' +
+    '</div>' +
     // IAB DTS v1.2 label — collapsible because 27 fields would overwhelm
     // the panel otherwise. Opens on demand for compliance review.
     (sig.x_dts
@@ -2361,6 +2655,55 @@ function openDetail(sig) {
     '<button class="btn-primary" id="detail-activate"><svg class="ico"><use href="#icon-bolt"/></svg><span>Activate to mock_dsp</span></button>' +
     '<div class="activation-status" id="detail-status"></div>';
   document.getElementById("detail-activate").addEventListener("click", () => activateFromDetail(sig));
+
+  // Wire the "find similar" button — lazy-loads only on click so the
+  // panel renders instantly. Uses get_similar_signals with the panel's
+  // signal as reference; scores come from cosine over the UCP embedding.
+  const simBtn = document.getElementById("detail-similar-btn");
+  if (simBtn) simBtn.addEventListener("click", () => loadSimilarForDetail(sig));
+}
+
+async function loadSimilarForDetail(sig) {
+  const shell = document.getElementById("detail-similar-shell");
+  const sid = sig.signal_agent_segment_id || sig.signal_id?.id || "";
+  shell.innerHTML = '<div style="color:var(--text-mut);font-size:12px;padding:4px 0"><span class="spinner"></span>Computing nearest neighbors…</div>';
+  try {
+    const data = await callTool("get_similar_signals", {
+      signal_agent_segment_id: sid,
+      top_k: 5,
+      min_similarity: 0.3,
+      deliver_to: { deployments: [{ type: "platform", platform: "mock_dsp" }], countries: ["US"] },
+    });
+    const results = (data?.results || []).filter((r) => {
+      const rsid = r.signal_agent_segment_id || r.signal_id?.id;
+      return rsid && rsid !== sid;
+    });
+    if (results.length === 0) {
+      shell.innerHTML = '<div style="color:var(--text-mut);font-size:12px;padding:4px 0">No neighbors above the 0.3 cosine threshold. This signal is semantically isolated in the catalog.</div>';
+      return;
+    }
+    shell.innerHTML =
+      '<div style="font-size:10.5px;color:var(--text-mut);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Top ' + results.length + ' neighbors (cosine similarity)</div>' +
+      '<div class="detail-similar-list">' +
+        results.map((r) => {
+          const rsid = r.signal_agent_segment_id || r.signal_id?.id || "";
+          const score = typeof r.cosine_similarity === "number" ? r.cosine_similarity.toFixed(3) : "—";
+          return '<div class="detail-similar-item" data-sid="' + escapeHtml(rsid) + '">' +
+            '<div class="ds-name">' + escapeHtml(r.name || "") + '</div>' +
+            '<span class="ds-score">' + score + '</span>' +
+          '</div>';
+        }).join("") +
+      '</div>';
+    shell.querySelectorAll(".detail-similar-item").forEach((el) => {
+      el.addEventListener("click", () => {
+        const nsid = el.dataset.sid;
+        const nsig = results.find((r) => (r.signal_agent_segment_id || r.signal_id?.id) === nsid);
+        if (nsig) openDetail(nsig);
+      });
+    });
+  } catch (e) {
+    shell.innerHTML = '<div style="color:var(--error);font-size:12px;padding:4px 0">✗ ' + escapeHtml(e.message) + '</div>';
+  }
 }
 
 function closeDetail() {

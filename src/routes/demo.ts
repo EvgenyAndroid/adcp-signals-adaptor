@@ -1141,11 +1141,21 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   transition: filter 0.12s;
 }
 .treemap-cell:hover { filter: brightness(1.25); }
+/* Halo-stroke approach: white fill with a dark stroke outline and
+   paint-order=stroke-fill means the fill paints over the stroke,
+   leaving a thin dark halo around each glyph. Readable on any
+   background — green, purple, magenta, orange, cyan — without
+   luminance detection. Same pattern MapBox + OSM use for labels. */
 .treemap-cell-label {
-  fill: #0b1017; font-size: 11px; font-weight: 600;
+  fill: #ffffff;
+  stroke: rgba(10, 14, 22, 0.85);
+  stroke-width: 2.8px;
+  stroke-linejoin: round;
+  paint-order: stroke fill;
+  font-size: 11px; font-weight: 600;
   pointer-events: none; user-select: none;
 }
-.treemap-cell-label.light { fill: #e6edf3; }
+.treemap-cell-label.light { fill: #ffffff; } /* legacy hook — no-op now */
 .treemap-tooltip {
   position: fixed; pointer-events: none;
   background: var(--bg-surface); border: 1px solid var(--border-strong);

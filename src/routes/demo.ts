@@ -270,7 +270,34 @@ ${STYLES}
         <div class="pane-header">
           <div>
             <h1 class="pane-title">UCP concept registry</h1>
-            <p class="pane-subtitle">Cross-taxonomy audience concepts. Each concept carries semantic mappings to IAB, LiveRamp, TradeDesk, and internal taxonomies.</p>
+            <p class="pane-subtitle">Cross-taxonomy audience concepts. Each concept carries semantic mappings to IAB, LiveRamp, TradeDesk, and internal taxonomies. Click a concept to find matching signals on the Discover tab.</p>
+          </div>
+        </div>
+
+        <div class="ucp-banner" id="ucp-banner">
+          <div class="ucp-banner-kv">
+            <span class="ucp-banner-label">Extension</span>
+            <span class="ucp-banner-v mono">ext.ucp</span>
+          </div>
+          <div class="ucp-banner-kv">
+            <span class="ucp-banner-label">Embedding space</span>
+            <span class="ucp-banner-v mono" id="ucp-b-space">—</span>
+          </div>
+          <div class="ucp-banner-kv">
+            <span class="ucp-banner-label">Dimensions</span>
+            <span class="ucp-banner-v mono" id="ucp-b-dims">—</span>
+          </div>
+          <div class="ucp-banner-kv">
+            <span class="ucp-banner-label">Encoding</span>
+            <span class="ucp-banner-v mono" id="ucp-b-enc">—</span>
+          </div>
+          <div class="ucp-banner-kv">
+            <span class="ucp-banner-label">Similarity</span>
+            <span class="ucp-banner-v" id="ucp-b-sim">—</span>
+          </div>
+          <div class="ucp-banner-kv">
+            <span class="ucp-banner-label">Concepts</span>
+            <span class="ucp-banner-v mono" id="ucp-b-count">—</span>
           </div>
         </div>
 
@@ -956,6 +983,41 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 .concept-card .cc-desc {
   color: var(--text-dim); font-size: 12.5px; line-height: 1.5;
 }
+.concept-card .cc-cta {
+  margin-top: 10px; padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  font-size: 11.5px; color: var(--accent);
+  display: flex; align-items: center; gap: 6px;
+  opacity: 0; transition: opacity 0.15s;
+}
+.concept-card:hover .cc-cta { opacity: 1; }
+.concept-card .cc-cta svg { transition: transform 0.12s; }
+.concept-card:hover .cc-cta svg { transform: translateX(3px); }
+
+/* UCP banner at top of Concepts tab — makes the connection between
+   this registry and the live embedding infrastructure explicit. */
+.ucp-banner {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0;
+  background: linear-gradient(135deg, rgba(79,142,255,0.08) 0%, rgba(139,92,246,0.08) 100%);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-lg);
+  padding: 14px 18px; margin-bottom: 18px;
+}
+.ucp-banner-kv {
+  padding: 4px 14px;
+  border-right: 1px solid var(--border);
+}
+.ucp-banner-kv:last-child { border-right: none; }
+.ucp-banner-label {
+  display: block;
+  font-size: 10.5px; color: var(--text-mut);
+  text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500;
+  margin-bottom: 3px;
+}
+.ucp-banner-v { font-size: 13px; color: var(--text); font-weight: 500; }
+.ucp-banner-v .pill { font-size: 10.5px; }
 
 /* ── Empty state & loading ───────────────────────────────────────────── */
 .empty-state {
@@ -1874,7 +1936,25 @@ window.__catalogPage = function(delta) {
 //────────────────────────────────────────────────────────────────────────
 function primeConcepts() {
   state.concepts = true;
+  primeUcpBanner();
   searchConcepts("high income");
+}
+
+async function primeUcpBanner() {
+  try {
+    const r = await fetch("/capabilities");
+    const caps = await r.json();
+    const ucp = caps?.ext?.ucp || {};
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    const setHtml = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+    set("ucp-b-space", Array.isArray(ucp.supported_spaces) && ucp.supported_spaces[0] ? ucp.supported_spaces[0] : "—");
+    set("ucp-b-dims",  Array.isArray(ucp.dimensions) && ucp.dimensions[0] ? ucp.dimensions[0] + "-d" : "—");
+    set("ucp-b-enc",   Array.isArray(ucp.supported_encodings) && ucp.supported_encodings[0] ? ucp.supported_encodings[0] : "—");
+    setHtml("ucp-b-sim", ucp.similarity_search
+      ? '<span class="pill pill-success">enabled</span>'
+      : '<span class="pill pill-muted">off</span>');
+    set("ucp-b-count", String(ucp.concept_registry?.concept_count ?? "—"));
+  } catch { /* non-fatal */ }
 }
 document.querySelectorAll(".concept-hints .hint").forEach((b) => {
   b.addEventListener("click", () => {
@@ -1903,15 +1983,30 @@ async function searchConcepts(q) {
       return;
     }
     host.innerHTML = rows.map((c) => '' +
-      '<div class="concept-card" data-cid="' + escapeHtml(c.concept_id) + '">' +
+      '<div class="concept-card" data-cid="' + escapeHtml(c.concept_id) + '" data-label="' + escapeHtml(c.label || "") + '">' +
         '<div class="cc-row">' +
           '<span class="cc-id">' + escapeHtml(c.concept_id) + '</span>' +
           '<span class="cc-cat">' + escapeHtml(c.category || "") + '</span>' +
         '</div>' +
         '<div class="cc-label">' + escapeHtml(c.label || "") + '</div>' +
         '<div class="cc-desc">' + escapeHtml(c.description || "") + '</div>' +
+        '<div class="cc-cta"><span>Find matching signals</span><svg class="ico"><use href="#icon-arrow-right"/></svg></div>' +
       '</div>'
     ).join("");
+    // Wire: click a concept → prefill Discover brief with the concept
+    // label, switch tabs, run discovery. Concepts aren't directly
+    // activatable (they're taxonomy nodes, not signals) but they map
+    // to signals semantically — this is the natural concept→signal
+    // bridge flow.
+    host.querySelectorAll(".concept-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        const label = card.dataset.label || "";
+        if (!label) return;
+        briefEl.value = label;
+        switchTab("discover");
+        runDiscover();
+      });
+    });
   } catch (e) {
     host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
   }

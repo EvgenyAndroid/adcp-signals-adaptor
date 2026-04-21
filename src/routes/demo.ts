@@ -405,6 +405,16 @@ ${STYLES}
               <div class="preview-explain" id="preview-explain"></div>
             </div>
 
+            <div class="builder-section-label" style="margin-top:20px">
+              Similar existing signals
+              <span style="color:var(--text-mut);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px;font-family:var(--font-mono)" id="similar-subtitle">—</span>
+            </div>
+            <div class="similar-signals" id="similar-signals">
+              <div class="empty-state" style="padding:20px">
+                <div class="empty-desc">Compose a rule and the agent's semantic ranker will surface existing catalog signals that overlap — use one before creating a duplicate.</div>
+              </div>
+            </div>
+
             <div class="builder-section-label" style="margin-top:20px">Funnel — size after each rule</div>
             <div class="funnel-chart" id="funnel-chart">
               <div class="empty-state" style="padding:24px"><div class="empty-desc">Add a rule to see the funnel.</div></div>
@@ -1408,6 +1418,43 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 }
 .preview-explain:empty { display: none; }
 .preview-explain::before { content: "→ "; color: var(--accent); font-style: normal; font-weight: 600; }
+
+/* Similar-signals block — semantic overlap check on each rule change */
+.similar-signals { display: flex; flex-direction: column; gap: 8px; }
+.similar-card {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 10px 14px;
+  cursor: pointer; transition: all 0.12s;
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 12px; align-items: center;
+}
+.similar-card:hover { background: var(--bg-hover); border-color: var(--accent-border); }
+.similar-card .sc-main { min-width: 0; }
+.similar-card .sc-nm {
+  font-size: 13px; font-weight: 500; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.similar-card .sc-sub {
+  font-size: 11.5px; color: var(--text-mut); font-family: var(--font-mono);
+  margin-top: 1px;
+}
+.similar-card .sc-rank {
+  font-size: 11px; font-weight: 600;
+  padding: 3px 9px; border-radius: 10px;
+  font-family: var(--font-mono); white-space: nowrap;
+}
+.similar-card .sc-rank.high   { background: var(--warning-dim); color: var(--warning); }
+.similar-card .sc-rank.medium { background: var(--accent-dim);  color: var(--accent); }
+.similar-card .sc-rank.low    { background: var(--bg-surface);  color: var(--text-mut); }
+.similar-warning {
+  background: var(--warning-dim);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-md);
+  padding: 10px 12px; margin-bottom: 8px;
+  font-size: 12.5px; color: var(--warning);
+  display: flex; gap: 8px; align-items: flex-start;
+}
+.similar-warning .ico { flex-shrink: 0; margin-top: 2px; stroke: var(--warning); }
 
 .funnel-chart {
   background: var(--bg-raised); border: 1px solid var(--border);
@@ -2568,6 +2615,111 @@ document.getElementById("add-rule-btn").addEventListener("click", () => {
   debouncedEstimate();
 });
 
+// Sec-34: real similarity check on each rule change. Uses the agent's
+// own semantic-ranking tool (get_signals with the composed NL brief as
+// signal_spec) instead of a hand-rolled algorithm — the answer comes
+// from the same embedding engine that services every buyer-agent query,
+// so what's shown here is what the agent would match in production.
+//
+// Why not get_similar_signals? That tool takes a reference
+// signal_agent_segment_id — but the builder draft isn't persisted yet
+// (and persisting JUST to run the similarity check creates the
+// duplicate we're trying to prevent). Instead we compose a textual
+// description from the rules and let the brief-driven search surface
+// catalog neighbors.
+let _similarSeq = 0;
+async function runSimilarCheck() {
+  const rules = state.builder.rules;
+  const host = document.getElementById("similar-signals");
+  const subtitle = document.getElementById("similar-subtitle");
+  if (rules.length === 0) {
+    host.innerHTML = '<div class="empty-state" style="padding:20px"><div class="empty-desc">Compose a rule and the agent\\'s semantic ranker will surface existing catalog signals that overlap — use one before creating a duplicate.</div></div>';
+    subtitle.textContent = "—";
+    return;
+  }
+  const seq = ++_similarSeq;
+  const brief = buildSimilarityBrief(rules);
+  subtitle.innerHTML = '<span class="spinner"></span>scanning catalog…';
+  try {
+    const res = await fetch("/mcp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + DEMO_KEY },
+      body: JSON.stringify({
+        jsonrpc: "2.0", id: rpcId++, method: "tools/call",
+        params: { name: "get_signals", arguments: {
+          signal_spec: brief,
+          deliver_to: { deployments: [{ type: "platform", platform: "mock_dsp" }], countries: ["US"] },
+          max_results: 5,
+        } },
+      }),
+    });
+    if (seq !== _similarSeq) return;
+    const body = await res.json();
+    const sc = body.result?.structuredContent;
+    const matches = (sc?.signals || []).filter((s) => s.signal_type !== "custom").slice(0, 3);
+
+    if (matches.length === 0) {
+      host.innerHTML = '<div class="empty-state" style="padding:16px"><div class="empty-desc">No close catalog matches — this composition looks genuinely novel. Generating it would add value.</div></div>';
+      subtitle.textContent = "0 matches";
+      return;
+    }
+
+    // The top match is the potential duplicate. Rank by ordinal position
+    // (agent's semantic ranker already sorted these); assign coarse high/
+    // medium/low tiers by ordinal since scores aren't exposed on the wire.
+    const tiers = ["high", "medium", "low"];
+    const warning = matches.length > 0 && rules.length >= 2
+      ? '<div class="similar-warning">' +
+          '<svg class="ico"><use href="#icon-info"/></svg>' +
+          '<span>Your composition semantically overlaps with <strong>' + escapeHtml(matches[0].name) + '</strong> — consider using it before generating a near-duplicate.</span>' +
+        '</div>'
+      : "";
+    host.innerHTML = warning + matches.map((s, i) => renderSimilarCard(s, tiers[i] || "low")).join("");
+    subtitle.textContent = matches.length + " candidate" + (matches.length === 1 ? "" : "s");
+    // Wire clicks — jump into the detail panel for the matched signal
+    host.querySelectorAll(".similar-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        const sid = card.dataset.sid;
+        const sig = state.catalog.all.find((x) => (x.signal_agent_segment_id || x.signal_id?.id) === sid)
+                 || matches.find((m) => (m.signal_agent_segment_id || m.signal_id?.id) === sid);
+        if (sig) openDetail(sig);
+      });
+    });
+  } catch (e) {
+    if (seq === _similarSeq) {
+      host.innerHTML = '<div class="empty-state" style="padding:16px;color:var(--text-mut)"><div class="empty-desc">Similarity check unavailable: ' + escapeHtml(e.message) + '</div></div>';
+      subtitle.textContent = "error";
+    }
+  }
+}
+
+// Compose a natural-language brief from rules for the similarity probe.
+// Denser / more keyword-heavy than buildExplainSentence because the
+// embedding engine benefits from repeated dimensional terms.
+function buildSimilarityBrief(rules) {
+  const parts = [];
+  for (const r of rules) {
+    const val = Array.isArray(r.value) ? r.value[0] : r.value;
+    const strVal = String(val).replace(/_/g, " ");
+    parts.push(r.dimension.replace(/_/g, " ") + " " + strVal);
+  }
+  return "Audience with " + parts.join(", ");
+}
+
+function renderSimilarCard(sig, tier) {
+  const sid = sig.signal_agent_segment_id || sig.signal_id?.id || "";
+  const price = fmtCPM(sig);
+  const rankLabel = tier === "high" ? "top match" : tier === "medium" ? "similar" : "related";
+  return '' +
+    '<div class="similar-card" data-sid="' + escapeHtml(sid) + '">' +
+      '<div class="sc-main">' +
+        '<div class="sc-nm">' + escapeHtml(sig.name || "") + '</div>' +
+        '<div class="sc-sub">' + fmtNumber(sig.estimated_audience_size) + ' audience · ' + price.display + ' cpm · ' + escapeHtml(sig.category_type || "—") + '</div>' +
+      '</div>' +
+      '<span class="sc-rank ' + tier + '">' + rankLabel + '</span>' +
+    '</div>';
+}
+
 // Sec-33: starter templates — seed rule sets for common DSP audiences.
 // Clicking a template replaces the current rules and re-runs estimate.
 const BUILDER_TEMPLATES = {
@@ -2672,6 +2824,10 @@ async function runEstimate() {
     const explainEl = document.getElementById("preview-explain");
     if (explainEl) explainEl.textContent = buildExplainSentence(state.builder.rules, data);
     await renderFunnelCumulative();
+    // Fire-and-forget similar-signals check — uses the composed NL
+    // sentence as a semantic brief against get_signals. Intentionally
+    // awaited AFTER the funnel so it doesn't block the headline number.
+    runSimilarCheck();
   } catch (e) {
     if (seq === state.builder.estimateSeq) {
       heroEl.classList.remove("loading");

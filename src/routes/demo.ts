@@ -157,12 +157,14 @@ ${STYLES}
             </p>
           </div>
           <div class="mode-toggle" id="discover-mode-toggle">
-            <button class="mode-btn active" data-mode="brief">
+            <button class="mode-btn active" data-mode="brief"
+              data-tooltip="Describe WHAT you're looking for. The embedding engine ranks catalog signals by semantic similarity to your phrase, and an LLM also generates custom proposals inline when no catalog match fits. Best for creative exploration: 'luxury auto intenders', 'affluent millennial streamers', 'families preparing for back-to-school'.">
               <svg class="ico"><use href="#icon-radar"/></svg>
               <span>Brief</span>
               <span class="mode-tool mono">get_signals</span>
             </button>
-            <button class="mode-btn" data-mode="nl">
+            <button class="mode-btn" data-mode="nl"
+              data-tooltip="Describe WHO you want as a structured audience. The query is parsed into a boolean AST (AND/OR/NOT), each dimension is resolved against the catalog with exact-rule + embedding + lexical matching, and the result is a composite audience size with per-signal match methods. Best for precise audience definitions: 'soccer moms 35+ who stream heavily', 'urban professionals without children who watch sci-fi'.">
               <svg class="ico"><use href="#icon-network"/></svg>
               <span>NL Query</span>
               <span class="mode-tool mono">query_signals_nl</span>
@@ -867,6 +869,42 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   display: flex; gap: 0;
   background: var(--bg-surface); border: 1px solid var(--border);
   border-radius: var(--radius-md); padding: 3px;
+  position: relative;
+}
+/* CSS-only hover tooltip for the mode buttons. data-tooltip attribute
+   supplies the body copy; positioned below the toggle so it doesn't
+   collide with the sticky top bar. Shown after 350ms so an accidental
+   mouseover doesn't flash the tip. */
+.mode-btn[data-tooltip]:hover::before,
+.mode-btn[data-tooltip]:hover::after {
+  opacity: 1;
+  transition-delay: 350ms;
+}
+.mode-btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute; left: 50%; top: calc(100% + 10px);
+  transform: translateX(-50%);
+  background: var(--bg-surface); color: var(--text);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-md);
+  padding: 10px 14px; font-size: 12px; line-height: 1.55;
+  font-weight: 400; letter-spacing: 0;
+  width: 320px; text-align: left; white-space: normal;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 50;
+}
+.mode-btn[data-tooltip]::before {
+  content: "";
+  position: absolute; left: 50%; top: calc(100% + 4px);
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px; height: 8px;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-strong);
+  border-top: 1px solid var(--border-strong);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 51;
 }
 .mode-btn {
   display: flex; align-items: center; gap: 8px;

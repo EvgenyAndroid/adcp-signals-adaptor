@@ -2578,14 +2578,64 @@ function renderCapabilitiesHtml(caps) {
       : "") +
 
     // ─── UCP extension ───
+    // The Universal Context Protocol block is genuinely the most
+    // technically interesting part of the capabilities response — vector
+    // embedding space, dimensions, encoding, similarity-search endpoint
+    // template, concept registry. Surface all of it prominently rather
+    // than hiding under a "phase" placeholder.
     (Object.keys(ucp).length
       ? '<div class="caps-section">' +
-          '<div class="caps-section-title">UCP extension (ext.ucp)</div>' +
+          '<div class="caps-section-title">UCP extension (ext.ucp) — semantic / NLP discovery layer</div>' +
           '<div class="caps-grid">' +
-            (ucp.space_id ? card("Embedding space", '<span class="mono" style="font-size:12px">' + escapeHtml(ucp.space_id) + '</span>', true) : "") +
-            (ucp.phase ? card("Phase", '<span class="mono" style="font-size:12px">' + escapeHtml(ucp.phase) + '</span>', true) : "") +
-            (ucp.gts?.supported ? card("GTS", '<span class="pill pill-success">supported</span>' + (ucp.gts.endpoint ? ' <span class="mono" style="color:var(--text-mut);font-size:12px">' + escapeHtml(ucp.gts.endpoint) + '</span>' : ""), true) : "") +
-            (ucp.concept_registry?.supported ? card("Concept registry", '<span class="pill pill-success">' + (ucp.concept_registry.concept_count ?? 0) + ' concepts</span>', true) : "") +
+            (Array.isArray(ucp.supported_spaces) && ucp.supported_spaces.length
+              ? card("Embedding space", '<span class="mono" style="font-size:12px">' + escapeHtml(ucp.supported_spaces[0]) + '</span>', true)
+              : "") +
+            (Array.isArray(ucp.dimensions) && ucp.dimensions.length
+              ? card("Dimensions", '<span class="mono">' + ucp.dimensions[0] + '</span>', true)
+              : "") +
+            (Array.isArray(ucp.supported_encodings) && ucp.supported_encodings.length
+              ? card("Encoding", '<span class="mono">' + escapeHtml(ucp.supported_encodings.join(", ")) + '</span>', true)
+              : "") +
+            (typeof ucp.similarity_search === "boolean"
+              ? card("Similarity search",
+                  ucp.similarity_search
+                    ? '<span class="pill pill-success">enabled</span>'
+                    : '<span class="pill pill-muted">off</span>', true)
+              : "") +
+            (ucp.phase
+              ? card("Phase", '<span class="mono" style="font-size:12px">' + escapeHtml(ucp.phase) + '</span>', true)
+              : "") +
+            (ucp.gts_version
+              ? card("GTS version", '<span class="mono" style="font-size:12px">' + escapeHtml(ucp.gts_version) + '</span>', true)
+              : "") +
+            (ucp.embedding_endpoint_template
+              ? card("Embedding endpoint",
+                  '<span class="mono" style="font-size:12px;color:var(--accent-hot)">' + escapeHtml(ucp.embedding_endpoint_template) + '</span>', true)
+              : "") +
+            (ucp.gts?.supported
+              ? card("GTS",
+                  '<span class="pill pill-success">supported</span>' +
+                  (ucp.gts.endpoint ? ' <span class="mono" style="color:var(--text-mut);font-size:12px;margin-left:6px">' + escapeHtml(ucp.gts.endpoint) + '</span>' : ""),
+                  true)
+              : "") +
+            (ucp.concept_registry?.supported
+              ? card("Concept registry",
+                  '<span class="pill pill-success">' + (ucp.concept_registry.concept_count ?? 0) + ' concepts</span>' +
+                  (ucp.concept_registry.endpoint ? ' <span class="mono" style="color:var(--text-mut);font-size:12px;margin-left:6px">' + escapeHtml(ucp.concept_registry.endpoint) + '</span>' : ""),
+                  true)
+              : "") +
+            (ucp.handshake_simulator?.supported
+              ? card("Handshake simulator",
+                  '<span class="pill pill-success">supported</span>' +
+                  (ucp.handshake_simulator.endpoint ? ' <span class="mono" style="color:var(--text-mut);font-size:12px;margin-left:6px">' + escapeHtml(ucp.handshake_simulator.endpoint) + '</span>' : ""),
+                  true)
+              : "") +
+            (ucp.projector?.supported
+              ? card("Projector",
+                  '<span class="pill pill-success">supported</span>' +
+                  (ucp.projector.endpoint ? ' <span class="mono" style="color:var(--text-mut);font-size:12px;margin-left:6px">' + escapeHtml(ucp.projector.endpoint) + '</span>' : ""),
+                  true)
+              : "") +
           '</div>' +
         '</div>'
       : "") +

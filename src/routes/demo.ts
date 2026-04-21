@@ -3485,9 +3485,14 @@ function buildExampleCurl(tool) {
   };
   const args = exampleArgs[tool.name] ?? {};
   const payload = { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: tool.name, arguments: args } };
-  return 'curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp \\' + "\n" +
-    '  -H "Authorization: Bearer demo-key-adcp-signals-v1" \\' + "\n" +
-    '  -H "Content-Type: application/json" \\' + "\n" +
+  // Line continuations require literal backslashes in the rendered JS
+  // string. Because this whole SCRIPT_TAG body lives inside the outer
+  // TypeScript template literal, each literal backslash needs four here
+  // (TS-literal → JS-source → in-JS string-literal).
+  const BS = "\\\\";
+  return 'curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp ' + BS + '\\n' +
+    '  -H "Authorization: Bearer demo-key-adcp-signals-v1" ' + BS + '\\n' +
+    '  -H "Content-Type: application/json" ' + BS + '\\n' +
     "  -d '" + JSON.stringify(payload) + "'";
 }
 

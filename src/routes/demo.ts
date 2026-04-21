@@ -1598,6 +1598,11 @@ async function runDiscover() {
     const elapsed = Math.round(performance.now() - t0);
     const catalog = (data.signals || []).filter((s) => s.signal_type !== "custom");
     const proposals = data.proposals || (data.signals || []).filter((s) => s.signal_type === "custom");
+    // Cache signals + proposals so card-click handlers can resolve the
+    // signal for the detail panel. Proposals aren't in state.catalog.all
+    // (they're ephemeral, not persisted until activation), so without
+    // this cache the Discover-tab card click would silently no-op.
+    _lastDiscoverSignals = [...catalog, ...proposals];
     status.textContent = catalog.length + " catalog match" + (catalog.length === 1 ? "" : "es") + " · " +
       proposals.length + " AI proposal" + (proposals.length === 1 ? "" : "s") + " · " + elapsed + "ms";
 

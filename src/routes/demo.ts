@@ -2141,22 +2141,38 @@ function renderTreemap() {
 
     const cellW = leaf.x1 - leaf.x0;
     const cellH = leaf.y1 - leaf.y0;
-    // Label only if cell > 6000 sq px AND has enough height for ~2 lines
-    if (cellW * cellH > 6000 && cellH > 32 && cellW > 60) {
+    // Tiered label rendering:
+    //   large  (> 6000 sq px): 11px name + 10px value subtitle
+    //   medium (> 2500 sq px): 10.5px name, no subtitle
+    //   small  (> 1200 sq px): 9.5px name, truncated harder, thinner halo
+    // Below ~1200 sq px we skip — the halo would eat the cell.
+    const area = cellW * cellH;
+    let tier = null;
+    if (area > 6000 && cellH > 28 && cellW > 56) tier = "large";
+    else if (area > 2500 && cellH > 20 && cellW > 48) tier = "medium";
+    else if (area > 1200 && cellH > 16 && cellW > 40) tier = "small";
+
+    if (tier) {
+      const fontSize = tier === "large" ? 11 : tier === "medium" ? 10.5 : 9.5;
+      const haloWidth = tier === "small" ? 1.6 : 2.4;
+      const charW = fontSize * 0.62;
       const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      label.setAttribute("x", leaf.x0 + 6);
-      label.setAttribute("y", leaf.y0 + 16);
-      label.setAttribute("class", "treemap-cell-label" + (isDarkColor(leaf.data.category, categories) ? " light" : ""));
-      label.textContent = truncateToFit(leaf.data.name, Math.floor(cellW / 7));
+      label.setAttribute("x", leaf.x0 + 5);
+      label.setAttribute("y", leaf.y0 + fontSize + 3);
+      label.setAttribute("class", "treemap-cell-label");
+      label.setAttribute("font-size", String(fontSize));
+      label.setAttribute("stroke-width", String(haloWidth));
+      label.textContent = truncateToFit(leaf.data.name, Math.max(4, Math.floor((cellW - 10) / charW)));
       g.appendChild(label);
-      if (cellH > 50 && cellW > 80) {
+
+      if (tier === "large" && cellH > 48 && cellW > 80) {
         const sub = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        sub.setAttribute("x", leaf.x0 + 6);
-        sub.setAttribute("y", leaf.y0 + 30);
-        sub.setAttribute("class", "treemap-cell-label" + (isDarkColor(leaf.data.category, categories) ? " light" : ""));
-        sub.style.fontSize = "10px";
-        sub.style.fontWeight = "500";
-        sub.style.opacity = "0.7";
+        sub.setAttribute("x", leaf.x0 + 5);
+        sub.setAttribute("y", leaf.y0 + fontSize + 17);
+        sub.setAttribute("class", "treemap-cell-label");
+        sub.setAttribute("font-size", "10");
+        sub.setAttribute("stroke-width", "2");
+        sub.style.opacity = "0.8";
         sub.textContent = fmtNumber(leaf.data.value);
         g.appendChild(sub);
       }

@@ -10,12 +10,14 @@
 // Cache key bumped to v6 for the v3-conformant shape (ucp moved to ext)
 // then v7 for the HEAD-schema-conformant shape (adds adcp.idempotency).
 
-// Cache key bumped to v13 — Sec-38 C9 adds TTD + DV360 sandbox
-// destinations (activation_supported=false until OAuth wired). v12
-// baseline: three ext blocks (id_resolution, measurement, governance).
-// v11 baseline: ext.dts declaring IAB Data Transparency Standard v1.2.
-// v10 baseline: ext.ucp declaring UCP embedding bridge + concept registry.
-const CACHE_KEY = "adcp_capabilities_v13";
+// Cache key bumped to v14 — Sec-39 expands every destination entry with
+// integration metadata (stage, auth, activation_pattern, data_format,
+// latency, segment_refresh_sla, use_cases, docs_url, onboarding).
+// v13 added TTD + DV360 sandbox destinations.
+// v12 added three ext blocks (id_resolution, measurement, governance).
+// v11 added ext.dts declaring IAB Data Transparency Standard v1.2.
+// v10 added ext.ucp declaring UCP embedding bridge + concept registry.
+const CACHE_KEY = "adcp_capabilities_v14";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
@@ -83,18 +85,137 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       dynamic_segment_generation: true,
       activation_mode: "async",
       provider: "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+      // Sec-39: each destination now carries a rich integration profile
+      // so buyer agents and ops teams can tell at handshake time what
+      // shape of integration is live vs sandbox vs roadmap, what IDs
+      // flow in each direction, what SLAs to expect, and where to go for
+      // docs. Core AdCP fields (id, name, type, activation_supported)
+      // kept at the top for back-compat; extended fields are additive.
       destinations: [
-        { id: "mock_dsp",         name: "Mock DSP",                   type: "dsp",         activation_supported: true  },
-        { id: "mock_cleanroom",   name: "Mock Clean Room",            type: "cleanroom",   activation_supported: true  },
-        { id: "mock_cdp",         name: "Mock CDP",                   type: "cdp",         activation_supported: true  },
-        { id: "mock_measurement", name: "Mock Measurement Platform",  type: "measurement", activation_supported: false },
-        // Sec-38 C9: DSP-stage destinations. TTD sandbox + DV360 sandbox
-        // are declared activation_supported=false because no real OAuth
-        // handshake is wired yet — buyer agents should fall through to
-        // mock_dsp for actual activation in this demo. Listing them at
-        // capability level signals the integration roadmap.
-        { id: "ttd_sandbox",      name: "The Trade Desk (sandbox)",   type: "dsp",         activation_supported: false },
-        { id: "dv360_sandbox",    name: "DV360 (sandbox)",            type: "dsp",         activation_supported: false },
+        {
+          id: "mock_dsp",
+          name: "Mock DSP",
+          type: "dsp",
+          activation_supported: true,
+          stage: "live",
+          vendor: "Internal mock",
+          activation_pattern: "push_async",
+          auth_mechanism: "bearer_token (DEMO_API_KEY)",
+          id_types_accepted: ["segment_id", "hashed_email", "maid_ios", "maid_android", "uid2", "ctv_device"],
+          data_format: "segment_id + platform_segment_id pair",
+          segment_refresh_sla: "< 60 seconds (synchronous in demo)",
+          latency_p50_ms: 120,
+          latency_p99_ms: 450,
+          use_cases: ["Prospecting", "Retargeting", "CTV reach", "Measurement passback"],
+          activation_flow: "activate_signal -> ephemeral platform_segment_id -> POST segment membership -> get_operation_status polling",
+          docs_url: "https://github.com/EvgenyAndroid/adcp-signals-adaptor#mock-dsp",
+          onboarding: "No onboarding — always live in demo.",
+          notes: "Reference DSP that always returns completed within ~5 seconds. Safe target for any storyboard run.",
+        },
+        {
+          id: "mock_cleanroom",
+          name: "Mock Clean Room",
+          type: "cleanroom",
+          activation_supported: true,
+          stage: "live",
+          vendor: "Internal mock (simulating Snowflake / Habu / InfoSum / AWS CR shape)",
+          activation_pattern: "share_async",
+          auth_mechanism: "cleanroom_agreement_id + bearer",
+          id_types_accepted: ["hashed_email", "ramp_id", "uid2", "graph_id"],
+          data_format: "cleanroom table share (SIGNAL_MEMBERS)",
+          segment_refresh_sla: "< 15 minutes",
+          latency_p50_ms: 800,
+          latency_p99_ms: 3500,
+          use_cases: ["1P x 2P match-rate analysis", "Campaign overlap", "Incrementality lift", "No-PII joins"],
+          activation_flow: "activate_signal -> grant table share -> cleanroom provider ingests -> membership available on next scheduled compute",
+          docs_url: "https://github.com/EvgenyAndroid/adcp-signals-adaptor#mock-cleanroom",
+          onboarding: "Mock — grants auto-accepted.",
+          notes: "Models the governance boundary: buyer's 1P data never leaves their clean-room tenant. Returns a stub JOIN matrix.",
+        },
+        {
+          id: "mock_cdp",
+          name: "Mock CDP",
+          type: "cdp",
+          activation_supported: true,
+          stage: "live",
+          vendor: "Internal mock (simulating Segment / mParticle / Tealium / Treasure Data shape)",
+          activation_pattern: "push_sync",
+          auth_mechanism: "write_key",
+          id_types_accepted: ["user_id", "anonymous_id", "hashed_email"],
+          data_format: "Audience membership events (audience_entered / audience_exited)",
+          segment_refresh_sla: "real-time (stream)",
+          latency_p50_ms: 60,
+          latency_p99_ms: 220,
+          use_cases: ["Personalization", "Owned-channel orchestration", "Email / push audience sync"],
+          activation_flow: "activate_signal -> stream audience_entered events keyed by user_id -> CDP fans out to downstream tools",
+          docs_url: "https://github.com/EvgenyAndroid/adcp-signals-adaptor#mock-cdp",
+          onboarding: "Mock — write-key auto-provisioned.",
+          notes: "Best fit when the audience drives owned-channel surfaces (email, push, on-site) vs paid media.",
+        },
+        {
+          id: "mock_measurement",
+          name: "Mock Measurement Platform",
+          type: "measurement",
+          activation_supported: false,
+          stage: "live",
+          vendor: "Internal mock (simulating Nielsen DAR / Kantar / IAS / DV shape)",
+          activation_pattern: "read_only",
+          auth_mechanism: "api_key",
+          id_types_accepted: ["segment_id"],
+          data_format: "Lift / reach / frequency report rows",
+          segment_refresh_sla: "T+1 day (batch)",
+          latency_p50_ms: null,
+          latency_p99_ms: null,
+          use_cases: ["Brand-lift studies", "Campaign reach validation", "Third-party verification"],
+          activation_flow: "Not an activation target. Read-only: fetches lift/reach reports tagged to a signal's activations.",
+          docs_url: "https://github.com/EvgenyAndroid/adcp-signals-adaptor#mock-measurement",
+          onboarding: "Mock — reports synthesized per signal.",
+          notes: "activation_supported=false by design. Surfaced so planners see measurement coverage alongside activation.",
+        },
+        // Sec-38 C9 + Sec-39: DSP-stage destinations. TTD sandbox + DV360
+        // sandbox are declared activation_supported=false until OAuth is
+        // wired. Integration profile describes the target shape so buyer
+        // agents can plan against the roadmap.
+        {
+          id: "ttd_sandbox",
+          name: "The Trade Desk (sandbox)",
+          type: "dsp",
+          activation_supported: false,
+          stage: "sandbox",
+          vendor: "The Trade Desk",
+          activation_pattern: "push_async",
+          auth_mechanism: "oauth2 (TTD Partner Console)",
+          id_types_accepted: ["ttd_id", "uid2", "hashed_email", "maid_ios", "maid_android"],
+          data_format: "Third-party data segment CSV upload (TTD DMP format)",
+          segment_refresh_sla: "< 24 hours",
+          latency_p50_ms: null,
+          latency_p99_ms: null,
+          use_cases: ["Open-web DSP activation", "CTV across TTD's OpenPath inventory", "UID2 cookieless targeting"],
+          activation_flow: "activate_signal -> request OAuth consent -> upload segment CSV via TTD Partner API -> segment available in TTD UI once ingested",
+          docs_url: "https://partner.thetradedesk.com/v3/portal/api/doc/ThirdPartyData",
+          onboarding: "Requires TTD Partner account + OAuth app registration. Target Q2 2026.",
+          notes: "Roadmap. When live, will be the default DSP for UID2-centric cookieless plans.",
+        },
+        {
+          id: "dv360_sandbox",
+          name: "DV360 (sandbox)",
+          type: "dsp",
+          activation_supported: false,
+          stage: "sandbox",
+          vendor: "Google Display & Video 360",
+          activation_pattern: "push_async",
+          auth_mechanism: "oauth2 (Google Cloud / DV360 API)",
+          id_types_accepted: ["hashed_email", "maid_ios", "maid_android", "publisher_provided_id"],
+          data_format: "Customer Match list upload (Google Ads API)",
+          segment_refresh_sla: "< 12 hours",
+          latency_p50_ms: null,
+          latency_p99_ms: null,
+          use_cases: ["YouTube reach", "Programmatic display", "Customer Match seed audiences"],
+          activation_flow: "activate_signal -> OAuth consent -> hash + upload via Customer Match API -> list available in DV360 after match-rate check",
+          docs_url: "https://developers.google.com/display-video/api/reference/rest",
+          onboarding: "Requires Google Ads account + MCC access + OAuth app. Target Q3 2026.",
+          notes: "Roadmap. When live, will be the default DSP for Google-ecosystem plans.",
+        },
       ],
       limits: {
         max_signals_per_request: 100,

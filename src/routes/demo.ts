@@ -110,6 +110,10 @@ ${STYLES}
         <svg class="ico"><use href="#icon-activations"/></svg><span>Activations</span>
         <span class="nav-count" id="nav-activations-count">—</span>
       </button>
+      <button class="nav-item" data-tab="destinations">
+        <svg class="ico"><use href="#icon-arrow-right"/></svg><span>Destinations</span>
+        <span class="nav-count" id="nav-destinations-count">—</span>
+      </button>
 
       <div class="nav-group-label">Reference</div>
       <button class="nav-item" data-tab="capabilities">
@@ -367,9 +371,10 @@ ${STYLES}
 
         <div class="treemap-shell">
           <div class="treemap-canvas" id="treemap-canvas">
-            <div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading treemap…</div></div>
+            <div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading treemap\u2026</div></div>
           </div>
         </div>
+        <div id="treemap-explainer"></div>
       </section>
 
       <!-- ── TAB: Builder ───────────────────────────────────────────────── -->
@@ -534,25 +539,33 @@ ${STYLES}
             </a>
           </div>
         </div>
+        <!-- Top-level orientation for anyone new to embedding visualizations -->
+        <div class="emb-intro">
+          <div class="emb-intro-title">What is an embedding space?</div>
+          <p class="emb-intro-body">Every audience in this catalog is converted into a 512-dimensional vector by OpenAI\u2019s <code>text-embedding-3-small</code> model. Audiences that mean similar things end up close to each other in that 512-D space \u2014 that\u2019s what powers semantic search, similar-signal lookups, and the NL query resolver. The three panels below each give you a different window into that space.</p>
+        </div>
         <div class="emb-grid">
           <div class="emb-panel">
-            <div class="emb-panel-title">2D projection <span class="pill pill-muted mono" style="margin-left:8px">JL · 512→2</span></div>
+            <div class="emb-panel-title">2D projection <span class="pill pill-muted mono" style="margin-left:8px">JL \u00b7 512\u21922</span></div>
             <div id="emb-scatter" class="emb-scatter">
-              <div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading projection…</div></div>
+              <div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading projection\u2026</div></div>
             </div>
             <div class="emb-legend" id="emb-legend"></div>
+            <div id="emb-scatter-explainer"></div>
           </div>
           <div class="emb-panel">
-            <div class="emb-panel-title">Pairwise cosine similarity <span class="pill pill-muted mono" style="margin-left:8px">20×20</span></div>
+            <div class="emb-panel-title">Pairwise cosine similarity <span class="pill pill-muted mono" style="margin-left:8px">20\u00d720</span></div>
             <div id="emb-heatmap" class="emb-heatmap">
-              <div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading heatmap…</div></div>
+              <div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading heatmap\u2026</div></div>
             </div>
+            <div id="emb-heatmap-explainer"></div>
           </div>
           <div class="emb-panel emb-panel-wide">
-            <div class="emb-panel-title">Cross-taxonomy Sankey <span class="pill pill-muted mono" style="margin-left:8px">IAB 1.1 → 3.0 → LR/TTD/MC/Nielsen</span></div>
+            <div class="emb-panel-title">Cross-taxonomy Sankey <span class="pill pill-muted mono" style="margin-left:8px">IAB 1.1 \u2192 3.0 \u2192 LR/TTD/MC/Nielsen</span></div>
             <div id="emb-sankey" class="emb-sankey">
-              <div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading bridge…</div></div>
+              <div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading bridge\u2026</div></div>
             </div>
+            <div id="emb-sankey-explainer"></div>
           </div>
         </div>
       </section>
@@ -739,23 +752,67 @@ ${STYLES}
         </div>
       </section>
 
+      <!-- ── TAB: Destinations (Sec-39) ─────────────────────────────────── -->
+      <section class="tab-pane" data-tab="destinations">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Destinations</h1>
+            <p class="pane-subtitle">Every downstream platform this agent can push audiences into. Each card shows the integration stage, auth + ID flow, activation pattern, SLA, and typical use cases. Sourced live from <code>/capabilities</code>.</p>
+          </div>
+          <div class="activations-controls">
+            <button class="btn-secondary" id="dest-refresh">
+              <svg class="ico"><use href="#icon-arrow-right"/></svg><span>Refresh</span>
+            </button>
+            <a class="btn-secondary" href="/capabilities" target="_blank" rel="noopener">
+              <svg class="ico"><use href="#icon-info"/></svg><span>Raw JSON</span>
+            </a>
+          </div>
+        </div>
+        <div class="dest-summary" id="dest-summary"></div>
+        <div class="dest-grid" id="dest-grid">
+          <div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading destinations\u2026</div></div>
+        </div>
+      </section>
+
     </div>
   </main>
 
   <!-- ── Detail side panel (slides in from right) ──────────────────────── -->
-  <aside class="detail-panel" id="detail-panel" aria-hidden="true">
+  <!-- Sec-39: three-mode sizing (narrow / wide / full) + side rail nav -->
+  <!-- + collapsible sections. Start in narrow; the f key or expand btn -->
+  <aside class="detail-panel" id="detail-panel" aria-hidden="true" data-mode="narrow">
     <div class="detail-header">
       <div class="detail-header-left">
         <span class="detail-type-badge" id="detail-type">—</span>
         <h2 class="detail-title" id="detail-name">—</h2>
       </div>
-      <button class="detail-close" id="detail-close" aria-label="Close panel">
-        <svg class="ico"><use href="#icon-close"/></svg>
-      </button>
+      <div class="detail-header-actions">
+        <button class="detail-icon-btn" id="detail-expand" aria-label="Expand panel" title="Expand (f)">
+          <svg class="ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 8V3H8 M17 8V3H12 M3 12V17H8 M17 12V17H12"/>
+          </svg>
+        </button>
+        <button class="detail-icon-btn" id="detail-collapse-all" aria-label="Collapse all sections" title="Collapse all sections">
+          <svg class="ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 8L10 3L15 8 M5 12L10 17L15 12"/>
+          </svg>
+        </button>
+        <button class="detail-icon-btn" id="detail-close" aria-label="Close panel">
+          <svg class="ico"><use href="#icon-close"/></svg>
+        </button>
+      </div>
     </div>
 
-    <div class="detail-body" id="detail-body">
-      <!-- populated on open -->
+    <div class="detail-panel-body">
+      <!-- Side rail nav \u2014 only visible in full mode -->
+      <nav class="detail-rail" id="detail-rail" aria-label="Section navigation">
+        <div class="detail-rail-label">On this signal</div>
+        <div class="detail-rail-list" id="detail-rail-list"></div>
+      </nav>
+
+      <div class="detail-body" id="detail-body">
+        <!-- populated on open -->
+      </div>
     </div>
 
     <div class="detail-footer" id="detail-footer">
@@ -798,6 +855,8 @@ ${STYLES}
     <div class="kbd-row"><span>Open Embedding</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">e</span></span></div>
     <div class="kbd-row"><span>Open Capabilities</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">k</span></span></div>
     <div class="kbd-row"><span>Open Dev kit</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">v</span></span></div>
+    <div class="kbd-row"><span>Open Destinations</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">n</span></span></div>
+    <div class="kbd-row"><span>Expand / collapse detail panel</span><span class="kbd-keys"><span class="kbd-key">f</span></span></div>
     <div class="kbd-row"><span>Close detail panel</span><span class="kbd-keys"><span class="kbd-key">Esc</span></span></div>
     <div class="kbd-row"><span>Toggle this sheet</span><span class="kbd-keys"><span class="kbd-key">?</span></span></div>
   </div>
@@ -1525,19 +1584,26 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Detail panel ────────────────────────────────────────────────────── */
+/* ── Detail panel (Sec-39: three-mode sizing + rail + 2-col grid) ─────── */
 .detail-panel {
   position: fixed; top: 0; right: 0; bottom: 0;
   width: var(--detail-w);
+  max-width: 100vw;
   background: var(--bg-surface);
   border-left: 1px solid var(--border);
   box-shadow: -20px 0 60px rgba(0, 0, 0, 0.4);
   display: flex; flex-direction: column;
   transform: translateX(100%);
-  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1),
+              width 0.28s cubic-bezier(0.32, 0.72, 0, 1);
   z-index: 100;
 }
 .detail-panel.open { transform: translateX(0); }
+/* Sizing modes */
+.detail-panel[data-mode="narrow"] { width: var(--detail-w); }
+.detail-panel[data-mode="wide"]   { width: min(880px, 95vw); }
+.detail-panel[data-mode="full"]   { width: min(1240px, 98vw); }
+
 .backdrop {
   position: fixed; inset: 0;
   background: rgba(0, 0, 0, 0.5);
@@ -1555,6 +1621,7 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   align-items: flex-start;
 }
 .detail-header-left { flex: 1; min-width: 0; }
+.detail-header-actions { display: flex; gap: 4px; }
 .detail-type-badge {
   display: inline-block;
   font-family: var(--font-mono); font-size: 10.5px;
@@ -1567,25 +1634,102 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   font-size: 18px; font-weight: 600; margin: 0;
   letter-spacing: -0.01em; line-height: 1.3;
 }
-.detail-close {
-  color: var(--text-mut); padding: 4px;
+.detail-icon-btn {
+  color: var(--text-mut); padding: 6px;
   border-radius: var(--radius-sm);
   transition: background 0.12s, color 0.12s;
+  background: transparent; border: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
 }
-.detail-close:hover { background: var(--bg-hover); color: var(--text); }
-.detail-close .ico { width: 18px; height: 18px; }
+.detail-icon-btn:hover { background: var(--bg-hover); color: var(--text); }
+.detail-icon-btn .ico { width: 18px; height: 18px; }
+.detail-panel[data-mode="wide"] #detail-expand { color: var(--accent); }
+.detail-panel[data-mode="full"] #detail-expand { color: var(--accent); background: var(--accent-dim); }
+
+/* Body is a flex row: rail (only in full mode) + content */
+.detail-panel-body {
+  flex: 1; min-height: 0;
+  display: flex; gap: 0; overflow: hidden;
+}
+.detail-rail {
+  display: none;
+  flex: 0 0 180px;
+  border-right: 1px solid var(--border);
+  padding: 18px 14px;
+  overflow-y: auto;
+  background: var(--bg-base);
+}
+.detail-panel[data-mode="full"] .detail-rail { display: block; }
+.detail-rail-label {
+  font-size: 10px; color: var(--text-mut);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  margin-bottom: 8px; font-weight: 500;
+}
+.detail-rail-list { display: flex; flex-direction: column; gap: 2px; }
+.detail-rail-item {
+  display: block;
+  background: transparent; border: 0; text-align: left;
+  color: var(--text-dim); padding: 6px 10px;
+  border-radius: var(--radius-sm); cursor: pointer;
+  font-size: 12px; font-family: var(--font-sans);
+  transition: background 0.12s, color 0.12s;
+}
+.detail-rail-item:hover { background: var(--bg-hover); color: var(--text); }
+.detail-rail-item.active { background: var(--accent-dim); color: var(--accent); font-weight: 500; }
 
 .detail-body {
   flex: 1; overflow-y: auto;
   padding: 18px 22px;
+  scroll-behavior: smooth;
 }
-.detail-section { margin-bottom: 22px; }
+/* Multi-column grid when panel is wide or full */
+.detail-panel[data-mode="wide"] .detail-body,
+.detail-panel[data-mode="full"] .detail-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 22px;
+  align-content: flex-start;
+}
+.detail-panel[data-mode="wide"] .detail-section,
+.detail-panel[data-mode="full"] .detail-section {
+  margin-bottom: 0;
+}
+/* Mark sections that should always span both columns */
+.detail-panel[data-mode="wide"] .detail-section.span-full,
+.detail-panel[data-mode="full"] .detail-section.span-full {
+  grid-column: 1 / -1;
+}
+
+.detail-section {
+  margin-bottom: 22px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  transition: border-color 0.12s, background 0.12s;
+}
 .detail-section:last-child { margin-bottom: 0; }
+/* Collapsible section header: clickable, shows chevron */
 .detail-section-label {
   font-size: 10.5px; color: var(--text-mut);
   text-transform: uppercase; letter-spacing: 0.1em; font-weight: 500;
   margin-bottom: 8px;
+  cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: 6px;
+  padding: 2px 0;
 }
+.detail-section-label::before {
+  content: ""; width: 0; height: 0;
+  border-left: 5px solid var(--text-mut);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transform: rotate(90deg);
+  transition: transform 0.15s;
+  flex: 0 0 auto;
+}
+.detail-section.collapsed .detail-section-label::before {
+  transform: rotate(0deg);
+}
+.detail-section-label:hover { color: var(--text); }
+.detail-section.collapsed > *:not(.detail-section-label) { display: none; }
 .detail-stats {
   display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
 }
@@ -2217,6 +2361,104 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   border-radius: 3px; padding: 2px 8px; color: var(--text);
 }
 
+/* Chart explainer (Sec-39) */
+.chart-explainer {
+  margin-top: 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+.chart-explainer-head {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--accent);
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em;
+  font-weight: 600; margin-bottom: 6px;
+}
+.chart-explainer-head .ico { width: 13px; height: 13px; }
+.chart-explainer-row {
+  display: grid; grid-template-columns: 48px 1fr; gap: 8px;
+  padding: 2px 0;
+}
+.chart-explainer-row .ce-k {
+  color: var(--text-mut); font-family: var(--font-mono); font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding-top: 1px;
+}
+.chart-explainer-row .ce-v {
+  color: var(--text-dim);
+}
+
+/* Destinations tab (Sec-39) */
+.dest-summary {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+  margin-bottom: 16px;
+}
+.dest-summary-card {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 12px 14px;
+  text-align: center;
+}
+.dss-v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.dss-l { font-size: 10.5px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+.dest-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 14px;
+}
+.dest-card {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.dest-card-head {
+  display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: flex-start;
+}
+.dest-card-icon {
+  width: 34px; height: 34px; border-radius: 8px;
+  background: var(--accent-dim); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+}
+.dest-card-icon .ico { width: 18px; height: 18px; }
+.dest-card-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.dest-card-sub { font-size: 11.5px; color: var(--text-mut); margin-top: 2px; font-family: var(--font-mono); }
+.dest-card-pills { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.dest-notes {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 12px;
+  font-size: 12px; color: var(--text); line-height: 1.5;
+}
+.dest-field-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+.dest-field {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 6px 10px;
+}
+.dest-field-label {
+  font-size: 9.5px; color: var(--text-mut);
+  text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500;
+}
+.dest-field-val {
+  font-size: 12px; color: var(--text); margin-top: 2px;
+  font-family: var(--font-mono); line-height: 1.4;
+  word-break: break-word;
+}
+.dest-block-label {
+  font-size: 10.5px; color: var(--text-mut);
+  text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500;
+  margin-top: 4px;
+}
+.dest-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+.dest-flow {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+  color: var(--text); font-family: var(--font-mono); font-size: 11.5px;
+  white-space: pre-wrap; line-height: 1.55; margin: 0;
+}
+.dest-links { display: flex; gap: 8px; }
+
 /* Dev kit tab (Sec-38 B7) */
 .devkit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .devkit-panel {
@@ -2308,6 +2550,44 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 .stack-stat-label { font-size: 10px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.06em; }
 .stack-stat-value { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
 .stack-bar-wrap { margin-top: 8px; }
+
+/* Embedding tab intro + heatmap color scale (Sec-39) */
+.emb-intro {
+  background: linear-gradient(135deg, var(--accent-dim), transparent);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md); padding: 14px 18px;
+  margin-bottom: 14px;
+}
+.emb-intro-title {
+  font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px;
+}
+.emb-intro-body {
+  font-size: 12.5px; color: var(--text-dim); line-height: 1.55; margin: 0;
+}
+.emb-intro-body code {
+  font-family: var(--font-mono); font-size: 11.5px;
+  background: var(--bg-raised); padding: 1px 6px; border-radius: 3px;
+}
+.emb-heatmap-scale {
+  display: grid; grid-template-columns: 1fr 30px 1fr 30px 1fr;
+  gap: 6px; align-items: center;
+  margin-top: 12px; padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.ehs-label {
+  font-size: 10.5px; color: var(--text);
+  font-family: var(--font-mono); line-height: 1.35;
+}
+.ehs-label .ehs-sub {
+  font-size: 9.5px; color: var(--text-mut); text-transform: lowercase;
+}
+.ehs-gradient {
+  height: 14px; border-radius: 2px;
+  background: linear-gradient(90deg, rgb(22, 52, 120), rgb(60, 100, 200), rgb(240, 240, 240));
+}
+.ehs-gradient.ehs-gradient-r {
+  background: linear-gradient(90deg, rgb(240, 240, 240), rgb(230, 140, 100), rgb(255, 128, 90));
+}
 
 /* Embedding tab — 2D scatter + heatmap + Sankey (Sec-38 B5) */
 .emb-grid {
@@ -2526,6 +2806,8 @@ const state = {
   toolLog: { pollTimer: null, data: [], paused: false, filter: "", expanded: new Set() },
   overlap: { selected: [], lastResult: null, searchQ: "" },
   reach: { budgetUsd: 10_000 },
+  // Sec-39: detail panel UX — cycle-mode + collapsed-section memory
+  ui: { detailMode: "narrow", collapsedSections: new Set() },
 };
 
 async function callTool(name, args) {
@@ -2750,7 +3032,7 @@ function switchTab(name) {
     discover: "Discover", catalog: "Catalog", concepts: "Concepts",
     treemap: "Treemap", builder: "Builder", activations: "Activations",
     capabilities: "Capabilities", toollog: "Tool Log", overlap: "Overlap",
-    embedding: "Embedding space", devkit: "Dev kit",
+    embedding: "Embedding space", devkit: "Dev kit", destinations: "Destinations",
   };
   document.getElementById("crumb-current").textContent = crumbMap[name] || name;
 
@@ -2763,6 +3045,7 @@ function switchTab(name) {
   if (name === "overlap") ensureOverlap();
   if (name === "embedding") ensureEmbedding();
   if (name === "devkit") ensureDevkit();
+  if (name === "destinations") ensureDestinations();
 
   // Activations tab: start polling when visible, stop when hidden
   if (name === "activations") startActivationsPolling();
@@ -3418,7 +3701,8 @@ function openDetail(sig) {
 
   const body = document.getElementById("detail-body");
   body.innerHTML = '' +
-    '<div class="detail-section">' +
+    // Hero stats — always span full width, not collapsible
+    '<div class="detail-section span-full no-collapse" data-section="stats" data-section-title="Overview">' +
       '<div class="detail-stats">' +
         '<div class="detail-stat"><div class="detail-stat-label">Audience</div><div class="detail-stat-value">' + fmtNumber(sig.estimated_audience_size) + '</div></div>' +
         '<div class="detail-stat"><div class="detail-stat-label">Coverage</div><div class="detail-stat-value">' + (typeof sig.coverage_percentage === "number" ? sig.coverage_percentage.toFixed(1) + "%" : "—") + '</div></div>' +
@@ -3426,11 +3710,11 @@ function openDetail(sig) {
         '<div class="detail-stat"><div class="detail-stat-label">Vertical</div><div class="detail-stat-value" style="font-size:14px;text-transform:capitalize">' + escapeHtml(verticalOf(sig)) + '</div></div>' +
       '</div>' +
     '</div>' +
-    '<div class="detail-section">' +
+    '<div class="detail-section span-full" data-section="desc" data-section-title="Description">' +
       '<div class="detail-section-label">Description</div>' +
       '<div class="detail-desc">' + escapeHtml(sig.description || "No description provided.") + '</div>' +
     '</div>' +
-    '<div class="detail-section">' +
+    '<div class="detail-section" data-section="meta" data-section-title="Metadata">' +
       '<div class="detail-section-label">Metadata</div>' +
       '<div class="detail-kv-list">' +
         '<div class="dkv"><span class="dkv-k">Signal ID</span><span class="dkv-v">' + escapeHtml(sid) + '</span></div>' +
@@ -3441,7 +3725,7 @@ function openDetail(sig) {
         '<div class="dkv"><span class="dkv-k">Data provider</span><span class="dkv-v">' + escapeHtml(sig.data_provider || "—") + '</span></div>' +
       '</div>' +
     '</div>' +
-    '<div class="detail-section">' +
+    '<div class="detail-section" data-section="deployments" data-section-title="Deployments">' +
       '<div class="detail-section-label">Deployments</div>' +
       '<div class="detail-deployments">' +
         (Array.isArray(sig.deployments) && sig.deployments.length
@@ -3449,42 +3733,32 @@ function openDetail(sig) {
           : '<div class="dep-live">No deployments declared</div>') +
       '</div>' +
     '</div>' +
-    // Sec-37 B4: ID resolution matrix — derived from DTS data_sources
-    // + precision_levels. Shows what identifiers a buyer's integration
-    // layer would need to match this audience, plus a cookieless-ready
-    // pill that's increasingly evaluation-critical post-Chrome.
+    // Sec-37 B4: ID resolution matrix.
     (() => {
       const idInfo = idTypePills(sig);
-      return '<div class="detail-section">' +
+      return '<div class="detail-section" data-section="id_resolution" data-section-title="ID resolution">' +
         '<div class="detail-section-label">ID resolution <span style="color:var(--text-mut);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">' + idInfo.count + ' supported</span></div>' +
         '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">' + idInfo.pills + ' ' + idInfo.cookielessPill + '</div>' +
-        '<div style="margin-top:8px;font-size:11px;color:var(--text-mut);font-family:var(--font-mono)">Derived from DTS data_sources + audience_precision_levels. Refinable by the data provider.</div>' +
+        renderChartExplainer({
+          what: "Which identifiers a buyer\\'s integration layer would accept for this audience.",
+          how: "Derived from the signal\\'s DTS data_sources + audience_precision_levels (household / individual / device / browser / geography).",
+          read: "More pills = broader addressability. Cookieless-ready means ≥1 non-3P-cookie ID is available (UID2 / RampID / hashed email / CTV).",
+        }) +
       '</div>';
     })() +
-    // Sec-37 B2: Reach & frequency forecaster. Pure compute, no
-    // endpoint — shows what a $10K / 30-day flight would achieve
-    // against this signal. Budget adjustable inline.
-    '<div class="detail-section">' +
+    // Sec-37 B2: Reach & frequency forecaster.
+    '<div class="detail-section" data-section="reach" data-section-title="Reach & frequency">' +
       '<div class="detail-section-label">Reach &amp; frequency <span style="color:var(--text-mut);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">@</span> <span class="reach-budget-input" style="display:inline-flex"><span style="color:var(--text-mut)">$</span><input id="reach-budget" type="number" value="10000" min="500" max="10000000" step="500"/><span style="color:var(--text-mut)">/ 30d</span></span></div>' +
       '<div class="reach-block" id="reach-block"></div>' +
     '</div>' +
-    // Sec-38 B4: Measurement & lift mock. Three sub-panels:
-    //   • Lift forecast     — synthetic baseline/exposed-group brand-lift
-    //   • Delivery simulator — daily pacing curve over 30-day flight
-    //   • Campaign overlap   — placeholder that would query advertiser's
-    //                          1P campaign IDs via cleanroom when wired
-    // All clearly labeled "mock" — the ext.measurement capability block
-    // declares them as supported:"mock" until a measurement partner lands.
-    '<div class="detail-section">' +
+    // Sec-38 B4: Measurement & lift mock.
+    '<div class="detail-section" data-section="measurement" data-section-title="Measurement & lift">' +
       '<div class="detail-section-label">Measurement &amp; lift <span class="pill pill-mut" style="margin-left:8px;font-size:10px">mock</span></div>' +
       '<div id="measurement-block" class="reach-block"></div>' +
     '</div>' +
-    // Sec-38 B2: Cross-taxonomy bridge. Shows predicted IDs in IAB 3.0,
-    // LiveRamp AbiliTec, TTD DMP, Mastercard SpendingPulse, Nielsen so a
-    // HoldCo planner can locate the equivalent audience in their own
-    // taxonomy without manual translation.
+    // Sec-38 B2: Cross-taxonomy bridge.
     (sig.x_cross_taxonomy && sig.x_cross_taxonomy.length
-      ? '<div class="detail-section">' +
+      ? '<div class="detail-section" data-section="cross_tax" data-section-title="Cross-taxonomy">' +
           '<div class="detail-section-label">Cross-taxonomy bridge <span style="color:var(--text-mut);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">' + sig.x_cross_taxonomy.length + ' systems</span></div>' +
           '<div class="cross-tax-grid">' +
             sig.x_cross_taxonomy.map(function (e) {
@@ -3496,23 +3770,27 @@ function openDetail(sig) {
               '</div>';
             }).join("") +
           '</div>' +
+          renderChartExplainer({
+            what: "The same audience\\'s predicted ID in each major buyer-side taxonomy — so a HoldCo planner can locate it in their own stack.",
+            how: "Deterministic per-signal hash. Demo-grade mapping; production would use a real bridge table driven by partner handshakes.",
+            read: "Stage flag tells you confidence: live = direct match, modeled = heuristic, roadmap = not yet integrated.",
+          }) +
         '</div>'
       : "") +
-    // Sec-38 B8 (C4): Data lineage graph. Visualizes the path from raw
-    // data sources → DTS methodology → audience surface → distribution.
-    // Renders as a 4-node horizontal flow derived from x_dts fields that
-    // the signal already carries (data_sources, inclusion_methodology,
-    // refresh_cadence, distribution platforms).
+    // Sec-38 B8 (C4): Data lineage graph — span full so the 4-node flow has room.
     (sig.x_dts
-      ? '<div class="detail-section">' +
+      ? '<div class="detail-section span-full" data-section="lineage" data-section-title="Data lineage">' +
           '<div class="detail-section-label">Data lineage <span style="color:var(--text-mut);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">provenance chain</span></div>' +
           renderLineageGraph(sig) +
+          renderChartExplainer({
+            what: "The provenance chain this audience flows through, from raw data sources to activation.",
+            how: "Each node is pulled from the signal\\'s DTS label: data_sources → inclusion_methodology + refresh cadence → audience attributes → declared deployments.",
+            read: "Read left-to-right. Wider methodology nodes (e.g. Observed/Known) mean fresher, less-modeled audiences — typically higher-lift but smaller scale.",
+          }) +
         '</div>'
       : "") +
-    // Sec-36: "More like this" — lazy-loads get_similar_signals on
-    // click so the detail panel opens instantly. Cosine scores from
-    // the UCP embedding index are shown per neighbor.
-    '<div class="detail-section">' +
+    // Sec-36: Similar signals — span full.
+    '<div class="detail-section span-full" data-section="similar" data-section-title="Similar signals">' +
       '<div class="detail-section-label">Similar signals</div>' +
       '<div class="detail-similar" id="detail-similar-shell">' +
         '<button class="detail-similar-btn" id="detail-similar-btn">' +
@@ -3521,10 +3799,9 @@ function openDetail(sig) {
         '</button>' +
       '</div>' +
     '</div>' +
-    // IAB DTS v1.2 label — collapsible because 27 fields would overwhelm
-    // the panel otherwise. Opens on demand for compliance review.
+    // IAB DTS v1.2 label — span full; uses <details> natively, so we bypass our collapse system.
     (sig.x_dts
-      ? '<div class="detail-section">' +
+      ? '<div class="detail-section span-full no-collapse" data-section="dts" data-section-title="DTS label">' +
           '<details class="dts-block">' +
             '<summary class="detail-section-label" style="cursor:pointer;user-select:none">' +
               '<span class="pill pill-success" style="margin-right:8px">DTS v' + escapeHtml(String(sig.x_dts.dts_version || "1.2")) + '</span>' +
@@ -3565,6 +3842,103 @@ function openDetail(sig) {
   // MCP inspector wire
   const mcpBtn = document.getElementById("detail-mcp-inspect");
   if (mcpBtn) mcpBtn.addEventListener("click", () => openMcpInspector(sig));
+
+  // Sec-39: detail panel UX upgrades.
+  wireDetailSectionCollapse();
+  renderDetailRail();
+  applyDetailMode(state.ui.detailMode);
+}
+
+// Sec-39: detail panel UX — mode cycling + collapsed-section memory.
+// state.ui is initialized in the main state object above.
+
+// Cycle narrow -> wide -> full. Hitting expand on full goes back to narrow.
+function cycleDetailMode() {
+  var order = ["narrow", "wide", "full"];
+  var cur = state.ui.detailMode || "narrow";
+  var next = order[(order.indexOf(cur) + 1) % order.length];
+  applyDetailMode(next);
+}
+function applyDetailMode(mode) {
+  state.ui.detailMode = mode;
+  var panel = document.getElementById("detail-panel");
+  if (panel) panel.setAttribute("data-mode", mode);
+  var btn = document.getElementById("detail-expand");
+  if (btn) {
+    btn.title = mode === "narrow" ? "Expand to wide (f)" : mode === "wide" ? "Expand to full (f)" : "Collapse to narrow (f)";
+  }
+}
+// Each section has a clickable header (.detail-section-label) that toggles
+// the .collapsed class on its parent .detail-section. Memory is per-title,
+// so reopening another signal keeps the same sections expanded/collapsed.
+function wireDetailSectionCollapse() {
+  document.querySelectorAll("#detail-body .detail-section").forEach(function (sec) {
+    if (sec.classList.contains("no-collapse")) return;
+    var title = sec.dataset.sectionTitle || sec.dataset.section || "";
+    if (state.ui.collapsedSections.has(title)) sec.classList.add("collapsed");
+    var label = sec.querySelector(".detail-section-label");
+    if (!label || label.__wired) return;
+    label.__wired = true;
+    label.addEventListener("click", function (ev) {
+      // native <details> summary already handles its own toggle
+      if (ev.target.closest("summary")) return;
+      sec.classList.toggle("collapsed");
+      if (sec.classList.contains("collapsed")) state.ui.collapsedSections.add(title);
+      else state.ui.collapsedSections.delete(title);
+    });
+  });
+}
+// Side rail nav (visible in full mode). Lists every section with a jump link;
+// uses IntersectionObserver to highlight the current section while scrolling.
+function renderDetailRail() {
+  var list = document.getElementById("detail-rail-list");
+  if (!list) return;
+  var sections = Array.from(document.querySelectorAll("#detail-body .detail-section"));
+  list.innerHTML = sections.map(function (sec) {
+    var id = sec.dataset.section || "";
+    var title = sec.dataset.sectionTitle || id;
+    return '<button class="detail-rail-item" data-target="' + escapeHtml(id) + '">' + escapeHtml(title) + '</button>';
+  }).join("");
+  list.querySelectorAll(".detail-rail-item").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var target = document.querySelector("#detail-body .detail-section[data-section=\\"" + b.dataset.target + "\\"]");
+      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+  // Active-section tracking via IntersectionObserver
+  if (window.__detailRailObserver) window.__detailRailObserver.disconnect();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      var sec = en.target;
+      var id = sec.dataset.section;
+      list.querySelectorAll(".detail-rail-item").forEach(function (b) {
+        b.classList.toggle("active", b.dataset.target === id);
+      });
+    });
+  }, { root: document.getElementById("detail-body"), rootMargin: "-20% 0px -60% 0px", threshold: 0 });
+  sections.forEach(function (s) { io.observe(s); });
+  window.__detailRailObserver = io;
+}
+
+// Sec-39: compact chart explainer block rendered beneath visualizations.
+// Three labelled lines: what / how / read. Keeps explanations close to the
+// chart they describe without cluttering the default view.
+function renderChartExplainer(opts) {
+  var what = opts.what || "";
+  var how = opts.how || "";
+  var read = opts.read || "";
+  var limits = opts.limits || "";
+  return '<div class="chart-explainer">' +
+    '<div class="chart-explainer-head">' +
+      '<svg class="ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="7.5"/><line x1="10" y1="9" x2="10" y2="14" stroke-linecap="round"/><circle cx="10" cy="6.5" r="0.8" fill="currentColor"/></svg>' +
+      '<span>How to read this</span>' +
+    '</div>' +
+    (what ? '<div class="chart-explainer-row"><span class="ce-k">What</span><span class="ce-v">' + escapeHtml(what) + '</span></div>' : '') +
+    (how ? '<div class="chart-explainer-row"><span class="ce-k">How</span><span class="ce-v">' + escapeHtml(how) + '</span></div>' : '') +
+    (read ? '<div class="chart-explainer-row"><span class="ce-k">Read</span><span class="ce-v">' + escapeHtml(read) + '</span></div>' : '') +
+    (limits ? '<div class="chart-explainer-row"><span class="ce-k">Limits</span><span class="ce-v">' + escapeHtml(limits) + '</span></div>' : '') +
+  '</div>';
 }
 
 // Sec-37 B2: Reach & frequency math. Inputs: audience size, CPM,
@@ -3605,7 +3979,13 @@ function renderReachBlock(sig) {
       '<path d="' + path + '" fill="none" stroke="var(--accent)" stroke-width="1.5"/>' +
       '<path d="' + path + ' L 300,50 L 0,50 Z" fill="var(--accent-dim)"/>' +
     '</svg></div>' +
-    '<div style="font-size:10.5px;color:var(--text-mut);margin-top:8px">Methodology: CPM @ $' + cpm.toFixed(2) + ' · reach capped at 80% of addressable audience · logistic saturation τ=7 days. Mock — plug measurement partner for actuals.</div>';
+    '<div style="font-size:10.5px;color:var(--text-mut);margin-top:8px">Methodology: CPM @ $' + cpm.toFixed(2) + ' · reach capped at 80% of addressable audience · logistic saturation τ=7 days. Mock — plug measurement partner for actuals.</div>' +
+    renderChartExplainer({
+      what: "Expected unique reach and frequency if you spent your budget against this signal over 30 days.",
+      how: "impressions = (budget × 1000) / CPM. Unique reach = impressions / 3 (capped at 80% of audience). Frequency = impressions / reach. Curve uses 1 − e^(−day/7) saturation.",
+      read: "Flatter curves = audience saturated — diminishing returns from further spend. Steeper curves = still room to reach more unique people.",
+      limits: "Mock model. Real reach depends on DSP bid competition, frequency caps, and creative rotation.",
+    });
 }
 
 // Sec-38 B8 (C4): Data lineage graph. Renders a horizontal 4-node flow
@@ -3780,7 +4160,13 @@ function renderMeasurementBlock(sig) {
         '</div>';
       }).join("") +
     '</div>' +
-    '<div style="font-size:10.5px;color:var(--text-mut);margin-top:8px">Methodology: lift modeled from signal specificity × size-coverage. Plug a measurement partner (Nielsen / IAS / DV / Kantar / Circana) for actuals. Campaign overlap would resolve via your 1P campaign IDs in a cleanroom.</div>';
+    '<div style="font-size:10.5px;color:var(--text-mut);margin-top:8px">Methodology: lift modeled from signal specificity × size-coverage. Plug a measurement partner (Nielsen / IAS / DV / Kantar / Circana) for actuals. Campaign overlap would resolve via your 1P campaign IDs in a cleanroom.</div>' +
+    renderChartExplainer({
+      what: "Three sub-panels: predicted brand-lift, daily delivery pacing, and how much this audience overlaps with existing campaigns.",
+      how: "Lift = specificity × size-factor × 32 (capped 2-28%). Specificity score leans on category (purchase_intent > composite > interest > demographic > geo). Pacing bars are synthetic daily impressions with a ~25% weekend dip. Campaign overlap % is a hashed placeholder for what a cleanroom match would return.",
+      read: "Higher lift + steady pacing + low campaign overlap = best incremental reach. High overlap means you\\'d be re-buying the same people.",
+      limits: "All three sub-panels are mocks clearly flagged at the capability level (ext.measurement.*.supported = \\"mock\\").",
+    });
 }
 
 // Sec-37 B7: MCP inspector. Shows the get_signals{signal_ids:[sid]}
@@ -3914,9 +4300,19 @@ function closeDetail() {
 }
 document.getElementById("detail-close").addEventListener("click", closeDetail);
 document.getElementById("backdrop").addEventListener("click", closeDetail);
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && state.detail) closeDetail();
+// Sec-39: expand cycles mode; collapse-all toggles all sections folded/unfolded
+document.getElementById("detail-expand").addEventListener("click", cycleDetailMode);
+document.getElementById("detail-collapse-all").addEventListener("click", function () {
+  var secs = Array.from(document.querySelectorAll("#detail-body .detail-section:not(.no-collapse)"));
+  var anyOpen = secs.some(function (s) { return !s.classList.contains("collapsed"); });
+  secs.forEach(function (s) {
+    var title = s.dataset.sectionTitle || s.dataset.section || "";
+    s.classList.toggle("collapsed", anyOpen);
+    if (anyOpen) state.ui.collapsedSections.add(title);
+    else state.ui.collapsedSections.delete(title);
+  });
 });
+// Esc + f are handled inside the main keydown listener below (Sec-39).
 
 async function activateFromDetail(sig) {
   const btn = document.getElementById("detail-activate");
@@ -3972,6 +4368,12 @@ async function ensureTreemap() {
   if (state.catalog.all.length === 0) await loadCatalog();
   renderTreemap();
   state.treemap.rendered = true;
+  var tmExpl = document.getElementById("treemap-explainer");
+  if (tmExpl) tmExpl.innerHTML = renderChartExplainer({
+    what: "The whole marketplace at a glance. Each cell is one audience.",
+    how: "Treemap layout via d3-hierarchy squarify. Cell area \u221d estimated audience size. Cell color = category type (demographic / interest / purchase-intent / geo / composite).",
+    read: "Biggest cells = broadest audiences. Clusters of same-color cells reveal where the catalog is deep (interest) vs narrow (purchase intent). Click any cell to open its detail panel.",
+  });
 
   // Re-layout on container resize
   if (typeof ResizeObserver !== "undefined" && !state.treemap.resizeObserver) {
@@ -4890,6 +5292,13 @@ async function renderEmbeddingScatter() {
     legend.innerHTML = cats.map(function (c) {
       return '<span class="emb-legend-item"><span class="emb-legend-dot" style="background:' + colorMap[c] + '"></span>' + escapeHtml(c) + '</span>';
     }).join("");
+    var expl = document.getElementById("emb-scatter-explainer");
+    if (expl) expl.innerHTML = renderChartExplainer({
+      what: "A 2D map of the UCP semantic space. Each dot is one audience in this agent; distance roughly means semantic similarity.",
+      how: "Every audience is a 512-dim vector from OpenAI text-embedding-3-small. We project to 2D with Johnson\u2013Lindenstrauss random projection \u2014 fast, fully deterministic, preserves relative distances approximately (not as tight as PCA but needs no SVD).",
+      read: "Dots close together = semantically similar audiences. Dots in the same color cluster = same category type. Hover any dot for its full description.",
+      limits: "JL axes are not interpretable on their own \u2014 UCP\u2081 / UCP\u2082 are arbitrary projection axes, not principal components.",
+    });
   } catch (e) {
     host.innerHTML = '<div class="empty-state"><div class="empty-title">Could not load projection</div><div class="empty-desc">' + escapeHtml(String(e)) + '</div></div>';
   }
@@ -4946,9 +5355,21 @@ async function renderEmbeddingHeatmap() {
     host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMinYMin meet">' +
       svgCells + svgRowLabels + svgColLabels +
     '</svg>' +
-    '<div style="margin-top:10px;display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-mut);font-family:var(--font-mono)">' +
-      '<span>cos=-1</span><span>0</span><span>+1 (self)</span>' +
+    // Visible color scale with labeled endpoints
+    '<div class="emb-heatmap-scale">' +
+      '<span class="ehs-label">cos = \u22121<br><span class="ehs-sub">opposite meaning</span></span>' +
+      '<div class="ehs-gradient"></div>' +
+      '<span class="ehs-label" style="text-align:center">0<br><span class="ehs-sub">unrelated</span></span>' +
+      '<div class="ehs-gradient ehs-gradient-r"></div>' +
+      '<span class="ehs-label" style="text-align:right">+1<br><span class="ehs-sub">identical</span></span>' +
     '</div>';
+    var expl2 = document.getElementById("emb-heatmap-explainer");
+    if (expl2) expl2.innerHTML = renderChartExplainer({
+      what: "How semantically close every audience is to every other one, shown as a 20\u00d720 grid of cosine similarity scores.",
+      how: "Cosine similarity between each pair of 512-d embedding vectors. Bright orange = very similar, deep blue = very different. The diagonal is always +1 (every audience matches itself).",
+      read: "Bright blocks along the diagonal = clusters of similar audiences. A bright off-diagonal cell means you might be duplicating reach if you activate both.",
+      limits: "Shows only the first 20 embedded signals for readability. Use /ucp/similarity?n=N for larger matrices.",
+    });
   } catch (e) {
     host.innerHTML = '<div class="empty-state"><div class="empty-title">Could not load heatmap</div></div>';
   }
@@ -5027,7 +5448,14 @@ async function renderEmbeddingSankey() {
     host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
       flows + nodes +
     '</svg>' +
-    '<div style="font-size:10.5px;color:var(--text-mut);margin-top:8px">Left column: native IAB Audience 1.1 catalog. Middle: mapped IAB Content 3.0 topics. Right: buyer-side DMP / onboarder / measurement systems. Widths ∝ signal count. Stage flags (live/modeled/roadmap) surfaced in signal detail panel.</div>';
+    '<div style="font-size:10.5px;color:var(--text-mut);margin-top:8px">Left column: native IAB Audience 1.1 catalog. Middle: mapped IAB Content 3.0 topics. Right: buyer-side DMP / onboarder / measurement systems. Widths \u221d signal count. Stage flags (live/modeled/roadmap) surfaced in signal detail panel.</div>';
+    var expl3 = document.getElementById("emb-sankey-explainer");
+    if (expl3) expl3.innerHTML = renderChartExplainer({
+      what: "How this agent\u2019s audiences map into the buyer-side taxonomies a HoldCo planner already uses.",
+      how: "Three columns: our native IAB Audience 1.1 catalog (green) \u2192 derived IAB Content 3.0 topics (blue) \u2192 buyer systems (purple: LiveRamp, TTD, Nielsen, Mastercard). Ribbon width \u221d number of signals that flow through that path.",
+      read: "Thick ribbons hitting a buyer system = that system already has direct coverage of this audience class. Thin / missing ribbons = integration gaps to prioritize.",
+      limits: "Stage flags (live/modeled/roadmap) live on individual signal cards \u2014 this view shows volume, not confidence.",
+    });
   } catch (e) {
     host.innerHTML = '<div class="empty-state"><div class="empty-title">Could not load bridge</div></div>';
   }
@@ -5186,7 +5614,14 @@ function renderOverlapResult(data) {
     '<strong style="color:var(--text-dim)">Methodology</strong> · ' + escapeHtml(data.note || "") +
     '</div>';
 
-  return matrix + pairList + upsetBlock + methodologyNote;
+  const explainer = renderChartExplainer({
+    what: "How much two audiences overlap \u2014 as a heat matrix (pairwise) and as UpSet bars (subset sizes when you pick 3+).",
+    how: "Jaccard similarity \u2248 category-affinity \u00d7 min(size)/max(size). Same category + same vertical = 0.85, same category = 0.55, same vertical = 0.35, unrelated = 0.12. The real number needs cleanroom match-rates.",
+    read: "Bright red cells = strong overlap (you\u2019d be re-buying the same people). Blue cells = distinct audiences safe to stack. UpSet bars rank the biggest shared slices across your whole selection.",
+    limits: "Heuristic \u2014 not a true 1P overlap. For accurate numbers, push all selected signals into a cleanroom and compute member-level intersection.",
+  });
+
+  return matrix + pairList + upsetBlock + methodologyNote + explainer;
 }
 
 function truncate(s, n) {
@@ -5978,6 +6413,90 @@ function renderDevkitCode() {
   pre.textContent = snippets[_devkitLang] || "";
 }
 
+// Sec-39: Destinations tab — rich per-destination card grid sourced from
+// /capabilities. No separate endpoint; we re-use the capabilities JSON
+// and render a deeper view per destination.
+var _destLoaded = false;
+async function ensureDestinations() {
+  if (_destLoaded) return;
+  _destLoaded = true;
+  await renderDestinationsTab();
+}
+document.addEventListener("click", function (ev) {
+  var t = ev.target;
+  if (t instanceof Element && t.closest("#dest-refresh")) {
+    _destLoaded = false; ensureDestinations();
+  }
+});
+async function renderDestinationsTab() {
+  var grid = document.getElementById("dest-grid");
+  var summary = document.getElementById("dest-summary");
+  try {
+    var r = await fetch("/capabilities");
+    var caps = await r.json();
+    var dests = (caps.signals && caps.signals.destinations) || [];
+    document.getElementById("nav-destinations-count").textContent = String(dests.length);
+
+    var live = dests.filter(function (d) { return d.stage === "live"; }).length;
+    var sandbox = dests.filter(function (d) { return d.stage === "sandbox"; }).length;
+    var roadmap = dests.filter(function (d) { return d.stage === "roadmap"; }).length;
+    var act = dests.filter(function (d) { return d.activation_supported; }).length;
+    summary.innerHTML =
+      '<div class="dest-summary-card"><div class="dss-v">' + dests.length + '</div><div class="dss-l">Total</div></div>' +
+      '<div class="dest-summary-card"><div class="dss-v" style="color:var(--ok)">' + live + '</div><div class="dss-l">Live</div></div>' +
+      '<div class="dest-summary-card"><div class="dss-v" style="color:var(--accent)">' + sandbox + '</div><div class="dss-l">Sandbox</div></div>' +
+      '<div class="dest-summary-card"><div class="dss-v" style="color:var(--text-mut)">' + roadmap + '</div><div class="dss-l">Roadmap</div></div>' +
+      '<div class="dest-summary-card"><div class="dss-v">' + act + ' / ' + dests.length + '</div><div class="dss-l">Activation-ready</div></div>';
+
+    if (!dests.length) { grid.innerHTML = '<div class="empty-state"><div class="empty-title">No destinations declared</div></div>'; return; }
+
+    var typeIcon = { dsp: "bolt", cleanroom: "network", cdp: "grid", measurement: "chart" };
+    grid.innerHTML = dests.map(function (d) {
+      var stage = d.stage || (d.activation_supported ? "live" : "roadmap");
+      var stageClass = stage === "live" ? "pill-success" : stage === "sandbox" ? "pill-info" : "pill-mut";
+      var actClass = d.activation_supported ? "pill-success" : "pill-mut";
+      var icon = typeIcon[d.type] || "info";
+      var ids = Array.isArray(d.id_types_accepted) ? d.id_types_accepted : [];
+      var uses = Array.isArray(d.use_cases) ? d.use_cases : [];
+      var latency = (d.latency_p50_ms != null && d.latency_p99_ms != null)
+        ? 'p50 ' + d.latency_p50_ms + 'ms · p99 ' + d.latency_p99_ms + 'ms'
+        : (d.latency_p50_ms != null ? 'p50 ' + d.latency_p50_ms + 'ms' : '—');
+      return '<div class="dest-card">' +
+        '<div class="dest-card-head">' +
+          '<div class="dest-card-icon"><svg class="ico"><use href="#icon-' + icon + '"/></svg></div>' +
+          '<div class="dest-card-title-wrap">' +
+            '<div class="dest-card-title">' + escapeHtml(d.name) + '</div>' +
+            '<div class="dest-card-sub"><code>' + escapeHtml(d.id) + '</code> · ' + escapeHtml(d.type) + (d.vendor ? ' · ' + escapeHtml(d.vendor) : '') + '</div>' +
+          '</div>' +
+          '<div class="dest-card-pills">' +
+            '<span class="pill ' + stageClass + '">' + escapeHtml(stage) + '</span>' +
+            '<span class="pill ' + actClass + '">' + (d.activation_supported ? 'activation-ready' : 'read-only') + '</span>' +
+          '</div>' +
+        '</div>' +
+        (d.notes ? '<div class="dest-notes">' + escapeHtml(d.notes) + '</div>' : '') +
+        '<div class="dest-field-grid">' +
+          renderDestField("Activation pattern", d.activation_pattern) +
+          renderDestField("Auth", d.auth_mechanism) +
+          renderDestField("Data format", d.data_format) +
+          renderDestField("Refresh SLA", d.segment_refresh_sla) +
+          renderDestField("Latency", latency) +
+          renderDestField("Onboarding", d.onboarding) +
+        '</div>' +
+        (ids.length ? '<div class="dest-block-label">ID types accepted</div><div class="dest-pills">' + ids.map(function (id) { return '<span class="pill pill-muted mono">' + escapeHtml(id) + '</span>'; }).join('') + '</div>' : '') +
+        (uses.length ? '<div class="dest-block-label">Use cases</div><div class="dest-pills">' + uses.map(function (u) { return '<span class="pill pill-info">' + escapeHtml(u) + '</span>'; }).join('') + '</div>' : '') +
+        (d.activation_flow ? '<div class="dest-block-label">Activation flow</div><pre class="dest-flow">' + escapeHtml(d.activation_flow) + '</pre>' : '') +
+        (d.docs_url ? '<div class="dest-links"><a href="' + escapeHtml(d.docs_url) + '" target="_blank" rel="noopener" class="btn-secondary" style="font-size:11px;padding:4px 10px"><svg class="ico"><use href="#icon-book"/></svg><span>Docs</span></a></div>' : '') +
+      '</div>';
+    }).join("");
+  } catch (e) {
+    grid.innerHTML = '<div class="empty-state"><div class="empty-title">Could not load destinations</div><div class="empty-desc">' + escapeHtml(String(e)) + '</div></div>';
+  }
+}
+function renderDestField(label, value) {
+  if (!value) value = "—";
+  return '<div class="dest-field"><div class="dest-field-label">' + escapeHtml(label) + '</div><div class="dest-field-val">' + escapeHtml(String(value)) + '</div></div>';
+}
+
 // Sec-38 A7: keyboard shortcuts. Two-key "go to" prefix (g+x). Single
 // keys: ? toggles the cheat sheet, Esc closes overlays + detail panel.
 // Ignore shortcuts while typing in an input/textarea.
@@ -5998,13 +6517,27 @@ document.addEventListener("keydown", function (ev) {
   if (ev.key === "Escape") {
     if (overlay.classList.contains("open")) { overlay.classList.remove("open"); return; }
     var panel = document.getElementById("detail-panel");
-    if (panel && panel.classList.contains("open")) { closeDetail(); return; }
+    if (panel && panel.classList.contains("open")) {
+      // Sec-39: step narrower before closing. Full -> Wide -> Narrow -> Close.
+      var m = state.ui && state.ui.detailMode;
+      if (m === "full") { applyDetailMode("wide"); return; }
+      if (m === "wide") { applyDetailMode("narrow"); return; }
+      closeDetail();
+      return;
+    }
     var drawer = document.getElementById("mcp-drawer");
     if (drawer && drawer.classList.contains("open")) { drawer.classList.remove("open"); return; }
     return;
   }
+  // Sec-39: the f key toggles the detail panel sizing mode when it is open
+  if (ev.key === "f" && !ev.ctrlKey && !ev.metaKey) {
+    var panelForF = document.getElementById("detail-panel");
+    if (panelForF && panelForF.classList.contains("open")) {
+      cycleDetailMode(); ev.preventDefault(); return;
+    }
+  }
   if (_kbdPrefix === "g") {
-    var map = { d: "discover", c: "catalog", b: "builder", t: "treemap", o: "overlap", e: "embedding", k: "capabilities", v: "devkit", l: "toollog", a: "activations" };
+    var map = { d: "discover", c: "catalog", b: "builder", t: "treemap", o: "overlap", e: "embedding", k: "capabilities", v: "devkit", l: "toollog", a: "activations", n: "destinations" };
     var tab = map[ev.key.toLowerCase()];
     if (tab) { switchTab(tab); _kbdPrefix = null; if (_kbdPrefixTimer) clearTimeout(_kbdPrefixTimer); return; }
     _kbdPrefix = null;

@@ -124,6 +124,20 @@ export interface SignalSummary {
   status: string;
   x_dts?: DtsV12Label;
   x_ucp?: import("./ucp").UcpHybridPayload;
+  /**
+   * Cross-taxonomy bridge — deterministic predicted IDs in IAB 3.0,
+   * LiveRamp AbiliTec, TTD DMP, Mastercard SpendingPulse, and Nielsen
+   * so buyer agents can locate an equivalent audience in their native
+   * taxonomy. Each entry carries a `stage` (live|modeled|roadmap) so
+   * buyers know the confidence of the mapping. Built by
+   * src/mappers/crossTaxonomy.ts.
+   */
+  x_cross_taxonomy?: Array<{
+    system: string;
+    id: string;
+    label: string;
+    stage: "live" | "modeled" | "roadmap";
+  }>;
 }
 
 // Spec: discriminated union - type "platform" or "agent"

@@ -2,10 +2,12 @@
 // Barrel — aggregates all vertical signal files into a single
 // EXTENDED_VERTICAL_SIGNALS array consumed by the seed pipeline.
 //
-// 15 verticals × 20 signals = 300 signals. Added on top of the
-// SEEDED_SIGNALS + DERIVED_SIGNALS in signalModel.ts (~55 signals)
-// and ALL_ENRICHED_SIGNALS in enrichedSignalModel.ts, the live
-// catalog post-reseed is ~355 signals across every major DSP
+// 15 verticals × 20 signals = 300 signals, plus Sec-38 cross-vertical
+// additions (80 more: seasonality×region, life-event windows, B2B
+// intent windows, sports×market, CTV device×content, 1P lookalikes).
+// Added on top of the SEEDED_SIGNALS + DERIVED_SIGNALS in signalModel.ts
+// (~55 signals) and ALL_ENRICHED_SIGNALS in enrichedSignalModel.ts, the
+// live catalog post-reseed is ~435 signals across every major DSP
 // marketplace vertical.
 
 import type { CanonicalSignal } from "../../types/signal";
@@ -24,6 +26,7 @@ import { PSYCHOGRAPHIC_SIGNALS } from "./psychographic";
 import { INTEREST_EXT_SIGNALS } from "./interestExt";
 import { DEMOGRAPHIC_EXT_SIGNALS } from "./demographicExt";
 import { GEOGRAPHIC_EXT_SIGNALS } from "./geographicExt";
+import { CROSS_VERTICAL_SIGNALS } from "./crossVerticals";
 
 export const EXTENDED_VERTICAL_SIGNALS: CanonicalSignal[] = [
   ...AUTOMOTIVE_SIGNALS,
@@ -41,4 +44,5 @@ export const EXTENDED_VERTICAL_SIGNALS: CanonicalSignal[] = [
   ...INTEREST_EXT_SIGNALS,
   ...DEMOGRAPHIC_EXT_SIGNALS,
   ...GEOGRAPHIC_EXT_SIGNALS,
+  ...CROSS_VERTICAL_SIGNALS,
 ];

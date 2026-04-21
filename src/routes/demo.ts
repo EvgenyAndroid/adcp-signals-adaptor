@@ -2024,12 +2024,34 @@ async function ensureTreemap() {
 // Category palette — HSL rotation with fixed S/L so all categories
 // look cohesive regardless of how many we have. Skips political-hue
 // reds (used for errors) and very-close hues.
-function categoryColor(category, allCategories) {
+function categoryHue(category, allCategories) {
   const idx = allCategories.indexOf(category);
-  if (idx < 0) return "#4f8eff";
-  // Hue step: 360 / n, offset to avoid dead-hot red (0°) and error red.
-  const hue = (30 + (idx * 360) / allCategories.length) % 360;
-  return \`hsl(\${hue} 55% 55%)\`;
+  if (idx < 0) return 220;
+  return (30 + (idx * 360) / allCategories.length) % 360;
+}
+function categoryColor(category, allCategories) {
+  return \`hsl(\${categoryHue(category, allCategories)} 55% 55%)\`;
+}
+
+// Perceived luminance from HSL — used to pick readable label color
+// per cell. Blues/purples at 55% lightness are perceptually darker
+// than yellows/greens at the same L, so a flat threshold on lightness
+// would flip labels inconsistently. Computing sRGB-relative luminance
+// gets this right across the hue wheel.
+function hslToLuminance(h, s, l) {
+  const hh = h / 360, ss = s, ll = l;
+  const a = ss * Math.min(ll, 1 - ll);
+  const f = (n) => {
+    const k = (n + hh * 12) % 12;
+    return ll - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+  };
+  const r = f(0), g = f(8), b = f(4);
+  const lin = (c) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+function isDarkColor(category, allCategories) {
+  const h = categoryHue(category, allCategories);
+  return hslToLuminance(h, 0.55, 0.55) < 0.38;
 }
 
 function renderTreemap() {
@@ -2099,14 +2121,14 @@ function renderTreemap() {
       const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
       label.setAttribute("x", leaf.x0 + 6);
       label.setAttribute("y", leaf.y0 + 16);
-      label.setAttribute("class", "treemap-cell-label");
+      label.setAttribute("class", "treemap-cell-label" + (isDarkColor(leaf.data.category, categories) ? " light" : ""));
       label.textContent = truncateToFit(leaf.data.name, Math.floor(cellW / 7));
       g.appendChild(label);
       if (cellH > 50 && cellW > 80) {
         const sub = document.createElementNS("http://www.w3.org/2000/svg", "text");
         sub.setAttribute("x", leaf.x0 + 6);
         sub.setAttribute("y", leaf.y0 + 30);
-        sub.setAttribute("class", "treemap-cell-label");
+        sub.setAttribute("class", "treemap-cell-label" + (isDarkColor(leaf.data.category, categories) ? " light" : ""));
         sub.style.fontSize = "10px";
         sub.style.fontWeight = "500";
         sub.style.opacity = "0.7";

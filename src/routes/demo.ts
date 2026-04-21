@@ -1551,6 +1551,81 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 .caps-raw-json details summary { cursor: pointer; color: var(--text-dim); outline: none; list-style: none; }
 .caps-raw-json details summary::-webkit-details-marker { display: none; }
 
+/* MCP tool catalog cards inside Capabilities tab */
+.tool-card {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: var(--radius-md); margin-bottom: 8px;
+}
+.tool-card[open] { border-color: var(--border-strong); }
+.tool-card summary {
+  padding: 12px 14px; cursor: pointer;
+  list-style: none; outline: none;
+}
+.tool-card summary::-webkit-details-marker { display: none; }
+.tool-card-head { display: flex; flex-direction: column; gap: 4px; }
+.tool-card-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tool-card-name { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--accent-hot); }
+.tool-card-desc { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+.tool-card-body {
+  padding: 0 14px 14px 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.tool-card-props-label {
+  font-size: 10.5px; color: var(--text-mut);
+  text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500;
+  margin-bottom: 8px;
+}
+.tool-card-props { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.tool-prop {
+  padding: 8px 10px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.tool-prop-key { font-size: 12.5px; }
+.tool-prop-type { color: var(--text-mut); font-size: 11px; margin-left: 6px; }
+.tool-prop-desc { color: var(--text-dim); font-size: 11.5px; margin-top: 3px; line-height: 1.5; }
+.tool-prop-enum { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+.tool-prop-enum span {
+  font-size: 10.5px; padding: 1px 7px; border-radius: 8px;
+  background: var(--bg-surface); color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.tool-card-curl-label {
+  font-size: 10.5px; color: var(--text-mut);
+  text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500;
+  margin-bottom: 6px;
+}
+.tool-card-curl {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+  font-family: var(--font-mono); font-size: 11.5px;
+  color: var(--text); overflow-x: auto; margin: 0;
+  line-height: 1.6; white-space: pre;
+}
+
+/* REST endpoint reference */
+.rest-table-shell {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: var(--radius-md); overflow: hidden;
+}
+.rest-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.rest-table th {
+  text-align: left; padding: 8px 14px;
+  font-weight: 500; font-size: 10.5px; color: var(--text-mut);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+.rest-table td { padding: 8px 14px; border-bottom: 1px solid var(--border); }
+.rest-table tr:last-child td { border-bottom: none; }
+.rest-method { font-family: var(--font-mono); font-weight: 600; font-size: 10.5px; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.rest-method.m-get { background: rgba(79,142,255,0.15); color: var(--accent); }
+.rest-method.m-post { background: rgba(16,185,129,0.15); color: var(--success); }
+.rest-method.m-delete, .rest-method.m-put { background: rgba(245,158,11,0.15); color: var(--warning); }
+.rest-path { font-family: var(--font-mono); font-size: 12px; color: var(--text); }
+.rest-note { color: var(--text-dim); font-size: 12px; }
+
 /* DTS label block in signal detail panel */
 .dts-block summary::-webkit-details-marker { display: none; }
 .dts-block summary { list-style: none; outline: none; padding: 6px 0; }
@@ -2991,6 +3066,10 @@ async function loadCapabilities() {
     const caps = await res.json();
     _capsJsonCache = caps;
     host.innerHTML = renderCapabilitiesHtml(caps);
+    // Second async fetch — tools/list. Public (no auth). Mounts into the
+    // placeholder left by renderCapabilitiesHtml so the main /capabilities
+    // payload renders first and tool cards fill in.
+    mountToolCatalog();
   } catch (e) {
     host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
   }
@@ -3173,11 +3252,155 @@ function renderCapabilitiesHtml(caps) {
         '</div>'
       : "") +
 
+    // ─── MCP tool catalog (discovery) ───
+    // Tools list is populated async via mountToolCatalog() after this
+    // template renders. The pane is public — tools/list is unauth
+    // per AdCP convention.
+    '<div class="caps-section">' +
+      '<div class="caps-section-title">MCP tools (tools/list) <span style="color:var(--text-mut);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">— discovery is public</span></div>' +
+      '<div id="caps-tool-catalog"><div style="padding:8px 4px;color:var(--text-mut);font-size:12px"><span class="spinner"></span>Loading tools/list…</div></div>' +
+    '</div>' +
+
+    // ─── REST endpoint reference ───
+    '<div class="caps-section">' +
+      '<div class="caps-section-title">REST endpoints</div>' +
+      renderRestEndpointsTable() +
+    '</div>' +
+
     // ─── Raw JSON (collapsible) ───
     '<div class="caps-section">' +
       '<div class="caps-section-title">Raw JSON</div>' +
       '<div class="caps-raw-json">' + highlightJson(JSON.stringify(caps, null, 2)) + '</div>' +
     '</div>';
+}
+
+// Static REST endpoint reference. Kept in the UI code (not fetched) so
+// this surface stays predictable — the moment an endpoint lands it
+// should be added here alongside its route handler file.
+function renderRestEndpointsTable() {
+  const rows = [
+    { m: "GET",  path: "/capabilities",        auth: "public", note: "Agent handshake — protocols, signals block, ext.ucp, ext.dts" },
+    { m: "POST", path: "/mcp",                 auth: "mixed",  note: "JSON-RPC 2.0 — discovery public, tools/call auth-gated" },
+    { m: "GET",  path: "/mcp/recent",          auth: "public", note: "Ring buffer of recent tools/call (last 50, isolate-scoped)" },
+    { m: "POST", path: "/signals/search",      auth: "public", note: "REST equivalent of tools/call get_signals" },
+    { m: "POST", path: "/signals/activate",    auth: "bearer", note: "REST equivalent of tools/call activate_signal" },
+    { m: "POST", path: "/signals/estimate",    auth: "public", note: "Dry-run sizer for builder UIs (no persist)" },
+    { m: "POST", path: "/signals/generate",    auth: "bearer", note: "Persist a composite from rules" },
+    { m: "GET",  path: "/operations/:id",      auth: "bearer", note: "Single activation status" },
+    { m: "GET",  path: "/operations",          auth: "bearer", note: "Paginated activation list, newest first" },
+    { m: "POST", path: "/admin/reseed",        auth: "bearer", note: "Drop + re-seed signals table (operator only)" },
+    { m: "GET",  path: "/signals/:id/embedding", auth: "bearer", note: "Raw UCP embedding vector for a signal" },
+    { m: "POST", path: "/signals/query",       auth: "bearer", note: "NL audience query → AST → ranked matches" },
+    { m: "GET",  path: "/ucp/concepts",        auth: "public", note: "UCP concept registry" },
+    { m: "GET",  path: "/ucp/gts",             auth: "public", note: "UCP Global Trust Score endpoint" },
+    { m: "GET",  path: "/.well-known/oauth-protected-resource", auth: "public", note: "RFC 9728 OAuth metadata" },
+    { m: "GET",  path: "/.well-known/oauth-authorization-server", auth: "public", note: "RFC 8414 AS metadata" },
+    { m: "GET",  path: "/privacy",             auth: "public", note: "DTS-referenced privacy page" },
+    { m: "GET",  path: "/health",              auth: "public", note: "Liveness" },
+  ];
+  return '' +
+    '<div class="rest-table-shell">' +
+      '<table class="rest-table"><thead><tr><th>Method</th><th>Path</th><th>Auth</th><th>Purpose</th></tr></thead><tbody>' +
+        rows.map((r) => '<tr>' +
+          '<td><span class="rest-method m-' + r.m.toLowerCase() + '">' + r.m + '</span></td>' +
+          '<td class="rest-path">' + escapeHtml(r.path) + '</td>' +
+          '<td>' + renderAuthPill(r.auth) + '</td>' +
+          '<td class="rest-note">' + escapeHtml(r.note) + '</td>' +
+        '</tr>').join("") +
+      '</tbody></table>' +
+    '</div>';
+}
+function renderAuthPill(a) {
+  if (a === "public") return '<span class="pill pill-muted">public</span>';
+  if (a === "bearer") return '<span class="pill pill-accent">bearer</span>';
+  if (a === "mixed")  return '<span class="pill pill-warning">mixed</span>';
+  return '<span class="pill pill-muted">' + escapeHtml(a) + '</span>';
+}
+
+// Fetch tools/list via the MCP JSON-RPC endpoint (no auth required —
+// discovery is public) and render each tool as a collapsible card.
+// Called by loadCapabilities() after renderCapabilitiesHtml injects the
+// placeholder. A failure leaves the placeholder in a muted error state
+// but doesn't block the rest of the tab.
+async function mountToolCatalog() {
+  const host = document.getElementById("caps-tool-catalog");
+  if (!host) return;
+  try {
+    const res = await fetch("/mcp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: rpcId++, method: "tools/list", params: {} }),
+    });
+    const body = await res.json();
+    const tools = body.result?.tools || [];
+    if (tools.length === 0) {
+      host.innerHTML = '<div style="padding:8px 4px;color:var(--text-mut);font-size:12px">tools/list returned 0 tools (unexpected).</div>';
+      return;
+    }
+    host.innerHTML = tools.map((t) => renderToolCard(t)).join("");
+  } catch (e) {
+    host.innerHTML = '<div style="padding:8px 4px;color:var(--error);font-size:12px">Failed to load tools/list: ' + escapeHtml(e.message) + '</div>';
+  }
+}
+
+function renderToolCard(tool) {
+  const required = tool.inputSchema?.required || [];
+  const props = tool.inputSchema?.properties || {};
+  const propKeys = Object.keys(props);
+  // Auth is a function of the method, not the tool — all tools/call go
+  // through the bearer gate, tools/list doesn't. Reflect that honestly.
+  return '' +
+    '<details class="tool-card">' +
+      '<summary class="tool-card-head">' +
+        '<div class="tool-card-main">' +
+          '<span class="tool-card-name">' + escapeHtml(tool.name) + '</span>' +
+          '<span class="pill pill-accent">bearer (tools/call)</span>' +
+          (required.length ? '<span class="pill pill-muted mono">' + required.length + ' required</span>' : '') +
+        '</div>' +
+        '<div class="tool-card-desc">' + escapeHtml(tool.description || "") + '</div>' +
+      '</summary>' +
+      '<div class="tool-card-body">' +
+        (propKeys.length
+          ? '<div class="tool-card-props-label">Parameters</div>' +
+            '<div class="tool-card-props">' +
+              propKeys.map((k) => {
+                const p = props[k] || {};
+                const isReq = required.includes(k);
+                return '<div class="tool-prop">' +
+                  '<div class="tool-prop-key"><span class="mono">' + escapeHtml(k) + '</span>' +
+                    (isReq ? ' <span class="pill" style="background:rgba(239,68,68,0.12);color:var(--error);font-size:9.5px">required</span>' : '') +
+                    ' <span class="tool-prop-type mono">' + escapeHtml(p.type || "any") + (p.enum ? " (enum)" : "") + '</span></div>' +
+                  (p.description ? '<div class="tool-prop-desc">' + escapeHtml(p.description) + '</div>' : "") +
+                  (Array.isArray(p.enum) ? '<div class="tool-prop-enum mono">' + p.enum.map((v) => '<span>' + escapeHtml(String(v)) + '</span>').join("") + '</div>' : "") +
+                '</div>';
+              }).join("") +
+            '</div>'
+          : '<div style="color:var(--text-mut);font-size:12px;padding:4px 2px">No parameters.</div>') +
+        '<div class="tool-card-curl-label">Example curl</div>' +
+        '<pre class="tool-card-curl">' + escapeHtml(buildExampleCurl(tool)) + '</pre>' +
+      '</div>' +
+    '</details>';
+}
+
+function buildExampleCurl(tool) {
+  // Plausible argument values per tool — matches what Discover / Builder
+  // pass so operators can replay a real request.
+  const exampleArgs = {
+    get_adcp_capabilities: {},
+    get_signals: { signal_spec: "affluent streamers 25-44", deliver_to: { deployments: [{ type: "platform", platform: "mock_dsp" }], countries: ["US"] }, max_results: 5 },
+    activate_signal: { signal_agent_segment_id: "sig_auto_in_market_new_suv", deliver_to: { deployments: [{ type: "platform", platform: "mock_dsp" }], countries: ["US"] } },
+    get_operation_status: { task_id: "op_1700000000000_abcdef" },
+    get_similar_signals: { signal_agent_segment_id: "sig_auto_in_market_new_suv", top_k: 5, deliver_to: { deployments: [{ type: "platform", platform: "mock_dsp" }], countries: ["US"] } },
+    query_signals_nl: { query: "soccer moms 35+ who stream heavily", limit: 5 },
+    get_concept: { concept_id: "SOCCER_MOM_US" },
+    search_concepts: { q: "high income", limit: 5 },
+  };
+  const args = exampleArgs[tool.name] ?? {};
+  const payload = { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: tool.name, arguments: args } };
+  return 'curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp \\' + "\n" +
+    '  -H "Authorization: Bearer demo-key-adcp-signals-v1" \\' + "\n" +
+    '  -H "Content-Type: application/json" \\' + "\n" +
+    "  -d '" + JSON.stringify(payload) + "'";
 }
 
 // Render a DTS v1.2 label as a grouped KV list. Fields are ordered by the

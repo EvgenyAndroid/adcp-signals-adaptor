@@ -6,6 +6,7 @@ import type { DB } from "../storage/db";
 import { upsertSignal, countSignals } from "../storage/signalRepo";
 import { SEEDED_SIGNALS, DERIVED_SIGNALS } from "./signalModel";
 import { ALL_ENRICHED_SIGNALS } from "./enrichedSignalModel";
+import { EXTENDED_VERTICAL_SIGNALS } from "./signals";
 import { execute } from "../storage/db";
 import type { IabTaxonomyNode } from "../types/signal";
 import { parseTaxonomyTsv } from "../connectors/iabTaxonomyLoader";
@@ -69,6 +70,16 @@ export async function runSeedPipeline(
     count++;
   }
   logger.info("enriched_signals_loaded", { count: ALL_ENRICHED_SIGNALS.length });
+
+  // 5. Insert extended vertical signals — 15 verticals × 20 signals each.
+  //    Automotive, Financial, Health, B2B, Life Events, Behavioral, Intent,
+  //    Transactional, Media, Retail, Seasonal, Psychographic, plus extension
+  //    files covering Interest / Demographic / Geographic gaps.
+  for (const signal of EXTENDED_VERTICAL_SIGNALS) {
+    await upsertSignal(db, signal);
+    count++;
+  }
+  logger.info("extended_vertical_signals_loaded", { count: EXTENDED_VERTICAL_SIGNALS.length });
 
   logger.info("seed_complete", { total: count });
 

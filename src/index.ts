@@ -31,6 +31,7 @@ import {
     handleAuthorizationServerMetadata,
     handleOAuthTokenStub,
 } from "./routes/wellKnown";
+import { handleAdminReseed } from "./routes/adminReseed";
 
 // Seed data imported as text modules via wrangler assets
 import { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv } from "./seedData";
@@ -255,6 +256,14 @@ export default {
                     true
                 );
                 response = jsonResponse({ message: "Seed complete", ...result });
+
+                // ── Admin reseed (prod-safe, auth-gated) ─────────────────────────────
+                // Drops the signals table and re-runs the pipeline with force=true.
+                // Needed because shipping new signal definitions via code alone
+                // doesn't repopulate the DB — seedPipeline short-circuits when
+                // signals already exist.
+            } else if (method === "POST" && path === "/admin/reseed") {
+                response = await handleAdminReseed(request, env, logger);
 
                 // ── Signal embedding ─────────────────────────────────────────────────
             } else if (method === "GET" && path.match(/^\/signals\/[^/]+\/embedding$/)) {

@@ -33,6 +33,9 @@ import {
 } from "./routes/wellKnown";
 import { handleAdminReseed } from "./routes/adminReseed";
 import { handleDemo } from "./routes/demo";
+import { handleEstimate } from "./routes/estimate";
+import { handleListOperations } from "./routes/listOperations";
+import { handleGenerateSegment } from "./routes/generateSegment";
 
 // Seed data imported as text modules via wrangler assets
 import { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv } from "./seedData";
@@ -109,6 +112,10 @@ export default {
             "/capabilities",
             "/health",
             "/mcp",
+            // Sec-32: /signals/estimate is read-only dry-run sizing,
+            // deliberately public for audience-transparency (same posture
+            // as /capabilities + /signals/search).
+            "/signals/estimate",
             "/ucp/concepts",
             "/ucp/gts",
             "/ucp/simulate-handshake",
@@ -250,6 +257,23 @@ export default {
                 // ── Signal activate (legacy AdCP flow) ───────────────────────────────
             } else if (method === "POST" && path === "/signals/activate") {
                 response = await handleActivateSignal(request, env, logger);
+
+                // ── Signal estimate (dry-run sizing, public) ─────────────────────────
+                // Sec-32: read-only sizer for the builder UI. Does NOT persist and
+                // does NOT return a segment_id.
+            } else if (method === "POST" && path === "/signals/estimate") {
+                response = await handleEstimate(request, env, logger);
+
+                // ── Signal generate (persist a composite from rules) ─────────────────
+                // Sec-32: auth-gated persist counterpart to /estimate. Builder UI
+                // calls this after the user commits.
+            } else if (method === "POST" && path === "/signals/generate") {
+                response = await handleGenerateSegment(request, env, logger);
+
+                // ── Operations list (auth-gated, newest first) ───────────────────────
+                // Sec-32: activations tab in the dashboard polls this every 10s.
+            } else if (method === "GET" && path === "/operations") {
+                response = await handleListOperations(request, env, logger);
 
                 // ── Dev seed force endpoint ───────────────────────────────────────────
             } else if (

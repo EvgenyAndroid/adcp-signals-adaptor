@@ -161,7 +161,7 @@ export default {
                 response = handlePrivacy();
 
             } else if (method === "GET" && path === "/mcp/recent") {
-                response = handleToolLog(request, env, logger);
+                response = await handleToolLog(request, env, logger);
 
             } else if (method === "GET" && path === "/") {
                 // Sec-31: DSP-style interactive demo UI. Landing at the bare
@@ -258,7 +258,10 @@ export default {
                 // ── MCP ───────────────────────────────────────────────────────────────
                 // OPTIONS is handled by the early global preflight at the top of fetch.
             } else if (path === "/mcp" || path.startsWith("/mcp")) {
-                response = await handleMcpRequest(request, env, logger);
+                // Sec-35: pass ctx so the MCP handler can fire D1
+                // tool-log writes via waitUntil without blocking the
+                // response.
+                response = await handleMcpRequest(request, env, logger, ctx);
 
                 // ── Signal search ────────────────────────────────────────────────────
             } else if (

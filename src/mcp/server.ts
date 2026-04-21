@@ -29,6 +29,7 @@ import { handleNLQuery } from "../domain/nlQueryHandler";
 import { handleConceptToolCall } from "../domain/conceptHandler";
 import { compactObj } from "../utils/objects";
 import { record as recordToolLog, argKeysOf } from "./toolLog";
+import { logCall as d1LogCall, cleanup as d1Cleanup, shouldRunCleanup } from "../storage/toolLogRepo";
 
 // ── JSON-RPC 2.0 types ────────────────────────────────────────────────────────
 
@@ -93,7 +94,8 @@ const MAX_MCP_BODY_BYTES = 1_000_000;
 export async function handleMcpRequest(
     request: Request,
     env: Env,
-    logger: Logger
+    logger: Logger,
+    ctx?: ExecutionContext,
 ): Promise<Response> {
     if (request.method !== "POST") {
         return new Response("Method Not Allowed", { status: 405 });
@@ -130,12 +132,12 @@ export async function handleMcpRequest(
         // discovery messages that legitimately succeed alongside unauth'd
         // tools/call attempts in the same batch.
         const responses = await Promise.all(
-            body.map((msg) => handleSingleMessage(msg, env, logger, isAuthed))
+            body.map((msg) => handleSingleMessage(msg, env, logger, isAuthed, ctx))
         );
         return jsonResponse(responses.filter(Boolean));
     }
 
-    const response = await handleSingleMessage(body, env, logger, isAuthed);
+    const response = await handleSingleMessage(body, env, logger, isAuthed, ctx);
     if (response === null) {
         return new Response(null, { status: 202 });
     }
@@ -169,6 +171,7 @@ async function handleSingleMessage(
     env: Env,
     logger: Logger,
     isAuthed: boolean,
+    ctx?: ExecutionContext,
 ): Promise<JsonRpcResponse | null> {
     if (!isValidRpcRequest(msg)) {
         return rpcError(null, RPC_INVALID_REQUEST, "Invalid JSON-RPC request");
@@ -200,35 +203,57 @@ async function handleSingleMessage(
             case "tools/list":
                 return rpcSuccess(id, { tools: ADCP_TOOLS });
             case "tools/call": {
-                // Sec-33: time + record the tool call for the observability
-                // ring buffer. Wraps handleToolCall rather than living inside
-                // it so the log captures success / error / latency from a
-                // single vantage point, and the dispatch switch stays terse.
+                // Sec-33: time + record the tool call for observability.
+                // Sec-35: additionally persist to D1 via ctx.waitUntil for
+                // cross-isolate visibility. The in-memory ring stays too
+                // (zero-latency fallback) but D1 is the canonical store
+                // queried by /mcp/recent.
                 const toolCallParams = params as McpCallToolParams;
                 const toolStart = performance.now();
+                const caller: "authed" | "unauth" = isAuthed ? "authed" : "unauth";
                 try {
                     const result = await handleToolCall(toolCallParams, env, logger);
-                    const responseBytes = tryLen(result);
+                    const responseBytes = tryLen(result) ?? 0;
+                    const durationMs = Math.round(performance.now() - toolStart);
                     recordToolLog({
                         ts: new Date().toISOString(),
                         tool: toolCallParams.name,
                         argKeys: argKeysOf(toolCallParams.arguments),
-                        latencyMs: Math.round(performance.now() - toolStart),
-                        ok: true,
-                        caller: isAuthed ? "authed" : "unauth",
+                        latencyMs: durationMs, ok: true, caller,
                         ...(responseBytes != null ? { responseBytes } : {}),
                     });
+                    if (ctx) {
+                        persistToolCall(ctx, env, {
+                            toolName: toolCallParams.name,
+                            argumentsJson: safeStringify(toolCallParams.arguments),
+                            responseSizeBytes: responseBytes,
+                            status: "ok",
+                            durationMs,
+                            caller,
+                        });
+                    }
                     return rpcSuccess(id, result);
                 } catch (err) {
+                    const durationMs = Math.round(performance.now() - toolStart);
+                    const errKind = err instanceof McpToolError ? "McpToolError" : "UnhandledError";
+                    const errMsg = err instanceof Error ? err.message : String(err);
                     recordToolLog({
                         ts: new Date().toISOString(),
                         tool: toolCallParams.name,
                         argKeys: argKeysOf(toolCallParams.arguments),
-                        latencyMs: Math.round(performance.now() - toolStart),
-                        ok: false,
-                        errorKind: err instanceof McpToolError ? "McpToolError" : "UnhandledError",
-                        caller: isAuthed ? "authed" : "unauth",
+                        latencyMs: durationMs, ok: false, errorKind: errKind, caller,
                     });
+                    if (ctx) {
+                        persistToolCall(ctx, env, {
+                            toolName: toolCallParams.name,
+                            argumentsJson: safeStringify(toolCallParams.arguments),
+                            responseSizeBytes: 0,
+                            status: "error",
+                            errorMessage: errKind + ": " + errMsg,
+                            durationMs,
+                            caller,
+                        });
+                    }
                     throw err;
                 }
             }
@@ -736,6 +761,33 @@ function isValidRpcRequest(msg: unknown): msg is JsonRpcRequest {
 function tryLen(obj: unknown): number | undefined {
     try { return JSON.stringify(obj).length; }
     catch { return undefined; }
+}
+
+function safeStringify(obj: unknown): string {
+    try { return JSON.stringify(obj ?? {}); }
+    catch { return '"[unstringifiable]"'; }
+}
+
+// Sec-35: non-blocking D1 write of the tool-call record. Swallows all
+// errors — the insert must never surface back to the MCP response path.
+// Also fires an opportunistic cleanup on ~1% of writes so the table
+// self-maintains without a cron worker.
+function persistToolCall(
+    ctx: ExecutionContext,
+    env: Env,
+    entry: Parameters<typeof d1LogCall>[1],
+): void {
+    ctx.waitUntil((async () => {
+        try {
+            const { getDb } = await import("../storage/db");
+            const db = getDb(env);
+            await d1LogCall(db, entry);
+            if (shouldRunCleanup()) {
+                // 7-day retention window — ring-buffer semantics, not audit archive.
+                await d1Cleanup(db, 7 * 24 * 60 * 60 * 1000);
+            }
+        } catch { /* fail-open, intentionally silent */ }
+    })());
 }
 
 class McpToolError extends Error {

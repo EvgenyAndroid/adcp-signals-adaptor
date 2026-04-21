@@ -357,7 +357,7 @@ ${STYLES}
         <div class="builder-grid">
           <div class="builder-rules-col">
             <div class="builder-section-label">Start from template</div>
-            <select id="builder-template" class="builder-input" style="margin-bottom:16px">
+            <select id="builder-template" class="builder-input">
               <option value="">— blank —</option>
               <option value="affluent_streamers">Affluent streamers (25-44, $150K+, high streaming)</option>
               <option value="cord_cutter_parents">Cord-cutter parents (35-54, family, high streaming)</option>
@@ -365,6 +365,14 @@ ${STYLES}
               <option value="seniors_documentary">Seniors, documentary-affine (65+, documentary)</option>
               <option value="b2b_exec_profile">B2B exec profile (35-54, graduate, 150K+)</option>
             </select>
+            <div class="template-confirm" id="template-confirm" style="display:none">
+              <span id="template-confirm-msg"></span>
+              <div class="template-confirm-actions">
+                <button class="btn-primary" id="template-confirm-apply" style="padding:5px 12px;font-size:12px">Replace</button>
+                <button class="btn-secondary" id="template-confirm-cancel" style="padding:5px 12px;font-size:12px">Cancel</button>
+              </div>
+            </div>
+            <div style="height:16px"></div>
             <div class="builder-section-label">Rules <span style="color:var(--text-mut);font-weight:400;font-family:var(--font-mono)">(max 6)</span></div>
             <div class="builder-rules" id="builder-rules"></div>
             <div class="builder-row-actions">
@@ -463,6 +471,21 @@ ${STYLES}
             </p>
           </div>
           <div class="activations-controls">
+            <select id="toollog-filter" class="builder-input" style="font-size:12px;padding:6px 10px;width:auto">
+              <option value="">All tools</option>
+              <option value="get_adcp_capabilities">get_adcp_capabilities</option>
+              <option value="get_signals">get_signals</option>
+              <option value="activate_signal">activate_signal</option>
+              <option value="get_operation_status">get_operation_status</option>
+              <option value="get_similar_signals">get_similar_signals</option>
+              <option value="query_signals_nl">query_signals_nl</option>
+              <option value="get_concept">get_concept</option>
+              <option value="search_concepts">search_concepts</option>
+            </select>
+            <button class="btn-secondary" id="toollog-pause">
+              <svg class="ico"><use href="#icon-info"/></svg>
+              <span id="toollog-pause-label">Pause</span>
+            </button>
             <button class="btn-secondary" id="toollog-refresh">
               <svg class="ico"><use href="#icon-activations"/></svg>
               <span>Refresh</span>
@@ -478,7 +501,7 @@ ${STYLES}
                 <th>Tool</th>
                 <th>Args</th>
                 <th class="numeric">Latency</th>
-                <th class="numeric">Resp bytes</th>
+                <th class="numeric">Resp</th>
                 <th>Caller</th>
                 <th>Status</th>
               </tr>
@@ -488,7 +511,9 @@ ${STYLES}
             </tbody>
           </table>
         </div>
-        <div class="table-footer"><span id="toollog-note" style="color:var(--text-mut);font-family:var(--font-mono);font-size:11.5px">—</span></div>
+        <div class="table-footer">
+          <span id="toollog-note" style="color:var(--text-mut);font-family:var(--font-mono);font-size:11.5px">—</span>
+        </div>
       </section>
 
       <!-- ── TAB: Activations ───────────────────────────────────────────── -->
@@ -1355,6 +1380,19 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 .builder-row-actions .btn-secondary { flex: 1; justify-content: center; }
 #reset-rules-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 #reset-rules-btn:hover:not(:disabled) { border-color: var(--error); color: var(--error); }
+
+/* Inline confirm when a template would overwrite non-empty rules */
+.template-confirm {
+  margin-top: 8px; padding: 10px 12px;
+  background: var(--warning-dim);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-md);
+  font-size: 12px; color: var(--warning);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.template-confirm-actions { display: flex; gap: 6px; }
+.template-confirm-actions .btn-primary,
+.template-confirm-actions .btn-secondary { flex: 1; justify-content: center; }
 .builder-note {
   margin-top: 8px; font-size: 11.5px; color: var(--text-mut);
   font-family: var(--font-mono); line-height: 1.5;
@@ -1727,7 +1765,7 @@ const state = {
     debounceTimer: null,
   },
   activations: { pollTimer: null, data: [] },
-  toolLog: { pollTimer: null, data: [] },
+  toolLog: { pollTimer: null, data: [], paused: false, filter: "", expanded: new Set() },
 };
 
 async function callTool(name, args) {
@@ -2798,49 +2836,99 @@ function renderSimilarCard(sig, tier) {
 // Sec-33: starter templates — seed rule sets for common DSP audiences.
 // Clicking a template replaces the current rules and re-runs estimate.
 const BUILDER_TEMPLATES = {
-  affluent_streamers: [
-    { dimension: "age_band", operator: "in", value: ["25-34", "35-44"] },
-    { dimension: "income_band", operator: "eq", value: "150k_plus" },
-    { dimension: "streaming_affinity", operator: "eq", value: "high" },
-  ],
-  cord_cutter_parents: [
-    { dimension: "age_band", operator: "in", value: ["35-44", "45-54"] },
-    { dimension: "household_type", operator: "eq", value: "family_with_kids" },
-    { dimension: "streaming_affinity", operator: "eq", value: "high" },
-  ],
-  urban_millennials: [
-    { dimension: "age_band", operator: "eq", value: "25-34" },
-    { dimension: "metro_tier", operator: "eq", value: "top_10" },
-    { dimension: "education", operator: "in", value: ["bachelors", "graduate"] },
-  ],
-  seniors_documentary: [
-    { dimension: "age_band", operator: "eq", value: "65+" },
-    { dimension: "content_genre", operator: "eq", value: "documentary" },
-  ],
-  b2b_exec_profile: [
-    { dimension: "age_band", operator: "in", value: ["35-44", "45-54"] },
-    { dimension: "education", operator: "eq", value: "graduate" },
-    { dimension: "income_band", operator: "eq", value: "150k_plus" },
-  ],
+  affluent_streamers: {
+    label: "Affluent Streamers 25-44",
+    defaultName: "Affluent Streamers 25-44",
+    rules: [
+      { dimension: "age_band", operator: "in", value: ["25-34", "35-44"] },
+      { dimension: "income_band", operator: "eq", value: "150k_plus" },
+      { dimension: "streaming_affinity", operator: "eq", value: "high" },
+    ],
+  },
+  cord_cutter_parents: {
+    label: "Cord-Cutter Parents",
+    defaultName: "Cord-Cutter Parents",
+    rules: [
+      { dimension: "age_band", operator: "in", value: ["35-44", "45-54"] },
+      { dimension: "household_type", operator: "eq", value: "family_with_kids" },
+      { dimension: "streaming_affinity", operator: "eq", value: "high" },
+    ],
+  },
+  urban_millennials: {
+    label: "Urban Millennials",
+    defaultName: "Urban Millennials",
+    rules: [
+      { dimension: "age_band", operator: "eq", value: "25-34" },
+      { dimension: "metro_tier", operator: "eq", value: "top_10" },
+      { dimension: "education", operator: "in", value: ["bachelors", "graduate"] },
+    ],
+  },
+  seniors_documentary: {
+    label: "Seniors · Documentary",
+    defaultName: "Seniors · Documentary",
+    rules: [
+      { dimension: "age_band", operator: "eq", value: "65+" },
+      { dimension: "content_genre", operator: "eq", value: "documentary" },
+    ],
+  },
+  b2b_exec_profile: {
+    label: "B2B Exec Profile",
+    defaultName: "B2B Exec Profile",
+    rules: [
+      { dimension: "age_band", operator: "in", value: ["35-44", "45-54"] },
+      { dimension: "education", operator: "eq", value: "graduate" },
+      { dimension: "income_band", operator: "eq", value: "150k_plus" },
+    ],
+  },
 };
+
+let _pendingTemplate = null;
 
 document.getElementById("builder-template").addEventListener("change", (e) => {
   const key = e.target.value;
   if (!key) return;
   const tpl = BUILDER_TEMPLATES[key];
+  if (!tpl) { e.target.value = ""; return; }
+  // Sec-35: inline confirm when replacing non-empty rules instead of
+  // silently clobbering. Browser confirm() is ugly + doesn't match the
+  // aesthetic. Apply directly when the rule list is empty.
+  if (state.builder.rules.length > 0) {
+    _pendingTemplate = key;
+    document.getElementById("template-confirm-msg").innerHTML =
+      'Replace <strong>' + state.builder.rules.length + ' current rule' + (state.builder.rules.length === 1 ? "" : "s") +
+      '</strong> with <strong>' + escapeHtml(tpl.label) + '</strong>?';
+    document.getElementById("template-confirm").style.display = "flex";
+  } else {
+    applyBuilderTemplate(key);
+  }
+  e.target.value = ""; // reset selector so the same template re-triggers
+});
+
+document.getElementById("template-confirm-apply").addEventListener("click", () => {
+  if (_pendingTemplate) applyBuilderTemplate(_pendingTemplate);
+  document.getElementById("template-confirm").style.display = "none";
+  _pendingTemplate = null;
+});
+document.getElementById("template-confirm-cancel").addEventListener("click", () => {
+  document.getElementById("template-confirm").style.display = "none";
+  _pendingTemplate = null;
+});
+
+function applyBuilderTemplate(key) {
+  const tpl = BUILDER_TEMPLATES[key];
   if (!tpl) return;
-  // Flatten operator=in values to eq on first — our estimate endpoint
-  // validates single values per dimension today, so the template uses
-  // eq semantics even where a future op might be "in".
-  state.builder.rules = tpl.map((r) => ({
+  state.builder.rules = tpl.rules.map((r) => ({
     dimension: r.dimension,
     operator: Array.isArray(r.value) ? "eq" : r.operator,
     value: Array.isArray(r.value) ? r.value[0] : r.value,
   }));
+  // Prefill segment name when empty. Don't overwrite if the user already
+  // typed something — respect their intent.
+  const nameInput = document.getElementById("builder-name");
+  if (nameInput && !nameInput.value.trim()) nameInput.value = tpl.defaultName;
   renderBuilderRules();
   runEstimate();
-  e.target.value = ""; // reset to blank so re-selecting the same template re-applies
-});
+}
 
 // Reset — clear all rules, segment name, and any "generated" banner so
 // the builder is back to the initial empty state. Preview returns to the
@@ -3577,8 +3665,20 @@ function fmtTime(iso) {
 // §7 MCP Tool Log — poll GET /mcp/recent every 5s while tab visible
 //────────────────────────────────────────────────────────────────────────
 document.getElementById("toollog-refresh").addEventListener("click", loadToolLog);
+document.getElementById("toollog-filter").addEventListener("change", (e) => {
+  state.toolLog.filter = e.target.value || "";
+  state.toolLog.expanded.clear();
+  loadToolLog();
+});
+document.getElementById("toollog-pause").addEventListener("click", () => {
+  state.toolLog.paused = !state.toolLog.paused;
+  document.getElementById("toollog-pause-label").textContent = state.toolLog.paused ? "Resume" : "Pause";
+  if (state.toolLog.paused) stopToolLogPolling();
+  else startToolLogPolling();
+});
 
 function startToolLogPolling() {
+  if (state.toolLog.paused) return;
   loadToolLog();
   if (state.toolLog.pollTimer) return;
   state.toolLog.pollTimer = setInterval(loadToolLog, 5_000);
@@ -3593,39 +3693,59 @@ function stopToolLogPolling() {
 async function loadToolLog() {
   const tbody = document.getElementById("toollog-tbody");
   try {
-    const res = await fetch("/mcp/recent?limit=50");
+    const qs = "?limit=50" + (state.toolLog.filter ? "&tool=" + encodeURIComponent(state.toolLog.filter) : "");
+    const res = await fetch("/mcp/recent" + qs);
     const data = await res.json();
     state.toolLog.data = data.entries || [];
     document.getElementById("nav-toollog-count").textContent = String(state.toolLog.data.length);
-    document.getElementById("toollog-note").textContent =
-      data.note ? "ℹ " + data.note : "";
+    const noteEl = document.getElementById("toollog-note");
+    const scopeBadge = data.scope === "d1"
+      ? '<span class="pill pill-success" style="font-size:10px;margin-right:6px">d1</span>'
+      : '<span class="pill pill-warning" style="font-size:10px;margin-right:6px">isolate</span>';
+    noteEl.innerHTML = scopeBadge + "ℹ " + escapeHtml(data.note || "");
     if (state.toolLog.data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No tool calls recorded in this isolate yet. Trigger one from Discover or via <code>curl /mcp</code>.</td></tr>';
+      const msg = state.toolLog.filter
+        ? 'No <code>' + escapeHtml(state.toolLog.filter) + '</code> calls in the window.'
+        : 'No tool calls recorded yet. Trigger one from Discover or via <code>curl /mcp</code>.';
+      tbody.innerHTML = '<tr><td colspan="7" class="table-empty">' + msg + '</td></tr>';
       return;
     }
-    tbody.innerHTML = state.toolLog.data.map(renderToolLogRow).join("");
+    tbody.innerHTML = state.toolLog.data.flatMap((entry, i) => renderToolLogRow(entry, i)).join("");
+    wireToolLogExpanders();
   } catch (e) {
     tbody.innerHTML = '<tr><td colspan="7" class="table-empty" style="color:var(--error)">' + escapeHtml(e.message) + '</td></tr>';
   }
 }
 
-function renderToolLogRow(entry) {
+function renderToolLogRow(entry, idx) {
   const when = fmtTime(entry.ts);
-  const argPill = (entry.argKeys || []).length
-    ? entry.argKeys.map((k) => '<span class="pill pill-muted mono" style="font-size:10.5px">' + escapeHtml(k) + '</span>').join(" ")
+  // Argument chips — prefer the arg KEYS from the in-memory record, fall
+  // back to parsing the D1 arguments_json when the D1 backend supplies
+  // the full payload. Either way the display stays tight.
+  let argChips;
+  if (Array.isArray(entry.argKeys) && entry.argKeys.length) {
+    argChips = entry.argKeys;
+  } else if (typeof entry.argumentsJson === "string") {
+    try {
+      const parsed = JSON.parse(entry.argumentsJson);
+      argChips = parsed && typeof parsed === "object" ? Object.keys(parsed).slice(0, 6) : [];
+    } catch { argChips = []; }
+  } else { argChips = []; }
+  const argPill = argChips.length
+    ? argChips.map((k) => '<span class="pill pill-muted mono" style="font-size:10.5px">' + escapeHtml(k) + '</span>').join(" ")
     : '<span style="color:var(--text-mut);font-size:11.5px">—</span>';
-  const latencyClass = entry.latencyMs > 500 ? "color:var(--warning)" : entry.latencyMs > 1500 ? "color:var(--error)" : "";
-  const bytes = entry.responseBytes != null
-    ? fmtNumber(entry.responseBytes) + "B"
-    : "—";
+  const latencyClass = entry.latencyMs > 1500 ? "color:var(--error)" : entry.latencyMs > 500 ? "color:var(--warning)" : "";
+  const bytes = entry.responseBytes != null ? fmtNumber(entry.responseBytes) + "B" : "—";
   const callerPill = entry.caller === "authed"
     ? '<span class="pill pill-accent">authed</span>'
     : '<span class="pill pill-muted">unauth</span>';
   const statusPill = entry.ok
     ? '<span class="pill pill-success">ok</span>'
-    : '<span class="pill" style="background:var(--error-dim);color:var(--error)">' + escapeHtml(entry.errorKind || "error") + '</span>';
-  return '' +
-    '<tr>' +
+    : '<span class="pill" style="background:var(--error-dim);color:var(--error)">' + escapeHtml((entry.errorKind || "error").split(":")[0]) + '</span>';
+  const rowKey = entry.id || String(idx);
+  const expanded = state.toolLog.expanded.has(rowKey);
+  const rows = [
+    '<tr class="toollog-row" data-key="' + escapeHtml(rowKey) + '" style="cursor:pointer">' +
       '<td class="td-time">' + escapeHtml(when) + '</td>' +
       '<td class="td-name" style="font-family:var(--font-mono);font-size:12.5px">' + escapeHtml(entry.tool || "") + '</td>' +
       '<td style="font-size:11px">' + argPill + '</td>' +
@@ -3633,7 +3753,39 @@ function renderToolLogRow(entry) {
       '<td class="td-numeric">' + bytes + '</td>' +
       '<td>' + callerPill + '</td>' +
       '<td>' + statusPill + '</td>' +
-    '</tr>';
+    '</tr>',
+  ];
+  if (expanded) {
+    const argsJson = entry.argumentsJson || JSON.stringify(entry.argKeys ? { keys: entry.argKeys } : {}, null, 2);
+    let pretty;
+    try { pretty = JSON.stringify(JSON.parse(argsJson), null, 2); }
+    catch { pretty = argsJson; }
+    const errorBlock = !entry.ok && entry.errorKind
+      ? '<div style="color:var(--error);margin-bottom:8px;font-family:var(--font-mono);font-size:11.5px">✗ ' + escapeHtml(entry.errorKind) + '</div>'
+      : "";
+    rows.push(
+      '<tr class="toollog-expanded"><td colspan="7" style="background:var(--bg-raised);padding:14px 18px">' +
+        errorBlock +
+        '<div style="font-size:10.5px;color:var(--text-mut);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">Arguments</div>' +
+        '<pre class="caps-raw-json" style="max-height:320px;margin:0">' + highlightJson(pretty) + '</pre>' +
+      '</td></tr>',
+    );
+  }
+  return rows;
+}
+
+function wireToolLogExpanders() {
+  document.querySelectorAll(".toollog-row").forEach((row) => {
+    row.addEventListener("click", () => {
+      const key = row.dataset.key;
+      if (state.toolLog.expanded.has(key)) state.toolLog.expanded.delete(key);
+      else state.toolLog.expanded.add(key);
+      // Re-render without refetching — just rebuild the body from cached data
+      const tbody = document.getElementById("toollog-tbody");
+      tbody.innerHTML = state.toolLog.data.flatMap((e, i) => renderToolLogRow(e, i)).join("");
+      wireToolLogExpanders();
+    });
+  });
 }
 
 // Prime tool-log count in nav on first render

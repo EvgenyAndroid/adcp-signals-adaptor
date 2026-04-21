@@ -109,6 +109,10 @@ ${STYLES}
       <button class="nav-item" data-tab="capabilities">
         <svg class="ico"><use href="#icon-info"/></svg><span>Capabilities</span>
       </button>
+      <button class="nav-item" data-tab="toollog">
+        <svg class="ico"><use href="#icon-activations"/></svg><span>Tool Log</span>
+        <span class="nav-count" id="nav-toollog-count">—</span>
+      </button>
       <a class="nav-item" href="https://github.com/EvgenyAndroid/adcp-signals-adaptor" target="_blank" rel="noopener">
         <svg class="ico"><use href="#icon-book"/></svg><span>GitHub</span>
       </a>
@@ -352,6 +356,15 @@ ${STYLES}
 
         <div class="builder-grid">
           <div class="builder-rules-col">
+            <div class="builder-section-label">Start from template</div>
+            <select id="builder-template" class="builder-input" style="margin-bottom:16px">
+              <option value="">— blank —</option>
+              <option value="affluent_streamers">Affluent streamers (25-44, $150K+, high streaming)</option>
+              <option value="cord_cutter_parents">Cord-cutter parents (35-54, family, high streaming)</option>
+              <option value="urban_millennials">Urban millennials (25-34, top-10 metros, bachelors)</option>
+              <option value="seniors_documentary">Seniors, documentary-affine (65+, documentary)</option>
+              <option value="b2b_exec_profile">B2B exec profile (35-54, graduate, 150K+)</option>
+            </select>
             <div class="builder-section-label">Rules <span style="color:var(--text-mut);font-weight:400;font-family:var(--font-mono)">(max 6)</span></div>
             <div class="builder-rules" id="builder-rules"></div>
             <div class="builder-row-actions">
@@ -377,11 +390,19 @@ ${STYLES}
 
           <div class="builder-preview-col">
             <div class="preview-hero">
-              <div class="preview-hero-label">Estimated audience</div>
+              <div class="preview-hero-label">
+                Estimated audience
+                <span class="preview-confidence-pill" id="preview-confidence"></span>
+              </div>
               <div class="preview-hero-value" id="preview-audience">—</div>
               <div class="preview-hero-sub" id="preview-sub">—</div>
               <div class="coverage-bar"><div class="coverage-bar-fill" id="coverage-fill"></div></div>
               <div class="preview-meta" id="preview-meta"></div>
+              <div class="preview-floor-warning" id="preview-floor-warning" style="display:none">
+                <svg class="ico"><use href="#icon-info"/></svg>
+                <span>Rule stack resolves below the 50K floor — the shown number is a minimum, not a true estimate. Remove a rule or widen values.</span>
+              </div>
+              <div class="preview-explain" id="preview-explain"></div>
             </div>
 
             <div class="builder-section-label" style="margin-top:20px">Funnel — size after each rule</div>
@@ -418,6 +439,46 @@ ${STYLES}
         <div id="caps-html">
           <div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading capabilities…</div></div>
         </div>
+      </section>
+
+      <!-- ── TAB: Tool Log (agent observability) ────────────────────────── -->
+      <section class="tab-pane" data-tab="toollog">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">MCP tool log</h1>
+            <p class="pane-subtitle">
+              Live view of recent <code>tools/call</code> invocations against this agent.
+              Ring buffer scoped to this Worker isolate — no arg values recorded, only keys (see
+              <a href="/privacy">privacy</a>). Polls every 5s while visible.
+            </p>
+          </div>
+          <div class="activations-controls">
+            <button class="btn-secondary" id="toollog-refresh">
+              <svg class="ico"><use href="#icon-activations"/></svg>
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="table-shell">
+          <table class="data-table" id="toollog-table">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Tool</th>
+                <th>Args</th>
+                <th class="numeric">Latency</th>
+                <th class="numeric">Resp bytes</th>
+                <th>Caller</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="toollog-tbody">
+              <tr><td colspan="7" class="table-empty"><span class="spinner"></span> fetching /mcp/recent…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer"><span id="toollog-note" style="color:var(--text-mut);font-family:var(--font-mono);font-size:11.5px">—</span></div>
       </section>
 
       <!-- ── TAB: Activations ───────────────────────────────────────────── -->
@@ -1320,6 +1381,33 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 .preview-meta {
   margin-top: 12px; font-size: 12px; color: var(--text-mut); font-family: var(--font-mono);
 }
+.preview-confidence-pill {
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 600;
+  padding: 2px 7px; border-radius: 8px; letter-spacing: 0.05em; text-transform: uppercase;
+  margin-left: 8px; vertical-align: 2px;
+}
+.preview-confidence-pill.high { background: var(--success-dim); color: var(--success); }
+.preview-confidence-pill.medium { background: var(--warning-dim); color: var(--warning); }
+.preview-confidence-pill.low { background: var(--error-dim); color: var(--error); }
+.preview-floor-warning {
+  margin-top: 12px; padding: 10px 12px;
+  background: var(--warning-dim);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-md);
+  font-size: 12px; color: var(--warning);
+  display: flex; gap: 8px; align-items: flex-start;
+}
+.preview-floor-warning .ico { flex-shrink: 0; margin-top: 2px; stroke: var(--warning); }
+.preview-explain {
+  margin-top: 14px; padding: 10px 12px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 12.5px; color: var(--text-dim); line-height: 1.55;
+  font-style: italic;
+  min-height: 0;
+}
+.preview-explain:empty { display: none; }
+.preview-explain::before { content: "→ "; color: var(--accent); font-style: normal; font-weight: 600; }
 
 .funnel-chart {
   background: var(--bg-raised); border: 1px solid var(--border);
@@ -1517,6 +1605,7 @@ const state = {
     debounceTimer: null,
   },
   activations: { pollTimer: null, data: [] },
+  toolLog: { pollTimer: null, data: [] },
 };
 
 async function callTool(name, args) {
@@ -1641,7 +1730,7 @@ function switchTab(name) {
   const crumbMap = {
     discover: "Discover", catalog: "Catalog", concepts: "Concepts",
     treemap: "Treemap", builder: "Builder", activations: "Activations",
-    capabilities: "Capabilities",
+    capabilities: "Capabilities", toollog: "Tool Log",
   };
   document.getElementById("crumb-current").textContent = crumbMap[name] || name;
 
@@ -1655,6 +1744,10 @@ function switchTab(name) {
   // Activations tab: start polling when visible, stop when hidden
   if (name === "activations") startActivationsPolling();
   else stopActivationsPolling();
+
+  // Tool Log tab: 5s poll while visible
+  if (name === "toollog") startToolLogPolling();
+  else stopToolLogPolling();
 }
 
 //────────────────────────────────────────────────────────────────────────
@@ -2475,6 +2568,53 @@ document.getElementById("add-rule-btn").addEventListener("click", () => {
   debouncedEstimate();
 });
 
+// Sec-33: starter templates — seed rule sets for common DSP audiences.
+// Clicking a template replaces the current rules and re-runs estimate.
+const BUILDER_TEMPLATES = {
+  affluent_streamers: [
+    { dimension: "age_band", operator: "in", value: ["25-34", "35-44"] },
+    { dimension: "income_band", operator: "eq", value: "150k_plus" },
+    { dimension: "streaming_affinity", operator: "eq", value: "high" },
+  ],
+  cord_cutter_parents: [
+    { dimension: "age_band", operator: "in", value: ["35-44", "45-54"] },
+    { dimension: "household_type", operator: "eq", value: "family_with_kids" },
+    { dimension: "streaming_affinity", operator: "eq", value: "high" },
+  ],
+  urban_millennials: [
+    { dimension: "age_band", operator: "eq", value: "25-34" },
+    { dimension: "metro_tier", operator: "eq", value: "top_10" },
+    { dimension: "education", operator: "in", value: ["bachelors", "graduate"] },
+  ],
+  seniors_documentary: [
+    { dimension: "age_band", operator: "eq", value: "65+" },
+    { dimension: "content_genre", operator: "eq", value: "documentary" },
+  ],
+  b2b_exec_profile: [
+    { dimension: "age_band", operator: "in", value: ["35-44", "45-54"] },
+    { dimension: "education", operator: "eq", value: "graduate" },
+    { dimension: "income_band", operator: "eq", value: "150k_plus" },
+  ],
+};
+
+document.getElementById("builder-template").addEventListener("change", (e) => {
+  const key = e.target.value;
+  if (!key) return;
+  const tpl = BUILDER_TEMPLATES[key];
+  if (!tpl) return;
+  // Flatten operator=in values to eq on first — our estimate endpoint
+  // validates single values per dimension today, so the template uses
+  // eq semantics even where a future op might be "in".
+  state.builder.rules = tpl.map((r) => ({
+    dimension: r.dimension,
+    operator: Array.isArray(r.value) ? "eq" : r.operator,
+    value: Array.isArray(r.value) ? r.value[0] : r.value,
+  }));
+  renderBuilderRules();
+  runEstimate();
+  e.target.value = ""; // reset to blank so re-selecting the same template re-applies
+});
+
 // Reset — clear all rules, segment name, and any "generated" banner so
 // the builder is back to the initial empty state. Preview returns to the
 // 240M baseline via runEstimate on empty rules.
@@ -2518,9 +2658,19 @@ async function runEstimate() {
     }
     heroEl.classList.remove("loading");
     heroEl.textContent = fmtNumber(data.estimated_audience_size);
-    document.getElementById("preview-sub").textContent = data.estimated_audience_size.toLocaleString() + " adults · " + data.confidence + " confidence";
+    document.getElementById("preview-sub").textContent = data.estimated_audience_size.toLocaleString() + " adults";
     document.getElementById("coverage-fill").style.width = Math.min(100, data.coverage_percentage) + "%";
     document.getElementById("preview-meta").textContent = data.rule_count + " rule" + (data.rule_count === 1 ? "" : "s") + " · " + data.coverage_percentage + "% of US adults · dimensions: " + (data.dimensions_used.join(", ") || "(none)");
+    // Sec-33: confidence pill, floor warning, NL explain
+    const confEl = document.getElementById("preview-confidence");
+    if (confEl && data.confidence) {
+      confEl.textContent = data.confidence;
+      confEl.className = "preview-confidence-pill " + data.confidence;
+    } else if (confEl) { confEl.textContent = ""; confEl.className = "preview-confidence-pill"; }
+    const floorEl = document.getElementById("preview-floor-warning");
+    if (floorEl) floorEl.style.display = data.estimated_audience_size <= 50_000 && data.rule_count > 0 ? "flex" : "none";
+    const explainEl = document.getElementById("preview-explain");
+    if (explainEl) explainEl.textContent = buildExplainSentence(state.builder.rules, data);
     await renderFunnelCumulative();
   } catch (e) {
     if (seq === state.builder.estimateSeq) {
@@ -2528,6 +2678,56 @@ async function runEstimate() {
       showToast("Estimate failed: " + e.message, true);
     }
   }
+}
+
+// Sec-33: human-readable one-sentence description of the composed segment.
+// Makes the audience-estimate legible for non-technical stakeholders and
+// turns the builder output into a pitch line rather than a JSON prop.
+const DIM_PHRASES = {
+  age_band: { prefix: "Adults", render: (v) => v + (String(v).endsWith("+") ? "" : "") },
+  income_band: {
+    prefix: "earning",
+    render: (v) => ({
+      "under_50k": "under $50K", "50k_100k": "$50K–$100K",
+      "100k_150k": "$100K–$150K", "150k_plus": "$150K+",
+    }[String(v)] || String(v)),
+  },
+  education: {
+    prefix: "with",
+    render: (v) => ({
+      "high_school": "HS education", "some_college": "some college",
+      "bachelors": "bachelors or above", "graduate": "graduate education",
+    }[String(v)] || String(v)),
+  },
+  household_type: {
+    prefix: "in",
+    render: (v) => ({
+      "single": "single-adult households", "couple_no_kids": "child-free couples",
+      "family_with_kids": "households with children", "senior_household": "senior households",
+    }[String(v)] || String(v)),
+  },
+  metro_tier: {
+    prefix: "in",
+    render: (v) => ({
+      "top_10": "the top-10 US metros", "top_25": "the top-25 US metros",
+      "top_50": "the top-50 US metros", "other": "smaller markets",
+    }[String(v)] || String(v)),
+  },
+  content_genre: { prefix: "with affinity for", render: (v) => String(v).replace(/_/g, "-") + " content" },
+  streaming_affinity: { prefix: "with", render: (v) => String(v) + " streaming engagement" },
+};
+
+function buildExplainSentence(rules, data) {
+  if (!rules || rules.length === 0) return "";
+  const parts = [];
+  for (const r of rules) {
+    const phr = DIM_PHRASES[r.dimension];
+    if (!phr) { parts.push(r.dimension + " " + r.operator + " " + r.value); continue; }
+    parts.push(phr.prefix + " " + phr.render(Array.isArray(r.value) ? r.value[0] : r.value));
+  }
+  const size = (data.estimated_audience_size || 0).toLocaleString();
+  const coverage = (data.coverage_percentage || 0).toFixed(data.coverage_percentage < 1 ? 2 : 1);
+  return parts.join(", ") + " — about " + size + " adults (" + coverage + "% of US adult baseline).";
 }
 
 async function renderFunnelCumulative() {
@@ -2993,6 +3193,80 @@ function fmtTime(iso) {
     return d.toISOString().slice(0, 16).replace("T", " ");
   } catch { return iso; }
 }
+
+//────────────────────────────────────────────────────────────────────────
+// §7 MCP Tool Log — poll GET /mcp/recent every 5s while tab visible
+//────────────────────────────────────────────────────────────────────────
+document.getElementById("toollog-refresh").addEventListener("click", loadToolLog);
+
+function startToolLogPolling() {
+  loadToolLog();
+  if (state.toolLog.pollTimer) return;
+  state.toolLog.pollTimer = setInterval(loadToolLog, 5_000);
+}
+function stopToolLogPolling() {
+  if (state.toolLog.pollTimer) {
+    clearInterval(state.toolLog.pollTimer);
+    state.toolLog.pollTimer = null;
+  }
+}
+
+async function loadToolLog() {
+  const tbody = document.getElementById("toollog-tbody");
+  try {
+    const res = await fetch("/mcp/recent?limit=50");
+    const data = await res.json();
+    state.toolLog.data = data.entries || [];
+    document.getElementById("nav-toollog-count").textContent = String(state.toolLog.data.length);
+    document.getElementById("toollog-note").textContent =
+      data.note ? "ℹ " + data.note : "";
+    if (state.toolLog.data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No tool calls recorded in this isolate yet. Trigger one from Discover or via <code>curl /mcp</code>.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = state.toolLog.data.map(renderToolLogRow).join("");
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="7" class="table-empty" style="color:var(--error)">' + escapeHtml(e.message) + '</td></tr>';
+  }
+}
+
+function renderToolLogRow(entry) {
+  const when = fmtTime(entry.ts);
+  const argPill = (entry.argKeys || []).length
+    ? entry.argKeys.map((k) => '<span class="pill pill-muted mono" style="font-size:10.5px">' + escapeHtml(k) + '</span>').join(" ")
+    : '<span style="color:var(--text-mut);font-size:11.5px">—</span>';
+  const latencyClass = entry.latencyMs > 500 ? "color:var(--warning)" : entry.latencyMs > 1500 ? "color:var(--error)" : "";
+  const bytes = entry.responseBytes != null
+    ? fmtNumber(entry.responseBytes) + "B"
+    : "—";
+  const callerPill = entry.caller === "authed"
+    ? '<span class="pill pill-accent">authed</span>'
+    : '<span class="pill pill-muted">unauth</span>';
+  const statusPill = entry.ok
+    ? '<span class="pill pill-success">ok</span>'
+    : '<span class="pill" style="background:var(--error-dim);color:var(--error)">' + escapeHtml(entry.errorKind || "error") + '</span>';
+  return '' +
+    '<tr>' +
+      '<td class="td-time">' + escapeHtml(when) + '</td>' +
+      '<td class="td-name" style="font-family:var(--font-mono);font-size:12.5px">' + escapeHtml(entry.tool || "") + '</td>' +
+      '<td style="font-size:11px">' + argPill + '</td>' +
+      '<td class="td-numeric" style="' + latencyClass + '">' + (entry.latencyMs ?? "—") + ' ms</td>' +
+      '<td class="td-numeric">' + bytes + '</td>' +
+      '<td>' + callerPill + '</td>' +
+      '<td>' + statusPill + '</td>' +
+    '</tr>';
+}
+
+// Prime tool-log count in nav on first render
+(async () => {
+  try {
+    const r = await fetch("/mcp/recent?limit=50");
+    if (r.ok) {
+      const d = await r.json();
+      document.getElementById("nav-toollog-count").textContent = String((d.entries || []).length);
+    }
+  } catch {}
+})();
 
 // Initial load hook: prime activations count in nav on first render so
 // operators see the real number without having to visit the tab.

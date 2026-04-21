@@ -28,6 +28,7 @@ import { getAllSignalsForCatalog } from "../domain/signalService";
 import { handleNLQuery } from "../domain/nlQueryHandler";
 import { handleConceptToolCall } from "../domain/conceptHandler";
 import { compactObj } from "../utils/objects";
+import { record as recordToolLog, argKeysOf } from "./toolLog";
 
 // ── JSON-RPC 2.0 types ────────────────────────────────────────────────────────
 
@@ -198,8 +199,39 @@ async function handleSingleMessage(
                 return rpcSuccess(id, {});
             case "tools/list":
                 return rpcSuccess(id, { tools: ADCP_TOOLS });
-            case "tools/call":
-                return rpcSuccess(id, await handleToolCall(params as McpCallToolParams, env, logger));
+            case "tools/call": {
+                // Sec-33: time + record the tool call for the observability
+                // ring buffer. Wraps handleToolCall rather than living inside
+                // it so the log captures success / error / latency from a
+                // single vantage point, and the dispatch switch stays terse.
+                const toolCallParams = params as McpCallToolParams;
+                const toolStart = performance.now();
+                try {
+                    const result = await handleToolCall(toolCallParams, env, logger);
+                    const responseBytes = tryLen(result);
+                    recordToolLog({
+                        ts: new Date().toISOString(),
+                        tool: toolCallParams.name,
+                        argKeys: argKeysOf(toolCallParams.arguments),
+                        latencyMs: Math.round(performance.now() - toolStart),
+                        ok: true,
+                        caller: isAuthed ? "authed" : "unauth",
+                        ...(responseBytes != null ? { responseBytes } : {}),
+                    });
+                    return rpcSuccess(id, result);
+                } catch (err) {
+                    recordToolLog({
+                        ts: new Date().toISOString(),
+                        tool: toolCallParams.name,
+                        argKeys: argKeysOf(toolCallParams.arguments),
+                        latencyMs: Math.round(performance.now() - toolStart),
+                        ok: false,
+                        errorKind: err instanceof McpToolError ? "McpToolError" : "UnhandledError",
+                        caller: isAuthed ? "authed" : "unauth",
+                    });
+                    throw err;
+                }
+            }
             default:
                 if (id === undefined || id === null) return null;
                 return rpcError(id, RPC_METHOD_NOT_FOUND, `Method not found: ${method}`);
@@ -696,6 +728,14 @@ function isValidRpcRequest(msg: unknown): msg is JsonRpcRequest {
         (msg as JsonRpcRequest).jsonrpc === "2.0" &&
         typeof (msg as JsonRpcRequest).method === "string"
     );
+}
+
+// Cheap JSON-serialized byte estimate for the tool-call log. Returns
+// undefined on circular structures rather than throwing — the observability
+// path must never propagate errors back into the MCP response.
+function tryLen(obj: unknown): number | undefined {
+    try { return JSON.stringify(obj).length; }
+    catch { return undefined; }
 }
 
 class McpToolError extends Error {

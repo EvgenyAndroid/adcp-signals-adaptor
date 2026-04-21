@@ -36,6 +36,8 @@ import { handleDemo } from "./routes/demo";
 import { handleEstimate } from "./routes/estimate";
 import { handleListOperations } from "./routes/listOperations";
 import { handleGenerateSegment } from "./routes/generateSegment";
+import { handlePrivacy } from "./routes/privacy";
+import { handleToolLog } from "./routes/toolLog";
 
 // Seed data imported as text modules via wrangler assets
 import { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv } from "./seedData";
@@ -116,6 +118,11 @@ export default {
             // deliberately public for audience-transparency (same posture
             // as /capabilities + /signals/search).
             "/signals/estimate",
+            // Sec-33: static privacy page referenced from ext.dts, and
+            // public tool-call observability endpoint for agent usage
+            // transparency (no arg values leak — see mcp/toolLog.ts).
+            "/privacy",
+            "/mcp/recent",
             "/ucp/concepts",
             "/ucp/gts",
             "/ucp/simulate-handshake",
@@ -150,7 +157,13 @@ export default {
 
             // ── Route matching ────────────────────────────────────────────────────
 
-            if (method === "GET" && path === "/") {
+            if (method === "GET" && path === "/privacy") {
+                response = handlePrivacy();
+
+            } else if (method === "GET" && path === "/mcp/recent") {
+                response = handleToolLog(request, env, logger);
+
+            } else if (method === "GET" && path === "/") {
                 // Sec-31: DSP-style interactive demo UI. Landing at the bare
                 // root surfaces a product-quality UI for exec/buyer demos;
                 // programmatic clients already know to go to /mcp or /capabilities.

@@ -11,6 +11,26 @@ import { handleGetGts } from "./routes/gts";
 import { handleSimulateHandshake } from "./routes/handshake";
 import { handleGetProjector } from "./routes/getProjector";
 import { handleUcpProjection, handleUcpSimilarity } from "./routes/ucpProjection";
+import {
+  handleQueryVector,
+  handleArithmetic,
+  handleAnalogy,
+  handleNeighborhood,
+  handleCoverageGaps,
+  handleAnalyticsSummary,
+} from "./routes/analyticsEndpoints";
+import {
+  handleLorenz,
+  handleKnnGraph,
+  handleSeasonality,
+  handleBestForWindow,
+  handleOptimize,
+  handlePareto,
+  handleInfoOverlap,
+  handleHitTarget,
+  handleWhatIf,
+  handleFromBrief,
+} from "./routes/portfolioEndpoints";
 import { handleMcpRequest } from "./mcp/server";
 import { jsonResponse, errorResponse, requireAuth } from "./routes/shared";
 import { createLogger } from "./utils/logger";
@@ -140,6 +160,28 @@ export default {
             // public via /signals/{id}/embedding.
             "/ucp/projection",
             "/ucp/similarity",
+            // Sec-41: Embedding Lab + audience analytics endpoints.
+            // All read-only, all driven by public embedding data.
+            "/ucp/query-vector",
+            "/ucp/arithmetic",
+            "/ucp/analogy",
+            "/ucp/neighborhood",
+            "/analytics/coverage-gaps",
+            "/analytics/summary",
+            "/analytics/lorenz",
+            "/analytics/knn-graph",
+            "/analytics/seasonality",
+            "/analytics/best-for",
+            "/portfolio/optimize",
+            "/portfolio/pareto",
+            "/portfolio/info-overlap",
+            "/portfolio/from-brief",
+            "/portfolio/what-if",
+            "/portfolio/hit-target",
+            "/agents/registry",
+            "/agents/federated-search",
+            "/agents/cross-similarity",
+            "/taxonomy/reverse",
             "/auth/linkedin/callback",
             // RFC 9728 + 8414: OAuth discovery metadata MUST be reachable
             // without authentication so clients can bootstrap the flow.
@@ -221,6 +263,40 @@ export default {
                 // ── UCP Pairwise Similarity Matrix ────────────────────────────────────
             } else if (method === "GET" && path === "/ucp/similarity") {
                 response = handleUcpSimilarity(url);
+
+                // ── Sec-41: Embedding Lab + Analytics endpoints ─────────────────────
+            } else if (method === "POST" && path === "/ucp/query-vector") {
+                response = await handleQueryVector(request);
+            } else if (method === "POST" && path === "/ucp/arithmetic") {
+                response = await handleArithmetic(request);
+            } else if (method === "POST" && path === "/ucp/analogy") {
+                response = await handleAnalogy(request);
+            } else if (method === "POST" && path === "/ucp/neighborhood") {
+                response = await handleNeighborhood(request);
+            } else if (method === "GET" && path === "/analytics/coverage-gaps") {
+                response = await handleCoverageGaps();
+            } else if (method === "GET" && path === "/analytics/summary") {
+                response = await handleAnalyticsSummary();
+            } else if (method === "GET" && path === "/analytics/lorenz") {
+                response = await handleLorenz(url, env, logger);
+            } else if (method === "GET" && path === "/analytics/knn-graph") {
+                response = handleKnnGraph(url);
+            } else if (method === "GET" && path === "/analytics/seasonality") {
+                response = await handleSeasonality(url, env, logger);
+            } else if (method === "GET" && path === "/analytics/best-for") {
+                response = await handleBestForWindow(url, env, logger);
+            } else if (method === "POST" && path === "/portfolio/optimize") {
+                response = await handleOptimize(request, env, logger);
+            } else if (method === "GET" && path === "/portfolio/pareto") {
+                response = await handlePareto(env, logger);
+            } else if (method === "POST" && path === "/portfolio/info-overlap") {
+                response = await handleInfoOverlap(request, env, logger);
+            } else if (method === "POST" && path === "/portfolio/hit-target") {
+                response = await handleHitTarget(request, env, logger);
+            } else if (method === "POST" && path === "/portfolio/what-if") {
+                response = await handleWhatIf(request, env, logger);
+            } else if (method === "POST" && path === "/portfolio/from-brief") {
+                response = await handleFromBrief(request, env, logger);
 
                 // ── LinkedIn OAuth ────────────────────────────────────────────────────
                 // Only /callback is in publicPaths. /init and /status are

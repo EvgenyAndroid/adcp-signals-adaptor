@@ -138,6 +138,24 @@ export interface SignalSummary {
     label: string;
     stage: "live" | "modeled" | "roadmap";
   }>;
+  /**
+   * Sec-41 Tier 2/3 analytics facets — derived at mapper time from the
+   * signal's metadata (no DB migration). See src/analytics/derivedFacets.ts.
+   */
+  x_analytics?: {
+    seasonality: {
+      monthly: number[];           // 12 multipliers, avg normalized to 1.0
+      peakMonth: number;
+      peakMultiplier: number;
+      troughMonth: number;
+      troughMultiplier: number;
+      coefficientOfVariation: number;
+    };
+    decayHalfLifeDays: number;
+    volatilityIndex: number;       // 0-100
+    authorityScore: number;        // 0-100
+    idStabilityClass: "stable" | "semi_stable" | "volatile";
+  };
 }
 
 // Spec: discriminated union - type "platform" or "agent"

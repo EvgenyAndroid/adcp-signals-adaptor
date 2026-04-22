@@ -46,6 +46,40 @@ export interface CanonicalSignal {
   rules?: SegmentRule[];
   createdAt: string;
   updatedAt: string;
+
+  // Sec-41: Tier 2/3 advanced analytics facets. All optional; derived at
+  // mapper time rather than persisted, so legacy signals surface the same
+  // shape without migration. Documented in docs/BESPOKE_USE_CASES.md.
+  /**
+   * 12-element monthly multiplier array (Jan=0..Dec=11). Annual avg = 1.0.
+   * Synthesized from category + name hints — demo-safe, deterministic.
+   */
+  seasonalityProfile?: {
+    monthly: number[];
+    peakMonth: number;
+    peakMultiplier: number;
+    troughMonth: number;
+    troughMultiplier: number;
+    coefficientOfVariation: number;
+  };
+  /**
+   * Data freshness half-life in days. Drives the decay curve UI and the
+   * "refresh-needed" shading on the detail panel.
+   */
+  decayHalfLifeDays?: number;
+  /**
+   * 0-100. How much reach varies month-to-month. Drives planning buffers.
+   */
+  volatilityIndex?: number;
+  /**
+   * 0-100. Data-quality score derived from DTS fields (methodology,
+   * precision, refresh, source diversity, provider reliability).
+   */
+  authorityScore?: number;
+  /**
+   * Rough bucket for ID persistence.
+   */
+  idStabilityClass?: "stable" | "semi_stable" | "volatile";
 }
 
 // SegmentRule describes one filter dimension in the rule engine

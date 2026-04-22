@@ -10,14 +10,12 @@
 // Cache key bumped to v6 for the v3-conformant shape (ucp moved to ext)
 // then v7 for the HEAD-schema-conformant shape (adds adcp.idempotency).
 
-// Cache key bumped to v15 — Sec-40 adds ext.governance.data_hygiene
-// declaring the weekly scheduled D1 purge (Sundays 06:00 UTC) + retention
-// windows for each table. v14 enriched destination entries.
-// v13 added TTD + DV360 sandbox destinations.
-// v12 added three ext blocks (id_resolution, measurement, governance).
-// v11 added ext.dts declaring IAB Data Transparency Standard v1.2.
-// v10 added ext.ucp declaring UCP embedding bridge + concept registry.
-const CACHE_KEY = "adcp_capabilities_v15";
+// Cache key bumped to v16 — Sec-41 adds ext.analytics (Tier 2/3 endpoints)
+// and ext.federation (A2A partner registry). v15 added ext.governance.
+// data_hygiene. v14 enriched destination entries. v13 added TTD + DV360
+// sandbox destinations. v12 added three ext blocks. v11 added ext.dts.
+// v10 added ext.ucp.
+const CACHE_KEY = "adcp_capabilities_v16";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
@@ -344,10 +342,8 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
           supported: true,
           version: "adcp_3.0_rc",
         },
-        // Sec-40: data hygiene — public-URL demo hygiene. Declares what
-        // we keep vs sweep, the cadence, and how to trigger it manually.
-        // Retention values live in src/storage/scheduledPurge.ts
-        // (RETENTION object) — authoritative.
+        // Sec-40: data hygiene moved inside governance block. Declares the
+        // weekly purge schedule + retention windows + manual trigger.
         data_hygiene: {
           supported: true,
           schedule: { cron: "0 6 * * SUN", cadence: "weekly", timezone: "UTC" },
@@ -369,6 +365,82 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
             auth: "DEMO_API_KEY bearer",
           },
         },
+      },
+      // Sec-41: advanced analytics. Declares the Embedding Lab + Portfolio
+      // Optimizer endpoints so buyer agents know the full surface area.
+      // All endpoints are public (read-only over public embedding data).
+      analytics: {
+        supported: true,
+        endpoints: {
+          query_vector:        { method: "POST", path: "/ucp/query-vector" },
+          semantic_arithmetic: { method: "POST", path: "/ucp/arithmetic" },
+          analogy:             { method: "POST", path: "/ucp/analogy" },
+          neighborhood:        { method: "POST", path: "/ucp/neighborhood" },
+          coverage_gaps:       { method: "GET",  path: "/analytics/coverage-gaps" },
+          lorenz:              { method: "GET",  path: "/analytics/lorenz" },
+          summary:             { method: "GET",  path: "/analytics/summary" },
+          knn_graph:           { method: "GET",  path: "/analytics/knn-graph" },
+          seasonality:         { method: "GET",  path: "/analytics/seasonality" },
+          best_for_window:     { method: "GET",  path: "/analytics/best-for" },
+          portfolio_optimize:  { method: "POST", path: "/portfolio/optimize" },
+          portfolio_pareto:    { method: "GET",  path: "/portfolio/pareto" },
+          portfolio_info_overlap: { method: "POST", path: "/portfolio/info-overlap" },
+          portfolio_from_brief:   { method: "POST", path: "/portfolio/from-brief" },
+          portfolio_what_if:      { method: "POST", path: "/portfolio/what-if" },
+          portfolio_hit_target:   { method: "POST", path: "/portfolio/hit-target" },
+        },
+        methods: {
+          similarity_metric:     "cosine",
+          arithmetic_model:      "vector_l2_normalized",
+          analogy_algorithms:    ["3cos_add", "3cos_mul"],
+          portfolio_solver:      "greedy_marginal_reach",
+          overlap_metrics:       ["jaccard", "kl_divergence", "mutual_information"],
+          projection_algorithms: ["jl_random", "umap_local_refine"],
+        },
+        limits: {
+          max_arithmetic_terms:  6,
+          max_portfolio_signals: 20,
+          max_neighborhood_k:    50,
+          max_query_vector_dim:  512,
+          min_signals_for_info_overlap: 2,
+        },
+        signal_facets: {
+          x_analytics_fields: [
+            "seasonality.monthly[12]",
+            "seasonality.peakMonth",
+            "decayHalfLifeDays",
+            "volatilityIndex",
+            "authorityScore",
+            "idStabilityClass",
+          ],
+          derivation: "deterministic_from_signal_metadata",
+          note: "Facets computed at mapper time; no DB migration required.",
+        },
+      },
+      // Sec-41: agent federation. Live partner: Dstillery. Others declared
+      // as roadmap. Procrustes alignment used for cross-space similarity.
+      federation: {
+        supported: true,
+        protocol: "adcp_a2a_v0.1",
+        endpoints: {
+          registry:         { method: "GET",  path: "/agents/registry" },
+          federated_search: { method: "POST", path: "/agents/federated-search" },
+          cross_similarity: { method: "POST", path: "/agents/cross-similarity" },
+          reverse_taxonomy: { method: "POST", path: "/taxonomy/reverse" },
+        },
+        partners: [
+          {
+            id: "dstillery",
+            url: "https://adcp-signals-agent.dstillery.com/mcp",
+            stage: "live",
+            specialties: ["behavioral_audiences", "ttd_deployment"],
+          },
+          { id: "peer39",    stage: "roadmap", specialties: ["contextual", "brand_safety"] },
+          { id: "scope3",    stage: "roadmap", specialties: ["sustainability"] },
+          { id: "nextdata",  stage: "roadmap", specialties: ["b2b_intent"] },
+        ],
+        alignment_method: "procrustes_svd_shared_anchors",
+        cache_ttl_seconds: 600,
       },
     },
   };

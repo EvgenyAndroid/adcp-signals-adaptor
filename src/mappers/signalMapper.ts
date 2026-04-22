@@ -1,6 +1,13 @@
 // src/mappers/signalMapper.ts
 import { toUcpHybridPayload } from "../ucp/ucpMapper";
 import { buildCrossTaxonomy } from "./crossTaxonomy";
+import {
+  deriveSeasonality,
+  deriveDecayHalfLifeDays,
+  deriveVolatilityIndex,
+  deriveAuthorityScore,
+  deriveIdStabilityClass,
+} from "../analytics/derivedFacets";
 // Maps CanonicalSignal → AdCP spec response shape.
 // Includes buildDtsLabel() which generates a full DTS v1.2 label
 // embedded as x_dts — the AdCP v2.5+ extension field mechanism.
@@ -305,6 +312,17 @@ export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
     x_dts: buildDtsLabel(signal),
     x_ucp: toUcpHybridPayload(signal, buildDtsLabel(signal)),
     x_cross_taxonomy: buildCrossTaxonomy(signal),
+    x_analytics: (() => {
+      // Sec-41: derived Tier 2/3 facets. All pure functions, deterministic.
+      const seasonality = deriveSeasonality(signal);
+      return {
+        seasonality,
+        decayHalfLifeDays: deriveDecayHalfLifeDays(signal),
+        volatilityIndex: deriveVolatilityIndex(seasonality),
+        authorityScore: deriveAuthorityScore(signal),
+        idStabilityClass: deriveIdStabilityClass(signal),
+      };
+    })(),
   };
 }
 

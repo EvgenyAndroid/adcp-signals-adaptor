@@ -5,7 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ENVIRONMENT          = "production"
-API_VERSION          = "3.0-rc"
+API_VERSION          = "3.0"
 EMBEDDING_ENGINE     = "llm"
 LINKEDIN_REDIRECT_URI = "https://adcp-signals-adaptor.evgeny-193.workers.dev/auth/linkedin/callback"
 # DEMO_API_KEY is provisioned via `wrangler secret put DEMO_API_KEY` — do NOT

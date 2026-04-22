@@ -10,12 +10,21 @@
 // Cache key bumped to v6 for the v3-conformant shape (ucp moved to ext)
 // then v7 for the HEAD-schema-conformant shape (adds adcp.idempotency).
 
-// Cache key bumped to v16 — Sec-41 adds ext.analytics (Tier 2/3 endpoints)
-// and ext.federation (A2A partner registry). v15 added ext.governance.
-// data_hygiene. v14 enriched destination entries. v13 added TTD + DV360
-// sandbox destinations. v12 added three ext blocks. v11 added ext.dts.
-// v10 added ext.ucp.
-const CACHE_KEY = "adcp_capabilities_v16";
+// Cache key bumped to v17 — Sec-42 AdCP 3.0 GA compliance pass.
+// Adds six new top-level fields per the GA capabilities schema
+// (/schemas/3.0.0/protocol/get-adcp-capabilities-response.json):
+//   request_signing, webhook_signing, identity, compliance_testing,
+//   specialisms, experimental_features — plus signals.data_provider_domains
+//   and signals.features. Bumps protocol version string "adcp_3.0_rc" ->
+//   "adcp_3.0" in the governance block.
+// v16 baseline: ext.analytics + ext.federation (Tier 2/3).
+// v15 baseline: ext.governance.data_hygiene.
+// v14 baseline: enriched destination entries.
+// v13 baseline: TTD + DV360 sandbox destinations.
+// v12 baseline: three ext blocks (id_resolution/measurement/governance).
+// v11 baseline: ext.dts v1.2.
+// v10 baseline: ext.ucp.
+const CACHE_KEY = "adcp_capabilities_v18";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
@@ -48,6 +57,14 @@ type AdcpCapabilities = {
   sponsored_intelligence?: unknown;
   creative?: unknown;
   brand?: unknown;
+  // Sec-42 (AdCP 3.0 GA): new top-level capability declarations.
+  // Schema: /schemas/3.0.0/protocol/get-adcp-capabilities-response.json
+  request_signing?: unknown;
+  webhook_signing?: unknown;
+  identity?: unknown;
+  compliance_testing?: unknown;
+  specialisms?: unknown;
+  experimental_features?: string[];
   ext?: Record<string, unknown>;
   /**
    * Opaque correlation data echoed unchanged in responses. Capability-discovery
@@ -72,7 +89,81 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       idempotency: { supported: true, replay_ttl_seconds: 86400 },
     },
     supported_protocols: ["signals"],
+    // Sec-42 (AdCP 3.0 GA): top-level protocol-level capability blocks.
+    // See /schemas/3.0.0/protocol/get-adcp-capabilities-response.json.
+    // Declared honestly — we only claim what we actually implement.
+    request_signing: {
+      // RFC 9421 signature VERIFICATION on inbound requests.
+      // Honest declaration: this demo agent doesn't verify inbound
+      // signatures. Buyer agents should treat us as unsigned-safe over
+      // bearer auth + HTTPS.
+      supported: false,
+      covers_content_digest: "either",
+      required_for: [],
+      warn_for: [],
+      supported_for: [],
+    },
+    webhook_signing: {
+      // Emission of signed outbound webhooks with the adcp/webhook-
+      // signing/v1 profile (ed25519 + ecdsa-p256-sha256 only per GA).
+      // We do have webhook-signing via HMAC-SHA256 (see webhookSigning.ts)
+      // which the GA profile DOESN'T permit — so we declare
+      // `legacy_hmac_fallback: true` and `supported: false` honestly.
+      // Upgrading to ed25519 signing is Sec-43 roadmap.
+      supported: false,
+      legacy_hmac_fallback: true,
+    },
+    identity: {
+      // Key-management signals. This is a single-principal demo — no
+      // per-principal isolation, no compromise-notification webhook.
+      per_principal_key_isolation: false,
+    },
+    // compliance_testing declarations are for deterministic-testing
+    // CONTROL levers (force_creative_status, force_account_status,
+    // simulate_delivery, etc.) — things an agent exposes so a test
+    // harness can drive lifecycle transitions. As a Signals-only agent
+    // we don't offer any of those, so we omit the block. The
+    // scenarios we PASS (signals_baseline, error_compliance, etc.)
+    // are reported by @adcp/client's storyboard runner, not via this
+    // capability field.
+    // Experimental features this agent surfaces beyond the core spec.
+    // Dot-separated ids per the GA schema pattern.
+    experimental_features: [
+      "ucp.embedding_bridge",
+      "ucp.concept_registry",
+      "ucp.gts_anchors",
+      "ucp.projector_simulation",
+      "dts.label_v1_2",
+      "cross_taxonomy.nine_systems",
+      "analytics.query_vector",
+      "analytics.semantic_arithmetic",
+      "analytics.analogy",
+      "analytics.neighborhood",
+      "analytics.coverage_gaps",
+      "analytics.knn_graph",
+      "analytics.lorenz",
+      "portfolio.pareto_frontier",
+      "portfolio.greedy_marginal_reach",
+      "portfolio.info_overlap",
+      "portfolio.from_brief",
+      "federation.a2a_dstillery",
+      "federation.cross_similarity",
+      "governance.data_hygiene",
+      "governance.audit_log",
+      "measurement.reach_forecaster",
+      "measurement.lift_forecaster_mock",
+      "id_resolution.nine_id_types",
+      "temporal.seasonality_profiles",
+      "temporal.decay_half_life",
+      "temporal.volatility_index",
+    ],
     signals: {
+      // Sec-42: declare GA-required fields (additive; ext fields kept
+      // for backward-compat + our own tooling).
+      data_provider_domains: ["samba.tv"],
+      features: {
+        catalog_signals: true,
+      },
       signal_categories: [
         "demographic",
         "interest",
@@ -340,7 +431,7 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
           "https://adcp-signals-adaptor.evgeny-193.workers.dev/privacy#opt-out",
         audience_bias_governance_schema: {
           supported: true,
-          version: "adcp_3.0_rc",
+          version: "adcp_3.0",
         },
         // Sec-40: data hygiene moved inside governance block. Declares the
         // weekly purge schedule + retention windows + manual trigger.

@@ -11,7 +11,7 @@ export function handleOpenApi(request: Request): Response {
     openapi: "3.1.0",
     info: {
       title: "AdCP Signals Adaptor",
-      version: "3.0-rc",
+      version: "3.0",
       description:
         "Reference implementation of the Ad Context Protocol Signals Activation Protocol. " +
         "Exposes an MCP endpoint at /mcp plus REST equivalents for every tool. " +

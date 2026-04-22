@@ -107,20 +107,20 @@ ${STYLES}
         <svg class="ico"><use href="#icon-chart"/></svg><span>Embedding</span>
       </button>
       <button class="nav-item" data-tab="lab">
-        <svg class="ico"><use href="#icon-bolt"/></svg><span>Embedding Lab</span>
-        <span class="nav-badge" style="background:var(--accent);color:#fff;font-size:9px;font-weight:600;padding:1px 6px;border-radius:10px;margin-left:auto">new</span>
+        <svg class="ico"><use href="#icon-bolt"/></svg><span>Emb. Lab</span>
+        <span class="nav-tag">new</span>
       </button>
       <button class="nav-item" data-tab="portfolio">
         <svg class="ico"><use href="#icon-chart"/></svg><span>Portfolio</span>
-        <span class="nav-badge" style="background:var(--accent);color:#fff;font-size:9px;font-weight:600;padding:1px 6px;border-radius:10px;margin-left:auto">new</span>
+        <span class="nav-tag">new</span>
       </button>
       <button class="nav-item" data-tab="seasonality">
         <svg class="ico"><use href="#icon-info"/></svg><span>Seasonality</span>
-        <span class="nav-badge" style="background:var(--accent);color:#fff;font-size:9px;font-weight:600;padding:1px 6px;border-radius:10px;margin-left:auto">new</span>
+        <span class="nav-tag">new</span>
       </button>
       <button class="nav-item" data-tab="federation">
         <svg class="ico"><use href="#icon-network"/></svg><span>Federation</span>
-        <span class="nav-badge" style="background:var(--accent);color:#fff;font-size:9px;font-weight:600;padding:1px 6px;border-radius:10px;margin-left:auto">a2a</span>
+        <span class="nav-tag nav-tag-muted">a2a</span>
       </button>
       <button class="nav-item" data-tab="activations">
         <svg class="ico"><use href="#icon-activations"/></svg><span>Activations</span>
@@ -2669,6 +2669,127 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   background: var(--bg-input); border: 1px solid var(--border);
   border-radius: 3px; padding: 2px 8px; color: var(--text);
 }
+
+/* Sec-41: actionable result list (shortlist checkbox + activate icon + row click) */
+.emb-result-row {
+  display: grid;
+  grid-template-columns: 24px 28px 1fr 170px 32px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.emb-result-row:hover { border-color: var(--accent-border); background: var(--bg-hover); }
+.err-check { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.err-check input[type=checkbox] {
+  width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer;
+}
+.err-activate {
+  background: transparent; border: 1px solid var(--border); color: var(--accent);
+  padding: 5px; border-radius: 4px; cursor: pointer; display: inline-flex;
+  align-items: center; justify-content: center; width: 28px; height: 28px;
+  transition: all 0.12s;
+}
+.err-activate:hover { background: var(--accent-dim); border-color: var(--accent-border); }
+.err-activate .ico { width: 14px; height: 14px; }
+.err-activate:disabled { opacity: 0.6; cursor: wait; }
+.err-activate.err-activating .ico { animation: spin 0.6s linear infinite; }
+.err-activate.err-activated { color: var(--ok); border-color: rgba(43, 212, 160, 0.4); background: rgba(43, 212, 160, 0.1); }
+
+/* Universal action bar above every ranked-list */
+.result-actionbar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 10px;
+}
+.result-actionbar-info {
+  flex: 1; font-size: 12px; color: var(--text-mut); min-width: 180px;
+}
+.result-actionbar-info strong { color: var(--accent); font-weight: 600; }
+
+/* Campaign CTA bar (Brief -> Portfolio, Greedy optimizer, Seasonality) */
+.campaign-cta {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: linear-gradient(135deg, var(--accent-dim), transparent);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px; margin-bottom: 14px;
+}
+.campaign-cta-info { flex: 1; font-size: 12.5px; color: var(--text); min-width: 200px; }
+.campaign-cta .btn-primary, .campaign-cta .btn-secondary { white-space: nowrap; }
+
+/* Brief/Seasonality rows now match result row grid */
+.brief-row {
+  display: grid;
+  grid-template-columns: 24px 28px 1fr 60px 32px;
+  gap: 10px; align-items: center;
+  padding: 8px 10px; margin-bottom: 4px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.sea-row {
+  display: grid;
+  grid-template-columns: 24px 28px 1fr 70px 32px;
+  gap: 10px; align-items: center;
+  padding: 8px 10px; margin-bottom: 4px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); cursor: pointer;
+}
+.sea-row:hover { border-color: var(--accent-border); background: var(--bg-hover); }
+.opt-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 200px 80px 32px;
+  gap: 10px; align-items: center;
+  padding: 6px 10px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.opt-row:hover { border-color: var(--accent-border); background: var(--bg-hover); }
+
+/* Arithmetic term select: allow longer names */
+.arith-term select.arith-id { min-width: 0; text-overflow: ellipsis; }
+.arith-term select option { font-family: var(--font-sans); font-size: 12px; }
+
+/* Pareto scatter (Sec-41) */
+.pareto-svg { width: 100%; height: auto; display: block; }
+.pareto-svg circle { cursor: pointer; transition: r 0.12s, stroke-width 0.12s; }
+.pareto-svg circle:hover { stroke: #fff !important; stroke-width: 2 !important; }
+.pareto-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  margin-top: 12px;
+}
+.pareto-legend {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  margin-top: 10px; font-size: 11px; color: var(--text-mut);
+  align-items: center;
+}
+.pl-item { display: inline-flex; align-items: center; gap: 5px; }
+.pl-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+/* Sec-41 minimal nav tags — text-only, no box. Just a tiny superscript label. */
+.nav-tag {
+  margin-left: auto;
+  font-size: 8px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.7;
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+.nav-tag-muted { color: var(--text-mut); }
 
 /* Sec-41 Embedding Lab + Portfolio + Seasonality + Federation tabs */
 .lab-subtabs, .port-subtabs {
@@ -7014,28 +7135,182 @@ async function loadEmbSignals() {
   return _embSignals;
 }
 
-// Render a result list from query-vector / arithmetic / analogy / neighborhood
-function renderEmbResultList(results, cosineKey) {
+// Delegated close handler for data-dstl-close="1" buttons. Avoids inline
+// onclicks that break when the outer template literal re-escapes single
+// quotes.
+document.addEventListener("click", function (ev) {
+  var t = ev.target;
+  if (!(t instanceof Element)) return;
+  var btn = t.closest('[data-dstl-close]');
+  if (btn) {
+    var host = document.getElementById("fed-compare-host");
+    if (host) host.innerHTML = "";
+  }
+});
+
+// Global cross-tab shortlist. Persists across Playground / Arithmetic /
+// Analogy / Neighborhood / Brief-Portfolio / Seasonality. Action bar at
+// top of every ranked list exposes bulk actions. Sec-41 "actionable
+// insights" pass.
+var _shortlist = [];
+function shortlistHas(sid) { return _shortlist.some(function (s) { return s.sid === sid; }); }
+function shortlistToggle(sid, name, category) {
+  var idx = _shortlist.findIndex(function (s) { return s.sid === sid; });
+  if (idx >= 0) _shortlist.splice(idx, 1);
+  else _shortlist.push({ sid: sid, name: name, category: category });
+}
+
+// Resolve a humanized id back to the real catalog name when possible.
+// Falls back to the provided label. Used by the arithmetic/analogy/
+// neighborhood selects so "sig_age_25_34" renders as "Core Millennials,
+// 25-34" (from catalog) instead of the mangled "Age 25 34".
+function prettyNameFor(sid, fallback) {
+  if (state.catalog && state.catalog.all) {
+    var hit = state.catalog.all.find(function (s) { return s.signal_agent_segment_id === sid; });
+    if (hit && hit.name) return hit.name;
+  }
+  return fallback || sid;
+}
+
+// Render a result list from query-vector / arithmetic / analogy /
+// neighborhood / brief-portfolio. Each row now has:
+//   1) cosine bar
+//   2) add-to-shortlist checkbox
+//   3) activate-now icon button
+//   4) click row background to open detail panel
+// The surrounding action bar is rendered separately by renderActionBar().
+function renderEmbResultList(results, cosineKey, contextId) {
   cosineKey = cosineKey || "cosine";
+  contextId = contextId || "default";
   if (!results || !results.length) {
     return '<div class="empty-state" style="padding:14px"><div class="empty-desc">No matches. Try a different query.</div></div>';
   }
-  return '<div class="emb-result-list">' + results.map(function (r, i) {
+  return '<div class="emb-result-list" data-ctx="' + escapeHtml(contextId) + '">' + results.map(function (r, i) {
     var cos = r[cosineKey] !== undefined ? r[cosineKey] : r.cosine_or_score;
     var cosPct = Math.max(0, cos) * 100;
     var sid = r.signal_agent_segment_id || r.signal_id || "";
-    return '<div class="emb-result-row" data-sid="' + escapeHtml(sid) + '">' +
+    var name = prettyNameFor(sid, r.name);
+    var category = r.category_type || r.category || "";
+    var inShortlist = shortlistHas(sid);
+    return '<div class="emb-result-row" data-sid="' + escapeHtml(sid) + '" data-name="' + escapeHtml(name) + '" data-category="' + escapeHtml(category) + '">' +
+      '<label class="err-check" title="Add to shortlist"><input type="checkbox" data-sl-sid="' + escapeHtml(sid) + '"' + (inShortlist ? ' checked' : '') + '/></label>' +
       '<div class="err-rank">' + (i + 1) + '</div>' +
       '<div class="err-main">' +
-        '<div class="err-name">' + escapeHtml(r.name || sid) + '</div>' +
-        '<div class="err-sid mono">' + escapeHtml(sid) + (r.category_type || r.category ? ' \u00b7 ' + escapeHtml(r.category_type || r.category) : '') + '</div>' +
+        '<div class="err-name">' + escapeHtml(name) + '</div>' +
+        '<div class="err-sid mono">' + escapeHtml(sid) + (category ? ' \u00b7 ' + escapeHtml(category) : '') + '</div>' +
       '</div>' +
       '<div class="err-cos">' +
         '<div class="err-cos-val mono">' + (typeof cos === "number" ? cos.toFixed(3) : "—") + '</div>' +
         '<div class="err-cos-bar"><div class="err-cos-fill" style="width:' + cosPct.toFixed(1) + '%"></div></div>' +
       '</div>' +
+      '<button class="err-activate" data-activate-sid="' + escapeHtml(sid) + '" title="Activate to mock_dsp">' +
+        '<svg class="ico"><use href="#icon-bolt"/></svg>' +
+      '</button>' +
     '</div>';
   }).join("") + '</div>';
+}
+
+// Render the universal action bar — placed above every ranked result list.
+// Shows shortlist count + bulk actions. Action identifiers (e.g. "lab-pg")
+// are scoped so each tab's buttons don't collide.
+function renderActionBar(contextId) {
+  var count = _shortlist.length;
+  return '<div class="result-actionbar">' +
+    '<div class="result-actionbar-info">' +
+      (count > 0
+        ? '<strong>' + count + '</strong> in shortlist across tabs'
+        : 'Shortlist is empty \u2014 check rows below')
+    + '</div>' +
+    '<button class="btn-secondary" data-result-action="clear-shortlist" data-ctx="' + escapeHtml(contextId) + '" style="padding:4px 12px;font-size:11.5px"' + (count === 0 ? ' disabled' : '') + '>Clear</button>' +
+    '<button class="btn-secondary" data-result-action="export-csv" data-ctx="' + escapeHtml(contextId) + '" style="padding:4px 12px;font-size:11.5px"' + (count === 0 ? ' disabled' : '') + '><svg class="ico"><use href="#icon-book"/></svg><span>Export CSV</span></button>' +
+    '<button class="btn-secondary" data-result-action="send-builder" data-ctx="' + escapeHtml(contextId) + '" style="padding:4px 12px;font-size:11.5px"' + (count === 0 ? ' disabled' : '') + '><svg class="ico"><use href="#icon-builder"/></svg><span>Open in Builder</span></button>' +
+    '<button class="btn-primary" data-result-action="activate-selected" data-ctx="' + escapeHtml(contextId) + '" style="padding:4px 12px;font-size:11.5px"' + (count === 0 ? ' disabled' : '') + '><svg class="ico"><use href="#icon-bolt"/></svg><span>Activate selected</span></button>' +
+  '</div>';
+}
+
+// Wire per-row + action-bar handlers for a results container. Called
+// after rendering into a host. onRerender is a closure that re-renders
+// the list with updated shortlist state so checkbox ticks remain consistent.
+function wireResultList(host, onRerender) {
+  if (!host) return;
+  // Checkbox → toggle shortlist
+  host.querySelectorAll('[data-sl-sid]').forEach(function (cb) {
+    cb.addEventListener('change', function (e) {
+      e.stopPropagation();
+      var row = cb.closest('.emb-result-row');
+      var sid = cb.dataset.slSid;
+      var name = row ? row.dataset.name : sid;
+      var category = row ? row.dataset.category : "";
+      shortlistToggle(sid, name, category);
+      if (onRerender) onRerender();
+    });
+  });
+  // Activate button → fire single activation
+  host.querySelectorAll('[data-activate-sid]').forEach(function (btn) {
+    btn.addEventListener('click', async function (e) {
+      e.stopPropagation();
+      var sid = btn.dataset.activateSid;
+      btn.disabled = true;
+      btn.classList.add("err-activating");
+      try {
+        var data = await callTool("activate_signal", { signal_agent_segment_id: sid, destination_platform: "mock_dsp" });
+        showToast("\u2713 Activated " + sid + (data.operation_id ? " \u00b7 " + data.operation_id : ""));
+        btn.classList.remove("err-activating");
+        btn.classList.add("err-activated");
+      } catch (err) {
+        showToast("Activation failed: " + err.message, true);
+        btn.classList.remove("err-activating");
+        btn.disabled = false;
+      }
+    });
+  });
+  // Row click → open detail panel
+  host.querySelectorAll('.emb-result-row').forEach(function (row) {
+    row.addEventListener('click', function (e) {
+      if (e.target.closest('input, button, label')) return;
+      openDetailHydrated(row.dataset.sid);
+    });
+  });
+  // Action bar buttons
+  host.querySelectorAll('[data-result-action]').forEach(function (btn) {
+    btn.addEventListener('click', function () { handleResultAction(btn.dataset.resultAction, onRerender); });
+  });
+}
+
+async function handleResultAction(action, onRerender) {
+  if (action === "clear-shortlist") {
+    _shortlist = [];
+    if (onRerender) onRerender();
+  } else if (action === "export-csv") {
+    if (_shortlist.length === 0) return;
+    function esc(v) { var s = v == null ? "" : String(v); return /[",\\n\\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+    var rows = _shortlist.map(function (s, i) { return [i + 1, s.sid, s.name, s.category].map(esc).join(","); });
+    var csv = "rank,signal_id,name,category\\n" + rows.join("\\n");
+    var blob = new Blob([csv], { type: "text/csv" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = "shortlist-" + new Date().toISOString().slice(0, 10) + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    showToast("CSV downloaded (" + _shortlist.length + " signals)");
+  } else if (action === "send-builder") {
+    if (_shortlist.length === 0) return;
+    // Pre-populate builder stack with shortlist
+    if (!state.catalog.all.length) await loadCatalog();
+    _builderStack.selected = _shortlist.map(function (s) {
+      return state.catalog.all.find(function (c) { return c.signal_agent_segment_id === s.sid; });
+    }).filter(Boolean);
+    switchTab("builder");
+    showToast("Opened Builder with " + _builderStack.selected.length + " shortlisted signals");
+  } else if (action === "activate-selected") {
+    if (_shortlist.length === 0) return;
+    showToast("Activating " + _shortlist.length + " signals\u2026");
+    var results = await Promise.allSettled(_shortlist.map(function (s) {
+      return callTool("activate_signal", { signal_agent_segment_id: s.sid, destination_platform: "mock_dsp" });
+    }));
+    var ok = results.filter(function (r) { return r.status === "fulfilled"; }).length;
+    showToast("\u2713 Activated " + ok + "/" + _shortlist.length + ". See Activations tab for status.");
+  }
 }
 
 // ─── Embedding Lab ───────────────────────────────────────────────────────
@@ -7043,7 +7318,16 @@ var _labLoaded = false;
 async function ensureLab() {
   if (_labLoaded) return;
   _labLoaded = true;
-  await loadEmbSignals();
+  // Load embeddings AND catalog so select dropdowns show real signal names
+  // (e.g. "Age 25-34" not the mangled "Age 25 34" from the humanizer).
+  await Promise.all([loadEmbSignals(), state.catalog.all.length === 0 ? loadCatalog() : Promise.resolve()]);
+  // Upgrade _embSignals names with real catalog names where available
+  if (_embSignals && state.catalog.all && state.catalog.all.length) {
+    _embSignals = _embSignals.map(function (s) {
+      var real = state.catalog.all.find(function (c) { return c.signal_agent_segment_id === s.id; });
+      return real ? Object.assign({}, s, { name: real.name }) : s;
+    });
+  }
   wireLabSubtabs();
   wireLabPlayground();
   wireLabArithmetic();
@@ -7091,15 +7375,16 @@ function wireLabPlayground() {
       var r = await fetch("/ucp/query-vector", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       var data = await r.json();
       if (!r.ok || data.error) throw new Error(data.error || ("HTTP " + r.status));
-      host.innerHTML = renderEmbResultList(data.results, "cosine");
+      var rerenderPg = function () {
+        host.innerHTML = renderActionBar("pg") + renderEmbResultList(data.results, "cosine", "pg");
+        wireResultList(host, rerenderPg);
+      };
+      rerenderPg();
       document.getElementById("pg-explainer").innerHTML = renderChartExplainer({
         what: "Top-" + data.k + " catalog audiences most semantically similar to your query.",
-        how: data.method + " (" + data.query_vector_source + "). Each result\u2019s cosine is the dot product of L2-normalized vectors.",
-        read: "Higher cosine = stronger semantic match. Cosines above 0.5 are usually solid; below 0.2 are tenuous.",
+        how: data.method + " (" + data.query_vector_source + "). Each result\u2019s cosine is the dot product of L2-normalized vectors. Use the bolt icon to activate any row directly, or check the boxes to bulk-activate.",
+        read: "Higher cosine = stronger semantic match. Cosines above 0.5 are usually solid; below 0.2 are tenuous. Click a row to open its detail panel; check rows to add to the cross-tab shortlist.",
         limits: mode === "text" ? "Text mode uses a deterministic pseudo-hash vector \u2014 useful for demo but not as semantically rich as a real LLM embedding. POST mode=vector with your own vector for production quality." : "Vector mode: caller-provided vector. Ensure your vector is from the same space_id (" + data.space_id + ").",
-      });
-      host.querySelectorAll(".emb-result-row").forEach(function (row) {
-        row.addEventListener("click", function () { openDetailHydrated(row.dataset.sid); });
       });
     } catch (e) {
       host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div></div>';
@@ -7170,15 +7455,16 @@ function wireLabArithmetic() {
       var data = await r.json();
       if (!r.ok || data.error) throw new Error(data.error || ("HTTP " + r.status));
       expr.innerHTML = '<div class="lab-expr-inner">' + escapeHtml(data.expression) + ' <span class="mono" style="color:var(--text-mut);margin-left:8px">pre-norm norm: ' + data.composed_vector_norm_before_normalize + '</span></div>';
-      host.innerHTML = renderEmbResultList(data.results, "cosine");
+      var rerenderAr = function () {
+        host.innerHTML = renderActionBar("arith") + renderEmbResultList(data.results, "cosine", "arith");
+        wireResultList(host, rerenderAr);
+      };
+      rerenderAr();
       document.getElementById("arith-explainer").innerHTML = renderChartExplainer({
-        what: "Top audiences closest to the composed vector you built.",
+        what: "Top audiences closest to the composed vector you built. Bolt icon on each row activates immediately; check rows to bulk-activate or send to Builder.",
         how: "Weighted sum of input vectors: base + \u03a3 (plus) \u2212 \u03a3 (minus), then L2-normalized. Results rank by cosine to the composed vector. Input signals excluded to prevent self-match.",
         read: "High-cosine results reflect the meaning combination you built. E.g., luxury + millennial \u2192 upscale young-adult audiences.",
         limits: "Works best with signals whose vectors are semantically coherent. Out-of-distribution combinations may produce low-confidence matches.",
-      });
-      host.querySelectorAll(".emb-result-row").forEach(function (row) {
-        row.addEventListener("click", function () { openDetailHydrated(row.dataset.sid); });
       });
     } catch (e) {
       host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div></div>';
@@ -7206,16 +7492,17 @@ function wireLabAnalogy() {
       var r = await fetch("/ucp/analogy", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a: a, b: b, c: c, algorithm: algorithm, k: 10 }) });
       var data = await r.json();
       if (!r.ok || data.error) throw new Error(data.error || ("HTTP " + r.status));
-      host.innerHTML = '<div class="lab-expr-inner" style="margin-bottom:10px">' + escapeHtml(data.analogy) + ' <span class="mono" style="color:var(--text-mut);margin-left:8px">algorithm: ' + data.algorithm + '</span></div>' +
-        renderEmbResultList(data.results, "cosine_or_score");
+      var analogyHeader = '<div class="lab-expr-inner" style="margin-bottom:10px">' + escapeHtml(data.analogy) + ' <span class="mono" style="color:var(--text-mut);margin-left:8px">algorithm: ' + data.algorithm + '</span></div>';
+      var rerenderAna = function () {
+        host.innerHTML = analogyHeader + renderActionBar("analogy") + renderEmbResultList(data.results, "cosine_or_score", "analogy");
+        wireResultList(host, rerenderAna);
+      };
+      rerenderAna();
       document.getElementById("ana-explainer").innerHTML = renderChartExplainer({
-        what: "Top candidate signals filling the analogy A:B::C:?",
+        what: "Top candidate signals filling the analogy A:B::C:? \u2014 click the bolt on any row to activate, or check rows to bulk-activate.",
         how: data.algorithm === "3cos_add" ? "3CosAdd: D = L2-normalize(B \u2212 A + C), then rank by cosine. The rotation direction from A to B is applied to C." : "3CosMul (Levy & Goldberg 2014): rank by (cos(x,B)+1) \u00d7 (cos(x,C)+1) / (cos(x,A)+\u03b5+1). More robust to degenerate analogies.",
         read: "Top result is the best vector-space analogy. High scores = parallel direction between (A\u2192B) and (C\u2192result).",
         limits: "Works best when the A\u2192B relation is simple (tier upgrade, demographic shift). Complex relations may not generalize.",
-      });
-      host.querySelectorAll(".emb-result-row").forEach(function (row) {
-        row.addEventListener("click", function () { openDetailHydrated(row.dataset.sid); });
       });
     } catch (e) {
       host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div></div>';
@@ -7242,9 +7529,13 @@ function wireLabNeighborhood() {
         '<div class="nbh-stat"><div class="nbh-stat-label">Distance to centroid</div><div class="nbh-stat-val">' + data.catalog_centroid_distance + '</div></div>' +
         '<div class="nbh-stat"><div class="nbh-stat-label">Role</div><div class="nbh-stat-val">' + (data.is_prototypical ? "prototypical" : "edge case") + '</div></div>' +
       '</div>';
-      host.innerHTML = statsHtml + renderEmbResultList(data.neighbors, "cosine");
+      var rerenderNbh = function () {
+        host.innerHTML = statsHtml + renderActionBar("nbh") + renderEmbResultList(data.neighbors, "cosine", "nbh");
+        wireResultList(host, rerenderNbh);
+      };
+      rerenderNbh();
       document.getElementById("nbh-explainer").innerHTML = renderChartExplainer({
-        what: "The k nearest neighbors of your seed signal, plus local density stats.",
+        what: "The k nearest neighbors of your seed signal, plus local density stats. Row bolt activates immediately; checkboxes add to cross-tab shortlist.",
         how: "Cosine-rank across the 26-vector embedding store. Local density = mean cosine to top-k neighbors (0..1). Centroid distance = 1 \u2212 cos(signal, catalog_centroid).",
         read: "High local density = tight cluster (alternatives). Low centroid distance = \u201cprototypical\u201d of the catalog; high = specialty/edge audience.",
         limits: "Computed over the 26 embedded signals only. Future: extend to full 520-signal catalog via incremental embedding.",
@@ -7339,45 +7630,125 @@ function wirePortSubtabs() {
 async function renderPortPareto() {
   var host = document.getElementById("port-pareto-viz");
   try {
+    // Pull both the Pareto frontier AND the full catalog so we can show
+    // dominated points as context behind the highlighted frontier.
+    if (state.catalog.all.length === 0) await loadCatalog();
     var r = await fetch("/portfolio/pareto");
     var data = await r.json();
-    var all = data.frontier || [];
-    if (!all.length) { host.innerHTML = '<div class="empty-state"><div class="empty-title">No frontier points</div></div>'; return; }
-    // Render 2D scatter: x = log reach, y = cpm. Color = category. Size = specificity.
-    var reaches = all.map(function (p) { return p.reach; });
-    var cpms = all.map(function (p) { return p.cpm; });
-    var xMin = Math.log10(Math.min.apply(null, reaches) + 1), xMax = Math.log10(Math.max.apply(null, reaches) + 1);
-    var yMin = Math.min.apply(null, cpms), yMax = Math.max.apply(null, cpms);
-    var W = 720, H = 400, pad = 50;
+    var frontier = data.frontier || [];
+    if (!frontier.length) { host.innerHTML = '<div class="empty-state"><div class="empty-title">No frontier points</div></div>'; return; }
+    var frontierIds = new Set(frontier.map(function (p) { return p.signal_id; }));
+    // Build all-points list from catalog (dominated + frontier)
+    var allPoints = state.catalog.all
+      .filter(function (s) { return (s.estimated_audience_size || 0) > 0 && fmtCPM(s).cpm > 0; })
+      .map(function (s) {
+        var cpm = fmtCPM(s).cpm;
+        var specificity = s.category_type === "purchase_intent" ? 0.85
+          : s.category_type === "composite" ? 0.80
+          : s.category_type === "interest" ? 0.65
+          : s.category_type === "demographic" ? 0.45 : 0.40;
+        return {
+          signal_id: s.signal_agent_segment_id,
+          name: s.name,
+          reach: s.estimated_audience_size,
+          cpm: cpm,
+          specificity: specificity,
+          category: s.category_type,
+          on_frontier: frontierIds.has(s.signal_agent_segment_id),
+        };
+      });
+    if (!allPoints.length) allPoints = frontier.map(function (p) { return Object.assign({}, p, { on_frontier: true }); });
+
+    var reaches = allPoints.map(function (p) { return p.reach; });
+    var cpms = allPoints.map(function (p) { return p.cpm; });
+    var rMinLog = Math.log10(Math.max(1, Math.min.apply(null, reaches)) + 1);
+    var rMaxLog = Math.log10(Math.max.apply(null, reaches) + 1);
+    var cMin = 0;
+    var cMax = Math.max.apply(null, cpms);
+    cMax = Math.ceil(cMax * 1.1);
+    // Expand a bit so dots at extremes aren't clipped
+    var xPad = (rMaxLog - rMinLog) * 0.05 || 0.5;
+    rMinLog = Math.max(0, rMinLog - xPad);
+    rMaxLog = rMaxLog + xPad;
+
+    var W = 760, H = 460, padL = 60, padR = 28, padT = 24, padB = 52;
     var colorMap = { demographic: "#4f8eff", interest: "#8b6eff", purchase_intent: "#ff7a5c", geo: "#2bd4a0", composite: "#ffcb5c" };
-    function sx(v) { return pad + (Math.log10(v + 1) - xMin) / (xMax - xMin + 1e-9) * (W - 2 * pad); }
-    function sy(v) { return H - pad - (v - yMin) / (yMax - yMin + 1e-9) * (H - 2 * pad); }
-    var dots = all.map(function (p) {
-      var radius = 4 + (p.specificity || 0) * 5;
+    function sx(reach) { return padL + (Math.log10(reach + 1) - rMinLog) / (rMaxLog - rMinLog + 1e-9) * (W - padL - padR); }
+    function sy(cpm)   { return H - padB - (cpm - cMin) / (cMax - cMin + 1e-9) * (H - padT - padB); }
+
+    // X tick marks: log scale, so use round powers of 10 between min and max reach
+    var xTicks = [];
+    var decStart = Math.floor(rMinLog);
+    var decEnd = Math.ceil(rMaxLog);
+    for (var d = decStart; d <= decEnd; d++) {
+      var v = Math.pow(10, d);
+      if (Math.log10(v + 1) >= rMinLog - 0.01 && Math.log10(v + 1) <= rMaxLog + 0.01) {
+        xTicks.push({ v: v, label: v >= 1e9 ? (v / 1e9) + "B" : v >= 1e6 ? (v / 1e6) + "M" : v >= 1e3 ? (v / 1e3) + "K" : String(v) });
+      }
+    }
+    // Y tick marks: 5 evenly-spaced round dollar values
+    var yTicks = [];
+    for (var i = 0; i <= 5; i++) {
+      var yv = cMin + (cMax - cMin) * i / 5;
+      yTicks.push({ v: yv, label: "$" + yv.toFixed(yv >= 10 ? 0 : 1) });
+    }
+
+    var gridlines = '';
+    xTicks.forEach(function (t) {
+      var x = sx(t.v);
+      gridlines += '<line x1="' + x + '" y1="' + padT + '" x2="' + x + '" y2="' + (H - padB) + '" stroke="var(--border)" stroke-opacity="0.35" stroke-dasharray="2,3"/>';
+      gridlines += '<text x="' + x + '" y="' + (H - padB + 16) + '" text-anchor="middle" fill="var(--text-mut)" font-size="10" font-family="ui-monospace">' + t.label + '</text>';
+    });
+    yTicks.forEach(function (t) {
+      var y = sy(t.v);
+      gridlines += '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '" stroke="var(--border)" stroke-opacity="0.35" stroke-dasharray="2,3"/>';
+      gridlines += '<text x="' + (padL - 8) + '" y="' + (y + 3) + '" text-anchor="end" fill="var(--text-mut)" font-size="10" font-family="ui-monospace">' + t.label + '</text>';
+    });
+
+    // Draw dominated first (behind), then frontier (in front, gold halo)
+    function dot(p, isFrontier) {
+      var radius = isFrontier ? (4.5 + (p.specificity || 0) * 5) : 3;
       var color = colorMap[p.category] || "#8892a6";
-      return '<circle cx="' + sx(p.reach).toFixed(1) + '" cy="' + sy(p.cpm).toFixed(1) + '" r="' + radius.toFixed(1) + '" fill="' + color + '" fill-opacity="0.75" stroke="gold" stroke-width="1.2" data-sid="' + escapeHtml(p.signal_id) + '">' +
-        '<title>' + escapeHtml(p.name) + ' · reach=' + (p.reach / 1e6).toFixed(1) + 'M · CPM=$' + p.cpm.toFixed(2) + ' · spec=' + p.specificity + '</title>' +
+      var stroke = isFrontier ? 'stroke="gold" stroke-width="1.3"' : 'stroke="rgba(255,255,255,0.1)" stroke-width="0.5"';
+      var op = isFrontier ? 0.9 : 0.35;
+      return '<circle cx="' + sx(p.reach).toFixed(1) + '" cy="' + sy(p.cpm).toFixed(1) + '" r="' + radius.toFixed(1) + '" fill="' + color + '" fill-opacity="' + op + '" ' + stroke + ' data-sid="' + escapeHtml(p.signal_id) + '" class="' + (isFrontier ? 'pareto-front' : 'pareto-dom') + '">' +
+        '<title>' + escapeHtml(p.name) + ' · reach=' + (p.reach / 1e6).toFixed(1) + 'M · CPM=$' + p.cpm.toFixed(2) + ' · spec=' + (p.specificity || 0).toFixed(2) + (isFrontier ? ' · PARETO-OPTIMAL' : '') + '</title>' +
       '</circle>';
-    }).join("");
-    host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
-      '<line x1="' + pad + '" y1="' + (H - pad) + '" x2="' + (W - pad) + '" y2="' + (H - pad) + '" stroke="var(--border)"/>' +
-      '<line x1="' + pad + '" y1="' + pad + '" x2="' + pad + '" y2="' + (H - pad) + '" stroke="var(--border)"/>' +
-      '<text x="' + (W - pad) + '" y="' + (H - 20) + '" text-anchor="end" fill="var(--text-mut)" font-size="11" font-family="ui-monospace">log reach \u2192</text>' +
-      '<text x="20" y="' + pad + '" fill="var(--text-mut)" font-size="11" font-family="ui-monospace">CPM ($)</text>' +
-      dots +
+    }
+    var dominated = allPoints.filter(function (p) { return !p.on_frontier; }).map(function (p) { return dot(p, false); }).join("");
+    var front = allPoints.filter(function (p) { return p.on_frontier; }).map(function (p) { return dot(p, true); }).join("");
+
+    host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" class="pareto-svg">' +
+      gridlines +
+      // Axes
+      '<line x1="' + padL + '" y1="' + (H - padB) + '" x2="' + (W - padR) + '" y2="' + (H - padB) + '" stroke="var(--border)" stroke-width="1"/>' +
+      '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (H - padB) + '" stroke="var(--border)" stroke-width="1"/>' +
+      // Axis titles
+      '<text x="' + ((padL + W - padR) / 2) + '" y="' + (H - 8) + '" text-anchor="middle" fill="var(--text)" font-size="11" font-weight="600">Reach (log scale, unique audience)</text>' +
+      '<text x="16" y="' + ((padT + H - padB) / 2) + '" text-anchor="middle" fill="var(--text)" font-size="11" font-weight="600" transform="rotate(-90, 16, ' + ((padT + H - padB) / 2) + ')">CPM ($)</text>' +
+      dominated + front +
     '</svg>' +
-    '<div style="margin-top:10px;display:flex;gap:14px;flex-wrap:wrap;font-size:11px">' +
-      Object.keys(colorMap).map(function (k) { return '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + colorMap[k] + ';margin-right:4px"></span>' + k + '</span>'; }).join('') +
+    // Summary cards
+    '<div class="pareto-stats">' +
+      '<div class="lab-stat-card"><div class="lab-stat-label">Total signals</div><div class="lab-stat-val">' + allPoints.length + '</div></div>' +
+      '<div class="lab-stat-card"><div class="lab-stat-label">On frontier</div><div class="lab-stat-val" style="color:gold">' + frontier.length + '</div></div>' +
+      '<div class="lab-stat-card"><div class="lab-stat-label">Most reach</div><div class="lab-stat-val" style="font-size:13px">' + escapeHtml(data.summary.most_reach || "—") + '</div></div>' +
+      '<div class="lab-stat-card"><div class="lab-stat-label">Lowest CPM</div><div class="lab-stat-val" style="font-size:13px">' + escapeHtml(data.summary.lowest_cost || "—") + '</div></div>' +
+    '</div>' +
+    '<div class="pareto-legend">' +
+      Object.keys(colorMap).map(function (k) { return '<span class="pl-item"><span class="pl-dot" style="background:' + colorMap[k] + '"></span>' + k.replace("_", " ") + '</span>'; }).join('') +
+      '<span class="pl-item" style="margin-left:auto"><span class="pl-dot" style="background:transparent;border:1.5px solid gold"></span>Pareto-optimal</span>' +
+      '<span class="pl-item"><span class="pl-dot" style="background:#8892a6;opacity:0.45"></span>dominated</span>' +
     '</div>';
     document.getElementById("port-pareto-explainer").innerHTML = renderChartExplainer({
-      what: "Every Pareto-efficient signal in the catalog under reach \u00d7 CPM \u00d7 specificity.",
-      how: "A signal is Pareto-efficient if no other signal has \u2265 reach AND \u2264 CPM AND \u2265 specificity (with at least one strict). Frontier: " + data.frontier_count + " of " + data.total_points + " candidates.",
-      read: "Dots upper-left = cheap + broad but low specificity. Dots lower-right = premium-priced but highly specific. Any dot on the frontier is \u201coptimal\u201d for some budget preference.",
-      limits: "Static snapshot. Ignores temporal availability and activation platform compatibility.",
+      what: "Every signal in the catalog plotted as reach (log-scale X) vs CPM (Y). Gold-outlined dots are Pareto-efficient — no other signal beats them on all three of {more reach, less CPM, more specificity}.",
+      how: "A signal is Pareto-efficient if no other signal has \u2265 reach AND \u2264 CPM AND \u2265 specificity (with at least one strict inequality). Dot radius \u221d specificity score; color = category type. Frontier: " + frontier.length + " of " + allPoints.length + " candidates.",
+      read: "Upper-left = premium-CPM niche audiences. Lower-right = cheap broad reach. Gold dots are the only rational picks — dominated dots are strictly worse than at least one gold dot. Click any dot to open its detail panel.",
+      limits: "Static snapshot. Ignores temporal availability and deployment-platform compatibility. Specificity is heuristic (category-derived).",
     });
     host.querySelectorAll("circle").forEach(function (el) { if (el.dataset.sid) el.addEventListener("click", function () { openDetailHydrated(el.dataset.sid); }); });
   } catch (e) {
-    host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">Could not load frontier</div></div>';
+    host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">Could not load frontier: ' + escapeHtml(String(e.message || e)) + '</div></div>';
   }
 }
 function wirePortOptimizer() {
@@ -7394,15 +7765,16 @@ function wirePortOptimizer() {
       var r = await fetch("/portfolio/optimize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       var data = await r.json();
       if (data.picked.length === 0) { host.innerHTML = '<div class="empty-state"><div class="empty-title">No signals fit budget</div></div>'; return; }
-      // Waterfall
+      // Waterfall with per-row activate + bulk action bar
       var maxMarg = Math.max.apply(null, data.picked.map(function (p) { return p.marginal_reach; }));
       var wf = '<div class="opt-waterfall">' + data.picked.map(function (p, i) {
         var pct = maxMarg > 0 ? (p.marginal_reach / maxMarg) * 100 : 0;
-        return '<div class="opt-row">' +
+        return '<div class="opt-row" data-sid="' + escapeHtml(p.signal_id) + '">' +
           '<div class="opt-rank">' + (i + 1) + '</div>' +
           '<div class="opt-name">' + escapeHtml(p.name) + '<br><span class="mono" style="font-size:10.5px;color:var(--text-mut)">$' + p.cost.toFixed(0) + ' \u00b7 CPM $' + p.cpm.toFixed(2) + '</span></div>' +
           '<div class="opt-bar"><div class="opt-bar-fill" style="width:' + pct.toFixed(1) + '%"></div></div>' +
           '<div class="opt-margin mono">+' + (p.marginal_reach / 1e6).toFixed(2) + 'M</div>' +
+          '<button class="err-activate" data-opt-activate="' + escapeHtml(p.signal_id) + '" title="Activate to mock_dsp"><svg class="ico"><use href="#icon-bolt"/></svg></button>' +
         '</div>';
       }).join("") + '</div>';
       var summary = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">' +
@@ -7411,11 +7783,55 @@ function wirePortOptimizer() {
         '<div class="lab-stat-card"><div class="lab-stat-label">Efficiency</div><div class="lab-stat-val">' + data.efficiency.toLocaleString() + '/k$</div></div>' +
         '<div class="lab-stat-card"><div class="lab-stat-label">Overlap waste</div><div class="lab-stat-val">' + (data.overlap_waste / 1e6).toFixed(1) + 'M</div></div>' +
       '</div>';
-      host.innerHTML = summary + wf;
+      var actionBar = '<div class="campaign-cta">' +
+        '<div class="campaign-cta-info"><strong>' + data.picked.length + '-signal portfolio</strong> \u2014 budget $' + data.total_cost.toLocaleString() + ', reach ' + (data.total_unique_reach / 1e6).toFixed(1) + 'M</div>' +
+        '<button class="btn-secondary" data-opt-action="export" style="padding:6px 14px">Export plan</button>' +
+        '<button class="btn-secondary" data-opt-action="builder" style="padding:6px 14px">Open in Builder</button>' +
+        '<button class="btn-primary" data-opt-action="activate-all" style="padding:6px 14px"><svg class="ico"><use href="#icon-bolt"/></svg><span>Activate portfolio</span></button>' +
+      '</div>';
+      host.innerHTML = summary + actionBar + wf;
+      // Wire
+      host.querySelectorAll('[data-opt-activate]').forEach(function (b) {
+        b.addEventListener('click', async function (e) {
+          e.stopPropagation();
+          var sid = b.dataset.optActivate;
+          b.disabled = true;
+          try { await callTool("activate_signal", { signal_agent_segment_id: sid, destination_platform: "mock_dsp" }); showToast("\u2713 Activated"); b.classList.add("err-activated"); }
+          catch (err) { showToast("Failed: " + err.message, true); b.disabled = false; }
+        });
+      });
+      host.querySelectorAll('[data-opt-action]').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          var act = btn.dataset.optAction;
+          if (act === "activate-all") {
+            showToast("Activating portfolio (" + data.picked.length + " signals)\u2026");
+            var res = await Promise.allSettled(data.picked.map(function (p) { return callTool("activate_signal", { signal_agent_segment_id: p.signal_id, destination_platform: "mock_dsp" }); }));
+            var ok = res.filter(function (x) { return x.status === "fulfilled"; }).length;
+            showToast("\u2713 Portfolio activated: " + ok + "/" + data.picked.length);
+          } else if (act === "export") {
+            function esc(v) { var s = v == null ? "" : String(v); return /[",\\n\\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+            var hdr = "rank,signal_id,name,cost,cpm,marginal_reach,cumulative_reach";
+            var rws = data.picked.map(function (p, i) { return [i + 1, p.signal_id, p.name, p.cost, p.cpm, p.marginal_reach, p.cumulative_reach].map(esc).join(","); });
+            var blob = new Blob([hdr + "\\n" + rws.join("\\n")], { type: "text/csv" });
+            var url = URL.createObjectURL(blob); var a = document.createElement("a"); a.href = url; a.download = "portfolio-optimized.csv"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+            showToast("Portfolio exported");
+          } else if (act === "builder") {
+            if (!state.catalog.all.length) await loadCatalog();
+            _builderStack.selected = data.picked.map(function (p) {
+              return state.catalog.all.find(function (s) { return s.signal_agent_segment_id === p.signal_id; });
+            }).filter(Boolean);
+            switchTab("builder");
+            showToast("Opened in Builder");
+          }
+        });
+      });
+      host.querySelectorAll('.opt-row').forEach(function (row) {
+        row.addEventListener('click', function (e) { if (e.target.closest('button')) return; if (row.dataset.sid) openDetailHydrated(row.dataset.sid); });
+      });
       document.getElementById("opt-explainer").innerHTML = renderChartExplainer({
-        what: "Greedy portfolio: signals picked one at a time, each iteration the one adding the most unique reach.",
+        what: "Greedy portfolio: signals picked one at a time, each iteration the one adding the most unique reach. <strong>Activate portfolio</strong> fires them all in parallel.",
         how: "At each step: for each candidate not yet picked, compute marginal reach = reach \u2212 \u03a3 (jaccard\u00d7min_reach) across already-picked. Pick the one maximizing marginal reach, subject to budget. Cost = reach \u00d7 CPM / 1000.",
-        read: "Earlier tall bars = high-value standalones. Later shorter bars = saturating \u2014 overlap with existing picks eats into gains. Total = cumulative reach delivered.",
+        read: "Earlier tall bars = high-value standalones. Later shorter bars = saturating \u2014 overlap with existing picks eats into gains. Click any row's bolt icon to activate just that one; \u201cActivate portfolio\u201d fires everything.",
         limits: "Heuristic Jaccard for overlap; real deduplication needs cleanroom-matched actual audience membership.",
       });
     } catch (e) {
@@ -7465,21 +7881,77 @@ function wirePortFromBrief() {
       var r = await fetch("/portfolio/from-brief", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brief: brief, budget: parseFloat(document.getElementById("brief-budget").value) || 250000 }) });
       var data = await r.json();
       var rows = data.portfolio.map(function (p) {
-        return '<div class="brief-row">' +
+        return '<div class="brief-row" data-sid="' + escapeHtml(p.signal_id) + '">' +
+          '<label class="err-check" title="Add to shortlist"><input type="checkbox" data-brief-sl="' + escapeHtml(p.signal_id) + '"' + (shortlistHas(p.signal_id) ? ' checked' : '') + '/></label>' +
           '<div class="brief-rank">' + p.rank + '</div>' +
           '<div class="brief-main"><div class="brief-name">' + escapeHtml(p.name) + '</div><div class="brief-reason mono">' + escapeHtml(p.reasoning) + '</div></div>' +
           '<div class="brief-alloc mono">' + p.allocation_pct + '%</div>' +
+          '<button class="err-activate" data-brief-activate="' + escapeHtml(p.signal_id) + '" title="Activate to mock_dsp"><svg class="ico"><use href="#icon-bolt"/></svg></button>' +
         '</div>';
       }).join("");
+      // Primary CTA: Activate entire campaign — the "what do I do now" answer
+      var campaignBar =
+        '<div class="campaign-cta">' +
+          '<div class="campaign-cta-info"><strong>' + data.portfolio.length + '-signal campaign</strong> composed from your brief. Total reach ' + (data.total_unique_reach / 1e6).toFixed(1) + 'M at $' + data.total_cost.toLocaleString() + '.</div>' +
+          '<button class="btn-secondary" data-brief-action="export" style="padding:6px 14px">Export plan</button>' +
+          '<button class="btn-secondary" data-brief-action="builder" style="padding:6px 14px">Open in Builder</button>' +
+          '<button class="btn-primary" data-brief-action="activate-all" style="padding:6px 14px"><svg class="ico"><use href="#icon-bolt"/></svg><span>Activate campaign</span></button>' +
+        '</div>';
       host.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">' +
         '<div class="lab-stat-card"><div class="lab-stat-label">Total cost</div><div class="lab-stat-val">$' + data.total_cost.toLocaleString() + '</div></div>' +
         '<div class="lab-stat-card"><div class="lab-stat-label">Unique reach</div><div class="lab-stat-val">' + (data.total_unique_reach / 1e6).toFixed(1) + 'M</div></div>' +
         '<div class="lab-stat-card"><div class="lab-stat-label">Candidates</div><div class="lab-stat-val">' + data.candidates_from_embedding + '</div></div>' +
-      '</div>' + rows;
+      '</div>' + campaignBar + rows;
+      // Wire brief-level actions
+      host.querySelectorAll('[data-brief-activate]').forEach(function (b) {
+        b.addEventListener('click', async function (e) {
+          e.stopPropagation();
+          var sid = b.dataset.briefActivate;
+          b.disabled = true;
+          try { await callTool("activate_signal", { signal_agent_segment_id: sid, destination_platform: "mock_dsp" }); showToast("\u2713 Activated " + sid); b.classList.add("err-activated"); }
+          catch (err) { showToast("Failed: " + err.message, true); b.disabled = false; }
+        });
+      });
+      host.querySelectorAll('[data-brief-sl]').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+          var sid = cb.dataset.briefSl;
+          var row = cb.closest('.brief-row');
+          var item = data.portfolio.find(function (p) { return p.signal_id === sid; });
+          shortlistToggle(sid, item ? item.name : sid, "");
+          showToast(shortlistHas(sid) ? "Added to shortlist" : "Removed from shortlist");
+        });
+      });
+      host.querySelectorAll('[data-brief-action]').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          var act = btn.dataset.briefAction;
+          if (act === "activate-all") {
+            showToast("Activating " + data.portfolio.length + " signals\u2026");
+            var res = await Promise.allSettled(data.portfolio.map(function (p) {
+              return callTool("activate_signal", { signal_agent_segment_id: p.signal_id, destination_platform: "mock_dsp" });
+            }));
+            var ok = res.filter(function (x) { return x.status === "fulfilled"; }).length;
+            showToast("\u2713 Campaign activated: " + ok + "/" + data.portfolio.length + ". Check Activations tab.");
+          } else if (act === "export") {
+            function esc(v) { var s = v == null ? "" : String(v); return /[",\\n\\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+            var hdr = "rank,signal_id,name,allocation_pct,cost,marginal_reach";
+            var rws = data.portfolio.map(function (p) { return [p.rank, p.signal_id, p.name, p.allocation_pct, p.cost, p.marginal_reach].map(esc).join(","); });
+            var blob = new Blob([hdr + "\\n" + rws.join("\\n")], { type: "text/csv" });
+            var url = URL.createObjectURL(blob); var a = document.createElement("a"); a.href = url; a.download = "campaign-plan.csv"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+            showToast("Plan exported as CSV");
+          } else if (act === "builder") {
+            if (!state.catalog.all.length) await loadCatalog();
+            _builderStack.selected = data.portfolio.map(function (p) {
+              return state.catalog.all.find(function (s) { return s.signal_agent_segment_id === p.signal_id; });
+            }).filter(Boolean);
+            switchTab("builder");
+            showToast("Opened Builder with " + _builderStack.selected.length + " signals");
+          }
+        });
+      });
       document.getElementById("brief-explainer").innerHTML = renderChartExplainer({
-        what: "A complete signal portfolio generated from your campaign brief.",
+        what: "A complete signal portfolio generated from your campaign brief \u2014 ready to activate.",
         how: "1. Brief text \u2192 pseudo-vector via djb2 hash. 2. Top-30 catalog matches by cosine. 3. Greedy marginal-reach selection within budget. 4. Allocation % = pick cost / total cost.",
-        read: "Ranked list shows priority order. Allocation % suggests share-of-budget per signal. Reasoning explains why each was chosen.",
+        read: "<strong>Activate campaign</strong> fires all signals to mock_dsp in parallel. <strong>Open in Builder</strong> loads the set into the rule-based builder for tweaking. <strong>Export plan</strong> gives a CSV for sharing.",
         limits: "Demo pseudo-vectorization \u2014 a real production pipeline would embed via OpenAI / Cohere / Anthropic for higher-fidelity matches.",
       });
     } catch (e) {
@@ -7503,16 +7975,53 @@ async function renderSeaRanking() {
   try {
     var r = await fetch("/analytics/best-for?window=" + encodeURIComponent(w));
     var data = await r.json();
-    var rows = (data.top || []).slice(0, 15).map(function (s, i) {
-      return '<div class="sea-row">' +
-        '<div class="sea-rank">' + (i + 1) + '</div>' +
-        '<div class="sea-name">' + escapeHtml(s.name) + '<br><span class="mono" style="font-size:10.5px;color:var(--text-mut)">reach ' + (s.reach / 1e6).toFixed(1) + 'M \u00b7 spec ' + s.specificity + '</span></div>' +
-        '<div class="sea-mult mono">\u00d7' + s.window_multiplier + '</div>' +
+    var topSignals = (data.top || []).slice(0, 15);
+    var rerenderSea = function () {
+      var rows = topSignals.map(function (s, i) {
+        return '<div class="sea-row" data-sid="' + escapeHtml(s.signal_id) + '">' +
+          '<label class="err-check" title="Add to shortlist"><input type="checkbox" data-sea-sl="' + escapeHtml(s.signal_id) + '"' + (shortlistHas(s.signal_id) ? ' checked' : '') + '/></label>' +
+          '<div class="sea-rank">' + (i + 1) + '</div>' +
+          '<div class="sea-name">' + escapeHtml(s.name) + '<br><span class="mono" style="font-size:10.5px;color:var(--text-mut)">reach ' + (s.reach / 1e6).toFixed(1) + 'M \u00b7 spec ' + s.specificity + '</span></div>' +
+          '<div class="sea-mult mono">\u00d7' + s.window_multiplier + '</div>' +
+          '<button class="err-activate" data-sea-activate="' + escapeHtml(s.signal_id) + '" title="Activate to mock_dsp"><svg class="ico"><use href="#icon-bolt"/></svg></button>' +
+        '</div>';
+      }).join("");
+      var topBar = '<div class="campaign-cta" style="margin-bottom:10px">' +
+        '<div class="campaign-cta-info">Top ' + topSignals.length + ' signals for ' + escapeHtml(data.window) + '. Click bolt to activate any row.</div>' +
+        '<button class="btn-primary" data-sea-action="activate-top5" style="padding:5px 12px;font-size:11.5px"><svg class="ico"><use href="#icon-bolt"/></svg><span>Activate top 5</span></button>' +
       '</div>';
-    }).join("");
-    host.innerHTML = rows;
+      host.innerHTML = topBar + rows;
+      host.querySelectorAll('[data-sea-sl]').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+          var sid = cb.dataset.seaSl;
+          var item = topSignals.find(function (s) { return s.signal_id === sid; });
+          shortlistToggle(sid, item ? item.name : sid, "");
+        });
+      });
+      host.querySelectorAll('[data-sea-activate]').forEach(function (b) {
+        b.addEventListener('click', async function (e) {
+          e.stopPropagation();
+          var sid = b.dataset.seaActivate;
+          b.disabled = true;
+          try { await callTool("activate_signal", { signal_agent_segment_id: sid, destination_platform: "mock_dsp" }); showToast("\u2713 Activated"); b.classList.add("err-activated"); }
+          catch (err) { showToast("Failed: " + err.message, true); b.disabled = false; }
+        });
+      });
+      host.querySelectorAll('[data-sea-action="activate-top5"]').forEach(function (b) {
+        b.addEventListener('click', async function () {
+          var picks = topSignals.slice(0, 5);
+          showToast("Activating top 5 for " + data.window + "\u2026");
+          await Promise.allSettled(picks.map(function (s) { return callTool("activate_signal", { signal_agent_segment_id: s.signal_id, destination_platform: "mock_dsp" }); }));
+          showToast("\u2713 Top 5 activated to mock_dsp");
+        });
+      });
+      host.querySelectorAll('.sea-row').forEach(function (row) {
+        row.addEventListener('click', function (e) { if (e.target.closest('input, button, label')) return; openDetailHydrated(row.dataset.sid); });
+      });
+    };
+    rerenderSea();
     document.getElementById("sea-explainer").innerHTML = renderChartExplainer({
-      what: "Signals ranked for the selected time window by their seasonality profile.",
+      what: "Signals ranked for the selected time window, with one-click activate per row + bulk top-5 activate.",
       how: "score = window_avg_seasonality \u00d7 specificity \u00d7 log_reach. Seasonality multiplier averages the monthly values across the chosen months.",
       read: "Top rows peak in the selected window. Use as a forward-looking plan ranker.",
       limits: "Seasonality synthesized from signal name/category hints (deterministic).",
@@ -7582,6 +8091,15 @@ async function renderAgentRegistry() {
     host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">Registry not yet deployed</div><div class="empty-desc">Part 3 of Sec-41 wires live Dstillery federation.</div></div>';
   }
 }
+// Federation shortlist — cross-agent selection that persists while the
+// user tries different briefs. Each entry: { agent, signal }. Used by
+// the bulk action bar (activate samba rows / copy TTD ids / export CSV /
+// send to portfolio builder).
+var _fedShortlist = [];
+var _fedLastResults = [];
+
+function fedSigKey(m) { return (m.source_agent || "?") + "::" + ((m.signal || {}).signal_agent_segment_id || ""); }
+
 async function runFederatedSearch() {
   var host = document.getElementById("fed-results");
   var brief = document.getElementById("fed-brief").value.trim();
@@ -7590,35 +8108,297 @@ async function runFederatedSearch() {
   try {
     var r = await fetch("/agents/federated-search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brief: brief, max_results_per_agent: parseInt(document.getElementById("fed-max").value, 10) || 5 }) });
     var data = await r.json();
-    var rows = (data.merged || []).map(function (m, i) {
-      var agent = m.source_agent;
-      var sig = m.signal || {};
-      var badgeColor = agent === "samba_signals" ? "pill-success" : agent === "dstillery" ? "pill-info" : "pill-mut";
-      return '<div class="fed-result-row">' +
-        '<div class="err-rank">' + (i + 1) + '</div>' +
-        '<div class="err-main">' +
-          '<div class="err-name">' + escapeHtml(sig.name || sig.signal_agent_segment_id) + '</div>' +
-          '<div class="err-sid mono">' + escapeHtml(sig.signal_agent_segment_id || '') + (sig.coverage_percentage !== undefined ? ' \u00b7 coverage ' + sig.coverage_percentage.toFixed(2) + '%' : '') + '</div>' +
-        '</div>' +
-        '<span class="pill ' + badgeColor + '">' + escapeHtml(agent) + '</span>' +
-      '</div>';
-    }).join("");
-    var summary = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">' +
-      (Object.entries(data.per_agent_count || {}).map(function (kv) {
-        return '<div class="lab-stat-card"><div class="lab-stat-label">' + escapeHtml(kv[0]) + '</div><div class="lab-stat-val">' + kv[1] + '</div></div>';
-      }).join('')) +
-      '<div class="lab-stat-card"><div class="lab-stat-label">Total time</div><div class="lab-stat-val">' + (data.total_time_ms || 0) + 'ms</div></div>' +
-    '</div>';
-    host.innerHTML = summary + (rows || '<div class="empty-state"><div class="empty-desc">No results from any agent.</div></div>');
-    document.getElementById("fed-explainer").innerHTML = renderChartExplainer({
-      what: "Merged search results across multiple AdCP Signals agents called in parallel.",
-      how: "Fan-out to each agent's MCP endpoint (tools/call get_signals), merge responses, badge by source agent, re-rank by local score or coverage.",
-      read: "Each row\u2019s badge shows origin agent. \u201csamba_signals\u201d = this agent. \u201cdstillery\u201d = live Dstillery MCP (behavioral audiences \u2192 TTD).",
-      limits: "Partner timeout: 15s. Circuit breaker: 3 failures = 5-min skip. Dstillery\u2019s catalog shape differs from ours (TTD-deployed segments).",
-    });
+    _fedLastResults = data.merged || [];
+    renderFederatedResults(data);
   } catch (e) {
-    host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div><div class="empty-desc">Federation endpoints deploy in Part 3.</div></div>';
+    host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div><div class="empty-desc">Federation endpoints may not be deployed yet.</div></div>';
   }
+}
+
+function renderFederatedResults(data) {
+  var host = document.getElementById("fed-results");
+  var merged = data.merged || [];
+  var shortlistKeys = new Set(_fedShortlist.map(fedSigKey));
+
+  // Summary: per-agent count + total time + CUMULATIVE reach + blended CPM
+  var totalReach = 0, totalCostWeighted = 0;
+  merged.forEach(function (m) {
+    var s = m.signal || {};
+    var sz = s.estimated_audience_size || 0;
+    var cpm = (s.pricing_options && s.pricing_options[0] && s.pricing_options[0].cpm) || (s.pricing && s.pricing.cpm) || 0;
+    totalReach += sz;
+    totalCostWeighted += sz * cpm;
+  });
+  var blendedCpm = totalReach > 0 ? totalCostWeighted / totalReach : 0;
+
+  var agentStats = Object.entries(data.per_agent_count || {}).map(function (kv) {
+    var badge = kv[0] === "samba_signals" ? "pill-success" : kv[0] === "dstillery" ? "pill-info" : "pill-mut";
+    return '<div class="lab-stat-card"><div class="lab-stat-label"><span class="pill ' + badge + '" style="font-size:10px">' + escapeHtml(kv[0]) + '</span></div><div class="lab-stat-val">' + kv[1] + '</div></div>';
+  }).join('');
+  var summary = '<div class="fed-summary-grid">' + agentStats +
+    '<div class="lab-stat-card"><div class="lab-stat-label">Total potential reach</div><div class="lab-stat-val">' + (totalReach > 0 ? (totalReach / 1e6).toFixed(1) + 'M' : '\u2014') + '</div></div>' +
+    '<div class="lab-stat-card"><div class="lab-stat-label">Blended CPM</div><div class="lab-stat-val">' + (blendedCpm > 0 ? '$' + blendedCpm.toFixed(2) : '\u2014') + '</div></div>' +
+    '<div class="lab-stat-card"><div class="lab-stat-label">Round-trip</div><div class="lab-stat-val">' + (data.total_time_ms || 0) + 'ms</div></div>' +
+    '</div>';
+
+  // Rows
+  var rowsHtml = merged.map(function (m, i) {
+    var agent = m.source_agent;
+    var sig = m.signal || {};
+    var key = fedSigKey(m);
+    var selected = shortlistKeys.has(key);
+    var sid = sig.signal_agent_segment_id || "";
+    var agentClass = agent === "samba_signals" ? "fed-row-samba" : agent === "dstillery" ? "fed-row-dstillery" : "";
+    var agentPill = agent === "samba_signals" ? "pill-success" : agent === "dstillery" ? "pill-info" : "pill-mut";
+    // Enriched fields
+    var desc = sig.description ? escapeHtml(sig.description.slice(0, 120) + (sig.description.length > 120 ? "\u2026" : "")) : "";
+    var cpm = 0;
+    if (sig.pricing_options && sig.pricing_options[0]) cpm = sig.pricing_options[0].cpm;
+    else if (sig.pricing && sig.pricing.cpm) cpm = sig.pricing.cpm;
+    var reach = sig.estimated_audience_size;
+    var coverage = sig.coverage_percentage;
+    // Deployment target
+    var deployment = "";
+    if (Array.isArray(sig.deployments) && sig.deployments.length) {
+      var d0 = sig.deployments[0];
+      var platform = d0.platform || d0.type;
+      var platformId = d0.decisioning_platform_segment_id || (d0.activation_key && d0.activation_key.segment_id);
+      if (platform) deployment = platform + (platformId ? " \u00b7 id " + platformId : "");
+    }
+    // Action button — agent-specific
+    var actionBtn;
+    if (agent === "samba_signals") {
+      actionBtn = '<button class="fed-action-btn primary" data-action="activate" data-sid="' + escapeHtml(sid) + '" title="Activate to mock_dsp"><svg class="ico"><use href="#icon-bolt"/></svg><span>Activate</span></button>';
+    } else if (agent === "dstillery") {
+      var ttdId = deployment.match(/id (\d+)/) ? deployment.match(/id (\d+)/)[1] : (sig.deployments && sig.deployments[0] && sig.deployments[0].decisioning_platform_segment_id) || sid;
+      actionBtn = '<button class="fed-action-btn" data-action="copy-ttd" data-ttd-id="' + escapeHtml(ttdId) + '" title="Copy TTD segment ID"><svg class="ico"><use href="#icon-check"/></svg><span>Copy TTD ID</span></button>';
+    } else {
+      actionBtn = '<button class="fed-action-btn" disabled>n/a</button>';
+    }
+    // Metric pills
+    var metrics = [];
+    if (reach) metrics.push('<span class="fed-metric">reach <strong>' + fmtNumber(reach) + '</strong></span>');
+    if (coverage !== undefined && coverage !== null) metrics.push('<span class="fed-metric">coverage <strong>' + coverage.toFixed(2) + '%</strong></span>');
+    if (cpm) metrics.push('<span class="fed-metric">CPM <strong>$' + cpm.toFixed(2) + '</strong></span>');
+    if (deployment) metrics.push('<span class="fed-metric mono" style="font-size:10.5px">\u2192 ' + escapeHtml(deployment) + '</span>');
+
+    return '<div class="fed-result-row ' + agentClass + (selected ? ' fed-row-selected' : '') + '" data-key="' + escapeHtml(key) + '" data-idx="' + i + '">' +
+      '<label class="fed-check"><input type="checkbox" data-fed-check="' + escapeHtml(key) + '"' + (selected ? ' checked' : '') + '/></label>' +
+      '<div class="err-rank">' + (i + 1) + '</div>' +
+      '<div class="err-main">' +
+        '<div class="err-name">' + escapeHtml(sig.name || sid || "(unnamed)") + '</div>' +
+        (desc ? '<div class="fed-desc">' + desc + '</div>' : '') +
+        (metrics.length ? '<div class="fed-metrics">' + metrics.join("") + '</div>' : '') +
+        '<div class="err-sid mono">' + escapeHtml(sid) + '</div>' +
+      '</div>' +
+      '<div class="fed-row-actions">' +
+        '<span class="pill ' + agentPill + '" style="font-size:10px">' + escapeHtml(agent) + '</span>' +
+        actionBtn +
+      '</div>' +
+    '</div>';
+  }).join("");
+
+  // Sticky action bar
+  var selectedCount = _fedShortlist.length;
+  var actionBar =
+    '<div class="fed-actionbar' + (selectedCount > 0 ? ' fed-actionbar-active' : '') + '">' +
+      '<div class="fed-actionbar-info">' +
+        (selectedCount > 0
+          ? '<strong>' + selectedCount + '</strong> selected across agents'
+          : 'Select rows to enable bulk actions') +
+      '</div>' +
+      '<button class="btn-secondary" id="fed-select-all" style="padding:4px 12px;font-size:11.5px">Select all</button>' +
+      '<button class="btn-secondary" id="fed-clear" style="padding:4px 12px;font-size:11.5px">Clear</button>' +
+      '<button class="btn-secondary" id="fed-export-csv" style="padding:4px 12px;font-size:11.5px"' + (selectedCount === 0 ? ' disabled' : '') + '><svg class="ico"><use href="#icon-book"/></svg><span>Export CSV</span></button>' +
+      '<button class="btn-secondary" id="fed-compare" style="padding:4px 12px;font-size:11.5px"' + (selectedCount < 2 ? ' disabled' : '') + '><svg class="ico"><use href="#icon-grid"/></svg><span>Compare</span></button>' +
+      '<button class="btn-primary" id="fed-activate-selected" style="padding:4px 12px;font-size:11.5px"' + (selectedCount === 0 ? ' disabled' : '') + '><svg class="ico"><use href="#icon-bolt"/></svg><span>Activate selected</span></button>' +
+    '</div>';
+
+  host.innerHTML = summary + actionBar +
+    '<div class="fed-rows">' + (rowsHtml || '<div class="empty-state"><div class="empty-desc">No results from any agent.</div></div>') + '</div>' +
+    '<div id="fed-compare-host"></div>';
+
+  // Wire row clicks
+  host.querySelectorAll('[data-fed-check]').forEach(function (cb) {
+    cb.addEventListener('change', function (e) {
+      e.stopPropagation();
+      toggleFedShortlist(cb.dataset.fedCheck);
+      renderFederatedResults({ merged: _fedLastResults, per_agent_count: data.per_agent_count, total_time_ms: data.total_time_ms });
+    });
+  });
+  host.querySelectorAll('.fed-result-row').forEach(function (row) {
+    row.addEventListener('click', function (e) {
+      if (e.target.closest('input, button, label')) return;
+      var idx = parseInt(row.dataset.idx, 10);
+      var m = _fedLastResults[idx];
+      if (!m) return;
+      if (m.source_agent === "samba_signals") {
+        openDetailHydrated(m.signal.signal_agent_segment_id, m.signal);
+      } else if (m.source_agent === "dstillery") {
+        openDstilleryDetail(m.signal);
+      }
+    });
+  });
+  host.querySelectorAll('[data-action="activate"]').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      fedActivateSignal(btn.dataset.sid);
+    });
+  });
+  host.querySelectorAll('[data-action="copy-ttd"]').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var id = btn.dataset.ttdId;
+      navigator.clipboard.writeText(id).then(function () { showToast("TTD segment id " + id + " copied"); }).catch(function () { showToast("Copy failed", true); });
+    });
+  });
+  var selAll = document.getElementById("fed-select-all");
+  if (selAll) selAll.onclick = function () { _fedShortlist = _fedLastResults.slice(); renderFederatedResults(data); };
+  var clr = document.getElementById("fed-clear");
+  if (clr) clr.onclick = function () { _fedShortlist = []; renderFederatedResults(data); };
+  var exp = document.getElementById("fed-export-csv");
+  if (exp) exp.onclick = function () { fedExportCsv(); };
+  var cmp = document.getElementById("fed-compare");
+  if (cmp) cmp.onclick = function () { fedCompareSelected(); };
+  var act = document.getElementById("fed-activate-selected");
+  if (act) act.onclick = function () { fedActivateSelected(); };
+
+  document.getElementById("fed-explainer").innerHTML = renderChartExplainer({
+    what: "Results from every AdCP Signals agent queried in parallel, merged with provenance badges. Each row is directly actionable.",
+    how: "Parallel fan-out via MCP tools/call. Samba results come from our local catalog (with full deployment metadata). Dstillery results are native TTD segments — the 'Copy TTD ID' button gives you the exact segment_id for use inside TTD's UI.",
+    read: "Check rows to shortlist across agents, then use the action bar: <strong>Activate selected</strong> fires samba signals to mock_dsp and copies Dstillery TTD IDs. <strong>Compare</strong> shows attributes side-by-side. <strong>Export CSV</strong> gives your planner a shareable shortlist.",
+    limits: "Dstillery signals are activated via TTD, not our agent — we surface the segment_id they need. Future: direct TTD OAuth flow.",
+  });
+}
+
+function toggleFedShortlist(key) {
+  var idx = _fedShortlist.findIndex(function (m) { return fedSigKey(m) === key; });
+  if (idx >= 0) { _fedShortlist.splice(idx, 1); return; }
+  var hit = _fedLastResults.find(function (m) { return fedSigKey(m) === key; });
+  if (hit) _fedShortlist.push(hit);
+}
+
+// Open an inline detail card for a Dstillery signal (not in our catalog,
+// so the signal-detail panel can't hydrate).
+function openDstilleryDetail(sig) {
+  var host = document.getElementById("fed-compare-host");
+  var deployments = (sig.deployments || []).map(function (d) {
+    return '<div class="dstl-deploy"><strong>' + escapeHtml(d.platform || d.type || '') + '</strong> · <span class="mono">id ' + escapeHtml(String(d.decisioning_platform_segment_id || '')) + '</span>' + (d.is_live ? ' · <span class="pill pill-success" style="font-size:10px">live</span>' : '') + '</div>';
+  }).join("");
+  host.innerHTML = '<div class="dstl-detail">' +
+    '<div class="dstl-head"><div class="dstl-title">' + escapeHtml(sig.name || '') + ' <span class="pill pill-info" style="margin-left:8px">dstillery</span></div>' +
+      '<button class="detail-icon-btn" data-dstl-close="1" aria-label="Close"><svg class="ico"><use href="#icon-close"/></svg></button>' +
+    '</div>' +
+    (sig.description ? '<div class="dstl-desc">' + escapeHtml(sig.description) + '</div>' : '') +
+    '<div class="dstl-grid">' +
+      '<div class="lab-stat-card"><div class="lab-stat-label">Segment ID (ours)</div><div class="lab-stat-val mono" style="font-size:13px">' + escapeHtml(sig.signal_agent_segment_id || '') + '</div></div>' +
+      '<div class="lab-stat-card"><div class="lab-stat-label">Coverage</div><div class="lab-stat-val">' + (sig.coverage_percentage !== undefined ? sig.coverage_percentage.toFixed(2) + '%' : '\u2014') + '</div></div>' +
+      '<div class="lab-stat-card"><div class="lab-stat-label">CPM</div><div class="lab-stat-val">' + (sig.pricing && sig.pricing.cpm ? '$' + sig.pricing.cpm.toFixed(2) : '\u2014') + '</div></div>' +
+      '<div class="lab-stat-card"><div class="lab-stat-label">Data provider</div><div class="lab-stat-val" style="font-size:13px">' + escapeHtml(sig.data_provider || 'Dstillery') + '</div></div>' +
+    '</div>' +
+    (deployments ? '<div class="dstl-section-label">Deployments (active on TTD)</div>' + deployments : '') +
+    '<div class="dstl-hint">Dstillery signals activate via their Trade Desk partnership. Use the <strong>decisioning_platform_segment_id</strong> above inside TTD\u2019s UI to add this audience to your campaign. Future: direct TTD OAuth activation from this panel.</div>' +
+  '</div>';
+  host.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function fedActivateSignal(sid) {
+  showToast("Activating " + sid + " to mock_dsp\u2026");
+  try {
+    var data = await callTool("activate_signal", { signal_agent_segment_id: sid, destination_platform: "mock_dsp" });
+    showToast("\u2713 Activation submitted: " + (data.operation_id || "op pending"));
+  } catch (e) {
+    showToast("Activation failed: " + e.message, true);
+  }
+}
+
+async function fedActivateSelected() {
+  if (_fedShortlist.length === 0) return;
+  var samba = _fedShortlist.filter(function (m) { return m.source_agent === "samba_signals"; });
+  var dstill = _fedShortlist.filter(function (m) { return m.source_agent === "dstillery"; });
+  var messages = [];
+  // Activate samba signals in parallel
+  if (samba.length) {
+    showToast("Activating " + samba.length + " Samba signals\u2026");
+    var results = await Promise.allSettled(samba.map(function (m) {
+      return callTool("activate_signal", { signal_agent_segment_id: m.signal.signal_agent_segment_id, destination_platform: "mock_dsp" });
+    }));
+    var ok = results.filter(function (r) { return r.status === "fulfilled"; }).length;
+    messages.push(ok + "/" + samba.length + " Samba activated");
+  }
+  // Copy all TTD IDs to clipboard
+  if (dstill.length) {
+    var ttdIds = dstill.map(function (m) {
+      var d0 = (m.signal.deployments || [])[0];
+      return (d0 && d0.decisioning_platform_segment_id) || m.signal.signal_agent_segment_id;
+    }).filter(Boolean);
+    try {
+      await navigator.clipboard.writeText(ttdIds.join("\\n"));
+      messages.push(dstill.length + " Dstillery TTD IDs copied");
+    } catch { messages.push(dstill.length + " Dstillery IDs — copy failed"); }
+  }
+  showToast(messages.join(" \u00b7 "));
+}
+
+function fedExportCsv() {
+  if (_fedShortlist.length === 0) return;
+  var header = ["rank", "agent", "signal_id", "name", "reach", "cpm", "coverage_pct", "deployment_platform", "deployment_id"];
+  function esc(v) { var s = v === null || v === undefined ? "" : String(v); return /[",\\n\\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+  var rows = _fedShortlist.map(function (m, i) {
+    var s = m.signal || {};
+    var cpm = (s.pricing_options && s.pricing_options[0] && s.pricing_options[0].cpm) || (s.pricing && s.pricing.cpm) || "";
+    var d0 = (s.deployments || [])[0] || {};
+    return [i + 1, m.source_agent, s.signal_agent_segment_id, s.name, s.estimated_audience_size || "", cpm, s.coverage_percentage !== undefined ? s.coverage_percentage : "", d0.platform || d0.type || "", d0.decisioning_platform_segment_id || ""].map(esc).join(",");
+  });
+  var csv = header.join(",") + "\\n" + rows.join("\\n");
+  var blob = new Blob([csv], { type: "text/csv" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = "federated-shortlist-" + new Date().toISOString().slice(0, 10) + ".csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  showToast("CSV downloaded (" + _fedShortlist.length + " rows)");
+}
+
+function fedCompareSelected() {
+  if (_fedShortlist.length < 2) return;
+  var host = document.getElementById("fed-compare-host");
+  var cols = _fedShortlist.map(function (m) {
+    var s = m.signal || {};
+    var cpm = (s.pricing_options && s.pricing_options[0] && s.pricing_options[0].cpm) || (s.pricing && s.pricing.cpm) || 0;
+    return {
+      agent: m.source_agent,
+      name: s.name || s.signal_agent_segment_id,
+      sid: s.signal_agent_segment_id,
+      reach: s.estimated_audience_size,
+      cpm: cpm,
+      coverage: s.coverage_percentage,
+      category: s.category_type,
+      provider: s.data_provider,
+      deployment: ((s.deployments || [])[0] || {}).platform || ((s.deployments || [])[0] || {}).type || "",
+    };
+  });
+  var rows = [
+    ["Agent", cols.map(function (c) { var p = c.agent === "samba_signals" ? "pill-success" : "pill-info"; return '<span class="pill ' + p + '" style="font-size:10px">' + escapeHtml(c.agent) + '</span>'; })],
+    ["Signal ID", cols.map(function (c) { return '<span class="mono" style="font-size:11px">' + escapeHtml(c.sid || '') + '</span>'; })],
+    ["Reach", cols.map(function (c) { return c.reach ? fmtNumber(c.reach) : '\u2014'; })],
+    ["CPM", cols.map(function (c) { return c.cpm ? '$' + c.cpm.toFixed(2) : '\u2014'; })],
+    ["Coverage", cols.map(function (c) { return c.coverage !== undefined && c.coverage !== null ? c.coverage.toFixed(2) + '%' : '\u2014'; })],
+    ["Category", cols.map(function (c) { return escapeHtml(c.category || '\u2014'); })],
+    ["Provider", cols.map(function (c) { return escapeHtml(c.provider || '\u2014'); })],
+    ["Deployment", cols.map(function (c) { return escapeHtml(c.deployment || '\u2014'); })],
+  ];
+  var tbl = '<table class="fed-compare-tbl">' +
+    '<thead><tr><th></th>' + cols.map(function (c) { return '<th>' + escapeHtml(c.name || '') + '</th>'; }).join("") + '</tr></thead>' +
+    '<tbody>' + rows.map(function (r2) {
+      return '<tr><th>' + escapeHtml(r2[0]) + '</th>' + r2[1].map(function (v) { return '<td>' + v + '</td>'; }).join("") + '</tr>';
+    }).join("") + '</tbody>' +
+  '</table>';
+  host.innerHTML = '<div class="dstl-detail">' +
+    '<div class="dstl-head"><div class="dstl-title">Compare \u2014 ' + cols.length + ' signals</div>' +
+      '<button class="detail-icon-btn" data-dstl-close="1" aria-label="Close"><svg class="ico"><use href="#icon-close"/></svg></button>' +
+    '</div>' + tbl + '</div>';
+  host.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // Sec-38 A7: keyboard shortcuts. Two-key "go to" prefix (g+x). Single

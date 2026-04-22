@@ -7356,7 +7356,7 @@ async function renderPortPareto() {
       var radius = 4 + (p.specificity || 0) * 5;
       var color = colorMap[p.category] || "#8892a6";
       return '<circle cx="' + sx(p.reach).toFixed(1) + '" cy="' + sy(p.cpm).toFixed(1) + '" r="' + radius.toFixed(1) + '" fill="' + color + '" fill-opacity="0.75" stroke="gold" stroke-width="1.2" data-sid="' + escapeHtml(p.signal_id) + '">' +
-        '<title>' + escapeHtml(p.name) + '\nreach=' + (p.reach / 1e6).toFixed(1) + 'M \u00b7 CPM=$' + p.cpm.toFixed(2) + ' \u00b7 spec=' + p.specificity + '</title>' +
+        '<title>' + escapeHtml(p.name) + ' · reach=' + (p.reach / 1e6).toFixed(1) + 'M · CPM=$' + p.cpm.toFixed(2) + ' · spec=' + p.specificity + '</title>' +
       '</circle>';
     }).join("");
     host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +

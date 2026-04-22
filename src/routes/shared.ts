@@ -9,7 +9,7 @@ export function jsonResponse(data: unknown, status = 200): Response {
     headers: {
       "Content-Type": "application/json",
       "X-AdCP-Provider": "adcp-signals-adaptor-demo",
-      "X-AdCP-Version": "3.0-rc",
+      "X-AdCP-Version": "3.0",
     },
   });
 }

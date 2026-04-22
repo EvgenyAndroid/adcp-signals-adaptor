@@ -2,7 +2,7 @@
 // MCP server — Streamable HTTP transport (JSON-RPC 2.0).
 // 8 tools: get_adcp_capabilities, get_signals, activate_signal, get_operation_status,
 //          get_similar_signals, query_signals_nl, get_concept, search_concepts.
-// v3.0-rc: handleInitialize now advertises GTS, projector, and handshake simulator.
+// v3.0 GA: handleInitialize now advertises GTS, projector, and handshake simulator.
 
 import type { Env } from "../types/env";
 import type { Logger } from "../utils/logger";
@@ -282,7 +282,7 @@ async function handleInitialize(
         capabilities: { tools: { listChanged: false } },
         serverInfo: {
             name: "adcp-signals-adaptor",
-            version: env.API_VERSION ?? "3.0-rc",
+            version: env.API_VERSION ?? "3.0",
             description:
                 "AdCP Signals Provider — IAB Audience Taxonomy 1.1 aligned signal discovery, " +
                 "brief-driven custom segment proposals, and async activation with webhook support.",
@@ -291,7 +291,7 @@ async function handleInitialize(
                 space_id: "openai-te3-small-d512-v1",
                 phase: "v1",
 
-                // Phase 2b: GTS + Projector (live as of v3.0-rc)
+                // Phase 2b: GTS + Projector (live as of v3.0 GA)
                 gts: {
                     supported: true,
                     endpoint: "/ucp/gts",

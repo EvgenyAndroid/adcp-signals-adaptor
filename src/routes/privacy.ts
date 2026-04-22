@@ -70,7 +70,7 @@ const PRIVACY_HTML = `<!doctype html>
   <h2>What this agent does</h2>
   <p>
     Serves a catalog of <strong>synthetic, modeled audience signals</strong>
-    over the AdCP Signals Activation Protocol (v3.0-rc) for demonstration
+    over the AdCP Signals Activation Protocol (v3.0 GA) for demonstration
     and conformance-testing purposes. Exposes the catalog via an MCP
     endpoint at <code>/mcp</code>, a REST endpoint at <code>/signals/search</code>,
     and an interactive demo UI at <code>/</code>.

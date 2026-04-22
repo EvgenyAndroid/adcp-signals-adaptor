@@ -151,8 +151,8 @@ ${STYLES}
     </nav>
 
     <div class="sidebar-footer">
-      <div class="kv"><span class="k">Version</span><span class="v mono">3.0-rc</span></div>
-      <div class="kv"><span class="k">Client</span><span class="v mono">@adcp/5.6</span></div>
+      <div class="kv"><span class="k">Version</span><span class="v mono">3.0 GA</span></div>
+      <div class="kv"><span class="k">Client</span><span class="v mono">@adcp/5.13</span></div>
       <div class="kv"><span class="k">Status</span><span class="v"><span class="status-dot ok"></span>live</span></div>
       <div class="kv"><span class="k">Conformance</span><span class="v"><span class="pill pill-success">3 / 3</span></span></div>
     </div>
@@ -942,7 +942,7 @@ ${STYLES}
             <div class="devkit-panel-title">Endpoints</div>
             <div class="devkit-endpoints">
               <div class="ep-row"><span class="ep-method">POST</span><code>/mcp</code><span class="ep-note">JSON-RPC 2.0 · 8 tools · bearer auth</span></div>
-              <div class="ep-row"><span class="ep-method">GET</span><code>/capabilities</code><span class="ep-note">AdCP 3.0-rc capabilities handshake · public</span></div>
+              <div class="ep-row"><span class="ep-method">GET</span><code>/capabilities</code><span class="ep-note">AdCP 3.0 GA capabilities handshake · public</span></div>
               <div class="ep-row"><span class="ep-method">GET</span><code>/signals/search</code><span class="ep-note">Catalog search with filters · bearer</span></div>
               <div class="ep-row"><span class="ep-method">POST</span><code>/signals/estimate</code><span class="ep-note">Rule-based audience sizing · public</span></div>
               <div class="ep-row"><span class="ep-method">POST</span><code>/signals/overlap</code><span class="ep-note">Multi-signal Jaccard overlap · public</span></div>
@@ -2939,12 +2939,6 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .fed-card-name { font-size: 13px; font-weight: 600; color: var(--text); }
 .fed-url { font-size: 10.5px; color: var(--text-mut); margin-bottom: 4px; word-break: break-all; }
 .fed-vendor { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; }
-.fed-activation-note {
-  font-size: 11px; color: var(--text-dim); line-height: 1.5;
-  padding: 8px 10px; margin-bottom: 8px;
-  background: var(--bg-raised); border-radius: var(--radius-sm);
-  border-left: 2px solid var(--accent-border);
-}
 .fed-specs { display: flex; gap: 4px; flex-wrap: wrap; }
 .fed-result-row {
   display: grid; grid-template-columns: 24px 28px 1fr 150px; gap: 10px;
@@ -2994,48 +2988,6 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .fed-actionbar-info { flex: 1; font-size: 12px; color: var(--text-mut); min-width: 180px; }
 .fed-actionbar-info strong { color: var(--accent); font-weight: 600; }
 .fed-rows { display: flex; flex-direction: column; }
-
-/* Activation-model callout — two-card explainer above federation results */
-.fed-model-callout {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 12px 14px;
-  margin-bottom: 14px;
-}
-.fed-model-callout-head {
-  font-size: 10.5px; color: var(--text-mut);
-  text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
-  margin-bottom: 8px;
-}
-.fed-model-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-}
-.fed-model-card {
-  background: var(--bg-input); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 10px 12px;
-}
-.fed-model-card-samba { border-left: 2px solid rgba(43, 212, 160, 0.55); }
-.fed-model-card-dstillery { border-left: 2px solid rgba(139, 110, 255, 0.55); }
-.fed-model-title {
-  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
-}
-.fed-model-tag {
-  font-size: 10px; color: var(--text-mut); font-family: var(--font-mono);
-  text-transform: uppercase; letter-spacing: 0.05em;
-}
-.fed-model-body {
-  font-size: 11.5px; color: var(--text-dim); line-height: 1.5;
-}
-.fed-model-body code {
-  font-family: var(--font-mono); font-size: 10.5px;
-  background: var(--bg-raised); padding: 1px 5px; border-radius: 3px;
-  color: var(--text);
-}
-.fed-model-body strong { color: var(--text); font-weight: 600; }
-@media (max-width: 900px) {
-  .fed-model-grid { grid-template-columns: 1fr; }
-}
 
 /* Chart explainer (Sec-39) */
 .chart-explainer {
@@ -8139,24 +8091,12 @@ async function renderAgentRegistry() {
     var r = await fetch("/agents/registry");
     var data = await r.json();
     var cards = (data.agents || []).map(function (a) {
-      var stage = a.stage || "unknown";
-      var stageClass = stage.indexOf("live") === 0 ? "pill-success" : stage === "sandbox" ? "pill-info" : "pill-mut";
+      var stageClass = a.stage === "live" ? "pill-success" : a.stage === "sandbox" ? "pill-info" : "pill-mut";
       var specs = (a.specialties || []).map(function (s) { return '<span class="pill pill-muted mono" style="margin-right:4px">' + escapeHtml(s) + '</span>'; }).join('');
-      // Activation-model pill (Sec-41): surfaces direct_mcp vs
-      // ttd_segment_handoff so buyer agents know up front whether this
-      // partner can be activated in-band or whether signals are
-      // handed off to a DSP they own.
-      var modelLabel = a.activation_model === "direct_mcp" ? "direct activation"
-        : a.activation_model === "ttd_segment_handoff" ? "TTD handoff"
-        : null;
-      var modelPill = modelLabel
-        ? '<span class="pill pill-muted mono" style="font-size:10px;margin-left:6px">' + escapeHtml(modelLabel) + '</span>'
-        : '';
       return '<div class="fed-card">' +
-        '<div class="fed-card-head"><div class="fed-card-name">' + escapeHtml(a.name || a.id) + modelPill + '</div><span class="pill ' + stageClass + '">' + escapeHtml(stage) + '</span></div>' +
+        '<div class="fed-card-head"><div class="fed-card-name">' + escapeHtml(a.name || a.id) + '</div><span class="pill ' + stageClass + '">' + escapeHtml(a.stage || 'unknown') + '</span></div>' +
         (a.mcp_url ? '<div class="fed-url mono">' + escapeHtml(a.mcp_url) + '</div>' : '') +
         (a.vendor ? '<div class="fed-vendor">' + escapeHtml(a.vendor) + '</div>' : '') +
-        (a.activation_note ? '<div class="fed-activation-note">' + escapeHtml(a.activation_note) + '</div>' : '') +
         '<div class="fed-specs">' + specs + '</div>' +
       '</div>';
     }).join("");
@@ -8239,13 +8179,13 @@ function renderFederatedResults(data) {
       var platformId = d0.decisioning_platform_segment_id || (d0.activation_key && d0.activation_key.segment_id);
       if (platform) deployment = platform + (platformId ? " \u00b7 id " + platformId : "");
     }
-    // Action button — agent-specific activation model
+    // Action button — agent-specific
     var actionBtn;
     if (agent === "samba_signals") {
-      actionBtn = '<button class="fed-action-btn primary" data-action="activate" data-sid="' + escapeHtml(sid) + '" title="Direct MCP activation — our agent exposes activate_signal and pushes membership to mock_dsp in-band"><svg class="ico"><use href="#icon-bolt"/></svg><span>Activate</span></button>';
+      actionBtn = '<button class="fed-action-btn primary" data-action="activate" data-sid="' + escapeHtml(sid) + '" title="Activate to mock_dsp"><svg class="ico"><use href="#icon-bolt"/></svg><span>Activate</span></button>';
     } else if (agent === "dstillery") {
       var ttdId = deployment.match(/id (\d+)/) ? deployment.match(/id (\d+)/)[1] : (sig.deployments && sig.deployments[0] && sig.deployments[0].decisioning_platform_segment_id) || sid;
-      actionBtn = '<button class="fed-action-btn" data-action="copy-ttd" data-ttd-id="' + escapeHtml(ttdId) + '" title="Dstillery is discovery-only — they do not expose activate_signal via MCP. Copy this TTD segment ID and paste it into your TTD campaign, where the segment is already live platform-wide."><svg class="ico"><use href="#icon-check"/></svg><span>Copy TTD ID</span></button>';
+      actionBtn = '<button class="fed-action-btn" data-action="copy-ttd" data-ttd-id="' + escapeHtml(ttdId) + '" title="Copy TTD segment ID"><svg class="ico"><use href="#icon-check"/></svg><span>Copy TTD ID</span></button>';
     } else {
       actionBtn = '<button class="fed-action-btn" disabled>n/a</button>';
     }
@@ -8288,24 +8228,7 @@ function renderFederatedResults(data) {
       '<button class="btn-primary" id="fed-activate-selected" style="padding:4px 12px;font-size:11.5px"' + (selectedCount === 0 ? ' disabled' : '') + '><svg class="ico"><use href="#icon-bolt"/></svg><span>Activate selected</span></button>' +
     '</div>';
 
-  // Activation-model callout — clarifies that the two agents activate
-  // differently (direct MCP vs TTD segment handoff). Critical context
-  // for buyer-agent developers landing on this tab for the first time.
-  var modelCallout =
-    '<div class="fed-model-callout">' +
-      '<div class="fed-model-callout-head">Two activation models in these results</div>' +
-      '<div class="fed-model-grid">' +
-        '<div class="fed-model-card fed-model-card-samba">' +
-          '<div class="fed-model-title"><span class="pill pill-success" style="font-size:10px">samba_signals</span> <span class="fed-model-tag">direct MCP</span></div>' +
-          '<div class="fed-model-body">Our agent exposes <code>activate_signal</code>. Clicking <strong>Activate</strong> writes segment membership to <code>mock_dsp</code> in-band and returns an <code>operation_id</code>. Full A2A activation \u2014 no human handoff.</div>' +
-        '</div>' +
-        '<div class="fed-model-card fed-model-card-dstillery">' +
-          '<div class="fed-model-title"><span class="pill pill-info" style="font-size:10px">dstillery</span> <span class="fed-model-tag">discovery-only</span></div>' +
-          '<div class="fed-model-body">Dstillery\u2019s MCP exposes only <code>get_signals</code> \u2014 no <code>activate_signal</code> tool. But their segments are already <strong>live platform-wide on The Trade Desk</strong>. <strong>Copy TTD ID</strong> gives you the exact <code>decisioning_platform_segment_id</code> to add in your TTD campaign.</div>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-  host.innerHTML = modelCallout + summary + actionBar +
+  host.innerHTML = summary + actionBar +
     '<div class="fed-rows">' + (rowsHtml || '<div class="empty-state"><div class="empty-desc">No results from any agent.</div></div>') + '</div>' +
     '<div id="fed-compare-host"></div>';
 

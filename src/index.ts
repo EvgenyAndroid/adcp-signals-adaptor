@@ -236,7 +236,7 @@ export default {
                 response = handleDemo(env);
 
             } else if (method === "GET" && path === "/health") {
-                response = jsonResponse({ status: "ok", version: "3.0-rc" });
+                response = jsonResponse({ status: "ok", version: "3.0" });
 
             } else if (method === "GET" && path.startsWith("/.well-known/oauth-protected-resource")) {
                 // RFC 9728: resource path is the suffix after the well-known

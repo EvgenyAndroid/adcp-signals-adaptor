@@ -106,6 +106,22 @@ ${STYLES}
       <button class="nav-item" data-tab="embedding">
         <svg class="ico"><use href="#icon-chart"/></svg><span>Embedding</span>
       </button>
+      <button class="nav-item" data-tab="lab">
+        <svg class="ico"><use href="#icon-bolt"/></svg><span>Embedding Lab</span>
+        <span class="nav-badge" style="background:var(--accent);color:#fff;font-size:9px;font-weight:600;padding:1px 6px;border-radius:10px;margin-left:auto">new</span>
+      </button>
+      <button class="nav-item" data-tab="portfolio">
+        <svg class="ico"><use href="#icon-chart"/></svg><span>Portfolio</span>
+        <span class="nav-badge" style="background:var(--accent);color:#fff;font-size:9px;font-weight:600;padding:1px 6px;border-radius:10px;margin-left:auto">new</span>
+      </button>
+      <button class="nav-item" data-tab="seasonality">
+        <svg class="ico"><use href="#icon-info"/></svg><span>Seasonality</span>
+        <span class="nav-badge" style="background:var(--accent);color:#fff;font-size:9px;font-weight:600;padding:1px 6px;border-radius:10px;margin-left:auto">new</span>
+      </button>
+      <button class="nav-item" data-tab="federation">
+        <svg class="ico"><use href="#icon-network"/></svg><span>Federation</span>
+        <span class="nav-badge" style="background:var(--accent);color:#fff;font-size:9px;font-weight:600;padding:1px 6px;border-radius:10px;margin-left:auto">a2a</span>
+      </button>
       <button class="nav-item" data-tab="activations">
         <svg class="ico"><use href="#icon-activations"/></svg><span>Activations</span>
         <span class="nav-count" id="nav-activations-count">—</span>
@@ -570,6 +586,295 @@ ${STYLES}
         </div>
       </section>
 
+      <!-- ── TAB: Embedding Lab (Sec-41 Part 2) ─────────────────────────── -->
+      <!-- Advanced vector operations playground. Four sub-panels:          -->
+      <!--   1) Custom similarity — text or vector input                    -->
+      <!--   2) Semantic arithmetic — plus/minus/weight builder             -->
+      <!--   3) Analogy explorer — A:B::C:?                                 -->
+      <!--   4) Coverage-gap heatmap                                        -->
+      <section class="tab-pane" data-tab="lab">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Embedding Lab</h1>
+            <p class="pane-subtitle">Advanced vector operations over the UCP semantic space. Custom similarity, semantic arithmetic, analogy queries, and coverage-gap analysis \u2014 all live against 26 real OpenAI text-embedding-3-small vectors.</p>
+          </div>
+        </div>
+
+        <!-- Inner tab bar to switch sub-panels -->
+        <div class="lab-subtabs">
+          <button class="lab-subtab active" data-lab="playground">Playground</button>
+          <button class="lab-subtab" data-lab="arithmetic">Arithmetic</button>
+          <button class="lab-subtab" data-lab="analogy">Analogy</button>
+          <button class="lab-subtab" data-lab="neighborhood">Neighborhood</button>
+          <button class="lab-subtab" data-lab="coverage">Coverage Gaps</button>
+        </div>
+
+        <!-- 1. Playground — custom similarity -->
+        <div class="lab-subpanel" data-lab-panel="playground">
+          <div class="lab-grid">
+            <div class="lab-panel">
+              <div class="lab-panel-title">Query</div>
+              <label class="lab-label">Mode</label>
+              <div class="lab-tabs">
+                <button class="lab-tab active" data-pg-mode="text">Text</button>
+                <button class="lab-tab" data-pg-mode="vector">Vector (512-d)</button>
+              </div>
+              <div id="pg-text-shell">
+                <label class="lab-label" style="margin-top:10px">Describe an audience</label>
+                <textarea id="pg-text" class="lab-input" rows="4" placeholder="e.g. cord-cutters who just bought a house"></textarea>
+                <div class="lab-chips" id="pg-sample-briefs">
+                  <span class="lab-chips-label">Try:</span>
+                  <button class="lab-chip" data-brief="affluent millennials interested in luxury travel">luxury travel</button>
+                  <button class="lab-chip" data-brief="new parents researching baby gear">new parents</button>
+                  <button class="lab-chip" data-brief="cord-cutters who just moved">moved cord-cutters</button>
+                  <button class="lab-chip" data-brief="B2B decision makers at high-growth tech companies">B2B tech</button>
+                </div>
+              </div>
+              <div id="pg-vector-shell" style="display:none">
+                <label class="lab-label" style="margin-top:10px">Paste 512 comma-separated floats</label>
+                <textarea id="pg-vector" class="lab-input mono" rows="5" placeholder="0.123, -0.456, ..."></textarea>
+              </div>
+              <label class="lab-label" style="margin-top:10px">Top K</label>
+              <input id="pg-k" type="number" min="1" max="50" value="10" class="lab-input"/>
+              <button class="btn-primary" id="pg-run" style="margin-top:12px;width:100%;justify-content:center">
+                <svg class="ico"><use href="#icon-radar"/></svg><span>Find neighbors</span>
+              </button>
+            </div>
+            <div class="lab-panel lab-panel-wide">
+              <div class="lab-panel-title">Results</div>
+              <div id="pg-results"><div class="empty-state"><div class="empty-desc">Enter a query on the left and hit <strong>Find neighbors</strong>. Results rank by cosine similarity in the 512-d UCP space.</div></div></div>
+              <div id="pg-explainer"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Arithmetic -->
+        <div class="lab-subpanel" data-lab-panel="arithmetic" style="display:none">
+          <div class="lab-grid">
+            <div class="lab-panel">
+              <div class="lab-panel-title">Expression builder</div>
+              <div class="lab-terms" id="arith-terms">
+                <!-- populated by JS -->
+              </div>
+              <button class="btn-secondary" id="arith-add-term" style="width:100%;margin-top:8px">
+                <svg class="ico"><use href="#icon-plus"/></svg><span>Add term</span>
+              </button>
+              <label class="lab-label" style="margin-top:12px">Top K</label>
+              <input id="arith-k" type="number" min="1" max="50" value="10" class="lab-input"/>
+              <div class="lab-chips" style="margin-top:12px">
+                <span class="lab-chips-label">Presets:</span>
+                <button class="lab-chip" data-preset="luxury_millennial">luxury + millennial</button>
+                <button class="lab-chip" data-preset="cord_cutter_parents">cord-cutter + parent</button>
+                <button class="lab-chip" data-preset="affluent_minus_urban">affluent − urban</button>
+              </div>
+              <button class="btn-primary" id="arith-run" style="margin-top:12px;width:100%;justify-content:center">
+                <svg class="ico"><use href="#icon-bolt"/></svg><span>Compute</span>
+              </button>
+            </div>
+            <div class="lab-panel lab-panel-wide">
+              <div class="lab-panel-title">Composed audience</div>
+              <div id="arith-expression" class="lab-expr"></div>
+              <div id="arith-results"><div class="empty-state"><div class="empty-desc">Compose 2+ terms and hit <strong>Compute</strong>. The builder does weighted vector arithmetic in the 512-d UCP space, then ranks catalog audiences by cosine to the result.</div></div></div>
+              <div id="arith-explainer"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Analogy -->
+        <div class="lab-subpanel" data-lab-panel="analogy" style="display:none">
+          <div class="lab-grid">
+            <div class="lab-panel">
+              <div class="lab-panel-title">Analogy A : B :: C : ?</div>
+              <label class="lab-label">A — start of known pair</label>
+              <select id="ana-a" class="lab-input"></select>
+              <label class="lab-label" style="margin-top:8px">B — end of known pair</label>
+              <select id="ana-b" class="lab-input"></select>
+              <label class="lab-label" style="margin-top:8px">C — start of new pair</label>
+              <select id="ana-c" class="lab-input"></select>
+              <label class="lab-label" style="margin-top:8px">Algorithm</label>
+              <div class="lab-tabs">
+                <button class="lab-tab active" data-ana-algo="3cos_add">3CosAdd</button>
+                <button class="lab-tab" data-ana-algo="3cos_mul">3CosMul</button>
+              </div>
+              <button class="btn-primary" id="ana-run" style="margin-top:12px;width:100%;justify-content:center">
+                <svg class="ico"><use href="#icon-network"/></svg><span>Find D</span>
+              </button>
+            </div>
+            <div class="lab-panel lab-panel-wide">
+              <div class="lab-panel-title">Analogy result</div>
+              <div id="ana-results"><div class="empty-state"><div class="empty-desc">Pick three distinct signals as A, B, C. The system computes <code>D = B − A + C</code> in vector space and returns the closest matches. Good analogies produce parallel vectors.</div></div></div>
+              <div id="ana-explainer"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Neighborhood -->
+        <div class="lab-subpanel" data-lab-panel="neighborhood" style="display:none">
+          <div class="lab-grid">
+            <div class="lab-panel">
+              <div class="lab-panel-title">Seed signal</div>
+              <select id="nbh-seed" class="lab-input"></select>
+              <label class="lab-label" style="margin-top:8px">Top K</label>
+              <input id="nbh-k" type="number" min="1" max="25" value="10" class="lab-input"/>
+              <button class="btn-primary" id="nbh-run" style="margin-top:12px;width:100%;justify-content:center">
+                <svg class="ico"><use href="#icon-radar"/></svg><span>Explore</span>
+              </button>
+            </div>
+            <div class="lab-panel lab-panel-wide">
+              <div class="lab-panel-title">Neighborhood analysis</div>
+              <div id="nbh-results"><div class="empty-state"><div class="empty-desc">Pick a seed signal. System returns top-K neighbors by cosine, plus local density + distance to the catalog centroid.</div></div></div>
+              <div id="nbh-explainer"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Coverage gaps -->
+        <div class="lab-subpanel" data-lab-panel="coverage" style="display:none">
+          <div class="lab-panel lab-panel-full">
+            <div class="lab-panel-title">Coverage gap heatmap</div>
+            <div id="cov-viz"><div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading coverage grid\u2026</div></div></div>
+            <div id="cov-explainer"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── TAB: Portfolio (Sec-41 Part 2) ─────────────────────────────── -->
+      <section class="tab-pane" data-tab="portfolio">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Portfolio Optimizer</h1>
+            <p class="pane-subtitle">Pareto frontier across reach / CPM / specificity, greedy marginal-reach allocator, and information-theoretic overlap. Beyond simple Jaccard.</p>
+          </div>
+        </div>
+        <div class="port-subtabs">
+          <button class="lab-subtab active" data-port="pareto">Pareto frontier</button>
+          <button class="lab-subtab" data-port="optimizer">Greedy optimizer</button>
+          <button class="lab-subtab" data-port="lorenz">Lorenz / Gini</button>
+          <button class="lab-subtab" data-port="from-brief">Brief \u2192 Portfolio</button>
+        </div>
+        <div class="lab-subpanel" data-port-panel="pareto">
+          <div class="lab-panel lab-panel-full">
+            <div class="lab-panel-title">Pareto frontier \u2014 520 signals across reach \u00d7 CPM \u00d7 specificity</div>
+            <div id="port-pareto-viz"><div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading frontier\u2026</div></div></div>
+            <div id="port-pareto-explainer"></div>
+          </div>
+        </div>
+        <div class="lab-subpanel" data-port-panel="optimizer" style="display:none">
+          <div class="lab-grid">
+            <div class="lab-panel">
+              <div class="lab-panel-title">Constraints</div>
+              <label class="lab-label">Budget ($)</label>
+              <input id="opt-budget" type="number" min="1000" value="250000" step="10000" class="lab-input"/>
+              <label class="lab-label" style="margin-top:8px">Max signals in portfolio</label>
+              <input id="opt-max-sig" type="number" min="1" max="20" value="6" class="lab-input"/>
+              <label class="lab-label" style="margin-top:8px">Target reach (optional)</label>
+              <input id="opt-target" type="number" min="0" value="0" step="1000000" class="lab-input"/>
+              <button class="btn-primary" id="opt-run" style="margin-top:12px;width:100%;justify-content:center">
+                <svg class="ico"><use href="#icon-bolt"/></svg><span>Optimize</span>
+              </button>
+            </div>
+            <div class="lab-panel lab-panel-wide">
+              <div class="lab-panel-title">Greedy picks + marginal reach waterfall</div>
+              <div id="opt-results"><div class="empty-state"><div class="empty-desc">Enter a budget and hit Optimize. The greedy allocator iterates catalog candidates, at each step picking the signal that adds the most <strong>unique</strong> reach after subtracting pairwise overlap.</div></div></div>
+              <div id="opt-explainer"></div>
+            </div>
+          </div>
+        </div>
+        <div class="lab-subpanel" data-port-panel="lorenz" style="display:none">
+          <div class="lab-panel lab-panel-full">
+            <div class="lab-panel-title">Catalog concentration (Lorenz curve + Gini)</div>
+            <div id="port-lorenz-viz"><div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading Lorenz curves\u2026</div></div></div>
+            <div id="port-lorenz-explainer"></div>
+          </div>
+        </div>
+        <div class="lab-subpanel" data-port-panel="from-brief" style="display:none">
+          <div class="lab-grid">
+            <div class="lab-panel">
+              <div class="lab-panel-title">Brief</div>
+              <textarea id="brief-text" class="lab-input" rows="6" placeholder="Launch campaign for affluent urban millennials interested in premium fitness + wellness. Target CTV + podcast..."></textarea>
+              <label class="lab-label" style="margin-top:8px">Budget</label>
+              <input id="brief-budget" type="number" min="1000" value="250000" step="10000" class="lab-input"/>
+              <button class="btn-primary" id="brief-run" style="margin-top:12px;width:100%;justify-content:center">
+                <svg class="ico"><use href="#icon-radar"/></svg><span>Generate portfolio</span>
+              </button>
+            </div>
+            <div class="lab-panel lab-panel-wide">
+              <div class="lab-panel-title">Recommended portfolio</div>
+              <div id="brief-results"><div class="empty-state"><div class="empty-desc">Paste a full campaign brief. System vectorizes it, retrieves top-K similar signals from the 26-vector embedding space, then greedy-optimizes a portfolio with allocation percentages.</div></div></div>
+              <div id="brief-explainer"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── TAB: Seasonality (Sec-41 Part 2) ───────────────────────────── -->
+      <section class="tab-pane" data-tab="seasonality">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Seasonality Intelligence</h1>
+            <p class="pane-subtitle">Forward-looking signal recommendations based on monthly seasonality profiles, volatility indices, and data-freshness decay curves.</p>
+          </div>
+        </div>
+        <div class="lab-grid">
+          <div class="lab-panel">
+            <div class="lab-panel-title">Best signals for window</div>
+            <label class="lab-label">Target window</label>
+            <select id="sea-window" class="lab-input">
+              <option value="current">Current month</option>
+              <option value="Q1">Q1 (Jan-Mar)</option>
+              <option value="Q2">Q2 (Apr-Jun)</option>
+              <option value="Q3">Q3 (Jul-Sep)</option>
+              <option value="Q4">Q4 (Oct-Dec)</option>
+              <option value="month_10">November</option>
+              <option value="month_11">December</option>
+            </select>
+            <button class="btn-primary" id="sea-run" style="margin-top:12px;width:100%;justify-content:center">
+              <svg class="ico"><use href="#icon-info"/></svg><span>Rank</span>
+            </button>
+          </div>
+          <div class="lab-panel lab-panel-wide">
+            <div class="lab-panel-title">Top-ranked signals for this window</div>
+            <div id="sea-results"><div class="empty-state"><div class="empty-desc">Pick a window and hit Rank. System scores every signal by <code>window_avg_seasonality \u00d7 specificity \u00d7 log_reach</code>.</div></div></div>
+            <div id="sea-explainer"></div>
+          </div>
+        </div>
+        <div class="lab-panel lab-panel-full" style="margin-top:14px">
+          <div class="lab-panel-title">Seasonality heatmap \u2014 first 30 signals</div>
+          <div id="sea-heatmap"><div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading heatmap\u2026</div></div></div>
+        </div>
+      </section>
+
+      <!-- ── TAB: Federation (Sec-41 Part 3 placeholder) ────────────────── -->
+      <section class="tab-pane" data-tab="federation">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Agent Federation <span class="pill pill-success" style="margin-left:8px;font-size:10px">A2A live</span></h1>
+            <p class="pane-subtitle">Cross-agent search across the AdCP Signals Discovery ecosystem. Live partner: Dstillery. More coming.</p>
+          </div>
+        </div>
+        <div class="lab-grid">
+          <div class="lab-panel">
+            <div class="lab-panel-title">Federated search</div>
+            <label class="lab-label">Brief</label>
+            <textarea id="fed-brief" class="lab-input" rows="4" placeholder="automotive intenders"></textarea>
+            <label class="lab-label" style="margin-top:8px">Max results per agent</label>
+            <input id="fed-max" type="number" min="1" max="20" value="5" class="lab-input"/>
+            <button class="btn-primary" id="fed-run" style="margin-top:12px;width:100%;justify-content:center">
+              <svg class="ico"><use href="#icon-network"/></svg><span>Fan out</span>
+            </button>
+          </div>
+          <div class="lab-panel lab-panel-wide">
+            <div class="lab-panel-title">Merged results across agents</div>
+            <div id="fed-results"><div class="empty-state"><div class="empty-desc">Enter a brief, hit Fan out. System queries <strong>Samba Signals (us)</strong> + <strong>Dstillery</strong> in parallel and merges results with agent badges. Partners added to <code>/agents/registry</code>.</div></div></div>
+            <div id="fed-explainer"></div>
+          </div>
+        </div>
+        <div class="lab-panel lab-panel-full" style="margin-top:14px">
+          <div class="lab-panel-title">Agent registry</div>
+          <div id="fed-registry"><div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading agent registry\u2026</div></div></div>
+        </div>
+      </section>
+
       <!-- ── TAB: Capabilities ──────────────────────────────────────────── -->
       <section class="tab-pane" data-tab="capabilities">
         <div class="pane-header">
@@ -856,6 +1161,10 @@ ${STYLES}
     <div class="kbd-row"><span>Open Capabilities</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">k</span></span></div>
     <div class="kbd-row"><span>Open Dev kit</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">v</span></span></div>
     <div class="kbd-row"><span>Open Destinations</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">n</span></span></div>
+    <div class="kbd-row"><span>Open Embedding Lab</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">x</span></span></div>
+    <div class="kbd-row"><span>Open Portfolio</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">p</span></span></div>
+    <div class="kbd-row"><span>Open Seasonality</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">s</span></span></div>
+    <div class="kbd-row"><span>Open Federation</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">f</span></span></div>
     <div class="kbd-row"><span>Expand / collapse detail panel</span><span class="kbd-keys"><span class="kbd-key">f</span></span></div>
     <div class="kbd-row"><span>Close detail panel</span><span class="kbd-keys"><span class="kbd-key">Esc</span></span></div>
     <div class="kbd-row"><span>Toggle this sheet</span><span class="kbd-keys"><span class="kbd-key">?</span></span></div>
@@ -2361,6 +2670,190 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   border-radius: 3px; padding: 2px 8px; color: var(--text);
 }
 
+/* Sec-41 Embedding Lab + Portfolio + Seasonality + Federation tabs */
+.lab-subtabs, .port-subtabs {
+  display: flex; gap: 4px; margin-bottom: 14px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.lab-subtab {
+  background: transparent; border: 0; color: var(--text-mut);
+  padding: 10px 16px; font-size: 12.5px; cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.lab-subtab:hover { color: var(--text); }
+.lab-subtab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.lab-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 16px;
+}
+.lab-panel {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 14px 16px;
+}
+.lab-panel-wide { grid-column: span 1; }
+.lab-panel-full { grid-column: 1 / -1; }
+.lab-panel-title {
+  font-size: 12px; font-weight: 600; color: var(--text);
+  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px;
+}
+.lab-label {
+  font-size: 10.5px; color: var(--text-mut);
+  text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500;
+  display: block; margin-bottom: 4px;
+}
+.lab-input {
+  width: 100%; box-sizing: border-box;
+  background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text); padding: 6px 10px; border-radius: var(--radius-sm);
+  font-family: var(--font-sans); font-size: 12.5px; outline: none;
+  transition: border-color 0.12s;
+}
+.lab-input:focus { border-color: var(--accent-border); }
+.lab-input.mono { font-family: var(--font-mono); font-size: 11px; }
+textarea.lab-input { resize: vertical; line-height: 1.5; }
+.lab-tabs { display: flex; gap: 4px; }
+.lab-tab {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  color: var(--text-mut); padding: 4px 12px; border-radius: 4px;
+  cursor: pointer; font-size: 11.5px; font-family: var(--font-mono);
+  transition: all 0.15s;
+}
+.lab-tab.active { color: var(--accent); border-color: var(--accent-border); background: var(--accent-dim); }
+.lab-chips {
+  display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px;
+}
+.lab-chips-label {
+  font-size: 10.5px; color: var(--text-mut); text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.lab-chip {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  color: var(--text-dim); padding: 3px 10px; border-radius: 12px;
+  cursor: pointer; font-size: 11px; transition: all 0.12s;
+}
+.lab-chip:hover { color: var(--accent); border-color: var(--accent-border); }
+.lab-stat-card {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 12px;
+}
+.lab-stat-label { font-size: 10px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.06em; }
+.lab-stat-val { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.lab-expr {
+  background: var(--bg-input); border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+  font-family: var(--font-mono); font-size: 12px; color: var(--accent);
+  margin-bottom: 12px;
+}
+.lab-expr-inner { font-family: var(--font-mono); font-size: 12px; }
+
+/* Arithmetic term rows */
+.lab-terms { display: flex; flex-direction: column; gap: 6px; }
+.arith-term {
+  display: grid; grid-template-columns: 60px 55px 16px 1fr 28px;
+  gap: 6px; align-items: center;
+}
+.arith-term select.arith-sign, .arith-term input.arith-weight, .arith-term select.arith-id {
+  background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text); padding: 4px 8px; border-radius: 4px;
+  font-family: var(--font-mono); font-size: 11.5px; outline: none;
+}
+.arith-term .arith-sign.mono { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-mut); padding: 4px 8px; background: var(--bg-raised); border-radius: 4px; }
+.arith-term .arith-remove {
+  background: transparent; border: 0; color: var(--text-mut); cursor: pointer;
+  padding: 4px; border-radius: 4px;
+}
+.arith-term .arith-remove:hover { color: var(--error); }
+
+/* Embedding result list */
+.emb-result-list { display: flex; flex-direction: column; gap: 4px; }
+.emb-result-row {
+  display: grid; grid-template-columns: 28px 1fr 180px; gap: 10px;
+  align-items: center; padding: 8px 10px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.emb-result-row:hover { border-color: var(--accent-border); background: var(--bg-hover); }
+.err-rank { font-family: var(--font-mono); color: var(--text-mut); font-size: 12px; text-align: center; }
+.err-name { font-size: 12.5px; color: var(--text); }
+.err-sid { font-size: 10.5px; color: var(--text-mut); margin-top: 2px; }
+.err-cos { display: flex; flex-direction: column; gap: 2px; }
+.err-cos-val { font-size: 12px; color: var(--accent); text-align: right; }
+.err-cos-bar { height: 6px; background: var(--bg-raised); border-radius: 3px; overflow: hidden; }
+.err-cos-fill { height: 100%; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); }
+
+/* Neighborhood stats */
+.nbh-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+.nbh-stat {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 10px;
+}
+.nbh-stat-label { font-size: 10px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.06em; }
+.nbh-stat-val { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+
+/* Portfolio optimizer waterfall */
+.opt-waterfall { display: flex; flex-direction: column; gap: 4px; }
+.opt-row {
+  display: grid; grid-template-columns: 28px 1fr 200px 80px; gap: 10px;
+  align-items: center; padding: 6px 10px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.opt-rank { font-family: var(--font-mono); color: var(--text-mut); font-size: 12px; text-align: center; }
+.opt-name { font-size: 12px; }
+.opt-bar { height: 16px; background: var(--bg-raised); border-radius: 3px; overflow: hidden; }
+.opt-bar-fill { height: 100%; background: linear-gradient(90deg, var(--ok), var(--accent)); }
+.opt-margin { font-size: 12.5px; color: var(--ok); text-align: right; font-weight: 600; }
+
+/* Lorenz small multiples */
+.lorenz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.lorenz-card { background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; }
+.lorenz-title { font-size: 12px; color: var(--text); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+.lorenz-gini { font-family: var(--font-mono); font-size: 11px; color: var(--accent); }
+.lorenz-card svg { width: 100%; height: auto; }
+.lorenz-count { font-size: 10.5px; color: var(--text-mut); margin-top: 4px; }
+
+/* Brief -> portfolio rows */
+.brief-row {
+  display: grid; grid-template-columns: 28px 1fr 60px; gap: 10px;
+  align-items: center; padding: 8px 10px; margin-bottom: 4px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.brief-rank { font-family: var(--font-mono); color: var(--text-mut); font-size: 12px; text-align: center; }
+.brief-name { font-size: 12.5px; color: var(--text); }
+.brief-reason { font-size: 10.5px; color: var(--text-mut); margin-top: 2px; }
+.brief-alloc { font-size: 14px; color: var(--accent); font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Seasonality */
+.sea-row {
+  display: grid; grid-template-columns: 28px 1fr 70px; gap: 10px;
+  align-items: center; padding: 8px 10px; margin-bottom: 4px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.sea-rank { font-family: var(--font-mono); color: var(--text-mut); font-size: 12px; text-align: center; }
+.sea-name { font-size: 12.5px; color: var(--text); }
+.sea-mult { font-size: 14px; color: var(--accent); font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Federation */
+.fed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.fed-card { background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; }
+.fed-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.fed-card-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.fed-url { font-size: 10.5px; color: var(--text-mut); margin-bottom: 4px; word-break: break-all; }
+.fed-vendor { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; }
+.fed-specs { display: flex; gap: 4px; flex-wrap: wrap; }
+.fed-result-row {
+  display: grid; grid-template-columns: 28px 1fr auto; gap: 10px;
+  align-items: center; padding: 8px 10px; margin-bottom: 4px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
 /* Chart explainer (Sec-39) */
 .chart-explainer {
   margin-top: 10px;
@@ -3033,6 +3526,8 @@ function switchTab(name) {
     treemap: "Treemap", builder: "Builder", activations: "Activations",
     capabilities: "Capabilities", toollog: "Tool Log", overlap: "Overlap",
     embedding: "Embedding space", devkit: "Dev kit", destinations: "Destinations",
+    lab: "Embedding Lab", portfolio: "Portfolio", seasonality: "Seasonality",
+    federation: "Federation",
   };
   document.getElementById("crumb-current").textContent = crumbMap[name] || name;
 
@@ -3046,6 +3541,10 @@ function switchTab(name) {
   if (name === "embedding") ensureEmbedding();
   if (name === "devkit") ensureDevkit();
   if (name === "destinations") ensureDestinations();
+  if (name === "lab") ensureLab();
+  if (name === "portfolio") ensurePortfolio();
+  if (name === "seasonality") ensureSeasonality();
+  if (name === "federation") ensureFederation();
 
   // Activations tab: start polling when visible, stop when hidden
   if (name === "activations") startActivationsPolling();
@@ -6497,6 +6996,631 @@ function renderDestField(label, value) {
   return '<div class="dest-field"><div class="dest-field-label">' + escapeHtml(label) + '</div><div class="dest-field-val">' + escapeHtml(String(value)) + '</div></div>';
 }
 
+//────────────────────────────────────────────────────────────────────────
+// Sec-41 Part 2 — Embedding Lab + Portfolio + Seasonality + Federation
+//────────────────────────────────────────────────────────────────────────
+
+// 26 embedded signals (from /ucp/projection). Loaded once per session.
+var _embSignals = null;
+async function loadEmbSignals() {
+  if (_embSignals) return _embSignals;
+  try {
+    var r = await fetch("/ucp/projection");
+    var data = await r.json();
+    _embSignals = (data.points || []).map(function (p) { return { id: p.signal_id, name: p.name, category: p.category, description: p.description }; });
+  } catch {
+    _embSignals = [];
+  }
+  return _embSignals;
+}
+
+// Render a result list from query-vector / arithmetic / analogy / neighborhood
+function renderEmbResultList(results, cosineKey) {
+  cosineKey = cosineKey || "cosine";
+  if (!results || !results.length) {
+    return '<div class="empty-state" style="padding:14px"><div class="empty-desc">No matches. Try a different query.</div></div>';
+  }
+  return '<div class="emb-result-list">' + results.map(function (r, i) {
+    var cos = r[cosineKey] !== undefined ? r[cosineKey] : r.cosine_or_score;
+    var cosPct = Math.max(0, cos) * 100;
+    var sid = r.signal_agent_segment_id || r.signal_id || "";
+    return '<div class="emb-result-row" data-sid="' + escapeHtml(sid) + '">' +
+      '<div class="err-rank">' + (i + 1) + '</div>' +
+      '<div class="err-main">' +
+        '<div class="err-name">' + escapeHtml(r.name || sid) + '</div>' +
+        '<div class="err-sid mono">' + escapeHtml(sid) + (r.category_type || r.category ? ' \u00b7 ' + escapeHtml(r.category_type || r.category) : '') + '</div>' +
+      '</div>' +
+      '<div class="err-cos">' +
+        '<div class="err-cos-val mono">' + (typeof cos === "number" ? cos.toFixed(3) : "—") + '</div>' +
+        '<div class="err-cos-bar"><div class="err-cos-fill" style="width:' + cosPct.toFixed(1) + '%"></div></div>' +
+      '</div>' +
+    '</div>';
+  }).join("") + '</div>';
+}
+
+// ─── Embedding Lab ───────────────────────────────────────────────────────
+var _labLoaded = false;
+async function ensureLab() {
+  if (_labLoaded) return;
+  _labLoaded = true;
+  await loadEmbSignals();
+  wireLabSubtabs();
+  wireLabPlayground();
+  wireLabArithmetic();
+  wireLabAnalogy();
+  wireLabNeighborhood();
+}
+
+function wireLabSubtabs() {
+  document.querySelectorAll(".lab-subtab[data-lab]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var target = btn.dataset.lab;
+      document.querySelectorAll(".lab-subtab[data-lab]").forEach(function (b) { b.classList.toggle("active", b === btn); });
+      document.querySelectorAll(".lab-subpanel[data-lab-panel]").forEach(function (p) {
+        p.style.display = p.dataset.labPanel === target ? "" : "none";
+      });
+      if (target === "coverage") renderCoverageGaps();
+    });
+  });
+}
+
+// Playground — /ucp/query-vector
+function wireLabPlayground() {
+  var mode = "text";
+  document.querySelectorAll("[data-pg-mode]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      mode = btn.dataset.pgMode;
+      document.querySelectorAll("[data-pg-mode]").forEach(function (b) { b.classList.toggle("active", b === btn); });
+      document.getElementById("pg-text-shell").style.display = mode === "text" ? "" : "none";
+      document.getElementById("pg-vector-shell").style.display = mode === "vector" ? "" : "none";
+    });
+  });
+  document.querySelectorAll("#pg-sample-briefs .lab-chip").forEach(function (c) {
+    c.addEventListener("click", function () { document.getElementById("pg-text").value = c.dataset.brief; });
+  });
+  document.getElementById("pg-run").addEventListener("click", async function () {
+    var host = document.getElementById("pg-results");
+    host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Computing cosines\u2026</div></div>';
+    var body = { mode: mode, k: parseInt(document.getElementById("pg-k").value, 10) || 10 };
+    if (mode === "text") body.text = document.getElementById("pg-text").value;
+    else {
+      var raw = document.getElementById("pg-vector").value.split(/[,\s]+/).map(function (s) { return parseFloat(s); }).filter(function (v) { return !isNaN(v); });
+      body.vector = raw;
+    }
+    try {
+      var r = await fetch("/ucp/query-vector", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      var data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error || ("HTTP " + r.status));
+      host.innerHTML = renderEmbResultList(data.results, "cosine");
+      document.getElementById("pg-explainer").innerHTML = renderChartExplainer({
+        what: "Top-" + data.k + " catalog audiences most semantically similar to your query.",
+        how: data.method + " (" + data.query_vector_source + "). Each result\u2019s cosine is the dot product of L2-normalized vectors.",
+        read: "Higher cosine = stronger semantic match. Cosines above 0.5 are usually solid; below 0.2 are tenuous.",
+        limits: mode === "text" ? "Text mode uses a deterministic pseudo-hash vector \u2014 useful for demo but not as semantically rich as a real LLM embedding. POST mode=vector with your own vector for production quality." : "Vector mode: caller-provided vector. Ensure your vector is from the same space_id (" + data.space_id + ").",
+      });
+      host.querySelectorAll(".emb-result-row").forEach(function (row) {
+        row.addEventListener("click", function () { openDetailHydrated(row.dataset.sid); });
+      });
+    } catch (e) {
+      host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div></div>';
+    }
+  });
+}
+
+// Arithmetic — /ucp/arithmetic
+var _arithTerms = [{ sign: "base", id: "", weight: 1 }, { sign: "plus", id: "", weight: 1 }];
+function renderArithTerms() {
+  var host = document.getElementById("arith-terms");
+  if (!host) return;
+  host.innerHTML = _arithTerms.map(function (t, i) {
+    var options = (_embSignals || []).map(function (s) {
+      return '<option value="' + escapeHtml(s.id) + '"' + (t.id === s.id ? ' selected' : '') + '>' + escapeHtml(s.name) + '</option>';
+    }).join("");
+    var signHtml = i === 0
+      ? '<span class="arith-sign mono" style="min-width:40px">base</span>'
+      : '<select class="arith-sign" data-idx="' + i + '"><option value="plus"' + (t.sign === "plus" ? ' selected' : '') + '>+</option><option value="minus"' + (t.sign === "minus" ? ' selected' : '') + '>\u2212</option></select>';
+    return '<div class="arith-term">' +
+      signHtml +
+      '<input type="number" min="0" max="2" step="0.1" value="' + t.weight + '" class="arith-weight" data-idx="' + i + '"/>' +
+      '<span>\u00d7</span>' +
+      '<select class="arith-id" data-idx="' + i + '"><option value="">\u2014 pick signal \u2014</option>' + options + '</select>' +
+      (i >= 1 ? '<button class="arith-remove" data-idx="' + i + '"><svg class="ico"><use href="#icon-close"/></svg></button>' : '') +
+    '</div>';
+  }).join("");
+  host.querySelectorAll(".arith-sign").forEach(function (el) { el.addEventListener("change", function () { _arithTerms[parseInt(el.dataset.idx, 10)].sign = el.value; }); });
+  host.querySelectorAll(".arith-weight").forEach(function (el) { el.addEventListener("input", function () { _arithTerms[parseInt(el.dataset.idx, 10)].weight = parseFloat(el.value) || 1; }); });
+  host.querySelectorAll(".arith-id").forEach(function (el) { el.addEventListener("change", function () { _arithTerms[parseInt(el.dataset.idx, 10)].id = el.value; }); });
+  host.querySelectorAll(".arith-remove").forEach(function (el) { el.addEventListener("click", function () { _arithTerms.splice(parseInt(el.dataset.idx, 10), 1); renderArithTerms(); }); });
+}
+function wireLabArithmetic() {
+  renderArithTerms();
+  document.getElementById("arith-add-term").addEventListener("click", function () {
+    if (_arithTerms.length >= 6) { showToast("Max 6 terms", true); return; }
+    _arithTerms.push({ sign: "plus", id: "", weight: 1 });
+    renderArithTerms();
+  });
+  document.querySelectorAll(".lab-chip[data-preset]").forEach(function (c) {
+    c.addEventListener("click", function () {
+      var preset = c.dataset.preset;
+      if (preset === "luxury_millennial") {
+        _arithTerms = [{ sign: "base", id: "sig_high_income_households", weight: 1 }, { sign: "plus", id: "sig_age_25_34", weight: 1 }];
+      } else if (preset === "cord_cutter_parents") {
+        _arithTerms = [{ sign: "base", id: "sig_streaming_enthusiasts", weight: 1 }, { sign: "plus", id: "sig_age_35_44", weight: 1 }];
+      } else if (preset === "affluent_minus_urban") {
+        _arithTerms = [{ sign: "base", id: "sig_high_income_households", weight: 1 }, { sign: "minus", id: "sig_age_18_24", weight: 0.5 }];
+      }
+      renderArithTerms();
+    });
+  });
+  document.getElementById("arith-run").addEventListener("click", async function () {
+    var host = document.getElementById("arith-results");
+    var expr = document.getElementById("arith-expression");
+    host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Composing vectors\u2026</div></div>';
+    var terms = _arithTerms.filter(function (t) { return t.id; });
+    if (terms.length < 1) { host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">Pick at least one signal</div></div>'; return; }
+    var body = { plus: [], minus: [], weights: {}, k: parseInt(document.getElementById("arith-k").value, 10) || 10 };
+    terms.forEach(function (t) {
+      if (t.sign === "base") body.base = t.id;
+      else if (t.sign === "plus") body.plus.push(t.id);
+      else if (t.sign === "minus") body.minus.push(t.id);
+      body.weights[t.id] = t.weight;
+    });
+    try {
+      var r = await fetch("/ucp/arithmetic", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      var data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error || ("HTTP " + r.status));
+      expr.innerHTML = '<div class="lab-expr-inner">' + escapeHtml(data.expression) + ' <span class="mono" style="color:var(--text-mut);margin-left:8px">pre-norm norm: ' + data.composed_vector_norm_before_normalize + '</span></div>';
+      host.innerHTML = renderEmbResultList(data.results, "cosine");
+      document.getElementById("arith-explainer").innerHTML = renderChartExplainer({
+        what: "Top audiences closest to the composed vector you built.",
+        how: "Weighted sum of input vectors: base + \u03a3 (plus) \u2212 \u03a3 (minus), then L2-normalized. Results rank by cosine to the composed vector. Input signals excluded to prevent self-match.",
+        read: "High-cosine results reflect the meaning combination you built. E.g., luxury + millennial \u2192 upscale young-adult audiences.",
+        limits: "Works best with signals whose vectors are semantically coherent. Out-of-distribution combinations may produce low-confidence matches.",
+      });
+      host.querySelectorAll(".emb-result-row").forEach(function (row) {
+        row.addEventListener("click", function () { openDetailHydrated(row.dataset.sid); });
+      });
+    } catch (e) {
+      host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div></div>';
+    }
+  });
+}
+
+// Analogy — /ucp/analogy
+function wireLabAnalogy() {
+  var options = (_embSignals || []).map(function (s) { return '<option value="' + escapeHtml(s.id) + '">' + escapeHtml(s.name) + '</option>'; }).join("");
+  ["ana-a", "ana-b", "ana-c"].forEach(function (id) { var el = document.getElementById(id); if (el) el.innerHTML = '<option value="">\u2014 pick \u2014</option>' + options; });
+  var algorithm = "3cos_add";
+  document.querySelectorAll("[data-ana-algo]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      algorithm = btn.dataset.anaAlgo;
+      document.querySelectorAll("[data-ana-algo]").forEach(function (b) { b.classList.toggle("active", b === btn); });
+    });
+  });
+  document.getElementById("ana-run").addEventListener("click", async function () {
+    var host = document.getElementById("ana-results");
+    var a = document.getElementById("ana-a").value, b = document.getElementById("ana-b").value, c = document.getElementById("ana-c").value;
+    if (!a || !b || !c) { host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">Pick A, B, and C</div></div>'; return; }
+    host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Solving for D\u2026</div></div>';
+    try {
+      var r = await fetch("/ucp/analogy", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a: a, b: b, c: c, algorithm: algorithm, k: 10 }) });
+      var data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error || ("HTTP " + r.status));
+      host.innerHTML = '<div class="lab-expr-inner" style="margin-bottom:10px">' + escapeHtml(data.analogy) + ' <span class="mono" style="color:var(--text-mut);margin-left:8px">algorithm: ' + data.algorithm + '</span></div>' +
+        renderEmbResultList(data.results, "cosine_or_score");
+      document.getElementById("ana-explainer").innerHTML = renderChartExplainer({
+        what: "Top candidate signals filling the analogy A:B::C:?",
+        how: data.algorithm === "3cos_add" ? "3CosAdd: D = L2-normalize(B \u2212 A + C), then rank by cosine. The rotation direction from A to B is applied to C." : "3CosMul (Levy & Goldberg 2014): rank by (cos(x,B)+1) \u00d7 (cos(x,C)+1) / (cos(x,A)+\u03b5+1). More robust to degenerate analogies.",
+        read: "Top result is the best vector-space analogy. High scores = parallel direction between (A\u2192B) and (C\u2192result).",
+        limits: "Works best when the A\u2192B relation is simple (tier upgrade, demographic shift). Complex relations may not generalize.",
+      });
+      host.querySelectorAll(".emb-result-row").forEach(function (row) {
+        row.addEventListener("click", function () { openDetailHydrated(row.dataset.sid); });
+      });
+    } catch (e) {
+      host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div></div>';
+    }
+  });
+}
+
+// Neighborhood — /ucp/neighborhood
+function wireLabNeighborhood() {
+  var options = (_embSignals || []).map(function (s) { return '<option value="' + escapeHtml(s.id) + '">' + escapeHtml(s.name) + '</option>'; }).join("");
+  var sel = document.getElementById("nbh-seed");
+  if (sel) sel.innerHTML = '<option value="">\u2014 pick \u2014</option>' + options;
+  document.getElementById("nbh-run").addEventListener("click", async function () {
+    var host = document.getElementById("nbh-results");
+    var seed = document.getElementById("nbh-seed").value;
+    if (!seed) { host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">Pick a seed signal</div></div>'; return; }
+    host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Exploring neighborhood\u2026</div></div>';
+    try {
+      var r = await fetch("/ucp/neighborhood", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ signal_id: seed, k: parseInt(document.getElementById("nbh-k").value, 10) || 10 }) });
+      var data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error || ("HTTP " + r.status));
+      var statsHtml = '<div class="nbh-stats">' +
+        '<div class="nbh-stat"><div class="nbh-stat-label">Local density</div><div class="nbh-stat-val">' + data.local_density + '</div></div>' +
+        '<div class="nbh-stat"><div class="nbh-stat-label">Distance to centroid</div><div class="nbh-stat-val">' + data.catalog_centroid_distance + '</div></div>' +
+        '<div class="nbh-stat"><div class="nbh-stat-label">Role</div><div class="nbh-stat-val">' + (data.is_prototypical ? "prototypical" : "edge case") + '</div></div>' +
+      '</div>';
+      host.innerHTML = statsHtml + renderEmbResultList(data.neighbors, "cosine");
+      document.getElementById("nbh-explainer").innerHTML = renderChartExplainer({
+        what: "The k nearest neighbors of your seed signal, plus local density stats.",
+        how: "Cosine-rank across the 26-vector embedding store. Local density = mean cosine to top-k neighbors (0..1). Centroid distance = 1 \u2212 cos(signal, catalog_centroid).",
+        read: "High local density = tight cluster (alternatives). Low centroid distance = \u201cprototypical\u201d of the catalog; high = specialty/edge audience.",
+        limits: "Computed over the 26 embedded signals only. Future: extend to full 520-signal catalog via incremental embedding.",
+      });
+      host.querySelectorAll(".emb-result-row").forEach(function (row) {
+        row.addEventListener("click", function () { openDetailHydrated(row.dataset.sid); });
+      });
+    } catch (e) {
+      host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div></div>';
+    }
+  });
+}
+
+// Coverage gaps — /analytics/coverage-gaps
+async function renderCoverageGaps() {
+  var host = document.getElementById("cov-viz");
+  if (!host || host.dataset.loaded) return;
+  host.dataset.loaded = "1";
+  host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Computing gap heatmap\u2026</div></div>';
+  try {
+    var r = await fetch("/analytics/coverage-gaps");
+    var data = await r.json();
+    var W = 600, H = 500;
+    var cellW = W / data.grid_w, cellH = H / data.grid_h;
+    var cellMap = {};
+    (data.cells_with_points || []).forEach(function (c) { cellMap[c.row + "_" + c.col] = c; });
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">';
+    for (var r2 = 0; r2 < data.grid_h; r2++) {
+      for (var c2 = 0; c2 < data.grid_w; c2++) {
+        var key = r2 + "_" + c2;
+        var cell = cellMap[key];
+        var count = cell ? cell.count : 0;
+        var density = cell ? cell.density : 0;
+        var fill;
+        if (count === 0) {
+          fill = "rgba(255, 122, 92, 0.15)";  // warm gap
+        } else {
+          var intensity = 0.3 + density * 0.7;
+          fill = "rgba(79, 142, 255, " + intensity.toFixed(3) + ")";
+        }
+        svg += '<rect x="' + (c2 * cellW) + '" y="' + (r2 * cellH) + '" width="' + cellW + '" height="' + cellH + '" fill="' + fill + '" stroke="var(--bg-surface)" stroke-width="0.5">' +
+          '<title>cell (' + r2 + ',' + c2 + '): ' + count + ' signals, density=' + density.toFixed(2) + '</title>' +
+        '</rect>';
+      }
+    }
+    // Highlight top-3 gap cells
+    (data.gap_cells || []).slice(0, 3).forEach(function (g) {
+      var cx = (g.col + 0.5) * cellW, cy = (g.row + 0.5) * cellH;
+      svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (Math.min(cellW, cellH) * 0.35) + '" fill="none" stroke="var(--warn)" stroke-width="2" stroke-dasharray="4,2"/>';
+      svg += '<text x="' + cx + '" y="' + (cy + 4) + '" text-anchor="middle" font-size="10" fill="var(--warn)" font-weight="600">gap</text>';
+    });
+    svg += '</svg>';
+    host.innerHTML = svg +
+      '<div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+        '<div class="lab-stat-card"><div class="lab-stat-label">Coverage score</div><div class="lab-stat-val">' + Math.round(data.summary.coverage_score * 100) + '%</div></div>' +
+        '<div class="lab-stat-card"><div class="lab-stat-label">Empty cells</div><div class="lab-stat-val">' + data.summary.empty_cells + ' / ' + data.summary.total_cells + '</div></div>' +
+      '</div>';
+    document.getElementById("cov-explainer").innerHTML = renderChartExplainer({
+      what: "A 12\u00d712 grid overlay on the 2D embedding projection. Each cell is colored by how many audiences occupy it.",
+      how: "Projects 26 embedded vectors to 2D via JL random projection, bins them into a 12\u00d712 grid. Warm/orange cells = gaps (below-median density). Top-3 gaps are circled and labeled.",
+      read: "Blue dense cells = catalog is saturated here. Orange gaps = \u201cmarketplace opportunities\u201d \u2014 concept regions we could expand into via new signals or partners.",
+      limits: "Operates on 26 embedded reference signals, not the full 520-signal catalog. Gaps are approximate.",
+    });
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div></div>';
+    host.dataset.loaded = "";
+  }
+}
+
+// ─── Portfolio ───────────────────────────────────────────────────────────
+var _portLoaded = false;
+async function ensurePortfolio() {
+  if (_portLoaded) return;
+  _portLoaded = true;
+  wirePortSubtabs();
+  wirePortOptimizer();
+  wirePortFromBrief();
+  renderPortPareto();
+  renderPortLorenz();
+}
+function wirePortSubtabs() {
+  document.querySelectorAll(".lab-subtab[data-port]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var target = btn.dataset.port;
+      document.querySelectorAll(".lab-subtab[data-port]").forEach(function (b) { b.classList.toggle("active", b === btn); });
+      document.querySelectorAll(".lab-subpanel[data-port-panel]").forEach(function (p) {
+        p.style.display = p.dataset.portPanel === target ? "" : "none";
+      });
+    });
+  });
+}
+async function renderPortPareto() {
+  var host = document.getElementById("port-pareto-viz");
+  try {
+    var r = await fetch("/portfolio/pareto");
+    var data = await r.json();
+    var all = data.frontier || [];
+    if (!all.length) { host.innerHTML = '<div class="empty-state"><div class="empty-title">No frontier points</div></div>'; return; }
+    // Render 2D scatter: x = log reach, y = cpm. Color = category. Size = specificity.
+    var reaches = all.map(function (p) { return p.reach; });
+    var cpms = all.map(function (p) { return p.cpm; });
+    var xMin = Math.log10(Math.min.apply(null, reaches) + 1), xMax = Math.log10(Math.max.apply(null, reaches) + 1);
+    var yMin = Math.min.apply(null, cpms), yMax = Math.max.apply(null, cpms);
+    var W = 720, H = 400, pad = 50;
+    var colorMap = { demographic: "#4f8eff", interest: "#8b6eff", purchase_intent: "#ff7a5c", geo: "#2bd4a0", composite: "#ffcb5c" };
+    function sx(v) { return pad + (Math.log10(v + 1) - xMin) / (xMax - xMin + 1e-9) * (W - 2 * pad); }
+    function sy(v) { return H - pad - (v - yMin) / (yMax - yMin + 1e-9) * (H - 2 * pad); }
+    var dots = all.map(function (p) {
+      var radius = 4 + (p.specificity || 0) * 5;
+      var color = colorMap[p.category] || "#8892a6";
+      return '<circle cx="' + sx(p.reach).toFixed(1) + '" cy="' + sy(p.cpm).toFixed(1) + '" r="' + radius.toFixed(1) + '" fill="' + color + '" fill-opacity="0.75" stroke="gold" stroke-width="1.2" data-sid="' + escapeHtml(p.signal_id) + '">' +
+        '<title>' + escapeHtml(p.name) + '\nreach=' + (p.reach / 1e6).toFixed(1) + 'M \u00b7 CPM=$' + p.cpm.toFixed(2) + ' \u00b7 spec=' + p.specificity + '</title>' +
+      '</circle>';
+    }).join("");
+    host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
+      '<line x1="' + pad + '" y1="' + (H - pad) + '" x2="' + (W - pad) + '" y2="' + (H - pad) + '" stroke="var(--border)"/>' +
+      '<line x1="' + pad + '" y1="' + pad + '" x2="' + pad + '" y2="' + (H - pad) + '" stroke="var(--border)"/>' +
+      '<text x="' + (W - pad) + '" y="' + (H - 20) + '" text-anchor="end" fill="var(--text-mut)" font-size="11" font-family="ui-monospace">log reach \u2192</text>' +
+      '<text x="20" y="' + pad + '" fill="var(--text-mut)" font-size="11" font-family="ui-monospace">CPM ($)</text>' +
+      dots +
+    '</svg>' +
+    '<div style="margin-top:10px;display:flex;gap:14px;flex-wrap:wrap;font-size:11px">' +
+      Object.keys(colorMap).map(function (k) { return '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + colorMap[k] + ';margin-right:4px"></span>' + k + '</span>'; }).join('') +
+    '</div>';
+    document.getElementById("port-pareto-explainer").innerHTML = renderChartExplainer({
+      what: "Every Pareto-efficient signal in the catalog under reach \u00d7 CPM \u00d7 specificity.",
+      how: "A signal is Pareto-efficient if no other signal has \u2265 reach AND \u2264 CPM AND \u2265 specificity (with at least one strict). Frontier: " + data.frontier_count + " of " + data.total_points + " candidates.",
+      read: "Dots upper-left = cheap + broad but low specificity. Dots lower-right = premium-priced but highly specific. Any dot on the frontier is \u201coptimal\u201d for some budget preference.",
+      limits: "Static snapshot. Ignores temporal availability and activation platform compatibility.",
+    });
+    host.querySelectorAll("circle").forEach(function (el) { if (el.dataset.sid) el.addEventListener("click", function () { openDetailHydrated(el.dataset.sid); }); });
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">Could not load frontier</div></div>';
+  }
+}
+function wirePortOptimizer() {
+  document.getElementById("opt-run").addEventListener("click", async function () {
+    var host = document.getElementById("opt-results");
+    host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Running greedy solver\u2026</div></div>';
+    var body = {
+      budget: parseFloat(document.getElementById("opt-budget").value) || 250000,
+      max_signals: parseInt(document.getElementById("opt-max-sig").value, 10) || 6,
+    };
+    var target = parseFloat(document.getElementById("opt-target").value);
+    if (target > 0) body.target_reach = target;
+    try {
+      var r = await fetch("/portfolio/optimize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      var data = await r.json();
+      if (data.picked.length === 0) { host.innerHTML = '<div class="empty-state"><div class="empty-title">No signals fit budget</div></div>'; return; }
+      // Waterfall
+      var maxMarg = Math.max.apply(null, data.picked.map(function (p) { return p.marginal_reach; }));
+      var wf = '<div class="opt-waterfall">' + data.picked.map(function (p, i) {
+        var pct = maxMarg > 0 ? (p.marginal_reach / maxMarg) * 100 : 0;
+        return '<div class="opt-row">' +
+          '<div class="opt-rank">' + (i + 1) + '</div>' +
+          '<div class="opt-name">' + escapeHtml(p.name) + '<br><span class="mono" style="font-size:10.5px;color:var(--text-mut)">$' + p.cost.toFixed(0) + ' \u00b7 CPM $' + p.cpm.toFixed(2) + '</span></div>' +
+          '<div class="opt-bar"><div class="opt-bar-fill" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+          '<div class="opt-margin mono">+' + (p.marginal_reach / 1e6).toFixed(2) + 'M</div>' +
+        '</div>';
+      }).join("") + '</div>';
+      var summary = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">' +
+        '<div class="lab-stat-card"><div class="lab-stat-label">Total cost</div><div class="lab-stat-val">$' + data.total_cost.toLocaleString() + '</div></div>' +
+        '<div class="lab-stat-card"><div class="lab-stat-label">Unique reach</div><div class="lab-stat-val">' + (data.total_unique_reach / 1e6).toFixed(1) + 'M</div></div>' +
+        '<div class="lab-stat-card"><div class="lab-stat-label">Efficiency</div><div class="lab-stat-val">' + data.efficiency.toLocaleString() + '/k$</div></div>' +
+        '<div class="lab-stat-card"><div class="lab-stat-label">Overlap waste</div><div class="lab-stat-val">' + (data.overlap_waste / 1e6).toFixed(1) + 'M</div></div>' +
+      '</div>';
+      host.innerHTML = summary + wf;
+      document.getElementById("opt-explainer").innerHTML = renderChartExplainer({
+        what: "Greedy portfolio: signals picked one at a time, each iteration the one adding the most unique reach.",
+        how: "At each step: for each candidate not yet picked, compute marginal reach = reach \u2212 \u03a3 (jaccard\u00d7min_reach) across already-picked. Pick the one maximizing marginal reach, subject to budget. Cost = reach \u00d7 CPM / 1000.",
+        read: "Earlier tall bars = high-value standalones. Later shorter bars = saturating \u2014 overlap with existing picks eats into gains. Total = cumulative reach delivered.",
+        limits: "Heuristic Jaccard for overlap; real deduplication needs cleanroom-matched actual audience membership.",
+      });
+    } catch (e) {
+      host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div></div>';
+    }
+  });
+}
+async function renderPortLorenz() {
+  var host = document.getElementById("port-lorenz-viz");
+  try {
+    var r = await fetch("/analytics/lorenz?group=vertical");
+    var data = await r.json();
+    // Render small multiples: one mini chart per top-6 slice + overall
+    var picks = (data.slices || []).slice(0, 6);
+    var cards = picks.map(function (s) { return renderLorenzCard(s); }).join("");
+    var overall = renderLorenzCard({ group: "OVERALL", signal_count: data.overall.signal_count, lorenz: data.overall.lorenz, gini: data.overall.gini, interpretation: data.overall.interpretation });
+    host.innerHTML = '<div class="lorenz-grid">' + overall + cards + '</div>';
+    document.getElementById("port-lorenz-explainer").innerHTML = renderChartExplainer({
+      what: "Catalog concentration per vertical. How evenly audience reach is distributed across signals in each group.",
+      how: "Lorenz curve: cumulative signal share (x) vs cumulative audience share (y). Gini = 2 \u00d7 area between the curve and y=x. 0 = perfect equality, 1 = one signal owns everything.",
+      read: "Gini < 0.2 = balanced \u2014 many comparable signals. Gini > 0.5 = top-heavy \u2014 consolidate or add niche coverage.",
+      limits: "Based on declared estimated_audience_size; does not capture true measured reach.",
+    });
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div></div>';
+  }
+}
+function renderLorenzCard(s) {
+  var W = 200, H = 140, pad = 20;
+  var pts = (s.lorenz || []).map(function (p) { return pad + p.x * (W - 2 * pad) + "," + (H - pad - p.y * (H - 2 * pad)); }).join(" ");
+  return '<div class="lorenz-card">' +
+    '<div class="lorenz-title">' + escapeHtml(s.group) + ' <span class="lorenz-gini">Gini ' + s.gini.toFixed(2) + '</span></div>' +
+    '<svg viewBox="0 0 ' + W + ' ' + H + '">' +
+      '<line x1="' + pad + '" y1="' + (H - pad) + '" x2="' + (W - pad) + '" y2="' + pad + '" stroke="var(--text-mut)" stroke-dasharray="3,2" stroke-width="1"/>' +
+      '<polyline fill="none" stroke="var(--accent)" stroke-width="1.5" points="' + pts + '"/>' +
+    '</svg>' +
+    '<div class="lorenz-count mono">' + s.signal_count + ' signals</div>' +
+  '</div>';
+}
+function wirePortFromBrief() {
+  document.getElementById("brief-run").addEventListener("click", async function () {
+    var host = document.getElementById("brief-results");
+    var brief = document.getElementById("brief-text").value.trim();
+    if (!brief) { host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">Paste a brief first</div></div>'; return; }
+    host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Composing portfolio\u2026</div></div>';
+    try {
+      var r = await fetch("/portfolio/from-brief", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brief: brief, budget: parseFloat(document.getElementById("brief-budget").value) || 250000 }) });
+      var data = await r.json();
+      var rows = data.portfolio.map(function (p) {
+        return '<div class="brief-row">' +
+          '<div class="brief-rank">' + p.rank + '</div>' +
+          '<div class="brief-main"><div class="brief-name">' + escapeHtml(p.name) + '</div><div class="brief-reason mono">' + escapeHtml(p.reasoning) + '</div></div>' +
+          '<div class="brief-alloc mono">' + p.allocation_pct + '%</div>' +
+        '</div>';
+      }).join("");
+      host.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">' +
+        '<div class="lab-stat-card"><div class="lab-stat-label">Total cost</div><div class="lab-stat-val">$' + data.total_cost.toLocaleString() + '</div></div>' +
+        '<div class="lab-stat-card"><div class="lab-stat-label">Unique reach</div><div class="lab-stat-val">' + (data.total_unique_reach / 1e6).toFixed(1) + 'M</div></div>' +
+        '<div class="lab-stat-card"><div class="lab-stat-label">Candidates</div><div class="lab-stat-val">' + data.candidates_from_embedding + '</div></div>' +
+      '</div>' + rows;
+      document.getElementById("brief-explainer").innerHTML = renderChartExplainer({
+        what: "A complete signal portfolio generated from your campaign brief.",
+        how: "1. Brief text \u2192 pseudo-vector via djb2 hash. 2. Top-30 catalog matches by cosine. 3. Greedy marginal-reach selection within budget. 4. Allocation % = pick cost / total cost.",
+        read: "Ranked list shows priority order. Allocation % suggests share-of-budget per signal. Reasoning explains why each was chosen.",
+        limits: "Demo pseudo-vectorization \u2014 a real production pipeline would embed via OpenAI / Cohere / Anthropic for higher-fidelity matches.",
+      });
+    } catch (e) {
+      host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div></div>';
+    }
+  });
+}
+
+// ─── Seasonality ─────────────────────────────────────────────────────────
+var _seaLoaded = false;
+async function ensureSeasonality() {
+  if (_seaLoaded) return;
+  _seaLoaded = true;
+  document.getElementById("sea-run").addEventListener("click", renderSeaRanking);
+  renderSeaHeatmap();
+}
+async function renderSeaRanking() {
+  var host = document.getElementById("sea-results");
+  var w = document.getElementById("sea-window").value;
+  host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Ranking\u2026</div></div>';
+  try {
+    var r = await fetch("/analytics/best-for?window=" + encodeURIComponent(w));
+    var data = await r.json();
+    var rows = (data.top || []).slice(0, 15).map(function (s, i) {
+      return '<div class="sea-row">' +
+        '<div class="sea-rank">' + (i + 1) + '</div>' +
+        '<div class="sea-name">' + escapeHtml(s.name) + '<br><span class="mono" style="font-size:10.5px;color:var(--text-mut)">reach ' + (s.reach / 1e6).toFixed(1) + 'M \u00b7 spec ' + s.specificity + '</span></div>' +
+        '<div class="sea-mult mono">\u00d7' + s.window_multiplier + '</div>' +
+      '</div>';
+    }).join("");
+    host.innerHTML = rows;
+    document.getElementById("sea-explainer").innerHTML = renderChartExplainer({
+      what: "Signals ranked for the selected time window by their seasonality profile.",
+      how: "score = window_avg_seasonality \u00d7 specificity \u00d7 log_reach. Seasonality multiplier averages the monthly values across the chosen months.",
+      read: "Top rows peak in the selected window. Use as a forward-looking plan ranker.",
+      limits: "Seasonality synthesized from signal name/category hints (deterministic).",
+    });
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div></div>';
+  }
+}
+async function renderSeaHeatmap() {
+  var host = document.getElementById("sea-heatmap");
+  try {
+    var r = await fetch("/analytics/seasonality");
+    var data = await r.json();
+    var rows = (data.profiles || []).slice(0, 30);
+    var months = ["J","F","M","A","M","J","J","A","S","O","N","D"];
+    var cellW = 24, rowH = 20, nameCol = 220;
+    var W = nameCol + 12 * cellW + 20;
+    var H = rows.length * rowH + 30;
+    var html = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMinYMin meet">';
+    months.forEach(function (m, i) {
+      html += '<text x="' + (nameCol + i * cellW + cellW / 2) + '" y="14" text-anchor="middle" fill="var(--text-mut)" font-size="10" font-family="ui-monospace">' + m + '</text>';
+    });
+    rows.forEach(function (r2, idx) {
+      var y = 24 + idx * rowH;
+      html += '<text x="' + (nameCol - 8) + '" y="' + (y + rowH / 2 + 3) + '" text-anchor="end" fill="var(--text)" font-size="10.5">' + escapeHtml(r2.name.slice(0, 30)) + '</text>';
+      (r2.monthly || []).forEach(function (m, i) {
+        var intensity = Math.min(1, Math.max(0, (m - 0.5) / 1.5));
+        var fill = "rgba(79, 142, 255, " + (0.15 + intensity * 0.75).toFixed(3) + ")";
+        if (m >= 1.3) fill = "rgba(255, 122, 92, " + ((m - 1) * 0.6).toFixed(3) + ")";
+        html += '<rect x="' + (nameCol + i * cellW) + '" y="' + y + '" width="' + cellW + '" height="' + rowH + '" fill="' + fill + '" stroke="var(--bg-surface)" stroke-width="0.5">' +
+          '<title>' + escapeHtml(r2.name) + ' \u00b7 month ' + (i + 1) + ' \u00d7' + m.toFixed(2) + '</title>' +
+        '</rect>';
+      });
+    });
+    html += '</svg>';
+    host.innerHTML = html;
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">Could not load heatmap</div></div>';
+  }
+}
+
+// ─── Federation (partial — more in Part 3) ───────────────────────────────
+var _fedLoaded = false;
+async function ensureFederation() {
+  if (_fedLoaded) return;
+  _fedLoaded = true;
+  document.getElementById("fed-run").addEventListener("click", runFederatedSearch);
+  renderAgentRegistry();
+}
+async function renderAgentRegistry() {
+  var host = document.getElementById("fed-registry");
+  try {
+    var r = await fetch("/agents/registry");
+    var data = await r.json();
+    var cards = (data.agents || []).map(function (a) {
+      var stageClass = a.stage === "live" ? "pill-success" : a.stage === "sandbox" ? "pill-info" : "pill-mut";
+      var specs = (a.specialties || []).map(function (s) { return '<span class="pill pill-muted mono" style="margin-right:4px">' + escapeHtml(s) + '</span>'; }).join('');
+      return '<div class="fed-card">' +
+        '<div class="fed-card-head"><div class="fed-card-name">' + escapeHtml(a.name || a.id) + '</div><span class="pill ' + stageClass + '">' + escapeHtml(a.stage || 'unknown') + '</span></div>' +
+        (a.mcp_url ? '<div class="fed-url mono">' + escapeHtml(a.mcp_url) + '</div>' : '') +
+        (a.vendor ? '<div class="fed-vendor">' + escapeHtml(a.vendor) + '</div>' : '') +
+        '<div class="fed-specs">' + specs + '</div>' +
+      '</div>';
+    }).join("");
+    host.innerHTML = '<div class="fed-grid">' + cards + '</div>';
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">Registry not yet deployed</div><div class="empty-desc">Part 3 of Sec-41 wires live Dstillery federation.</div></div>';
+  }
+}
+async function runFederatedSearch() {
+  var host = document.getElementById("fed-results");
+  var brief = document.getElementById("fed-brief").value.trim();
+  if (!brief) { host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">Enter a brief</div></div>'; return; }
+  host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Fanning out to agents\u2026</div></div>';
+  try {
+    var r = await fetch("/agents/federated-search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brief: brief, max_results_per_agent: parseInt(document.getElementById("fed-max").value, 10) || 5 }) });
+    var data = await r.json();
+    var rows = (data.merged || []).map(function (m, i) {
+      var agent = m.source_agent;
+      var sig = m.signal || {};
+      var badgeColor = agent === "samba_signals" ? "pill-success" : agent === "dstillery" ? "pill-info" : "pill-mut";
+      return '<div class="fed-result-row">' +
+        '<div class="err-rank">' + (i + 1) + '</div>' +
+        '<div class="err-main">' +
+          '<div class="err-name">' + escapeHtml(sig.name || sig.signal_agent_segment_id) + '</div>' +
+          '<div class="err-sid mono">' + escapeHtml(sig.signal_agent_segment_id || '') + (sig.coverage_percentage !== undefined ? ' \u00b7 coverage ' + sig.coverage_percentage.toFixed(2) + '%' : '') + '</div>' +
+        '</div>' +
+        '<span class="pill ' + badgeColor + '">' + escapeHtml(agent) + '</span>' +
+      '</div>';
+    }).join("");
+    var summary = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">' +
+      (Object.entries(data.per_agent_count || {}).map(function (kv) {
+        return '<div class="lab-stat-card"><div class="lab-stat-label">' + escapeHtml(kv[0]) + '</div><div class="lab-stat-val">' + kv[1] + '</div></div>';
+      }).join('')) +
+      '<div class="lab-stat-card"><div class="lab-stat-label">Total time</div><div class="lab-stat-val">' + (data.total_time_ms || 0) + 'ms</div></div>' +
+    '</div>';
+    host.innerHTML = summary + (rows || '<div class="empty-state"><div class="empty-desc">No results from any agent.</div></div>');
+    document.getElementById("fed-explainer").innerHTML = renderChartExplainer({
+      what: "Merged search results across multiple AdCP Signals agents called in parallel.",
+      how: "Fan-out to each agent's MCP endpoint (tools/call get_signals), merge responses, badge by source agent, re-rank by local score or coverage.",
+      read: "Each row\u2019s badge shows origin agent. \u201csamba_signals\u201d = this agent. \u201cdstillery\u201d = live Dstillery MCP (behavioral audiences \u2192 TTD).",
+      limits: "Partner timeout: 15s. Circuit breaker: 3 failures = 5-min skip. Dstillery\u2019s catalog shape differs from ours (TTD-deployed segments).",
+    });
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div><div class="empty-desc">Federation endpoints deploy in Part 3.</div></div>';
+  }
+}
+
 // Sec-38 A7: keyboard shortcuts. Two-key "go to" prefix (g+x). Single
 // keys: ? toggles the cheat sheet, Esc closes overlays + detail panel.
 // Ignore shortcuts while typing in an input/textarea.
@@ -6537,7 +7661,14 @@ document.addEventListener("keydown", function (ev) {
     }
   }
   if (_kbdPrefix === "g") {
-    var map = { d: "discover", c: "catalog", b: "builder", t: "treemap", o: "overlap", e: "embedding", k: "capabilities", v: "devkit", l: "toollog", a: "activations", n: "destinations" };
+    var map = {
+      d: "discover", c: "catalog", b: "builder", t: "treemap", o: "overlap",
+      e: "embedding", k: "capabilities", v: "devkit", n: "destinations",
+      l: "toollog", a: "activations",
+      // Sec-41 new tabs. Bare f is reserved for detail-panel expand; the
+      // g f prefix disambiguates.
+      x: "lab", p: "portfolio", s: "seasonality", f: "federation",
+    };
     var tab = map[ev.key.toLowerCase()];
     if (tab) { switchTab(tab); _kbdPrefix = null; if (_kbdPrefixTimer) clearTimeout(_kbdPrefixTimer); return; }
     _kbdPrefix = null;

@@ -31,6 +31,12 @@ import {
   handleWhatIf,
   handleFromBrief,
 } from "./routes/portfolioEndpoints";
+import {
+  handleAgentsRegistry,
+  handleFederatedSearch,
+  handleCrossSimilarity,
+  handleTaxonomyReverse,
+} from "./routes/federationEndpoints";
 import { handleMcpRequest } from "./mcp/server";
 import { jsonResponse, errorResponse, requireAuth } from "./routes/shared";
 import { createLogger } from "./utils/logger";
@@ -297,6 +303,16 @@ export default {
                 response = await handleWhatIf(request, env, logger);
             } else if (method === "POST" && path === "/portfolio/from-brief") {
                 response = await handleFromBrief(request, env, logger);
+
+                // ── Sec-41 Part 3: Agent Federation (A2A) ───────────────────────────
+            } else if (method === "GET" && path === "/agents/registry") {
+                response = handleAgentsRegistry();
+            } else if (method === "POST" && path === "/agents/federated-search") {
+                response = await handleFederatedSearch(request, env, logger);
+            } else if (method === "POST" && path === "/agents/cross-similarity") {
+                response = await handleCrossSimilarity(request);
+            } else if (method === "POST" && path === "/taxonomy/reverse") {
+                response = await handleTaxonomyReverse(request, env, logger);
 
                 // ── LinkedIn OAuth ────────────────────────────────────────────────────
                 // Only /callback is in publicPaths. /init and /status are

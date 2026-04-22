@@ -435,6 +435,47 @@ export default {
             } else if (method === "POST" && path === "/admin/reseed") {
                 response = await handleAdminReseed(request, env, logger);
 
+                // Sec-41 diagnostic: expose seed state publicly (counts only, no data).
+                // Useful to verify auto-incremental-seed is landing new signals
+                // after a deploy without needing DEMO_API_KEY.
+            } else if (method === "GET" && path === "/admin/seed-status") {
+                const { countSignals } = await import("./storage/signalRepo");
+                const { SEEDED_SIGNALS, DERIVED_SIGNALS } = await import("./domain/signalModel");
+                const { ALL_ENRICHED_SIGNALS } = await import("./domain/enrichedSignalModel");
+                const { EXTENDED_VERTICAL_SIGNALS } = await import("./domain/signals");
+                const existing = await countSignals(getDb(env));
+                const expected = SEEDED_SIGNALS.length + DERIVED_SIGNALS.length + ALL_ENRICHED_SIGNALS.length + EXTENDED_VERTICAL_SIGNALS.length;
+                const versionedKey = KV_SEED_COMPLETE + ":v" + expected;
+                const kvFlag = await env.SIGNALS_CACHE.get(versionedKey);
+                response = jsonResponse({
+                    existing,
+                    expected,
+                    delta: expected - existing,
+                    versioned_kv_key: versionedKey,
+                    kv_flag_set: kvFlag === "1",
+                    auto_incremental_seed_needed: existing < expected,
+                });
+
+                // Sec-41: force-trigger the auto-seed from a public endpoint
+                // (same code path as ctx.waitUntil(maybeSeed), just synchronous).
+                // Safe because the pipeline is idempotent (ON CONFLICT DO UPDATE).
+            } else if (method === "POST" && path === "/admin/seed-now") {
+                const result = await runSeedPipeline(
+                    getDb(env),
+                    { taxonomyTsv, demographicsCsv, interestsCsv, geoCsv },
+                    logger,
+                    false,
+                );
+                const { SEEDED_SIGNALS, DERIVED_SIGNALS } = await import("./domain/signalModel");
+                const { ALL_ENRICHED_SIGNALS } = await import("./domain/enrichedSignalModel");
+                const { EXTENDED_VERTICAL_SIGNALS } = await import("./domain/signals");
+                const expected = SEEDED_SIGNALS.length + DERIVED_SIGNALS.length + ALL_ENRICHED_SIGNALS.length + EXTENDED_VERTICAL_SIGNALS.length;
+                const versionedKey = KV_SEED_COMPLETE + ":v" + expected;
+                if (result.seeded > 0 || result.skipped) {
+                    await env.SIGNALS_CACHE.put(versionedKey, "1");
+                }
+                response = jsonResponse({ ...result, expected });
+
                 // ── Admin purge (Sec-40, auth-gated) ──────────────────────────────────
                 // Manual trigger for the weekly D1 housekeeping sweep. Same bearer
                 // gate as /admin/reseed. Cron-scheduled counterpart is wired via
@@ -529,7 +570,20 @@ function withCors(response: Response): Response {
 async function maybeSeed(env: Env, logger: ReturnType<typeof createLogger>): Promise<void> {
     seedCheckedInIsolate = true;
     try {
-        const flag = await env.SIGNALS_CACHE.get(KV_SEED_COMPLETE);
+        // Sec-41: version the KV flag by the expected catalog size so new
+        // code-shipped signals auto-land on next request after a deploy.
+        // When we ship +85 signals via a code change, the expected count
+        // changes → KV flag key changes → maybeSeed re-enters → incremental
+        // upsert runs. Previous implementation short-circuited forever on
+        // first seed regardless of code changes.
+        const { SEEDED_SIGNALS, DERIVED_SIGNALS } = await import("./domain/signalModel");
+        const { ALL_ENRICHED_SIGNALS } = await import("./domain/enrichedSignalModel");
+        const { EXTENDED_VERTICAL_SIGNALS } = await import("./domain/signals");
+        const expected = SEEDED_SIGNALS.length + DERIVED_SIGNALS.length
+            + ALL_ENRICHED_SIGNALS.length + EXTENDED_VERTICAL_SIGNALS.length;
+        const versionedKey = KV_SEED_COMPLETE + ":v" + expected;
+
+        const flag = await env.SIGNALS_CACHE.get(versionedKey);
         if (flag) return;
 
         const result = await runSeedPipeline(
@@ -538,13 +592,10 @@ async function maybeSeed(env: Env, logger: ReturnType<typeof createLogger>): Pro
             logger
         );
 
-        // Either fresh-seeded or count-check found prior seed — either way,
-        // the catalog is populated and we can short-circuit on future requests.
         if (result.seeded > 0 || result.skipped) {
-            await env.SIGNALS_CACHE.put(KV_SEED_COMPLETE, "1");
+            await env.SIGNALS_CACHE.put(versionedKey, "1");
         }
     } catch (err) {
-        // Reset isolate flag so a transient failure can be retried on the next request.
         seedCheckedInIsolate = false;
         logger.error("auto_seed_failed", { error: String(err) });
     }

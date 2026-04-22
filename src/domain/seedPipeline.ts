@@ -26,15 +26,28 @@ export async function runSeedPipeline(
   assets: SeedAssets,
   logger: Logger,
   force = false
-): Promise<{ seeded: number; skipped: boolean }> {
+): Promise<{ seeded: number; skipped: boolean; incremental?: boolean }> {
   const existing = await countSignals(db);
 
-  if (existing > 0 && !force) {
-    logger.info("seed_skipped", { reason: "signals_already_present", count: existing });
+  // Sec-41: expected count from code. If D1 has fewer, we've shipped new
+  // seeded signals since the last full reseed — run the upsert loop
+  // anyway (it's idempotent via ON CONFLICT DO UPDATE). This makes new
+  // catalog additions auto-land on the next request without requiring
+  // an explicit /admin/reseed.
+  const expected = SEEDED_SIGNALS.length + DERIVED_SIGNALS.length
+    + ALL_ENRICHED_SIGNALS.length + EXTENDED_VERTICAL_SIGNALS.length;
+
+  if (existing >= expected && !force) {
+    logger.info("seed_skipped", { reason: "catalog_up_to_date", count: existing, expected });
     return { seeded: existing, skipped: true };
   }
 
-  logger.info("seed_start");
+  const incremental = existing > 0 && existing < expected && !force;
+  if (incremental) {
+    logger.info("seed_incremental_start", { existing, expected, delta: expected - existing });
+  } else {
+    logger.info("seed_start", { force, existing });
+  }
 
   // 1. Load taxonomy into DB
   let taxonomyCount = 0;
@@ -81,9 +94,9 @@ export async function runSeedPipeline(
   }
   logger.info("extended_vertical_signals_loaded", { count: EXTENDED_VERTICAL_SIGNALS.length });
 
-  logger.info("seed_complete", { total: count });
+  logger.info("seed_complete", { total: count, incremental });
 
-  return { seeded: count, skipped: false };
+  return { seeded: count, skipped: false, incremental };
 }
 
 async function upsertTaxonomyNode(db: DB, node: IabTaxonomyNode): Promise<void> {

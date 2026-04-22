@@ -27,6 +27,11 @@ import { INTEREST_EXT_SIGNALS } from "./interestExt";
 import { DEMOGRAPHIC_EXT_SIGNALS } from "./demographicExt";
 import { GEOGRAPHIC_EXT_SIGNALS } from "./geographicExt";
 import { CROSS_VERTICAL_SIGNALS } from "./crossVerticals";
+import { B2B_FIRMO_TECHNO_SIGNALS } from "./b2bFirmoTechno";
+import { RETAIL_MEDIA_SIGNALS } from "./retailMedia";
+import { CTV_HISPANIC_DAYPART_SIGNALS } from "./ctvHispanicDaypart";
+import { VENUE_WEATHER_CONTEXT_SIGNALS } from "./venueWeatherContext";
+import { LOOKALIKE_RECIPE_SIGNALS } from "./lookalikeRecipes";
 
 export const EXTENDED_VERTICAL_SIGNALS: CanonicalSignal[] = [
   ...AUTOMOTIVE_SIGNALS,
@@ -45,4 +50,10 @@ export const EXTENDED_VERTICAL_SIGNALS: CanonicalSignal[] = [
   ...DEMOGRAPHIC_EXT_SIGNALS,
   ...GEOGRAPHIC_EXT_SIGNALS,
   ...CROSS_VERTICAL_SIGNALS,
+  // Sec-41 Tier 2/3 additions
+  ...B2B_FIRMO_TECHNO_SIGNALS,
+  ...RETAIL_MEDIA_SIGNALS,
+  ...CTV_HISPANIC_DAYPART_SIGNALS,
+  ...VENUE_WEATHER_CONTEXT_SIGNALS,
+  ...LOOKALIKE_RECIPE_SIGNALS,
 ];

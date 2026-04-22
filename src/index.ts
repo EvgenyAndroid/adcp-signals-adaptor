@@ -188,6 +188,10 @@ export default {
             "/agents/federated-search",
             "/agents/cross-similarity",
             "/taxonomy/reverse",
+            // Sec-41 seed diagnostic + idempotent incremental seed
+            // trigger. /admin/reseed remains auth-gated (force=true path).
+            "/admin/seed-status",
+            "/admin/seed-now",
             "/auth/linkedin/callback",
             // RFC 9728 + 8414: OAuth discovery metadata MUST be reachable
             // without authentication so clients can bootstrap the flow.

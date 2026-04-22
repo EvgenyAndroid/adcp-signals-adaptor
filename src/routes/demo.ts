@@ -2888,16 +2888,8 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 }
 .arith-term .arith-remove:hover { color: var(--error); }
 
-/* Embedding result list */
+/* Embedding result list — layout defined earlier; here only shared bits */
 .emb-result-list { display: flex; flex-direction: column; gap: 4px; }
-.emb-result-row {
-  display: grid; grid-template-columns: 28px 1fr 180px; gap: 10px;
-  align-items: center; padding: 8px 10px;
-  background: var(--bg-input); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
-}
-.emb-result-row:hover { border-color: var(--accent-border); background: var(--bg-hover); }
 .err-rank { font-family: var(--font-mono); color: var(--text-mut); font-size: 12px; text-align: center; }
 .err-name { font-size: 12.5px; color: var(--text); }
 .err-sid { font-size: 10.5px; color: var(--text-mut); margin-top: 2px; }
@@ -2915,14 +2907,8 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .nbh-stat-label { font-size: 10px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.06em; }
 .nbh-stat-val { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
 
-/* Portfolio optimizer waterfall */
+/* Portfolio optimizer waterfall — layout grid defined earlier */
 .opt-waterfall { display: flex; flex-direction: column; gap: 4px; }
-.opt-row {
-  display: grid; grid-template-columns: 28px 1fr 200px 80px; gap: 10px;
-  align-items: center; padding: 6px 10px;
-  background: var(--bg-input); border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
 .opt-rank { font-family: var(--font-mono); color: var(--text-mut); font-size: 12px; text-align: center; }
 .opt-name { font-size: 12px; }
 .opt-bar { height: 16px; background: var(--bg-raised); border-radius: 3px; overflow: hidden; }
@@ -2937,25 +2923,11 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .lorenz-card svg { width: 100%; height: auto; }
 .lorenz-count { font-size: 10.5px; color: var(--text-mut); margin-top: 4px; }
 
-/* Brief -> portfolio rows */
-.brief-row {
-  display: grid; grid-template-columns: 28px 1fr 60px; gap: 10px;
-  align-items: center; padding: 8px 10px; margin-bottom: 4px;
-  background: var(--bg-input); border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
+/* Brief -> portfolio + Seasonality — layout grids defined earlier */
 .brief-rank { font-family: var(--font-mono); color: var(--text-mut); font-size: 12px; text-align: center; }
 .brief-name { font-size: 12.5px; color: var(--text); }
 .brief-reason { font-size: 10.5px; color: var(--text-mut); margin-top: 2px; }
 .brief-alloc { font-size: 14px; color: var(--accent); font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
-
-/* Seasonality */
-.sea-row {
-  display: grid; grid-template-columns: 28px 1fr 70px; gap: 10px;
-  align-items: center; padding: 8px 10px; margin-bottom: 4px;
-  background: var(--bg-input); border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
 .sea-rank { font-family: var(--font-mono); color: var(--text-mut); font-size: 12px; text-align: center; }
 .sea-name { font-size: 12.5px; color: var(--text); }
 .sea-mult { font-size: 14px; color: var(--accent); font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
@@ -2969,11 +2941,53 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .fed-vendor { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; }
 .fed-specs { display: flex; gap: 4px; flex-wrap: wrap; }
 .fed-result-row {
-  display: grid; grid-template-columns: 28px 1fr auto; gap: 10px;
-  align-items: center; padding: 8px 10px; margin-bottom: 4px;
+  display: grid; grid-template-columns: 24px 28px 1fr 150px; gap: 10px;
+  align-items: center; padding: 10px 12px; margin-bottom: 6px;
   background: var(--bg-input); border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-sm); cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
 }
+.fed-result-row:hover { border-color: var(--accent-border); background: var(--bg-hover); }
+.fed-result-row .err-main { min-width: 0; }
+.fed-row-actions {
+  display: flex; flex-direction: column; gap: 6px;
+  align-items: flex-end; justify-self: end;
+}
+.fed-row-samba { border-left: 2px solid rgba(43, 212, 160, 0.5); }
+.fed-row-dstillery { border-left: 2px solid rgba(139, 110, 255, 0.5); }
+.fed-row-selected { background: var(--bg-hover); border-color: var(--accent-border); }
+.fed-check { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.fed-check input { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; }
+.fed-desc { font-size: 11.5px; color: var(--text-dim); line-height: 1.45; margin: 3px 0 5px 0; }
+.fed-metrics { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: var(--text-mut); margin-bottom: 3px; }
+.fed-metric { white-space: nowrap; }
+.fed-metric strong { color: var(--text); font-weight: 600; font-family: var(--font-mono); font-size: 11.5px; }
+.fed-action-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--bg-raised); color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 4px 10px; font-size: 11px; cursor: pointer;
+  transition: all 0.12s; white-space: nowrap;
+}
+.fed-action-btn:hover { color: var(--accent); border-color: var(--accent-border); }
+.fed-action-btn.primary { color: var(--accent); border-color: var(--accent-border); background: var(--accent-dim); }
+.fed-action-btn.primary:hover { color: #fff; background: var(--accent); }
+.fed-action-btn .ico { width: 12px; height: 12px; }
+.fed-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.fed-summary-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;
+  margin-bottom: 12px;
+}
+.fed-actionbar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 10px;
+  transition: border-color 0.18s;
+}
+.fed-actionbar-active { border-color: var(--accent-border); background: var(--accent-dim); }
+.fed-actionbar-info { flex: 1; font-size: 12px; color: var(--text-mut); min-width: 180px; }
+.fed-actionbar-info strong { color: var(--accent); font-weight: 600; }
+.fed-rows { display: flex; flex-direction: column; }
 
 /* Chart explainer (Sec-39) */
 .chart-explainer {

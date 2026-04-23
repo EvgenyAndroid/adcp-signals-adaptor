@@ -403,6 +403,9 @@ export async function handleAnalyticsSummary(): Promise<Response> {
       "GET /analytics/lorenz",
       "GET /analytics/knn-graph",
       "POST /portfolio/optimize",
+      "POST /audience/compose",
+      "POST /audience/saturation",
+      "POST /audience/affinity-audit",
     ],
   });
 }

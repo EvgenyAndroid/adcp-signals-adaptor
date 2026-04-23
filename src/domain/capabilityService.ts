@@ -162,7 +162,7 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
     signals: {
       // Sec-42: declare GA-required fields (additive; ext fields kept
       // for backward-compat + our own tooling).
-      data_provider_domains: ["samba.tv"],
+      data_provider_domains: ["evgeny.dev"],
       features: {
         catalog_signals: true,
       },

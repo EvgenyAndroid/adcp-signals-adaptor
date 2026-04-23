@@ -116,6 +116,21 @@ ${STYLES}
       </button>
       <button class="nav-item" data-tab="composer">
         <svg class="ico"><use href="#icon-builder"/></svg><span>Composer</span>
+      </button>
+      <button class="nav-item" data-tab="journey">
+        <svg class="ico"><use href="#icon-activations"/></svg><span>Journey</span>
+        <span class="nav-tag">new</span>
+      </button>
+      <button class="nav-item" data-tab="planner">
+        <svg class="ico"><use href="#icon-chart"/></svg><span>Scenario</span>
+        <span class="nav-tag">new</span>
+      </button>
+      <button class="nav-item" data-tab="snapshots">
+        <svg class="ico"><use href="#icon-book"/></svg><span>Snapshots</span>
+        <span class="nav-tag">new</span>
+      </button>
+      <button class="nav-item" data-tab="freshness">
+        <svg class="ico"><use href="#icon-info"/></svg><span>Freshness</span>
         <span class="nav-tag">new</span>
       </button>
       <button class="nav-item" data-tab="seasonality">
@@ -924,6 +939,8 @@ ${STYLES}
           <div class="lab-panel lab-panel-full" style="margin-top:14px">
             <div class="lab-panel-title">Result</div>
             <div id="comp-results"><div class="empty-state"><div class="empty-desc">Pick at least one signal, then hit <strong>Compute composition</strong>. The system applies pairwise inclusion-exclusion for union, category-affinity Jaccard for intersect, and subtracts suppressed overlap for exclude. A lookalike seed surfaces top-K embedding neighbors as candidates you can add to the <em>Include</em> pool on the next pass.</div></div></div>
+            <div id="comp-privacy"></div>
+            <div id="comp-holdout"></div>
             <div id="comp-explainer"></div>
           </div>
         </div>
@@ -981,6 +998,145 @@ ${STYLES}
         </div>
       </section>
 
+      <!-- TAB: Journey Builder (Sec-44) -->
+      <!-- Sequential segmentation. 2-5 stage cards; each stage has its own -->
+      <!-- include/intersect/exclude pickers. Funnel viz + drop-off stats.  -->
+      <section class="tab-pane" data-tab="journey">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Journey Builder</h1>
+            <p class="pane-subtitle">Stack 2–5 audience stages (awareness → consideration → intent → conversion) and see per-stage reach, conversion rate vs the prior stage, cumulative rate vs top-of-funnel, and drop-off. Reach math reuses <code>/audience/compose</code> per stage; stages are clamped monotonically to preserve the subset invariant.</p>
+          </div>
+          <div class="activations-controls">
+            <button class="btn-secondary" id="journey-add">
+              <svg class="ico"><use href="#icon-plus"/></svg><span>Add stage</span>
+            </button>
+            <button class="btn-primary" id="journey-run" disabled>
+              <svg class="ico"><use href="#icon-activations"/></svg><span>Compute funnel</span>
+            </button>
+          </div>
+        </div>
+        <div id="journey-stages"></div>
+        <div class="lab-panel lab-panel-full" style="margin-top:14px">
+          <div class="lab-panel-title">Funnel</div>
+          <div id="journey-result"><div class="empty-state"><div class="empty-desc">Define at least 2 stages (each with ≥1 include or intersect signal) and hit <strong>Compute funnel</strong>. Stages are rendered as descending bars with conversion rates between them and cumulative drop-off from the top of funnel.</div></div></div>
+          <div id="journey-explainer"></div>
+        </div>
+      </section>
+
+      <!-- TAB: Scenario Planner (Sec-44) — wires /portfolio/what-if -->
+      <section class="tab-pane" data-tab="planner">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Scenario Planner</h1>
+            <p class="pane-subtitle">Evaluate the impact of adding or removing signals from a portfolio. Returns delta reach, delta cost, reach-per-dollar efficiency, and a keep/marginal/reject recommendation.</p>
+          </div>
+        </div>
+        <div class="lab-grid">
+          <div class="lab-panel">
+            <div class="lab-panel-title">Current portfolio</div>
+            <div class="builder-section-label">Selected <span style="color:var(--text-mut);font-weight:400;font-family:var(--font-mono)" id="plan-cur-count">0 / 12</span></div>
+            <div class="overlap-chips" id="plan-cur-chips"></div>
+            <div class="overlap-search">
+              <svg class="ico"><use href="#icon-search"/></svg>
+              <input id="plan-cur-search" placeholder="Search catalog…" autocomplete="off"/>
+            </div>
+            <div class="overlap-suggestions" id="plan-cur-sugg"></div>
+          </div>
+          <div class="lab-panel">
+            <div class="lab-panel-title">Proposed changes</div>
+            <div class="builder-section-label">Add <span style="color:var(--text-mut);font-weight:400;font-family:var(--font-mono)" id="plan-add-count">0 / 6</span></div>
+            <div class="overlap-chips" id="plan-add-chips"></div>
+            <div class="overlap-search">
+              <svg class="ico"><use href="#icon-search"/></svg>
+              <input id="plan-add-search" placeholder="Search catalog to add…" autocomplete="off"/>
+            </div>
+            <div class="overlap-suggestions" id="plan-add-sugg"></div>
+            <div class="builder-section-label" style="margin-top:12px">Remove <span style="color:var(--text-mut);font-weight:400;font-family:var(--font-mono)" id="plan-rem-count">0 / 6</span></div>
+            <div class="overlap-chips" id="plan-rem-chips"></div>
+            <div id="plan-rem-candidates" style="font-size:11px;color:var(--text-mut);padding:6px 0">Remove picks are chosen from your current portfolio below.</div>
+            <button class="btn-primary" id="plan-run" style="margin-top:12px;width:100%;justify-content:center" disabled>
+              <svg class="ico"><use href="#icon-bolt"/></svg><span>Evaluate scenario</span>
+            </button>
+          </div>
+        </div>
+        <div class="lab-panel lab-panel-full" style="margin-top:14px">
+          <div class="lab-panel-title">Delta</div>
+          <div id="plan-result"><div class="empty-state"><div class="empty-desc">Build a current portfolio, propose additions or removals, and hit <strong>Evaluate scenario</strong>. The delta is computed against the same greedy marginal-reach math the portfolio optimizer uses.</div></div></div>
+          <div id="plan-explainer"></div>
+        </div>
+      </section>
+
+      <!-- TAB: Snapshots (Sec-44) -->
+      <section class="tab-pane" data-tab="snapshots">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Audience Snapshots</h1>
+            <p class="pane-subtitle">Named, dated freezes of a composition (include ∪ intersect ∩ exclude + optional lookalike seed). Diff two snapshots side-by-side to see what changed. Operator-scoped — each API-key owner has their own snapshot namespace.</p>
+          </div>
+          <div class="activations-controls">
+            <button class="btn-secondary" id="snap-refresh">
+              <svg class="ico"><use href="#icon-chart"/></svg><span>Refresh</span>
+            </button>
+          </div>
+        </div>
+        <div class="lab-grid">
+          <div class="lab-panel">
+            <div class="lab-panel-title">Save current composition</div>
+            <label class="lab-label">Source</label>
+            <div style="font-size:11.5px;color:var(--text-mut);padding:6px 0">Pulls from the <strong>Composer › Set Builder</strong> pools. Compose first there, then come back here.</div>
+            <label class="lab-label" style="margin-top:8px">Name</label>
+            <input id="snap-name" class="lab-input" placeholder="e.g. Q4 auto-intenders v3"/>
+            <label class="lab-label" style="margin-top:8px">Note (optional)</label>
+            <textarea id="snap-note" class="lab-input" rows="3" placeholder="Why this version?"></textarea>
+            <label class="lab-label" style="margin-top:8px">Tags (comma-separated)</label>
+            <input id="snap-tags" class="lab-input" placeholder="auto, q4, affluent"/>
+            <button class="btn-primary" id="snap-save" style="margin-top:12px;width:100%;justify-content:center">
+              <svg class="ico"><use href="#icon-plus"/></svg><span>Save snapshot</span>
+            </button>
+          </div>
+          <div class="lab-panel lab-panel-wide">
+            <div class="lab-panel-title">Snapshots <span class="pill pill-muted mono" id="snap-count" style="margin-left:8px">0</span></div>
+            <div id="snap-list"><div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading snapshots…</div></div></div>
+          </div>
+        </div>
+        <div class="lab-panel lab-panel-full" style="margin-top:14px">
+          <div class="lab-panel-title">Diff</div>
+          <div id="snap-diff"><div class="empty-state"><div class="empty-desc">Pick two snapshots from the list (click <strong>diff</strong> on two rows) and the comparison lands here: added / removed / kept per facet, plus delta reach.</div></div></div>
+        </div>
+      </section>
+
+      <!-- TAB: Freshness (Sec-44) -->
+      <section class="tab-pane" data-tab="freshness">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Signal Freshness</h1>
+            <p class="pane-subtitle">Per-signal data-quality facets derived at mapper time: decay half-life (in days), volatility index (0-100, coefficient-of-variation based), authority score (0-100, from DTS methodology), and ID stability class (stable / semi-stable / volatile). Sort by any column; the warning list at top surfaces signals with half-life &lt; 7 days.</p>
+          </div>
+        </div>
+        <div id="fresh-warnings"></div>
+        <div class="lab-panel lab-panel-full">
+          <div class="lab-panel-title">All signals</div>
+          <div style="overflow:auto">
+            <table class="fresh-table" id="fresh-table">
+              <thead>
+                <tr>
+                  <th data-sort="name">Signal</th>
+                  <th data-sort="vertical">Vertical</th>
+                  <th data-sort="halflife">Half-life (d)</th>
+                  <th data-sort="volatility">Volatility</th>
+                  <th data-sort="authority">Authority</th>
+                  <th data-sort="stability">ID stability</th>
+                  <th data-sort="reach">Reach</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div id="fresh-explainer"></div>
+        </div>
+      </section>
+
       <!-- ── TAB: Federation (Sec-41 Part 3 placeholder) ────────────────── -->
       <section class="tab-pane" data-tab="federation">
         <div class="pane-header">
@@ -1002,7 +1158,7 @@ ${STYLES}
           </div>
           <div class="lab-panel lab-panel-wide">
             <div class="lab-panel-title">Merged results across agents</div>
-            <div id="fed-results"><div class="empty-state"><div class="empty-desc">Enter a brief, hit Fan out. System queries <strong>Samba Signals (us)</strong> + <strong>Dstillery</strong> in parallel and merges results with agent badges. Partners added to <code>/agents/registry</code>.</div></div></div>
+            <div id="fed-results"><div class="empty-state"><div class="empty-desc">Enter a brief, hit Fan out. System queries <strong>Evgeny Signals (us)</strong> + <strong>Dstillery</strong> in parallel and merges results with agent badges. Partners added to <code>/agents/registry</code>.</div></div></div>
             <div id="fed-explainer"></div>
           </div>
         </div>
@@ -3090,7 +3246,7 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   display: flex; flex-direction: column; gap: 6px;
   align-items: flex-end; justify-self: end;
 }
-.fed-row-samba { border-left: 2px solid rgba(43, 212, 160, 0.5); }
+.fed-row-evgeny { border-left: 2px solid rgba(43, 212, 160, 0.5); }
 .fed-row-dstillery { border-left: 2px solid rgba(139, 110, 255, 0.5); }
 .fed-row-selected { background: var(--bg-hover); border-color: var(--accent-border); }
 .fed-check { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
@@ -3724,6 +3880,15 @@ const state = {
     lastCompose: null, lastSat: null, lastAff: null,
     loaded: false,
   },
+  // Sec-44: Journey builder. Dynamic stage list; each stage has its own
+  // include/intersect/exclude pool arrays.
+  journey: { stages: [], lastResult: null, loaded: false },
+  // Sec-44: Scenario Planner — current / add / remove pools.
+  planner: { cur: [], add: [], rem: [], lastResult: null, loaded: false },
+  // Sec-44: Snapshots — fetched index + diff selection.
+  snapshots: { list: [], diffPair: [], loaded: false },
+  // Sec-44: Freshness — sort state + hydrated facets.
+  freshness: { sortCol: "halflife", sortDir: "asc", rows: null, loaded: false },
   reach: { budgetUsd: 10_000 },
   // Sec-39: detail panel UX — cycle-mode + collapsed-section memory
   ui: { detailMode: "narrow", collapsedSections: new Set() },
@@ -3953,6 +4118,8 @@ function switchTab(name) {
     capabilities: "Capabilities", toollog: "Tool Log", overlap: "Overlap",
     embedding: "Embedding space", devkit: "Dev kit", destinations: "Destinations",
     lab: "Embedding Lab", portfolio: "Portfolio", composer: "Composer",
+    journey: "Journey", planner: "Scenario", snapshots: "Snapshots",
+    freshness: "Freshness",
     seasonality: "Seasonality", federation: "Federation",
   };
   document.getElementById("crumb-current").textContent = crumbMap[name] || name;
@@ -3970,6 +4137,10 @@ function switchTab(name) {
   if (name === "lab") ensureLab();
   if (name === "portfolio") ensurePortfolio();
   if (name === "composer") ensureComposer();
+  if (name === "journey") ensureJourney();
+  if (name === "planner") ensurePlanner();
+  if (name === "snapshots") ensureSnapshots();
+  if (name === "freshness") ensureFreshness();
   if (name === "seasonality") ensureSeasonality();
   if (name === "federation") ensureFederation();
 
@@ -8618,6 +8789,60 @@ function renderComposeResult(data) {
     read: "<strong>Union</strong> ≥ largest single signal, ≤ sum of reaches. <strong>Final</strong> = after the whole set-op chain. Lookalike candidates are proposals — they do NOT auto-add to the reach math, so numbers stay auditable.",
     limits: "Catalog signals only expose estimated reach (not user-level membership); overlap is heuristic. For production deployments wire this to a clean-room with real membership data.",
   });
+  // Sec-44: fire privacy + holdout checks against the composed reach.
+  runPrivacyGate(r.final || 0, _ids(state.composer.inc).concat(_ids(state.composer.itx)));
+  runHoldoutForComposer(r.final || 0);
+}
+
+// Sec-44: Privacy gate — POST /audience/privacy-check with composed signals.
+async function runPrivacyGate(cohortSize, signalIds) {
+  var host = document.getElementById("comp-privacy");
+  if (!host) return;
+  if (cohortSize <= 0) { host.innerHTML = ""; return; }
+  try {
+    var r = await fetch("/audience/privacy-check", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ signal_ids: signalIds, cohort_size: cohortSize }),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) { host.innerHTML = ""; return; }
+    var statusColor = data.status === "ok" ? "var(--success)" : data.status === "warn" ? "var(--warning)" : "var(--error)";
+    var statusLabel = data.status === "ok" ? "Ok to activate" : data.status === "warn" ? "Warning" : "Blocked";
+    var reasons = (data.reasons || []).map(function (r) { return '<li>' + escapeHtml(r) + '</li>'; }).join("");
+    host.innerHTML =
+      '<div class="privacy-gate" style="border-left:3px solid ' + statusColor + '">' +
+        '<div class="privacy-title">' +
+          '<strong>Privacy gate: ' + statusLabel + '</strong>' +
+          '<span class="mono" style="color:var(--text-mut);margin-left:10px">k-anon floor ' + data.min_k + ' · cohort ' + fmtNumber(data.cohort_size) + '</span>' +
+        '</div>' +
+        (reasons ? '<ul class="privacy-reasons">' + reasons + '</ul>' : '<div style="color:var(--text-mut);font-size:11.5px">No privacy concerns flagged.</div>') +
+      '</div>';
+  } catch (e) { host.innerHTML = ""; }
+}
+
+// Sec-44: Holdout plan — POST /audience/holdout.
+async function runHoldoutForComposer(reach) {
+  var host = document.getElementById("comp-holdout");
+  if (!host) return;
+  if (reach <= 0) { host.innerHTML = ""; return; }
+  try {
+    var r = await fetch("/audience/holdout", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reach: reach, holdout_pct: 0.10, baseline_conversion_rate: 0.02 }),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) { host.innerHTML = ""; return; }
+    host.innerHTML =
+      '<div class="holdout-block">' +
+        '<div class="holdout-title">Incrementality plan <span class="mono" style="color:var(--text-mut);font-weight:400;margin-left:8px">(10% holdout · 2% baseline CR · α=0.05 · 80% power)</span></div>' +
+        '<div class="holdout-stats">' +
+          '<div><div class="k">Exposed</div><div class="v">' + fmtNumber(data.exposed_size) + '</div></div>' +
+          '<div><div class="k">Control</div><div class="v">' + fmtNumber(data.control_size) + '</div></div>' +
+          '<div><div class="k">MDE (abs)</div><div class="v mono">' + (data.mde_absolute * 100).toFixed(2) + '%</div></div>' +
+          '<div><div class="k">MDE (rel)</div><div class="v mono">' + (data.mde_relative * 100).toFixed(1) + '%</div></div>' +
+        '</div>' +
+      '</div>';
+  } catch (e) { host.innerHTML = ""; }
 }
 
 // ── Saturation run ──────────────────────────────────────────────────────
@@ -8886,7 +9111,7 @@ async function renderAgentRegistry() {
 }
 // Federation shortlist — cross-agent selection that persists while the
 // user tries different briefs. Each entry: { agent, signal }. Used by
-// the bulk action bar (activate samba rows / copy TTD ids / export CSV /
+// the bulk action bar (activate evgeny rows / copy TTD ids / export CSV /
 // send to portfolio builder).
 var _fedShortlist = [];
 var _fedLastResults = [];
@@ -8925,7 +9150,7 @@ function renderFederatedResults(data) {
   var blendedCpm = totalReach > 0 ? totalCostWeighted / totalReach : 0;
 
   var agentStats = Object.entries(data.per_agent_count || {}).map(function (kv) {
-    var badge = kv[0] === "samba_signals" ? "pill-success" : kv[0] === "dstillery" ? "pill-info" : "pill-mut";
+    var badge = kv[0] === "evgeny_signals" ? "pill-success" : kv[0] === "dstillery" ? "pill-info" : "pill-mut";
     return '<div class="lab-stat-card"><div class="lab-stat-label"><span class="pill ' + badge + '" style="font-size:10px">' + escapeHtml(kv[0]) + '</span></div><div class="lab-stat-val">' + kv[1] + '</div></div>';
   }).join('');
   var summary = '<div class="fed-summary-grid">' + agentStats +
@@ -8941,8 +9166,8 @@ function renderFederatedResults(data) {
     var key = fedSigKey(m);
     var selected = shortlistKeys.has(key);
     var sid = sig.signal_agent_segment_id || "";
-    var agentClass = agent === "samba_signals" ? "fed-row-samba" : agent === "dstillery" ? "fed-row-dstillery" : "";
-    var agentPill = agent === "samba_signals" ? "pill-success" : agent === "dstillery" ? "pill-info" : "pill-mut";
+    var agentClass = agent === "evgeny_signals" ? "fed-row-evgeny" : agent === "dstillery" ? "fed-row-dstillery" : "";
+    var agentPill = agent === "evgeny_signals" ? "pill-success" : agent === "dstillery" ? "pill-info" : "pill-mut";
     // Enriched fields
     var desc = sig.description ? escapeHtml(sig.description.slice(0, 120) + (sig.description.length > 120 ? "\u2026" : "")) : "";
     var cpm = 0;
@@ -8960,7 +9185,7 @@ function renderFederatedResults(data) {
     }
     // Action button — agent-specific
     var actionBtn;
-    if (agent === "samba_signals") {
+    if (agent === "evgeny_signals") {
       actionBtn = '<button class="fed-action-btn primary" data-action="activate" data-sid="' + escapeHtml(sid) + '" title="Activate to mock_dsp"><svg class="ico"><use href="#icon-bolt"/></svg><span>Activate</span></button>';
     } else if (agent === "dstillery") {
       var ttdId = deployment.match(/id (\d+)/) ? deployment.match(/id (\d+)/)[1] : (sig.deployments && sig.deployments[0] && sig.deployments[0].decisioning_platform_segment_id) || sid;
@@ -9025,7 +9250,7 @@ function renderFederatedResults(data) {
       var idx = parseInt(row.dataset.idx, 10);
       var m = _fedLastResults[idx];
       if (!m) return;
-      if (m.source_agent === "samba_signals") {
+      if (m.source_agent === "evgeny_signals") {
         openDetailHydrated(m.signal.signal_agent_segment_id, m.signal);
       } else if (m.source_agent === "dstillery") {
         openDstilleryDetail(m.signal);
@@ -9058,8 +9283,8 @@ function renderFederatedResults(data) {
 
   document.getElementById("fed-explainer").innerHTML = renderChartExplainer({
     what: "Results from every AdCP Signals agent queried in parallel, merged with provenance badges. Each row is directly actionable.",
-    how: "Parallel fan-out via MCP tools/call. Samba results come from our local catalog (with full deployment metadata). Dstillery results are native TTD segments — the 'Copy TTD ID' button gives you the exact segment_id for use inside TTD's UI.",
-    read: "Check rows to shortlist across agents, then use the action bar: <strong>Activate selected</strong> fires samba signals to mock_dsp and copies Dstillery TTD IDs. <strong>Compare</strong> shows attributes side-by-side. <strong>Export CSV</strong> gives your planner a shareable shortlist.",
+    how: "Parallel fan-out via MCP tools/call. Evgeny results come from our local catalog (with full deployment metadata). Dstillery results are native TTD segments — the 'Copy TTD ID' button gives you the exact segment_id for use inside TTD's UI.",
+    read: "Check rows to shortlist across agents, then use the action bar: <strong>Activate selected</strong> fires evgeny signals to mock_dsp and copies Dstillery TTD IDs. <strong>Compare</strong> shows attributes side-by-side. <strong>Export CSV</strong> gives your planner a shareable shortlist.",
     limits: "Dstillery signals are activated via TTD, not our agent — we surface the segment_id they need. Future: direct TTD OAuth flow.",
   });
 }
@@ -9107,17 +9332,17 @@ async function fedActivateSignal(sid) {
 
 async function fedActivateSelected() {
   if (_fedShortlist.length === 0) return;
-  var samba = _fedShortlist.filter(function (m) { return m.source_agent === "samba_signals"; });
+  var evg = _fedShortlist.filter(function (m) { return m.source_agent === "evgeny_signals"; });
   var dstill = _fedShortlist.filter(function (m) { return m.source_agent === "dstillery"; });
   var messages = [];
-  // Activate samba signals in parallel
-  if (samba.length) {
-    showToast("Activating " + samba.length + " Samba signals\u2026");
-    var results = await Promise.allSettled(samba.map(function (m) {
+  // Activate evgeny signals in parallel
+  if (evg.length) {
+    showToast("Activating " + evg.length + " Evgeny signals\u2026");
+    var results = await Promise.allSettled(evg.map(function (m) {
       return callTool("activate_signal", { signal_agent_segment_id: m.signal.signal_agent_segment_id, destination_platform: "mock_dsp" });
     }));
     var ok = results.filter(function (r) { return r.status === "fulfilled"; }).length;
-    messages.push(ok + "/" + samba.length + " Samba activated");
+    messages.push(ok + "/" + evg.length + " Evgeny activated");
   }
   // Copy all TTD IDs to clipboard
   if (dstill.length) {
@@ -9172,7 +9397,7 @@ function fedCompareSelected() {
     };
   });
   var rows = [
-    ["Agent", cols.map(function (c) { var p = c.agent === "samba_signals" ? "pill-success" : "pill-info"; return '<span class="pill ' + p + '" style="font-size:10px">' + escapeHtml(c.agent) + '</span>'; })],
+    ["Agent", cols.map(function (c) { var p = c.agent === "evgeny_signals" ? "pill-success" : "pill-info"; return '<span class="pill ' + p + '" style="font-size:10px">' + escapeHtml(c.agent) + '</span>'; })],
     ["Signal ID", cols.map(function (c) { return '<span class="mono" style="font-size:11px">' + escapeHtml(c.sid || '') + '</span>'; })],
     ["Reach", cols.map(function (c) { return c.reach ? fmtNumber(c.reach) : '\u2014'; })],
     ["CPM", cols.map(function (c) { return c.cpm ? '$' + c.cpm.toFixed(2) : '\u2014'; })],

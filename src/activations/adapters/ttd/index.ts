@@ -19,7 +19,7 @@
  *
  * TTD is the strongest platform for CTV/streaming audience activation —
  * sig_streaming_enthusiasts and sig_drama_viewers map natively.
- * Best fit for Samba TV ACR signal activation.
+ * Best fit for CTV ACR signal activation.
  *
  * Required credentials:
  *   TTD_API_KEY           — TTD API Key

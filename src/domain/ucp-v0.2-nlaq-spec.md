@@ -506,7 +506,7 @@ Reference implementation: 19 concepts live across all 7 categories.
 }
 ```
 
-First normative definition of `temporal_scope` at the signal level in UCP. ACR-derived temporal behavioral signals are a first-class signal type. CTV data providers (e.g. Samba TV) are the canonical source.
+First normative definition of `temporal_scope` at the signal level in UCP. ACR-derived temporal behavioral signals are a first-class signal type. CTV data providers are the canonical source.
 
 ---
 

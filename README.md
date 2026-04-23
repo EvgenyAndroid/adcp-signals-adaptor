@@ -195,7 +195,7 @@ Every signal carries an `x_dts` object — IAB DTS v1.2 ("Privacy Update", April
     "dts_version": "1.2",
     "provider_name": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
     "provider_domain": "adcp-signals-adaptor.evgeny-193.workers.dev",
-    "provider_email": "evgeny@samba.tv",
+    "provider_email": "evgeny@evgeny.dev",
     "audience_id": "sig_acs_graduate_high_income",
     "taxonomy_id_list": "11",
     "audience_criteria": "Households with graduate degree and HHI $150K+. Source: ACS 2022 B15003 × B19001.",
@@ -338,7 +338,7 @@ GET /ucp/concepts?category=archetype
 POST /ucp/concepts/seed    (auth required)
 ```
 
-19 concepts, 7 categories, 5-vendor cross-taxonomy member_nodes (IAB, LiveRamp, TradeDesk, Experian, Samba). **Spec:** UCP v0.2-draft §4 (Concept-Level VAC).
+19 concepts, 7 categories, 5-vendor cross-taxonomy member_nodes (IAB, LiveRamp, TradeDesk, Experian, Mastercard). **Spec:** UCP v0.2-draft §4 (Concept-Level VAC).
 
 ---
 
@@ -652,5 +652,4 @@ Full spec draft: `src/domain/ucp-v0.2-nlaq-spec.md`
 
 ## License
 
-MIT — Reference implementation for AdCP protocol development, IAB DTS v1.2 integration, and UCP embedding bridge.  
-Samba TV is a founding member of AgenticAdvertising.org (AdCP) and IAB Tech Lab UCP working group.
+MIT — Reference implementation for AdCP protocol development, IAB DTS v1.2 integration, and UCP embedding bridge.

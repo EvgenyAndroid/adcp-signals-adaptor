@@ -38,7 +38,7 @@ Also wired but not surfaced yet: `POST /portfolio/info-overlap`, `/portfolio/hit
 
 ### 🤝 Agent Federation (LIVE A2A)
 - `GET /agents/registry` — curated list of 6 agents (2 live, 4 roadmap)
-- `POST /agents/federated-search` — parallel fan-out to samba + dstillery, merged results with agent badges
+- `POST /agents/federated-search` — parallel fan-out to evgeny + dstillery, merged results with agent badges
 - `POST /agents/cross-similarity` — Procrustes-aligned cross-space stub
 - `POST /taxonomy/reverse` — foreign ID → our equivalent
 
@@ -102,27 +102,27 @@ All deterministic derivations from existing signal metadata — no DB migration 
 | `POST /portfolio/info-overlap` | Jaccard + KL + MI matrices | ✅ |
 | `POST /portfolio/from-brief {brief:"..."}` | portfolio with allocation % | ✅ |
 | `GET /agents/registry` | 6 agents (2 live, 4 roadmap) | ✅ |
-| `POST /agents/federated-search {brief:"automotive shoppers"}` | merged results from samba + dstillery | ✅ **2943ms, both agents succeeded** |
+| `POST /agents/federated-search {brief:"automotive shoppers"}` | merged results from evgeny + dstillery | ✅ **2943ms, both agents succeeded** |
 | `POST /taxonomy/reverse {system:"iab_content_3_0", id:"T-3-0-001"}` | local matches | ✅ |
 
 ---
 
 ## Live dry-run: the A2A moment
 
-**Query**: `"automotive shoppers"` fanned out to both Samba (us) + Dstillery in parallel.
+**Query**: `"automotive shoppers"` fanned out to both Evgeny (us) + Dstillery in parallel.
 
 ```
 Response: 200 OK in 2943ms
-agents_succeeded: ["samba_signals", "dstillery"]
+agents_succeeded: ["evgeny_signals", "dstillery"]
 agents_failed:    []
-per-agent count:  samba_signals=3, dstillery=3
+per-agent count:  evgeny_signals=3, dstillery=3
 
 Merged results (interleaved):
-  1. samba_signals : Black Friday / Cyber Monday Shoppers
+  1. evgeny_signals : Black Friday / Cyber Monday Shoppers
   2. dstillery     : Online Auto Shoppers
-  3. samba_signals : Memorial / Labor / July 4 Shoppers
+  3. evgeny_signals : Memorial / Labor / July 4 Shoppers
   4. dstillery     : Online Auto Shoppers - Extreme Confidence
-  5. samba_signals : Mass Retail Shoppers
+  5. evgeny_signals : Mass Retail Shoppers
   6. dstillery     : Online Auto Shoppers - Precision
 ```
 
@@ -221,4 +221,4 @@ open https://adcp-signals-adaptor.evgeny-193.workers.dev/
 
 First known AdCP Signals agent with live A2A federation (Dstillery), the only one with a full embedding-operations lab, the only one with a portfolio optimizer surfaced as a live UI.
 
-— Samba TV / Evgeny, Sec-41 overnight build 2026-04-21.
+— Evgeny, Sec-41 overnight build 2026-04-21.

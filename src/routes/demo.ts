@@ -114,6 +114,10 @@ ${STYLES}
         <svg class="ico"><use href="#icon-chart"/></svg><span>Portfolio</span>
         <span class="nav-tag">new</span>
       </button>
+      <button class="nav-item" data-tab="composer">
+        <svg class="ico"><use href="#icon-builder"/></svg><span>Composer</span>
+        <span class="nav-tag">new</span>
+      </button>
       <button class="nav-item" data-tab="seasonality">
         <svg class="ico"><use href="#icon-info"/></svg><span>Seasonality</span>
         <span class="nav-tag">new</span>
@@ -841,6 +845,139 @@ ${STYLES}
         <div class="lab-panel lab-panel-full" style="margin-top:14px">
           <div class="lab-panel-title">Seasonality heatmap \u2014 first 30 signals</div>
           <div id="sea-heatmap"><div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading heatmap\u2026</div></div></div>
+        </div>
+      </section>
+
+      <!-- TAB: Composer (Sec-43) -->
+      <!-- Unified audience composition: set ops + lookalike expand +      -->
+      <!-- frequency-saturation planning + affinity audit. Talks to the    -->
+      <!-- /audience/* endpoints introduced in Sec-43 Part 1.              -->
+      <section class="tab-pane" data-tab="composer">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Audience Composer</h1>
+            <p class="pane-subtitle">Compose audiences from catalog signals with set operations (union \u222a, intersect \u2229, exclude \u2212), optionally expand with embedding-based lookalikes, then plan activation via frequency-saturation curves and affinity audits vs the catalog baseline.</p>
+          </div>
+        </div>
+        <div class="port-subtabs">
+          <button class="lab-subtab active" data-composer="build">Set Builder</button>
+          <button class="lab-subtab" data-composer="saturation">Frequency Saturation</button>
+          <button class="lab-subtab" data-composer="affinity">Affinity Audit</button>
+        </div>
+
+        <!-- 1. Set Builder -->
+        <div class="lab-subpanel" data-composer-panel="build">
+          <div class="composer-grid">
+            <div class="lab-panel">
+              <div class="lab-panel-title">Include (union \u222a)</div>
+              <div class="builder-section-label">Selected <span style="color:var(--text-mut);font-weight:400;font-family:var(--font-mono)" id="comp-inc-count">0 / 8</span></div>
+              <div class="overlap-chips" id="comp-inc-chips"></div>
+              <div class="overlap-search">
+                <svg class="ico"><use href="#icon-search"/></svg>
+                <input id="comp-inc-search" placeholder="Search catalog\u2026" autocomplete="off"/>
+              </div>
+              <div class="overlap-suggestions" id="comp-inc-sugg"></div>
+            </div>
+            <div class="lab-panel">
+              <div class="lab-panel-title">Intersect (\u2229)</div>
+              <div class="builder-section-label">Selected <span style="color:var(--text-mut);font-weight:400;font-family:var(--font-mono)" id="comp-itx-count">0 / 4</span></div>
+              <div class="overlap-chips" id="comp-itx-chips"></div>
+              <div class="overlap-search">
+                <svg class="ico"><use href="#icon-search"/></svg>
+                <input id="comp-itx-search" placeholder="Search catalog\u2026" autocomplete="off"/>
+              </div>
+              <div class="overlap-suggestions" id="comp-itx-sugg"></div>
+            </div>
+            <div class="lab-panel">
+              <div class="lab-panel-title">Exclude (\u2212)</div>
+              <div class="builder-section-label">Selected <span style="color:var(--text-mut);font-weight:400;font-family:var(--font-mono)" id="comp-exc-count">0 / 4</span></div>
+              <div class="overlap-chips" id="comp-exc-chips"></div>
+              <div class="overlap-search">
+                <svg class="ico"><use href="#icon-search"/></svg>
+                <input id="comp-exc-search" placeholder="Search catalog\u2026" autocomplete="off"/>
+              </div>
+              <div class="overlap-suggestions" id="comp-exc-sugg"></div>
+            </div>
+          </div>
+          <div class="lab-panel" style="margin-top:14px">
+            <div class="lab-panel-title">Lookalike expand (optional)</div>
+            <div class="composer-lal-row">
+              <div>
+                <label class="lab-label">Seed signal (must have an embedding)</label>
+                <select id="comp-lal-seed" class="lab-input">
+                  <option value="">\u2014 none \u2014</option>
+                </select>
+              </div>
+              <div>
+                <label class="lab-label">Top K</label>
+                <input id="comp-lal-k" type="number" min="1" max="25" value="8" class="lab-input"/>
+              </div>
+              <div>
+                <label class="lab-label">Min cosine</label>
+                <input id="comp-lal-min" type="number" min="0" max="1" step="0.05" value="0.55" class="lab-input"/>
+              </div>
+              <button class="btn-primary" id="comp-run" style="justify-content:center;padding:10px 18px">
+                <svg class="ico"><use href="#icon-bolt"/></svg><span>Compute composition</span>
+              </button>
+            </div>
+          </div>
+          <div class="lab-panel lab-panel-full" style="margin-top:14px">
+            <div class="lab-panel-title">Result</div>
+            <div id="comp-results"><div class="empty-state"><div class="empty-desc">Pick at least one signal, then hit <strong>Compute composition</strong>. The system applies pairwise inclusion-exclusion for union, category-affinity Jaccard for intersect, and subtracts suppressed overlap for exclude. A lookalike seed surfaces top-K embedding neighbors as candidates you can add to the <em>Include</em> pool on the next pass.</div></div></div>
+            <div id="comp-explainer"></div>
+          </div>
+        </div>
+
+        <!-- 2. Frequency Saturation -->
+        <div class="lab-subpanel" data-composer-panel="saturation" style="display:none">
+          <div class="lab-grid">
+            <div class="lab-panel">
+              <div class="lab-panel-title">Audience + constraints</div>
+              <div class="builder-section-label">Selected signals <span style="color:var(--text-mut);font-weight:400;font-family:var(--font-mono)" id="comp-sat-count">0 / 10</span></div>
+              <div class="overlap-chips" id="comp-sat-chips"></div>
+              <div class="overlap-search">
+                <svg class="ico"><use href="#icon-search"/></svg>
+                <input id="comp-sat-search" placeholder="Search catalog\u2026" autocomplete="off"/>
+              </div>
+              <div class="overlap-suggestions" id="comp-sat-sugg"></div>
+              <label class="lab-label" style="margin-top:12px">Budget ($, optional)</label>
+              <input id="comp-sat-budget" type="number" min="0" step="1000" value="50000" class="lab-input"/>
+              <label class="lab-label" style="margin-top:8px">Reach override (optional)</label>
+              <input id="comp-sat-reach" type="number" min="0" step="1000" placeholder="auto from signals" class="lab-input"/>
+              <button class="btn-primary" id="comp-sat-run" style="margin-top:12px;width:100%;justify-content:center" disabled>
+                <svg class="ico"><use href="#icon-chart"/></svg><span>Compute saturation</span>
+              </button>
+            </div>
+            <div class="lab-panel lab-panel-wide">
+              <div class="lab-panel-title">Diminishing-returns curve</div>
+              <div id="comp-sat-results"><div class="empty-state"><div class="empty-desc">Pick at least one signal (or override reach), then hit <strong>Compute saturation</strong>. The system models <code>P(seen \u2265 1 | F) = 1 \u2212 exp(\u2212F)</code> across F=1..15 and flags the knee where marginal reach drops below 50% of the F=1 gain.</div></div></div>
+              <div id="comp-sat-explainer"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Affinity Audit -->
+        <div class="lab-subpanel" data-composer-panel="affinity" style="display:none">
+          <div class="lab-grid">
+            <div class="lab-panel">
+              <div class="lab-panel-title">Selection</div>
+              <div class="builder-section-label">Selected signals <span style="color:var(--text-mut);font-weight:400;font-family:var(--font-mono)" id="comp-aff-count">0 / 15</span></div>
+              <div class="overlap-chips" id="comp-aff-chips"></div>
+              <div class="overlap-search">
+                <svg class="ico"><use href="#icon-search"/></svg>
+                <input id="comp-aff-search" placeholder="Search catalog\u2026" autocomplete="off"/>
+              </div>
+              <div class="overlap-suggestions" id="comp-aff-sugg"></div>
+              <button class="btn-primary" id="comp-aff-run" style="margin-top:12px;width:100%;justify-content:center" disabled>
+                <svg class="ico"><use href="#icon-network"/></svg><span>Audit affinity</span>
+              </button>
+            </div>
+            <div class="lab-panel lab-panel-wide">
+              <div class="lab-panel-title">Over / under-index vs catalog baseline</div>
+              <div id="comp-aff-results"><div class="empty-state"><div class="empty-desc">Pick at least one signal and hit <strong>Audit affinity</strong>. For every facet (category, vertical, geo band, data provider) the system compares the reach-weighted share of your selection against the catalog baseline. Index 100 = at parity; 200 = 2\u00d7 over-represented; 50 = under-represented.</div></div></div>
+              <div id="comp-aff-explainer"></div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -3386,6 +3523,93 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   .workspace { padding: 20px 18px 60px; }
   .kpi-row { grid-template-columns: 1fr 1fr; }
 }
+
+/* Sec-43: Audience Composer */
+.composer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.composer-lal-row {
+  display: grid; grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 12px; align-items: end;
+}
+.composer-reach-cards {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px;
+}
+.composer-reach-card {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 12px 14px;
+}
+.composer-reach-card .label {
+  font-size: 10.5px; color: var(--text-mut); text-transform: uppercase;
+  letter-spacing: 0.08em; margin-bottom: 4px;
+}
+.composer-reach-card .value {
+  font-size: 22px; font-weight: 700; font-family: var(--font-mono);
+  color: var(--text);
+}
+.composer-reach-card .sub {
+  font-size: 10.5px; color: var(--text-mut); font-family: var(--font-mono); margin-top: 2px;
+}
+.composer-reach-card.final .value { color: var(--accent); }
+
+.composer-lal-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.composer-lal-item {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 8px 12px;
+}
+.composer-lal-item .cos {
+  font-family: var(--font-mono); font-weight: 600; color: var(--accent-hot); font-size: 12px;
+}
+.composer-lal-item .add-btn {
+  background: transparent; border: 1px solid var(--border); color: var(--text);
+  padding: 4px 10px; border-radius: var(--radius-sm); font-size: 11px; cursor: pointer;
+}
+.composer-lal-item .add-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Saturation curve */
+.comp-sat-curve { width: 100%; height: 280px; margin-bottom: 12px; }
+.comp-sat-table { width: 100%; border-collapse: collapse; font-size: 11.5px; font-family: var(--font-mono); }
+.comp-sat-table th, .comp-sat-table td { padding: 6px 10px; text-align: right; }
+.comp-sat-table th {
+  font-size: 10.5px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--border);
+}
+.comp-sat-table td { border-bottom: 1px solid rgba(255,255,255,0.04); }
+.comp-sat-table tr.knee td { background: rgba(255, 192, 64, 0.08); }
+
+/* Affinity bars */
+.comp-aff-facet { margin-bottom: 18px; }
+.comp-aff-facet-title {
+  font-size: 11px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+.comp-aff-row {
+  display: grid; grid-template-columns: 180px 1fr 64px;
+  gap: 10px; align-items: center; margin-bottom: 4px; font-size: 11.5px;
+}
+.comp-aff-bar-track {
+  position: relative; height: 14px; background: var(--bg-raised);
+  border-radius: 3px; overflow: hidden;
+}
+.comp-aff-bar-fill {
+  position: absolute; top: 0; bottom: 0;
+  background: var(--accent);
+}
+.comp-aff-bar-fill.under { background: var(--text-mut); }
+.comp-aff-bar-fill.over  { background: var(--accent); }
+.comp-aff-bar-fill.heavy { background: var(--accent-hot); }
+.comp-aff-bar-track::before {
+  content: ""; position: absolute; left: 50%; top: 0; bottom: 0;
+  width: 1px; background: var(--border); z-index: 1;
+}
+.comp-aff-index {
+  font-family: var(--font-mono); font-weight: 600; text-align: right;
+}
+.comp-aff-key { color: var(--text); }
+
+@media (max-width: 1100px) {
+  .composer-grid { grid-template-columns: 1fr; }
+  .composer-lal-row { grid-template-columns: 1fr; }
+}
 </style>`;
 
 // The whole <script> block as a function so we can close-template it cleanly.
@@ -3433,6 +3657,14 @@ const state = {
   activations: { pollTimer: null, data: [] },
   toolLog: { pollTimer: null, data: [], paused: false, filter: "", expanded: new Set() },
   overlap: { selected: [], lastResult: null, searchQ: "" },
+  // Sec-43: Composer state. Five pickers (3 on Set Builder + 1 each on
+  // Saturation / Affinity) plus the last result payloads for rendering.
+  composer: {
+    inc: [], itx: [], exc: [],      // Set Builder pools
+    sat: [], aff: [],               // Saturation / Affinity pools
+    lastCompose: null, lastSat: null, lastAff: null,
+    loaded: false,
+  },
   reach: { budgetUsd: 10_000 },
   // Sec-39: detail panel UX — cycle-mode + collapsed-section memory
   ui: { detailMode: "narrow", collapsedSections: new Set() },
@@ -3661,8 +3893,8 @@ function switchTab(name) {
     treemap: "Treemap", builder: "Builder", activations: "Activations",
     capabilities: "Capabilities", toollog: "Tool Log", overlap: "Overlap",
     embedding: "Embedding space", devkit: "Dev kit", destinations: "Destinations",
-    lab: "Embedding Lab", portfolio: "Portfolio", seasonality: "Seasonality",
-    federation: "Federation",
+    lab: "Embedding Lab", portfolio: "Portfolio", composer: "Composer",
+    seasonality: "Seasonality", federation: "Federation",
   };
   document.getElementById("crumb-current").textContent = crumbMap[name] || name;
 
@@ -3678,6 +3910,7 @@ function switchTab(name) {
   if (name === "destinations") ensureDestinations();
   if (name === "lab") ensureLab();
   if (name === "portfolio") ensurePortfolio();
+  if (name === "composer") ensureComposer();
   if (name === "seasonality") ensureSeasonality();
   if (name === "federation") ensureFederation();
 
@@ -8075,6 +8308,427 @@ async function renderSeaHeatmap() {
   } catch (e) {
     host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">Could not load heatmap</div></div>';
   }
+}
+
+// ─── Composer (Sec-43) ─────────────────────────────────────────────────
+// Unified tab talking to POST /audience/{compose,saturation,affinity-audit}.
+// Five pickers share one generic wiring helper (wireCompPicker) — each
+// backed by state.composer[key]. All 5 pull from the already-loaded
+// state.catalog.all so the UI stays responsive.
+var _compLoaded = false;
+
+// max = max signals per pool; buttons = ids of buttons to enable once picker has ≥1 selection.
+function wireCompPicker(key, chipsId, searchId, suggId, countId, max, buttons) {
+  var searchEl = document.getElementById(searchId);
+  if (!searchEl) return;
+  // Debounced search
+  searchEl.addEventListener("input", function () {
+    compRenderSugg(key, searchEl.value.trim().toLowerCase(), suggId, max);
+  });
+  searchEl.addEventListener("focus", function () {
+    compRenderSugg(key, searchEl.value.trim().toLowerCase(), suggId, max);
+  });
+  // Initial render
+  compRenderChips(key, chipsId, countId, max, suggId, buttons);
+  compRenderSugg(key, "", suggId, max);
+}
+
+function compRenderChips(key, chipsId, countId, max, suggId, buttons) {
+  var host = document.getElementById(chipsId);
+  var countEl = document.getElementById(countId);
+  var list = state.composer[key] || [];
+  if (countEl) countEl.textContent = list.length + " / " + max;
+  // Toggle associated buttons
+  (buttons || []).forEach(function (bid) {
+    var b = document.getElementById(bid);
+    if (b) b.disabled = list.length < 1;
+  });
+  if (!host) return;
+  if (list.length === 0) {
+    host.innerHTML = '<div style="color:var(--text-mut);font-size:11.5px;padding:8px 0;font-style:italic">None.</div>';
+    return;
+  }
+  host.innerHTML = list.map(function (s, i) {
+    var sid = s.signal_agent_segment_id || (s.signal_id && s.signal_id.id) || "";
+    return '<div class="overlap-chip" data-sid="' + escapeHtml(sid) + '">' +
+      '<div><div class="oc-name">' + escapeHtml(s.name) + '</div>' +
+      '<div style="font-size:10.5px;color:var(--text-mut);font-family:var(--font-mono)">' +
+        fmtNumber(s.estimated_audience_size) + ' · ' + escapeHtml(s.category_type || "—") +
+      '</div></div>' +
+      '<button class="oc-remove" data-idx="' + i + '"><svg class="ico"><use href="#icon-close"/></svg></button>' +
+    '</div>';
+  }).join("");
+  host.querySelectorAll(".oc-remove").forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.composer[key].splice(Number(b.dataset.idx), 1);
+      compRenderChips(key, chipsId, countId, max, suggId, buttons);
+      compRenderSugg(key, "", suggId, max);
+    });
+  });
+}
+
+function compRenderSugg(key, q, suggId, max) {
+  var host = document.getElementById(suggId);
+  if (!host) return;
+  var list = state.composer[key] || [];
+  if (list.length >= max) {
+    host.innerHTML = '<div style="color:var(--text-mut);font-size:11px;padding:6px 0">Max ' + max + '. Remove one to add another.</div>';
+    return;
+  }
+  var selectedIds = new Set(list.map(function (s) { return s.signal_agent_segment_id || (s.signal_id && s.signal_id.id); }));
+  var rows = state.catalog.all || [];
+  if (q) rows = rows.filter(function (s) {
+    return (s.name || "").toLowerCase().includes(q) || (s.description || "").toLowerCase().includes(q);
+  });
+  rows = rows.filter(function (s) {
+    return !selectedIds.has(s.signal_agent_segment_id || (s.signal_id && s.signal_id.id));
+  }).slice(0, 10);
+  if (rows.length === 0) {
+    host.innerHTML = '<div style="color:var(--text-mut);font-size:11.5px;padding:6px 0">No catalog matches.</div>';
+    return;
+  }
+  host.innerHTML = rows.map(function (s) {
+    var sid = s.signal_agent_segment_id || (s.signal_id && s.signal_id.id) || "";
+    return '<div class="overlap-suggestion" data-sid="' + escapeHtml(sid) + '">' +
+      '<div>' + escapeHtml(s.name) + '</div>' +
+      '<div class="sub">' + fmtNumber(s.estimated_audience_size) + ' · ' +
+      escapeHtml(s.category_type || "—") + ' · ' + escapeHtml(verticalOf(s)) + '</div>' +
+    '</div>';
+  }).join("");
+  host.querySelectorAll(".overlap-suggestion").forEach(function (el) {
+    el.addEventListener("click", function () {
+      var sid = el.dataset.sid;
+      var sig = state.catalog.all.find(function (x) {
+        return (x.signal_agent_segment_id || (x.signal_id && x.signal_id.id)) === sid;
+      });
+      if (!sig) return;
+      // Per-picker wiring table tells us chipsId/countId/buttons/max.
+      var meta = _compPickerMeta[key];
+      if (!meta) return;
+      if (state.composer[key].length >= meta.max) return;
+      state.composer[key].push(sig);
+      compRenderChips(key, meta.chipsId, meta.countId, meta.max, suggId, meta.buttons);
+      compRenderSugg(key, "", suggId, meta.max);
+    });
+  });
+}
+
+// Picker metadata so suggestion clicks know how to re-render.
+var _compPickerMeta = {};
+
+async function ensureComposer() {
+  if (_compLoaded) return;
+  _compLoaded = true;
+  if (state.catalog.all.length === 0) await loadCatalog();
+
+  // Build picker metadata + wire each.
+  _compPickerMeta = {
+    inc: { chipsId: "comp-inc-chips", countId: "comp-inc-count", buttons: ["comp-run"],     max: 8 },
+    itx: { chipsId: "comp-itx-chips", countId: "comp-itx-count", buttons: [],               max: 4 },
+    exc: { chipsId: "comp-exc-chips", countId: "comp-exc-count", buttons: [],               max: 4 },
+    sat: { chipsId: "comp-sat-chips", countId: "comp-sat-count", buttons: ["comp-sat-run"], max: 10 },
+    aff: { chipsId: "comp-aff-chips", countId: "comp-aff-count", buttons: ["comp-aff-run"], max: 15 },
+  };
+  wireCompPicker("inc", "comp-inc-chips", "comp-inc-search", "comp-inc-sugg", "comp-inc-count", 8,  ["comp-run"]);
+  wireCompPicker("itx", "comp-itx-chips", "comp-itx-search", "comp-itx-sugg", "comp-itx-count", 4,  []);
+  wireCompPicker("exc", "comp-exc-chips", "comp-exc-search", "comp-exc-sugg", "comp-exc-count", 4,  []);
+  wireCompPicker("sat", "comp-sat-chips", "comp-sat-search", "comp-sat-sugg", "comp-sat-count", 10, ["comp-sat-run"]);
+  wireCompPicker("aff", "comp-aff-chips", "comp-aff-search", "comp-aff-sugg", "comp-aff-count", 15, ["comp-aff-run"]);
+
+  // Subtabs
+  document.querySelectorAll(".lab-subtab[data-composer]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var target = btn.dataset.composer;
+      document.querySelectorAll(".lab-subtab[data-composer]").forEach(function (b) {
+        b.classList.toggle("active", b === btn);
+      });
+      document.querySelectorAll(".lab-subpanel[data-composer-panel]").forEach(function (p) {
+        p.style.display = p.dataset.composerPanel === target ? "" : "none";
+      });
+    });
+  });
+
+  // Lookalike seed dropdown — only signals whose id appears in the
+  // embedding store can be seeded (the backend returns SEED_NOT_EMBEDDED
+  // otherwise). We probe /ucp/projection for the canonical embedded set.
+  try {
+    var projRes = await fetch("/ucp/projection");
+    var projData = await projRes.json();
+    var embIds = new Set((projData.points || []).map(function (p) { return p.signal_id; }));
+    var seedSel = document.getElementById("comp-lal-seed");
+    if (seedSel) {
+      var opts = ['<option value="">— none —</option>'];
+      state.catalog.all.forEach(function (s) {
+        var sid = s.signal_agent_segment_id || (s.signal_id && s.signal_id.id);
+        if (!sid || !embIds.has(sid)) return;
+        opts.push('<option value="' + escapeHtml(sid) + '">' + escapeHtml(s.name) + '</option>');
+      });
+      seedSel.innerHTML = opts.join("");
+    }
+  } catch (e) { /* dropdown stays minimal on fetch failure */ }
+
+  document.getElementById("comp-run").addEventListener("click", runCompose);
+  document.getElementById("comp-sat-run").addEventListener("click", runSaturation);
+  document.getElementById("comp-aff-run").addEventListener("click", runAffinity);
+}
+
+// ── Set Builder run ─────────────────────────────────────────────────────
+function _ids(list) {
+  return (list || []).map(function (s) { return s.signal_agent_segment_id || (s.signal_id && s.signal_id.id); }).filter(Boolean);
+}
+
+async function runCompose() {
+  var host = document.getElementById("comp-results");
+  var include = _ids(state.composer.inc);
+  var intersect = _ids(state.composer.itx);
+  var exclude = _ids(state.composer.exc);
+  var seedEl = document.getElementById("comp-lal-seed");
+  var kEl = document.getElementById("comp-lal-k");
+  var minEl = document.getElementById("comp-lal-min");
+  var seed = seedEl ? seedEl.value : "";
+  var body = { include: include, intersect: intersect, exclude: exclude };
+  if (seed) body.lookalike = { seed_signal_id: seed, k: Number(kEl.value) || 8, min_cosine: Number(minEl.value) || 0 };
+  host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Computing composition…</div></div>';
+  try {
+    var r = await fetch("/audience/compose", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || "HTTP " + r.status);
+    state.composer.lastCompose = data;
+    renderComposeResult(data);
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
+  }
+}
+
+function renderComposeResult(data) {
+  var host = document.getElementById("comp-results");
+  var r = data.reach || {};
+  var cards =
+    '<div class="composer-reach-cards">' +
+      '<div class="composer-reach-card"><div class="label">Union (∪)</div><div class="value">' + fmtNumber(r.union_only || 0) + '</div><div class="sub">include-only reach</div></div>' +
+      '<div class="composer-reach-card"><div class="label">After intersect (∩)</div><div class="value">' + fmtNumber(r.after_intersect || 0) + '</div><div class="sub">narrowed by must-match</div></div>' +
+      '<div class="composer-reach-card final"><div class="label">Final</div><div class="value">' + fmtNumber(r.final || 0) + '</div><div class="sub">after exclude (−)</div></div>' +
+    '</div>';
+  var confColor = data.confidence === "high" ? "var(--success)" : data.confidence === "medium" ? "var(--warning)" : "var(--text-mut)";
+  var meta =
+    '<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text-mut);margin-bottom:14px">' +
+      '<div>CPM: <span class="mono" style="color:var(--text)">$' + (data.estimated_cpm || 0).toFixed(2) + '</span></div>' +
+      '<div>Est. cost: <span class="mono" style="color:var(--text)">$' + fmtNumber(data.estimated_cost_usd || 0) + '</span></div>' +
+      '<div>Confidence: <span class="mono" style="color:' + confColor + '">' + escapeHtml(data.confidence || "—") + '</span></div>' +
+    '</div>';
+  var lal = "";
+  if (data.lookalike && data.lookalike.candidates && data.lookalike.candidates.length > 0) {
+    lal =
+      '<div class="lab-panel-title" style="margin-top:14px">Lookalike candidates (seed: ' + escapeHtml(data.lookalike.seed) + ')</div>' +
+      '<div class="composer-lal-list">' +
+        data.lookalike.candidates.map(function (c) {
+          return '<div class="composer-lal-item">' +
+            '<div><div>' + escapeHtml(c.name) + '</div>' +
+            '<div style="font-size:10.5px;color:var(--text-mut);font-family:var(--font-mono)">' +
+              fmtNumber(c.estimated_audience_size) +
+            '</div></div>' +
+            '<div style="display:flex;align-items:center;gap:10px">' +
+              '<span class="cos">' + c.cosine.toFixed(3) + '</span>' +
+              '<button class="add-btn" data-sid="' + escapeHtml(c.signal_agent_segment_id) + '">+ include</button>' +
+            '</div>' +
+          '</div>';
+        }).join("") +
+      '</div>';
+  }
+  host.innerHTML = cards + meta + lal;
+  host.querySelectorAll(".add-btn").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var sid = b.dataset.sid;
+      var sig = state.catalog.all.find(function (x) {
+        return (x.signal_agent_segment_id || (x.signal_id && x.signal_id.id)) === sid;
+      });
+      if (!sig) return;
+      if (state.composer.inc.length >= 8) { showToast("Include pool is full (max 8).", true); return; }
+      if (_ids(state.composer.inc).indexOf(sid) >= 0) return;
+      state.composer.inc.push(sig);
+      compRenderChips("inc", "comp-inc-chips", "comp-inc-count", 8, "comp-inc-sugg", ["comp-run"]);
+      compRenderSugg("inc", "", "comp-inc-sugg", 8);
+      showToast("Added to Include pool.", false);
+    });
+  });
+  document.getElementById("comp-explainer").innerHTML = renderChartExplainer({
+    what: "Set-ops composition with embedding-based lookalike proposals.",
+    how: "Union uses pairwise inclusion-exclusion against a category-affinity Jaccard heuristic (0.55 within category, 0.20 across). Intersect decays the base by the pairwise overlap rate; exclude subtracts suppressed overlap. Lookalikes are embedding k-NN against the seed.",
+    read: "<strong>Union</strong> ≥ largest single signal, ≤ sum of reaches. <strong>Final</strong> = after the whole set-op chain. Lookalike candidates are proposals — they do NOT auto-add to the reach math, so numbers stay auditable.",
+    limits: "Catalog signals only expose estimated reach (not user-level membership); overlap is heuristic. For production deployments wire this to a clean-room with real membership data.",
+  });
+}
+
+// ── Saturation run ──────────────────────────────────────────────────────
+async function runSaturation() {
+  var host = document.getElementById("comp-sat-results");
+  var ids = _ids(state.composer.sat);
+  var body = { signal_ids: ids };
+  var budget = Number(document.getElementById("comp-sat-budget").value) || 0;
+  var reachOverride = Number(document.getElementById("comp-sat-reach").value) || 0;
+  if (budget > 0) body.budget_usd = budget;
+  if (reachOverride > 0) body.reach = reachOverride;
+  host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Computing saturation…</div></div>';
+  try {
+    var r = await fetch("/audience/saturation", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || "HTTP " + r.status);
+    state.composer.lastSat = data;
+    renderSaturationResult(data);
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
+  }
+}
+
+function renderSaturationResult(data) {
+  var host = document.getElementById("comp-sat-results");
+  var curve = data.curve || [];
+  if (curve.length === 0) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title">Empty curve</div></div>';
+    return;
+  }
+  // SVG line chart — two series: unique_reach (filled area) + marginal_reach (dots).
+  var W = 640, H = 260, P = 40;
+  var maxR = 0, maxMarg = 0;
+  curve.forEach(function (c) {
+    if (c.unique_reach > maxR) maxR = c.unique_reach;
+    if (c.marginal_reach > maxMarg) maxMarg = c.marginal_reach;
+  });
+  var xScale = function (i) { return P + i * ((W - 2 * P) / Math.max(1, curve.length - 1)); };
+  var yScale = function (v) { return H - P - v / Math.max(1, maxR) * (H - 2 * P); };
+  var yScaleMarg = function (v) { return H - P - v / Math.max(1, maxMarg) * (H - 2 * P); };
+
+  var areaPts = "M " + P + " " + (H - P) + " ";
+  curve.forEach(function (c, i) { areaPts += "L " + xScale(i) + " " + yScale(c.unique_reach) + " "; });
+  areaPts += "L " + xScale(curve.length - 1) + " " + (H - P) + " Z";
+
+  var kneeIdx = data.knee_frequency != null
+    ? curve.findIndex(function (c) { return c.frequency === data.knee_frequency; })
+    : -1;
+
+  var svg = '<svg class="comp-sat-curve" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
+    '<path d="' + areaPts + '" fill="rgba(79,142,255,0.18)" stroke="none"/>' +
+    '<path d="' + curve.map(function (c, i) { return (i === 0 ? "M " : "L ") + xScale(i) + " " + yScale(c.unique_reach); }).join(" ") +
+      '" fill="none" stroke="var(--accent)" stroke-width="1.8"/>';
+  curve.forEach(function (c, i) {
+    svg += '<circle cx="' + xScale(i) + '" cy="' + yScaleMarg(c.marginal_reach) + '" r="2.5" fill="var(--accent-hot)" opacity="0.7"/>';
+  });
+  if (kneeIdx >= 0) {
+    svg += '<line x1="' + xScale(kneeIdx) + '" y1="' + P + '" x2="' + xScale(kneeIdx) + '" y2="' + (H - P) + '" stroke="var(--warning)" stroke-width="1" stroke-dasharray="4,3"/>';
+    svg += '<text x="' + xScale(kneeIdx) + '" y="' + (P - 6) + '" text-anchor="middle" font-size="10" fill="var(--warning)">knee · F=' + data.knee_frequency + '</text>';
+  }
+  // Axis labels
+  curve.forEach(function (c, i) {
+    svg += '<text x="' + xScale(i) + '" y="' + (H - P + 14) + '" text-anchor="middle" font-size="9" fill="var(--text-mut)">' + c.frequency + '</text>';
+  });
+  svg += '<text x="' + (W / 2) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" fill="var(--text-mut)">Frequency (avg exposures per user)</text>';
+  svg += '<text x="10" y="' + P + '" font-size="9" fill="var(--accent)">' + fmtNumber(maxR) + ' reach</text>';
+  svg += '<text x="10" y="' + (H - P) + '" font-size="9" fill="var(--text-mut)">0</text>';
+  svg += '</svg>';
+
+  var rows = curve.map(function (c) {
+    var cls = (data.knee_frequency === c.frequency) ? "knee" : "";
+    return '<tr class="' + cls + '">' +
+      '<td>' + c.frequency + '</td>' +
+      '<td>' + fmtNumber(c.unique_reach) + '</td>' +
+      '<td>' + (c.reach_fraction * 100).toFixed(1) + '%</td>' +
+      '<td>' + fmtNumber(c.marginal_reach) + '</td>' +
+      '<td>' + fmtNumber(c.impressions) + '</td>' +
+      '<td>$' + fmtNumber(c.cost_usd) + '</td>' +
+      '<td>$' + (c.cost_per_unique_reach_usd || 0).toFixed(4) + '</td>' +
+    '</tr>';
+  }).join("");
+  var table =
+    '<table class="comp-sat-table">' +
+      '<thead><tr><th>F</th><th>Unique reach</th><th>% pop</th><th>Marginal</th><th>Impressions</th><th>Cost</th><th>CP unique</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table>';
+  var meta =
+    '<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--text-mut);margin-bottom:10px">' +
+      '<div>Population: <span class="mono" style="color:var(--text)">' + fmtNumber(data.reach_population || 0) + '</span></div>' +
+      '<div>CPM: <span class="mono" style="color:var(--text)">$' + (data.cpm || 0).toFixed(2) + '</span></div>' +
+      (data.knee_frequency != null ? '<div>Knee: <span class="mono" style="color:var(--warning)">F=' + data.knee_frequency + '</span></div>' : '') +
+      (data.affordable_frequency != null ? '<div>Affordable under budget: <span class="mono" style="color:var(--success)">F=' + data.affordable_frequency + '</span></div>' : '') +
+    '</div>';
+  host.innerHTML = meta + svg + table;
+  document.getElementById("comp-sat-explainer").innerHTML = renderChartExplainer({
+    what: "Frequency saturation curve under a Poisson exposure model.",
+    how: "<code>P(seen ≥ 1 | F) = 1 − exp(−F)</code>. At each sampled F, we compute unique reach, impressions, cost (impressions × CPM / 1000), and marginal reach vs the previous step. The knee is the first F where each +1 buys less than half the F=1 baseline gain.",
+    read: "<strong>Before the knee</strong> spend mostly buys new reach. <strong>After the knee</strong> spend mostly buys repeat exposures of users you've already hit. Use the affordable-F line to pick your cap.",
+    limits: "Assumes random-impression delivery. Real DSPs with frequency-cap optimizers reach the knee faster; this is an upper bound on diminishing returns.",
+  });
+}
+
+// ── Affinity audit run ──────────────────────────────────────────────────
+async function runAffinity() {
+  var host = document.getElementById("comp-aff-results");
+  var ids = _ids(state.composer.aff);
+  host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Auditing affinity…</div></div>';
+  try {
+    var r = await fetch("/audience/affinity-audit", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ signal_ids: ids }),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || "HTTP " + r.status);
+    state.composer.lastAff = data;
+    renderAffinityResult(data);
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
+  }
+}
+
+function renderAffinityResult(data) {
+  var host = document.getElementById("comp-aff-results");
+  var summary = data.summary || {};
+  var facets = data.facets || [];
+
+  // Bars: centered at 100 (parity). Width proportional to |index − 100| / 500
+  // clamped to the half of the track (so index=200 fills 20%; index=600 caps).
+  function bar(row) {
+    var idx = row.index;
+    var isOver = idx > 100;
+    var delta = Math.min(500, Math.abs(idx - 100));
+    var widthPct = (delta / 500) * 50; // 0..50% of track width
+    var cls = idx >= 150 ? "heavy" : isOver ? "over" : "under";
+    var style = isOver
+      ? 'left:50%;width:' + widthPct + '%;'
+      : 'right:50%;width:' + widthPct + '%;';
+    return '<div class="comp-aff-row">' +
+      '<div class="comp-aff-key">' + escapeHtml(row.key) + '</div>' +
+      '<div class="comp-aff-bar-track">' +
+        '<div class="comp-aff-bar-fill ' + cls + '" style="' + style + '"></div>' +
+      '</div>' +
+      '<div class="comp-aff-index" style="color:' + (isOver ? 'var(--accent)' : 'var(--text-mut)') + '">' + idx + '</div>' +
+    '</div>';
+  }
+
+  var facetsHtml = facets.map(function (f) {
+    var rows = (f.rows || []).filter(function (r) { return r.selection_share > 0 || r.share > 0.02; }).slice(0, 10);
+    return '<div class="comp-aff-facet">' +
+      '<div class="comp-aff-facet-title">' + escapeHtml(f.facet) +
+        ' · skew ' + (summary.skew_scores ? summary.skew_scores[f.facet] : "—") +
+        ' · concentration ' + (summary.concentration ? summary.concentration[f.facet] : "—") +
+      '</div>' +
+      rows.map(bar).join("") +
+    '</div>';
+  }).join("");
+
+  var top =
+    '<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text-mut);margin-bottom:14px">' +
+      '<div>Selection: <span class="mono" style="color:var(--text)">' + (summary.selection_count || 0) + '</span> signals</div>' +
+      '<div>Catalog: <span class="mono" style="color:var(--text)">' + (summary.catalog_count || 0) + '</span> signals</div>' +
+    '</div>';
+  host.innerHTML = top + facetsHtml;
+  document.getElementById("comp-aff-explainer").innerHTML = renderChartExplainer({
+    what: "Reach-weighted affinity index vs the catalog baseline.",
+    how: "For each facet (category / vertical / geo band / data provider), share = sum(reach) in each bucket / sum(reach) overall. Index = 100 × (selection_share / baseline_share), capped at 600.",
+    read: "Bars extend RIGHT of the center line for <strong>over-indexed</strong> buckets (your selection is heavier there than the catalog is) and LEFT for under-indexed. Skew = mean |index − 100| across live rows; concentration = buckets needed to cover 80% of selection share.",
+    limits: "This is a meta-audit of your signal picks, not of the users those signals enroll. It tells you whether your portfolio is biased toward a vertical or provider — not whether the underlying users are.",
+  });
 }
 
 // ─── Federation (partial — more in Part 3) ───────────────────────────────

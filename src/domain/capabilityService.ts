@@ -479,6 +479,10 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
           portfolio_from_brief:   { method: "POST", path: "/portfolio/from-brief" },
           portfolio_what_if:      { method: "POST", path: "/portfolio/what-if" },
           portfolio_hit_target:   { method: "POST", path: "/portfolio/hit-target" },
+          // Sec-43: audience composer + activation-planning analytics.
+          audience_compose:        { method: "POST", path: "/audience/compose" },
+          audience_saturation:     { method: "POST", path: "/audience/saturation" },
+          audience_affinity_audit: { method: "POST", path: "/audience/affinity-audit" },
         },
         methods: {
           similarity_metric:     "cosine",
@@ -487,6 +491,9 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
           portfolio_solver:      "greedy_marginal_reach",
           overlap_metrics:       ["jaccard", "kl_divergence", "mutual_information"],
           projection_algorithms: ["jl_random", "umap_local_refine"],
+          set_op_overlap_model:  "category_affinity_jaccard_pairwise_inclusion_exclusion",
+          saturation_model:      "poisson_1_minus_exp_neg_frequency",
+          affinity_index_basis:  "reach_weighted_share_vs_catalog_baseline",
         },
         limits: {
           max_arithmetic_terms:  6,
@@ -494,6 +501,9 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
           max_neighborhood_k:    50,
           max_query_vector_dim:  512,
           min_signals_for_info_overlap: 2,
+          max_compose_signals:   20,
+          max_saturation_signals: 15,
+          max_affinity_audit_signals: 20,
         },
         signal_facets: {
           x_analytics_fields: [

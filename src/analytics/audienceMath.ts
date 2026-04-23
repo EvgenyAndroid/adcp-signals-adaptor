@@ -218,3 +218,165 @@ export function concentrationOf(rows: AffinityRow[]): number {
   }
   return sorted.length;
 }
+
+// ── Sequential / journey drop-off ───────────────────────────────────────────
+// Sec-44: given stage reaches A, B, C, …, compute per-stage conversion rates
+// and cumulative drop-off. We assume each stage is a subset of the previous
+// (awareness ⊇ consideration ⊇ intent ⊇ conversion) — reach should be
+// monotonically non-increasing. If a stage reach exceeds its predecessor we
+// clamp it to preserve the subset invariant and flag it in the result.
+
+export interface JourneyStageInput {
+  name: string;
+  reach: number;
+}
+
+export interface JourneyStageOut {
+  name: string;
+  reach: number;
+  conversion_rate: number;   // vs previous stage; 1.0 for stage 0
+  cumulative_rate: number;   // vs stage 0; 1.0 for stage 0
+  dropped_off: number;       // reach[i-1] - reach[i], 0 for stage 0
+  clamped: boolean;          // true if input reach exceeded predecessor
+}
+
+export function journeyFunnel(stages: JourneyStageInput[]): JourneyStageOut[] {
+  const out: JourneyStageOut[] = [];
+  let prev = stages[0]?.reach ?? 0;
+  const base = prev;
+  for (let i = 0; i < stages.length; i++) {
+    const st = stages[i]!;
+    let r = st.reach;
+    let clamped = false;
+    if (i > 0 && r > prev) { r = prev; clamped = true; }
+    const conv = i === 0 ? 1 : (prev > 0 ? r / prev : 0);
+    const cum = base > 0 ? r / base : 0;
+    out.push({
+      name: st.name,
+      reach: r,
+      conversion_rate: Math.round(conv * 10000) / 10000,
+      cumulative_rate: Math.round(cum * 10000) / 10000,
+      dropped_off: i === 0 ? 0 : Math.max(0, prev - r),
+      clamped,
+    });
+    prev = r;
+  }
+  return out;
+}
+
+// ── Privacy-safe cohort gate ────────────────────────────────────────────────
+// Sec-44: k-anonymity threshold check + sensitive-category flag. Cohorts
+// below min_k (default 1000 per the GDPR/CCPA "small cell" convention) are
+// blocked from activation; mixing ≥2 sensitive categories raises a warning
+// even if k-anon passes (intersectional sensitivity risk).
+
+export interface PrivacyCheckResult {
+  min_k: number;
+  cohort_size: number;
+  k_anon_pass: boolean;
+  sensitive_categories_touched: string[];
+  intersectional_sensitivity: boolean;
+  status: "ok" | "warn" | "block";
+  reasons: string[];
+}
+
+const SENSITIVE_TOKENS = [
+  "health", "medical", "condition", "medication", "diagnosis",
+  "finance", "income", "debt", "credit", "loan", "mortgage",
+  "ethnic", "hispanic", "religion", "politic", "lgbt",
+  "child", "children", "kids", "minor",
+];
+
+/** Infer sensitive-category touches from signal names/descriptions. */
+export function inferSensitiveCategories(
+  texts: Array<{ name: string; description?: string }>,
+): string[] {
+  const hit = new Set<string>();
+  for (const t of texts) {
+    const corpus = ((t.name || "") + " " + (t.description || "")).toLowerCase();
+    for (const tok of SENSITIVE_TOKENS) {
+      if (corpus.includes(tok)) hit.add(tok);
+    }
+  }
+  return Array.from(hit);
+}
+
+export function privacyCheck(
+  cohortSize: number,
+  sensitiveTokens: string[],
+  minK: number = 1000,
+): PrivacyCheckResult {
+  const reasons: string[] = [];
+  const kPass = cohortSize >= minK;
+  if (!kPass) reasons.push(`cohort_size ${cohortSize} < min_k ${minK} (k-anon floor)`);
+  const intersectional = sensitiveTokens.length >= 2;
+  if (intersectional) reasons.push(`intersectional sensitive categories: ${sensitiveTokens.slice(0, 6).join(", ")}`);
+  else if (sensitiveTokens.length === 1) reasons.push(`touches sensitive category: ${sensitiveTokens[0]}`);
+  const status: PrivacyCheckResult["status"] =
+    !kPass ? "block"
+    : intersectional ? "warn"
+    : sensitiveTokens.length === 1 ? "warn"
+    : "ok";
+  return {
+    min_k: minK,
+    cohort_size: cohortSize,
+    k_anon_pass: kPass,
+    sensitive_categories_touched: sensitiveTokens,
+    intersectional_sensitivity: intersectional,
+    status,
+    reasons,
+  };
+}
+
+// ── Holdout / incrementality carve ──────────────────────────────────────────
+// Sec-44: deterministic control/exposed split. Given a population reach and
+// holdout_pct, report the split sizes and the minimum detectable effect
+// (MDE) at 80% power / alpha=0.05 assuming a baseline conversion rate. MDE
+// formula is the standard two-proportion z-test with n per arm.
+
+export interface HoldoutPlan {
+  reach_total: number;
+  holdout_pct: number;
+  control_size: number;
+  exposed_size: number;
+  baseline_conversion_rate: number;
+  mde_absolute: number;        // minimum detectable difference in conversion rate
+  mde_relative: number;        // as a fraction of baseline_conversion_rate
+  power: number;
+  alpha: number;
+  method: string;
+}
+
+export function holdoutPlan(
+  totalReach: number,
+  holdoutPct: number,
+  baselineCr: number = 0.02,   // 2% conversion default
+  power: number = 0.80,
+  alpha: number = 0.05,
+): HoldoutPlan {
+  const pct = Math.max(0.01, Math.min(0.5, holdoutPct));
+  const control = Math.round(totalReach * pct);
+  const exposed = Math.max(0, totalReach - control);
+
+  // Two-proportion z-test MDE, balanced arms (use smaller arm as n for
+  // conservative estimate).
+  // z_alpha (two-sided) ≈ 1.96, z_beta (power 0.80) ≈ 0.84
+  const zA = alpha === 0.05 ? 1.96 : alpha === 0.01 ? 2.576 : 1.645;
+  const zB = power >= 0.90 ? 1.282 : power >= 0.80 ? 0.842 : 0.524;
+  const n = Math.min(control, exposed);
+  const p = Math.max(0.001, Math.min(0.999, baselineCr));
+  const sigma = Math.sqrt(2 * p * (1 - p) / Math.max(1, n));
+  const mde = n > 0 ? (zA + zB) * sigma : 0;
+  return {
+    reach_total: totalReach,
+    holdout_pct: pct,
+    control_size: control,
+    exposed_size: exposed,
+    baseline_conversion_rate: p,
+    mde_absolute: Math.round(mde * 10000) / 10000,
+    mde_relative: p > 0 ? Math.round((mde / p) * 10000) / 10000 : 0,
+    power,
+    alpha,
+    method: "two_proportion_z_test_balanced_arms",
+  };
+}

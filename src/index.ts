@@ -41,7 +41,17 @@ import {
   handleAudienceCompose,
   handleAudienceSaturation,
   handleAffinityAudit,
+  handleAudienceJourney,
+  handleAudiencePrivacyCheck,
+  handleAudienceHoldout,
 } from "./routes/audienceAnalytics";
+import {
+  handleSnapshotSave,
+  handleSnapshotList,
+  handleSnapshotGet,
+  handleSnapshotDelete,
+  handleSnapshotDiff,
+} from "./routes/snapshots";
 import { handleMcpRequest } from "./mcp/server";
 import { jsonResponse, errorResponse, requireAuth } from "./routes/shared";
 import { createLogger } from "./utils/logger";
@@ -198,6 +208,10 @@ export default {
             "/audience/compose",
             "/audience/saturation",
             "/audience/affinity-audit",
+            // Sec-44: journey funnel + privacy gate + holdout framework.
+            "/audience/journey",
+            "/audience/privacy-check",
+            "/audience/holdout",
             // Sec-41 seed diagnostic + idempotent incremental seed
             // trigger. /admin/reseed remains auth-gated (force=true path).
             "/admin/seed-status",
@@ -335,6 +349,26 @@ export default {
                 response = await handleAudienceSaturation(request, env, logger);
             } else if (method === "POST" && path === "/audience/affinity-audit") {
                 response = await handleAffinityAudit(request, env, logger);
+            } else if (method === "POST" && path === "/audience/journey") {
+                response = await handleAudienceJourney(request, env, logger);
+            } else if (method === "POST" && path === "/audience/privacy-check") {
+                response = await handleAudiencePrivacyCheck(request, env, logger);
+            } else if (method === "POST" && path === "/audience/holdout") {
+                response = await handleAudienceHoldout(request, env, logger);
+
+                // ── Sec-44: Snapshots (auth-gated, operator-scoped) ───────────────────
+            } else if (method === "POST" && path === "/snapshots") {
+                response = await handleSnapshotSave(request, env, logger);
+            } else if (method === "GET" && path === "/snapshots") {
+                response = await handleSnapshotList(request, env, logger);
+            } else if (method === "POST" && path === "/snapshots/diff") {
+                response = await handleSnapshotDiff(request, env, logger);
+            } else if (method === "GET" && path.startsWith("/snapshots/")) {
+                const sid = path.replace("/snapshots/", "");
+                response = await handleSnapshotGet(request, env, sid, logger);
+            } else if (method === "DELETE" && path.startsWith("/snapshots/")) {
+                const sid = path.replace("/snapshots/", "");
+                response = await handleSnapshotDelete(request, env, sid, logger);
 
                 // ── LinkedIn OAuth ────────────────────────────────────────────────────
                 // Only /callback is in publicPaths. /init and /status are

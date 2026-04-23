@@ -514,6 +514,15 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
           audience_compose:        { method: "POST", path: "/audience/compose" },
           audience_saturation:     { method: "POST", path: "/audience/saturation" },
           audience_affinity_audit: { method: "POST", path: "/audience/affinity-audit" },
+          // Sec-44: journey + governance + experimentation.
+          audience_journey:        { method: "POST", path: "/audience/journey" },
+          audience_privacy_check:  { method: "POST", path: "/audience/privacy-check" },
+          audience_holdout:        { method: "POST", path: "/audience/holdout" },
+          snapshot_save:           { method: "POST",   path: "/snapshots" },
+          snapshot_list:           { method: "GET",    path: "/snapshots" },
+          snapshot_get:            { method: "GET",    path: "/snapshots/:id" },
+          snapshot_delete:         { method: "DELETE", path: "/snapshots/:id" },
+          snapshot_diff:           { method: "POST",   path: "/snapshots/diff" },
         },
         methods: {
           similarity_metric:     "cosine",
@@ -525,6 +534,9 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
           set_op_overlap_model:  "category_affinity_jaccard_pairwise_inclusion_exclusion",
           saturation_model:      "poisson_1_minus_exp_neg_frequency",
           affinity_index_basis:  "reach_weighted_share_vs_catalog_baseline",
+          journey_model:         "per_stage_compose_then_monotone_funnel",
+          privacy_model:         "k_anonymity_floor_plus_sensitive_category_keywords",
+          holdout_model:         "two_proportion_z_test_balanced_arms",
         },
         limits: {
           max_arithmetic_terms:  6,

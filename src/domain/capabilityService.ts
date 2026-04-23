@@ -24,7 +24,9 @@
 // v12 baseline: three ext blocks (id_resolution/measurement/governance).
 // v11 baseline: ext.dts v1.2.
 // v10 baseline: ext.ucp.
-const CACHE_KEY = "adcp_capabilities_v18";
+// v19: Sec-44 adds ext.compliance — in-band conformance results +
+// non-applicable scenario explanation referencing upstream adcp#2916.
+const CACHE_KEY = "adcp_capabilities_v19";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
@@ -317,6 +319,35 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       },
     },
     ext: {
+      // ext.compliance — last-known compliance results + non-applicable
+      // scenario explanations. Surfaced in-band so any reviewer hitting
+      // /capabilities (e.g. a HoldCo procurement check) sees the score
+      // and the structural ceiling without needing to read SEC42_*.md.
+      // Updated manually after each `npm run compliance` against prod.
+      compliance: {
+        spec_version: "adcp_3.0",
+        client_runner: "@adcp/client@5.13.0",
+        last_run: "2026-04-23",
+        results: {
+          core: { pass: 25, total: 26 },
+          signals: { pass: 3, total: 3 },
+          error_handling: { pass: 5, total: 5 },
+          aggregate: { pass: 33, total: 34 },
+        },
+        non_applicable_scenarios: [
+          {
+            scenario: "schema_validation/past_start_enforcement",
+            track: "core",
+            reason: "Tests create_media_buy with a past start_time. Tool is in the media_buy protocol, which we do not implement (supported_protocols: ['signals'] only). The runner has no applies_to primitive to skip the scenario when media_buy isn't declared, so the aggregate fails despite both individual paths being structurally inapplicable.",
+            upstream_issue: "https://github.com/adcontextprotocol/adcp/issues/2916",
+            upstream_status: "filed",
+            workaround: "stub-only-rejection of create_media_buy would yield a vanity 26/26 but pollutes the protocol surface with a tool we do not actually support — declined.",
+          },
+        ],
+        structural_ceiling_for_signals_only_agents: "25/26 core (pending adcp#2916)",
+        report: "docs/SEC42_ADCP_30_GA_COMPLIANCE.md",
+        reproduce: "API_KEY=$DEMO_API_KEY AGENT_URL=https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp npm run compliance",
+      },
       // ext.ucp now mirrors the real engine. Previously this was a static
       // UCP_CAPABILITY constant that always declared the pseudo bridge,
       // so /capabilities contradicted /ucp/gts and /mcp serverInfo.ucp

@@ -365,5 +365,8 @@ FodyWeavers.xsd
 # Claude Code worktree metadata
 .claude/
 
+# Wrangler local dev artifacts (gitignored Sec-44 to avoid 48K LOC sweeps)
+.wrangler/
+
 # Local probe / evaluator output dumps
 /JSON Results.txt

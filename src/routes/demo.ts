@@ -3567,6 +3567,30 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 
 /* Saturation curve */
 .comp-sat-curve { width: 100%; height: 280px; margin-bottom: 12px; }
+.comp-sat-shortfall {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: rgba(255, 122, 92, 0.08);
+  border: 1px solid rgba(255, 122, 92, 0.4);
+  border-left: 3px solid #ff7a5c;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px; margin-bottom: 12px;
+}
+.comp-sat-shortfall-icon {
+  flex: 0 0 22px; width: 22px; height: 22px;
+  background: #ff7a5c; color: #1a1a1a;
+  border-radius: 50%; font-weight: 700; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.comp-sat-shortfall-title {
+  font-weight: 600; color: var(--text); font-size: 12.5px;
+  margin-bottom: 4px;
+}
+.comp-sat-shortfall-detail {
+  font-size: 11.5px; color: var(--text-dim); line-height: 1.5;
+}
+.comp-sat-shortfall-detail strong {
+  font-family: var(--font-mono); color: var(--text);
+}
 .comp-sat-table { width: 100%; border-collapse: collapse; font-size: 11.5px; font-family: var(--font-mono); }
 .comp-sat-table th, .comp-sat-table td { padding: 6px 10px; text-align: right; }
 .comp-sat-table th {
@@ -3596,15 +3620,50 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 }
 .comp-aff-bar-fill.under { background: var(--text-mut); }
 .comp-aff-bar-fill.over  { background: var(--accent); }
-.comp-aff-bar-fill.heavy { background: var(--accent-hot); }
+.comp-aff-bar-fill.heavy { background: var(--accent-hot, #ffcb5c); }
+.comp-aff-bar-fill.absent { background: transparent; }
 .comp-aff-bar-track::before {
   content: ""; position: absolute; left: 50%; top: 0; bottom: 0;
   width: 1px; background: var(--border); z-index: 1;
 }
+.comp-aff-bar-tick {
+  position: absolute; left: calc(50% - 1px); top: -2px; bottom: -2px;
+  width: 2px; background: var(--text-mut); z-index: 2; opacity: 0.4;
+}
 .comp-aff-index {
   font-family: var(--font-mono); font-weight: 600; text-align: right;
 }
+.comp-aff-row-zero .comp-aff-key, .comp-aff-row-zero .comp-aff-index { opacity: 0.55; }
 .comp-aff-key { color: var(--text); }
+.comp-aff-facet-meta { font-weight: 400; opacity: 0.7; margin-left: 4px; }
+.comp-aff-zero-toggle { margin: 4px 0 8px 190px; }
+.comp-aff-show-zeros {
+  background: transparent; border: 0; color: var(--text-mut); cursor: pointer;
+  font-size: 10.5px; padding: 2px 0; font-family: var(--font-mono);
+}
+.comp-aff-show-zeros:hover { color: var(--accent); }
+.comp-aff-summary {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 14px;
+}
+.comp-aff-summary-meta {
+  display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px;
+  color: var(--text-mut); margin-bottom: 8px;
+}
+.comp-aff-legend {
+  display: flex; gap: 14px; flex-wrap: wrap; font-size: 10.5px;
+  color: var(--text-mut); padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.comp-aff-legend > span { display: inline-flex; align-items: center; gap: 5px; }
+.comp-aff-legend-dot {
+  display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+}
+.comp-aff-legend-dot.under { background: var(--text-mut); }
+.comp-aff-legend-dot.over { background: var(--accent); }
+.comp-aff-legend-dot.heavy { background: var(--accent-hot, #ffcb5c); }
+.comp-aff-legend-dot.absent { background: transparent; border: 1px dashed var(--text-mut); }
+.comp-aff-legend-dot.tick { background: var(--text-mut); width: 2px; height: 12px; opacity: 0.6; border-radius: 0; }
 
 @media (max-width: 1100px) {
   .composer-grid { grid-template-columns: 1fr; }
@@ -8654,7 +8713,33 @@ function renderSaturationResult(data) {
       (data.knee_frequency != null ? '<div>Knee: <span class="mono" style="color:var(--warning)">F=' + data.knee_frequency + '</span></div>' : '') +
       (data.affordable_frequency != null ? '<div>Affordable under budget: <span class="mono" style="color:var(--success)">F=' + data.affordable_frequency + '</span></div>' : '') +
     '</div>';
-  host.innerHTML = meta + svg + table;
+
+  // Budget-shortfall warning: surface clearly when the user set a budget
+  // but it cannot afford even F=1. Without this the curve renders as if
+  // budget weren't a constraint, hiding the gap between intent and reality.
+  var shortfallBanner = '';
+  if (data.budget_usd != null && data.budget_usd > 0 && data.affordable_frequency == null && curve.length > 0) {
+    var f1Cost = curve[0].cost_usd;
+    var f1Reach = curve[0].unique_reach;
+    var deficit = f1Cost - data.budget_usd;
+    var coveragePct = (data.budget_usd / f1Cost) * 100;
+    shortfallBanner =
+      '<div class="comp-sat-shortfall">' +
+        '<div class="comp-sat-shortfall-icon">!</div>' +
+        '<div class="comp-sat-shortfall-body">' +
+          '<div class="comp-sat-shortfall-title">Budget too low for even F=1.</div>' +
+          '<div class="comp-sat-shortfall-detail">' +
+            '$<strong>' + fmtNumber(data.budget_usd) + '</strong> covers ' +
+            '<strong>' + coveragePct.toFixed(1) + '%</strong> of the F=1 cost ' +
+            '($' + fmtNumber(Math.round(f1Cost)) + ' for ' + fmtNumber(f1Reach) + ' unique reach). ' +
+            'Need <strong>+$' + fmtNumber(Math.round(deficit)) + '</strong> more to hit F=1, or trim the audience to ' +
+            fmtNumber(Math.round(data.budget_usd * 1000 / (data.cpm || 1))) + ' impressions worth.' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  host.innerHTML = meta + shortfallBanner + svg + table;
   document.getElementById("comp-sat-explainer").innerHTML = renderChartExplainer({
     what: "Frequency saturation curve under a Poisson exposure model.",
     how: "<code>P(seen ≥ 1 | F) = 1 − exp(−F)</code>. At each sampled F, we compute unique reach, impressions, cost (impressions × CPM / 1000), and marginal reach vs the previous step. The knee is the first F where each +1 buys less than half the F=1 baseline gain.",
@@ -8690,39 +8775,79 @@ function renderAffinityResult(data) {
   // clamped to the half of the track (so index=200 fills 20%; index=600 caps).
   function bar(row) {
     var idx = row.index;
+    var isZero = idx === 0;
     var isOver = idx > 100;
     var delta = Math.min(500, Math.abs(idx - 100));
     var widthPct = (delta / 500) * 50; // 0..50% of track width
-    var cls = idx >= 150 ? "heavy" : isOver ? "over" : "under";
-    var style = isOver
-      ? 'left:50%;width:' + widthPct + '%;'
-      : 'right:50%;width:' + widthPct + '%;';
-    return '<div class="comp-aff-row">' +
+    var cls = isZero ? "absent" : idx >= 150 ? "heavy" : isOver ? "over" : "under";
+    var style = isZero
+      ? 'left:50%;width:0%;'
+      : isOver
+        ? 'left:50%;width:' + widthPct + '%;'
+        : 'right:50%;width:' + widthPct + '%;';
+    var indexLabel = isZero ? "absent" : String(idx);
+    var indexColor = isZero ? "var(--text-mut)" : isOver ? "var(--accent)" : "var(--warn,var(--text-dim))";
+    return '<div class="comp-aff-row' + (isZero ? ' comp-aff-row-zero' : '') + '">' +
       '<div class="comp-aff-key">' + escapeHtml(row.key) + '</div>' +
       '<div class="comp-aff-bar-track">' +
         '<div class="comp-aff-bar-fill ' + cls + '" style="' + style + '"></div>' +
+        // 100-parity tick mark always rendered as a vertical line
+        '<div class="comp-aff-bar-tick"></div>' +
       '</div>' +
-      '<div class="comp-aff-index" style="color:' + (isOver ? 'var(--accent)' : 'var(--text-mut)') + '">' + idx + '</div>' +
+      '<div class="comp-aff-index" style="color:' + indexColor + '">' + indexLabel + '</div>' +
     '</div>';
   }
 
-  var facetsHtml = facets.map(function (f) {
-    var rows = (f.rows || []).filter(function (r) { return r.selection_share > 0 || r.share > 0.02; }).slice(0, 10);
-    return '<div class="comp-aff-facet">' +
+  var facetsHtml = facets.map(function (f, fi) {
+    var allRows = (f.rows || []);
+    var liveRows = allRows.filter(function (r) { return r.selection_share > 0; });
+    var zeroRows = allRows.filter(function (r) { return r.selection_share === 0 && r.share > 0.001; });
+    var hiddenCount = zeroRows.length;
+    var liveBars = liveRows.slice(0, 10).map(bar).join("");
+    var zeroToggle = hiddenCount > 0
+      ? '<div class="comp-aff-zero-toggle"><button type="button" class="comp-aff-show-zeros" data-facet-idx="' + fi + '">+ show ' + hiddenCount + ' absent bucket' + (hiddenCount === 1 ? "" : "s") + '</button></div>'
+      : '';
+    var zeroBars = zeroRows.map(bar).join("");
+    return '<div class="comp-aff-facet" data-facet-idx="' + fi + '">' +
       '<div class="comp-aff-facet-title">' + escapeHtml(f.facet) +
-        ' · skew ' + (summary.skew_scores ? summary.skew_scores[f.facet] : "—") +
-        ' · concentration ' + (summary.concentration ? summary.concentration[f.facet] : "—") +
+        ' <span class="comp-aff-facet-meta">skew ' + (summary.skew_scores ? summary.skew_scores[f.facet] : "—") +
+        ' \u00b7 concentration ' + (summary.concentration ? summary.concentration[f.facet] : "—") + '</span>' +
       '</div>' +
-      rows.map(bar).join("") +
+      liveBars +
+      zeroToggle +
+      '<div class="comp-aff-zero-rows" data-facet-idx="' + fi + '" style="display:none">' + zeroBars + '</div>' +
     '</div>';
   }).join("");
 
   var top =
-    '<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text-mut);margin-bottom:14px">' +
-      '<div>Selection: <span class="mono" style="color:var(--text)">' + (summary.selection_count || 0) + '</span> signals</div>' +
-      '<div>Catalog: <span class="mono" style="color:var(--text)">' + (summary.catalog_count || 0) + '</span> signals</div>' +
+    '<div class="comp-aff-summary">' +
+      '<div class="comp-aff-summary-meta">' +
+        '<div>Selection: <span class="mono" style="color:var(--text)">' + (summary.selection_count || 0) + '</span> signals</div>' +
+        '<div>Catalog: <span class="mono" style="color:var(--text)">' + (summary.catalog_count || 0) + '</span> signals</div>' +
+        '<div>Facets: <span class="mono" style="color:var(--text)">' + facets.length + '</span></div>' +
+      '</div>' +
+      '<div class="comp-aff-legend">' +
+        '<span><span class="comp-aff-legend-dot under"></span>under-indexed (&lt;100)</span>' +
+        '<span><span class="comp-aff-legend-dot tick"></span>parity = 100</span>' +
+        '<span><span class="comp-aff-legend-dot over"></span>over-indexed (&gt;100)</span>' +
+        '<span><span class="comp-aff-legend-dot heavy"></span>\u22652\u00d7 catalog</span>' +
+        '<span><span class="comp-aff-legend-dot absent"></span>absent (0)</span>' +
+      '</div>' +
     '</div>';
   host.innerHTML = top + facetsHtml;
+  // Wire the "show absent buckets" toggles
+  host.querySelectorAll('.comp-aff-show-zeros').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var idx = btn.dataset.facetIdx;
+      var rows = host.querySelector('.comp-aff-zero-rows[data-facet-idx="' + idx + '"]');
+      if (!rows) return;
+      var visible = rows.style.display !== 'none';
+      rows.style.display = visible ? 'none' : '';
+      btn.textContent = visible
+        ? btn.textContent.replace('hide', '+ show')
+        : btn.textContent.replace('+ show', 'hide');
+    });
+  });
   document.getElementById("comp-aff-explainer").innerHTML = renderChartExplainer({
     what: "Reach-weighted affinity index vs the catalog baseline.",
     how: "For each facet (category / vertical / geo band / data provider), share = sum(reach) in each bucket / sum(reach) overall. Index = 100 × (selection_share / baseline_share), capped at 600.",

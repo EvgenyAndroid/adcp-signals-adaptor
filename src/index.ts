@@ -37,6 +37,11 @@ import {
   handleCrossSimilarity,
   handleTaxonomyReverse,
 } from "./routes/federationEndpoints";
+import {
+  handleAudienceCompose,
+  handleAudienceSaturation,
+  handleAffinityAudit,
+} from "./routes/audienceAnalytics";
 import { handleMcpRequest } from "./mcp/server";
 import { jsonResponse, errorResponse, requireAuth } from "./routes/shared";
 import { createLogger } from "./utils/logger";
@@ -188,6 +193,11 @@ export default {
             "/agents/federated-search",
             "/agents/cross-similarity",
             "/taxonomy/reverse",
+            // Sec-43: audience composer + activation-planning analytics.
+            // Read-only — same posture as /portfolio/* and /analytics/*.
+            "/audience/compose",
+            "/audience/saturation",
+            "/audience/affinity-audit",
             // Sec-41 seed diagnostic + idempotent incremental seed
             // trigger. /admin/reseed remains auth-gated (force=true path).
             "/admin/seed-status",
@@ -317,6 +327,14 @@ export default {
                 response = await handleCrossSimilarity(request);
             } else if (method === "POST" && path === "/taxonomy/reverse") {
                 response = await handleTaxonomyReverse(request, env, logger);
+
+                // ── Sec-43: Audience Composer + activation analytics ────────────────
+            } else if (method === "POST" && path === "/audience/compose") {
+                response = await handleAudienceCompose(request, env, logger);
+            } else if (method === "POST" && path === "/audience/saturation") {
+                response = await handleAudienceSaturation(request, env, logger);
+            } else if (method === "POST" && path === "/audience/affinity-audit") {
+                response = await handleAffinityAudit(request, env, logger);
 
                 // ── LinkedIn OAuth ────────────────────────────────────────────────────
                 // Only /callback is in publicPaths. /init and /status are

@@ -204,6 +204,65 @@ export function newWorkflowId(): string {
  * we add an explicit preferred-key entry rather than making this walk
  * the whole object graph.
  */
+/** Describe the shape of a tool-call result for diagnostic purposes.
+ *  Used in stream events when the extractor returns an empty array so
+ *  we can see live what the vendor's response looked like without
+ *  dumping the full payload. */
+export interface ToolResultDiagnostic {
+  structured_type: "object" | "array" | "null" | "other";
+  structured_keys: string[];        // top-level keys if object, empty otherwise
+  content_count: number;             // number of content blocks
+  content_types: string[];           // unique types seen ("text", "image", ...)
+  text_preview?: string;             // first 300 chars of first text block
+  text_is_json: boolean;             // whether that preview parsed as JSON
+  text_json_keys: string[];          // top-level keys of that JSON, if any
+}
+
+export function describeToolResult(structuredContent: unknown, content: unknown): ToolResultDiagnostic {
+  const out: ToolResultDiagnostic = {
+    structured_type: "other",
+    structured_keys: [],
+    content_count: 0,
+    content_types: [],
+    text_is_json: false,
+    text_json_keys: [],
+  };
+  if (structuredContent === null) out.structured_type = "null";
+  else if (Array.isArray(structuredContent)) out.structured_type = "array";
+  else if (structuredContent && typeof structuredContent === "object") {
+    out.structured_type = "object";
+    out.structured_keys = Object.keys(structuredContent as Record<string, unknown>).slice(0, 20);
+  }
+  if (Array.isArray(content)) {
+    out.content_count = content.length;
+    const seen = new Set<string>();
+    for (const block of content) {
+      if (block && typeof block === "object") {
+        const t = (block as { type?: unknown }).type;
+        if (typeof t === "string") seen.add(t);
+      }
+    }
+    out.content_types = Array.from(seen);
+    const firstText = content.find((b) => b && typeof b === "object" && (b as { type?: unknown }).type === "text");
+    if (firstText) {
+      const text = (firstText as { text?: unknown }).text;
+      if (typeof text === "string") {
+        out.text_preview = text.slice(0, 300);
+        try {
+          const parsed = JSON.parse(text);
+          out.text_is_json = true;
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            out.text_json_keys = Object.keys(parsed as Record<string, unknown>).slice(0, 20);
+          } else if (Array.isArray(parsed)) {
+            out.text_json_keys = ["(array:" + parsed.length + ")"];
+          }
+        } catch { /* leave text_is_json false */ }
+      }
+    }
+  }
+  return out;
+}
+
 /** Extract an array from an MCP tools/call result, trying both the
  *  structured-content and text-content paths.
  *

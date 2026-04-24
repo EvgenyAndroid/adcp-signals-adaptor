@@ -3992,6 +3992,37 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .orch-agent-tools { font-size: 10.5px; color: var(--text-mut); line-height: 1.3; }
 .orch-agent-error { font-size: 10px; color: var(--error); line-height: 1.3; }
 
+/* Sec-48d: expandable tool drawer inside agent cards. */
+.orch-expand-btn {
+  display: inline-block; background: transparent; border: none; padding: 0;
+  color: var(--text-mut); cursor: pointer; font-size: 11px; margin-right: 4px;
+  font-family: var(--font-mono); line-height: 1; width: 12px; text-align: center;
+}
+.orch-expand-btn:hover { color: var(--text); }
+.orch-agent-card.orch-agent-expanded { grid-column: 1 / -1; }
+.orch-tool-drawer {
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.orch-tool-empty { font-size: 11px; color: var(--text-mut); }
+.orch-tool {
+  background: var(--bg-raised); border: 1px solid var(--border); border-radius: 5px;
+  padding: 8px 10px;
+}
+.orch-tool-head { font-size: 12.5px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+.orch-tool-desc { font-size: 11px; color: var(--text-mut); margin-bottom: 6px; line-height: 1.4; }
+.orch-tool-noparams { font-size: 10.5px; color: var(--text-mut); font-style: italic; }
+.orch-tool-rawschema { font-size: 10.5px; background: var(--bg-surface); padding: 6px 8px; border-radius: 4px; overflow: auto; max-height: 200px; }
+.orch-tool-params { width: 100%; font-size: 11px; border-collapse: collapse; }
+.orch-tool-params thead th { text-align: left; padding: 3px 6px; color: var(--text-mut); font-weight: 500; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
+.orch-tool-params tbody td { padding: 4px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.orch-tool-params tbody tr:last-child td { border-bottom: none; }
+.orch-tool-pname { color: var(--accent); font-size: 11px; white-space: nowrap; }
+.orch-tool-ptype { color: var(--text-mut); font-size: 10.5px; }
+.orch-tool-preq { white-space: nowrap; }
+.orch-tool-pdesc { color: var(--text-mut); line-height: 1.4; }
+.orch-tool-enum { color: var(--text-dim); font-size: 10px; }
+
 .orch-fanout-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-bottom: 10px; }
 .orch-fanout-card {
   background: var(--bg-surface); border: 1px solid var(--border); border-left-width: 3px;
@@ -4378,7 +4409,7 @@ const state = {
   // Sec-47: boolean expression AST builder. Tree is null until ensureExpression seeds it.
   expression: { tree: null, lastResult: null, loaded: false, nextId: 1, draggedNodeId: null, pickingLeafId: null },
   // Sec-48: multi-agent orchestrator state.
-  orchestrator: { directory: [], probe: null, orchestrate: null, matrix: null, loaded: false, probing: false, matrixing: false, orchestrating: false },
+  orchestrator: { directory: [], probe: null, orchestrate: null, matrix: null, loaded: false, probing: false, matrixing: false, orchestrating: false, expandedAgents: {} },
   // Sec-44: Scenario Planner — current / add / remove pools.
   planner: { cur: [], add: [], rem: [], lastResult: null, loaded: false },
   // Sec-44: Snapshots — fetched index + diff selection.
@@ -11059,9 +11090,16 @@ function _orchRenderAgentGrid() {
       ? '<div class="orch-agent-error mono">' + escapeHtml(String(probeInfo.error).slice(0, 80)) + '</div>'
       : '';
     var firstTools = probeInfo && probeInfo.tools ? probeInfo.tools.slice(0, 3).map(function (t) { return t.name; }).join(", ") : "";
-    return '<div class="orch-agent-card ' + statusClass + '">' +
+    var hasLiveTools = !!(probeInfo && probeInfo.tools && probeInfo.tools.length > 0);
+    var isExpanded = !!state.orchestrator.expandedAgents[a.id];
+    var expandable = hasLiveTools;
+    var chevron = expandable
+      ? '<button class="orch-expand-btn" data-orch-expand="' + escapeHtml(a.id) + '" aria-expanded="' + (isExpanded ? "true" : "false") + '" title="' + (isExpanded ? "Collapse" : "Expand") + ' tools">' + (isExpanded ? "\u25be" : "\u25b8") + '</button>'
+      : '';
+    var drawer = (expandable && isExpanded) ? _orchRenderToolDrawer(probeInfo.tools) : '';
+    return '<div class="orch-agent-card ' + statusClass + (isExpanded ? ' orch-agent-expanded' : '') + '" data-agent-id="' + escapeHtml(a.id) + '">' +
       '<div class="orch-agent-head">' +
-        '<div class="orch-agent-name">' + escapeHtml(a.name) + '</div>' +
+        '<div class="orch-agent-name">' + chevron + escapeHtml(a.name) + '</div>' +
         '<span class="pill ' + pillClass + ' mono" style="font-size:10px">' + pillLabel + '</span>' +
       '</div>' +
       '<div class="orch-agent-meta">' + roleBadge +
@@ -11073,7 +11111,8 @@ function _orchRenderAgentGrid() {
         '<div><div class="k">Latency</div><div class="v">' + latency + '</div></div>' +
       '</div>' +
       (serverInfo ? '<div class="orch-agent-server mono">' + escapeHtml(serverInfo) + '</div>' : '') +
-      (firstTools ? '<div class="orch-agent-tools mono">' + escapeHtml(firstTools) + (probeInfo.tools.length > 3 ? " +" + (probeInfo.tools.length - 3) : "") + '</div>' : '') +
+      (firstTools && !isExpanded ? '<div class="orch-agent-tools mono">' + escapeHtml(firstTools) + (probeInfo.tools.length > 3 ? " +" + (probeInfo.tools.length - 3) : "") + '</div>' : '') +
+      drawer +
       errorLine +
     '</div>';
   }
@@ -11090,6 +11129,84 @@ function _orchRenderAgentGrid() {
   });
   host.innerHTML = html;
   void groups;
+  // Click handlers for agent-card expand toggles. Event-delegated so we
+  // don't re-bind on every re-render.
+  host.querySelectorAll(".orch-expand-btn").forEach(function (btn) {
+    btn.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      var id = btn.getAttribute("data-orch-expand");
+      if (!id) return;
+      var map = state.orchestrator.expandedAgents;
+      if (map[id]) delete map[id]; else map[id] = true;
+      _orchRenderAgentGrid();
+    });
+  });
+}
+
+// Sec-48d: render the tool drawer shown when an agent card is expanded.
+// Each tool gets name + description + a parameter table parsed from its
+// MCP inputSchema. Schemas follow JSON-Schema object-with-properties; if
+// any tool deviates (raw scalar schema, no properties) we fall through
+// to a pre-block with the raw JSON so the surface is never opaque.
+function _orchRenderToolDrawer(tools) {
+  if (!tools || tools.length === 0) {
+    return '<div class="orch-tool-drawer"><div class="orch-tool-empty">No tools reported by this agent.</div></div>';
+  }
+  var html = '<div class="orch-tool-drawer">';
+  tools.forEach(function (t) {
+    var name = t && t.name ? String(t.name) : "(unnamed)";
+    var desc = t && t.description ? String(t.description) : "";
+    var params = _orchRenderParams(t && t.inputSchema);
+    html +=
+      '<div class="orch-tool">' +
+        '<div class="orch-tool-head mono">' + escapeHtml(name) + '</div>' +
+        (desc ? '<div class="orch-tool-desc">' + escapeHtml(desc) + '</div>' : '') +
+        params +
+      '</div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+function _orchRenderParams(schema) {
+  if (!schema || typeof schema !== "object") {
+    return '<div class="orch-tool-noparams">No parameter schema advertised.</div>';
+  }
+  var props = schema.properties;
+  if (!props || typeof props !== "object" || Object.keys(props).length === 0) {
+    // Some tools declare {type:"object"} with no properties (accepts any).
+    // Others might advertise a non-object root. Dump as JSON for transparency.
+    try {
+      return '<pre class="orch-tool-rawschema mono">' + escapeHtml(JSON.stringify(schema, null, 2)) + '</pre>';
+    } catch (e) {
+      return '<div class="orch-tool-noparams">Parameter schema unparseable.</div>';
+    }
+  }
+  var required = Array.isArray(schema.required) ? schema.required : [];
+  var reqSet = {};
+  required.forEach(function (k) { reqSet[k] = true; });
+  var rows = "";
+  Object.keys(props).forEach(function (key) {
+    var p = props[key] || {};
+    var type = p.type || (p.enum ? "enum" : p["$ref"] ? "ref" : "any");
+    if (Array.isArray(type)) type = type.join("|");
+    var desc = p.description || "";
+    var extra = "";
+    if (p["enum"] && Array.isArray(p["enum"])) {
+      extra = ' <span class="orch-tool-enum mono">(' + p["enum"].slice(0, 5).map(function (v) { return String(v); }).join(", ") + (p["enum"].length > 5 ? ", \u2026" : "") + ')</span>';
+    }
+    rows +=
+      '<tr>' +
+        '<td class="orch-tool-pname mono">' + escapeHtml(key) + '</td>' +
+        '<td class="orch-tool-ptype mono">' + escapeHtml(String(type)) + extra + '</td>' +
+        '<td class="orch-tool-preq">' + (reqSet[key] ? '<span class="pill pill-info mono" style="font-size:9.5px">required</span>' : '<span class="orch-small" style="color:var(--text-mut)">optional</span>') + '</td>' +
+        '<td class="orch-tool-pdesc">' + escapeHtml(desc) + '</td>' +
+      '</tr>';
+  });
+  return '<table class="orch-tool-params">' +
+    '<thead><tr><th>name</th><th>type</th><th></th><th>description</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody>' +
+  '</table>';
 }
 
 async function runOrchFanout() {

@@ -12313,7 +12313,7 @@ function _wfPaintAgentComplete(ev) {
               '<div class="wf-auth-title">Auth-gated vendor</div>' +
               '<div class="wf-auth-body">' +
                 'Payload shape passed vendor validation. The wall is auth \u2014 ' +
-                'this vendor requires credentials we don\'t have in this public demo. ' +
+                'this vendor requires credentials we do not have in this public demo. ' +
                 'Not a protocol bug, a protocol <em>gap</em>: AdCP has no shared ' +
                 'auth-posture contract across signals / creative / buying agents.' +
               '</div>' +

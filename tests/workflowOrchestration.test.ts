@@ -541,7 +541,8 @@ describe("applyVendorAdapter (Sec-48r)", () => {
     // Sec-48r5: Claire expects top-level `brand: BrandReference`, not
     // `brand_manifest: BrandManifest`. Different schema family.
     expect(out.brand_manifest).toBeUndefined();
-    expect(out.brand).toEqual({ id: "demo_brand", name: "AdCP Workflow Demo" });
+    // Sec-48r6: AdCP spec BrandReference is {domain, name} (not {id, name}).
+    expect(out.brand).toEqual({ domain: "demo.example.com", name: "AdCP Workflow Demo" });
     expect(out.packages[0]!.buyer_ref).toBeDefined();
     expect(out.packages[0]!.budget).toBe(1000);
     expect(out.packages[0]!.pricing_option_id).toBe("default");

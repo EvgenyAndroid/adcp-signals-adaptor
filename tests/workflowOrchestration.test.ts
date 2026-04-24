@@ -502,39 +502,61 @@ describe("applyVendorAdapter (Sec-48r)", () => {
     nowMs: NOW,
   });
 
-  it("adzymic_* gets brand_manifest.name alongside .brand", () => {
-    const out = applyVendorAdapter("adzymic_apx", base) as unknown as { brand_manifest: Record<string, unknown> };
-    expect(out.brand_manifest.brand).toBe("AdCP Workflow Demo");
-    expect(out.brand_manifest.name).toBe("AdCP Workflow Demo");
-  });
-
-  it("swivel also gets brand_manifest.name AND package buyer_ref", () => {
-    const out = applyVendorAdapter("swivel", base) as unknown as {
+  it("adzymic_*: brand_manifest.name + package buyer_ref + budgets flattened", () => {
+    const out = applyVendorAdapter("adzymic_apx", base) as unknown as {
       brand_manifest: Record<string, unknown>;
-      packages: Array<Record<string, unknown>>;
-    };
-    expect(out.brand_manifest.name).toBeDefined();
-    expect(out.packages[0]!.buyer_ref).toContain(base.buyer_ref);
-    expect(out.packages[0]!.buyer_ref).toContain("pkg_1");
-  });
-
-  it("claire_* gets package buyer_ref + budget flattened to number", () => {
-    const out = applyVendorAdapter("claire_scope3", base) as unknown as {
       packages: Array<Record<string, unknown>>;
       total_budget: unknown;
     };
+    expect(out.brand_manifest.brand).toBe("AdCP Workflow Demo");
+    expect(out.brand_manifest.name).toBe("AdCP Workflow Demo");
+    expect(out.packages[0]!.buyer_ref).toContain("pkg_1");
+    expect(out.packages[0]!.budget).toBe(1000);
+    expect(out.total_budget).toBe(1000);
+  });
+
+  it("swivel: brand_manifest.name + package buyer_ref, but budget stays object", () => {
+    const out = applyVendorAdapter("swivel", base) as unknown as {
+      brand_manifest: Record<string, unknown>;
+      packages: Array<Record<string, unknown>>;
+      total_budget: unknown;
+    };
+    expect(out.brand_manifest.name).toBeDefined();
+    expect(out.packages[0]!.buyer_ref).toContain(base.buyer_ref);
+    // Swivel's pydantic is lenient on budget shape — object form preserved.
+    expect(out.packages[0]!.budget).toEqual({ amount: 1000, currency: "USD" });
+    expect(out.total_budget).toEqual({ amount: 1000, currency: "USD" });
+  });
+
+  it("claire_*: narrow brand_manifest, buyer_ref, scalar budget, pricing_option_id", () => {
+    const out = applyVendorAdapter("claire_scope3", base) as unknown as {
+      brand_manifest: Record<string, unknown>;
+      packages: Array<Record<string, unknown>>;
+      total_budget: unknown;
+    };
+    // Narrow brand_manifest — no `brand`, no `advertiser`.
+    expect(out.brand_manifest).toEqual({
+      name: "AdCP Workflow Demo",
+      categories: base.brand_manifest.categories,
+    });
+    expect(out.brand_manifest.brand).toBeUndefined();
+    expect(out.brand_manifest.advertiser).toBeUndefined();
     expect(out.packages[0]!.buyer_ref).toBeDefined();
     expect(out.packages[0]!.budget).toBe(1000);
+    expect(out.packages[0]!.pricing_option_id).toBe("default");
     expect(out.total_budget).toBe(1000);
   });
 
   it("content_ignite follows claire rules", () => {
     const out = applyVendorAdapter("content_ignite", base) as unknown as {
+      brand_manifest: Record<string, unknown>;
       packages: Array<Record<string, unknown>>;
       total_budget: unknown;
     };
+    expect(out.brand_manifest.brand).toBeUndefined();
     expect(out.packages[0]!.buyer_ref).toBeDefined();
     expect(out.packages[0]!.budget).toBe(1000);
+    expect(out.packages[0]!.pricing_option_id).toBe("default");
     expect(out.total_budget).toBe(1000);
   });
 

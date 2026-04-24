@@ -204,6 +204,43 @@ export function newWorkflowId(): string {
  * we add an explicit preferred-key entry rather than making this walk
  * the whole object graph.
  */
+/** Extract an array from an MCP tools/call result, trying both the
+ *  structured-content and text-content paths.
+ *
+ *  MCP tools can return data two ways:
+ *    1. `result.structuredContent`  — typed JSON, what we mostly get
+ *    2. `result.content[]`          — array of {type:"text"|"image"|...}
+ *                                     blocks. Some servers (Celtra)
+ *                                     return the structured payload as
+ *                                     JSON inside content[0].text.
+ *
+ *  We try structured first (fast path), then scan content[] for any
+ *  text block that parses as JSON and looks for the array under the
+ *  same preferred keys. Designed to replace direct extractArrayPayload
+ *  calls on `res.structured_content` where the caller also has access
+ *  to `res.content`.
+ */
+export function extractMcpToolArray<T = unknown>(
+  structuredContent: unknown,
+  content: unknown,
+  preferredKeys: readonly string[],
+): T[] {
+  const fromStructured = extractArrayPayload<T>(structuredContent, preferredKeys);
+  if (fromStructured.length > 0) return fromStructured;
+  if (!Array.isArray(content)) return fromStructured;
+  for (const block of content) {
+    if (!block || typeof block !== "object") continue;
+    const b = block as { type?: string; text?: string };
+    if (b.type !== "text" || typeof b.text !== "string") continue;
+    try {
+      const parsed = JSON.parse(b.text);
+      const fromText = extractArrayPayload<T>(parsed, preferredKeys);
+      if (fromText.length > 0) return fromText;
+    } catch { /* not JSON; try next block */ }
+  }
+  return fromStructured;
+}
+
 export function extractArrayPayload<T = unknown>(
   structured: unknown,
   preferredKeys: readonly string[],

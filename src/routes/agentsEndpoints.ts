@@ -41,7 +41,7 @@ import {
   newWorkflowId,
   productId as productIdOf,
   signalId as signalIdOf,
-  extractArrayPayload,
+  extractMcpToolArray,
   type SignalLite,
   type ProductLite,
   type MediaBuyPayload,
@@ -456,7 +456,7 @@ async function runSignalsStage(
       { signal_spec: brief, max_results: maxResults },
       { timeoutMs },
     );
-    const signals = extractArrayPayload<SignalLite>(res.structured_content, ["signals"])
+    const signals = extractMcpToolArray<SignalLite>(res.structured_content, res.content, ["signals"])
       .map((s) => ({ source_agent: a.id, ...s }));
     const out: SignalsStageAgent = {
       id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
@@ -476,7 +476,7 @@ async function runCreativeStage(
     // list_creative_formats is a directory scan — no args required across
     // Advertible, Celtra, and the buying-agent implementations.
     const res = await callAgentTool(a.mcp_url!, "list_creative_formats", {}, { timeoutMs });
-    const formats = extractArrayPayload(res.structured_content, ["formats", "creative_formats", "items"]);
+    const formats = extractMcpToolArray(res.structured_content, res.content, ["formats", "creative_formats", "items"]);
     const out: CreativeStageAgent = {
       id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
       ok: res.ok, latency_ms: res.latency_ms,
@@ -498,8 +498,9 @@ async function runProductsStage(
     // accepted arg. Max_results is nonstandard on these endpoints so we
     // rely on server-side paging defaults.
     const res = await callAgentTool(a.mcp_url!, "get_products", { brief }, { timeoutMs });
-    const products = extractArrayPayload<ProductLite>(
+    const products = extractMcpToolArray<ProductLite>(
       res.structured_content,
+      res.content,
       ["products", "items", "product_list"],
     ).slice(0, maxResults);
     const out: ProductsStageAgent = {
@@ -794,7 +795,7 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
             { signal_spec: body.brief, max_results: maxSignals },
             { timeoutMs },
           );
-          const signals = extractArrayPayload<SignalLite>(res.structured_content, ["signals"])
+          const signals = extractMcpToolArray<SignalLite>(res.structured_content, res.content, ["signals"])
             .map((s) => ({ source_agent: a.id, ...s }));
           const out: SignalsStageAgent = {
             id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
@@ -824,7 +825,7 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
 
         const creativePromise = Promise.all(creativeAgents.map(async (a): Promise<CreativeStageAgent> => {
           const res = await callAgentTool(a.mcp_url!, "list_creative_formats", {}, { timeoutMs });
-          const formats = extractArrayPayload(res.structured_content, ["formats", "creative_formats", "items"]);
+          const formats = extractMcpToolArray(res.structured_content, res.content, ["formats", "creative_formats", "items"]);
           const out: CreativeStageAgent = {
             id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
             ok: res.ok, latency_ms: res.latency_ms,
@@ -862,8 +863,9 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
         for (const a of buyingAgents) send({ type: "agent_start", stage: "products", agent_id: a.id });
         const productsResults = await Promise.all(buyingAgents.map(async (a): Promise<ProductsStageAgent> => {
           const res = await callAgentTool(a.mcp_url!, "get_products", { brief: body.brief }, { timeoutMs });
-          const products = extractArrayPayload<ProductLite>(
+          const products = extractMcpToolArray<ProductLite>(
             res.structured_content,
+            res.content,
             ["products", "items", "product_list"],
           ).slice(0, maxProducts);
           const out: ProductsStageAgent = {

@@ -11,6 +11,7 @@ import {
   buildCreateMediaBuyPayload,
   extractCategories,
   extractArrayPayload,
+  extractMcpToolArray,
   newWorkflowId,
 } from "../src/domain/workflowOrchestration";
 
@@ -219,6 +220,72 @@ describe("extractArrayPayload", () => {
       ["products"],
     );
     expect(out).toEqual([{ sub: [1] }, { sub: [2] }]);
+  });
+});
+
+describe("extractMcpToolArray", () => {
+  it("returns structured_content array when present (fast path)", () => {
+    const out = extractMcpToolArray(
+      { formats: [{ id: "f1" }] },
+      [{ type: "text", text: "ignored" }],
+      ["formats"],
+    );
+    expect(out).toEqual([{ id: "f1" }]);
+  });
+
+  it("falls back to parsing content[].text as JSON when structured is empty", () => {
+    const out = extractMcpToolArray(
+      {},
+      [{ type: "text", text: JSON.stringify({ formats: [{ id: "f1" }, { id: "f2" }] }) }],
+      ["formats"],
+    );
+    expect(out).toEqual([{ id: "f1" }, { id: "f2" }]);
+  });
+
+  it("handles structured_content null with content fallback", () => {
+    const out = extractMcpToolArray(
+      null,
+      [{ type: "text", text: '{"products":[{"id":"p"}]}' }],
+      ["products"],
+    );
+    expect(out).toEqual([{ id: "p" }]);
+  });
+
+  it("picks the first text block that parses as JSON with a matching array", () => {
+    const out = extractMcpToolArray(
+      {},
+      [
+        { type: "text", text: "not json" },
+        { type: "text", text: '{"irrelevant":1}' },
+        { type: "text", text: '{"formats":[{"id":"f"}]}' },
+      ],
+      ["formats"],
+    );
+    expect(out).toEqual([{ id: "f" }]);
+  });
+
+  it("tolerates non-text content blocks without crashing", () => {
+    const out = extractMcpToolArray(
+      {},
+      [{ type: "image", data: "..." }, { type: "text", text: '{"formats":[1]}' }],
+      ["formats"],
+    );
+    expect(out).toEqual([1]);
+  });
+
+  it("returns [] when neither structured nor any text block yields an array", () => {
+    expect(extractMcpToolArray({}, [{ type: "text", text: "hello" }], ["formats"])).toEqual([]);
+    expect(extractMcpToolArray({ meta: 1 }, null, ["formats"])).toEqual([]);
+    expect(extractMcpToolArray(null, null, ["formats"])).toEqual([]);
+  });
+
+  it("uses depth-1 nested search inside text-block JSON too", () => {
+    const out = extractMcpToolArray(
+      {},
+      [{ type: "text", text: JSON.stringify({ result: { formats: [{ id: "nested" }] } }) }],
+      ["formats"],
+    );
+    expect(out).toEqual([{ id: "nested" }]);
   });
 });
 

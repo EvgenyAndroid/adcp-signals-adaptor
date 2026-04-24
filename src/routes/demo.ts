@@ -117,6 +117,10 @@ ${STYLES}
       <button class="nav-item" data-tab="composer">
         <svg class="ico"><use href="#icon-builder"/></svg><span>Composer</span>
       </button>
+      <button class="nav-item" data-tab="expression">
+        <svg class="ico"><use href="#icon-network"/></svg><span>Expression</span>
+        <span class="nav-tag">new</span>
+      </button>
       <button class="nav-item" data-tab="journey">
         <svg class="ico"><use href="#icon-activations"/></svg><span>Journey</span>
         <span class="nav-tag">new</span>
@@ -994,6 +998,43 @@ ${STYLES}
               <div id="comp-aff-results"><div class="empty-state"><div class="empty-desc">Pick at least one signal and hit <strong>Audit affinity</strong>. For every facet (category, vertical, geo band, data provider) the system compares the reach-weighted share of your selection against the catalog baseline. Index 100 = at parity; 200 = 2\u00d7 over-represented; 50 = under-represented.</div></div></div>
               <div id="comp-aff-explainer"></div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: Expression (Sec-47) — visual boolean AST tree builder -->
+      <section class="tab-pane" data-tab="expression">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Expression Tree <span class="pill pill-accent" style="margin-left:8px;font-size:10px">AST</span></h1>
+            <p class="pane-subtitle">Build arbitrary boolean expressions over catalog signals: <code>(A ∪ B) ∩ (C ∪ D) − (E ∩ F)</code>. Drag nodes to reparent. NOT is only legal as a child of AND (it means "exclude"). Reach evaluates recursively bottom-up with the same pairwise-Jaccard heuristic the Composer uses, lifted to subtrees. Depth ≤ 5, nodes ≤ 30. Save any expression as a <strong>Snapshot</strong> to diff it later.</p>
+          </div>
+          <div class="activations-controls">
+            <button class="btn-secondary" id="expr-reset">
+              <svg class="ico"><use href="#icon-close"/></svg><span>Reset</span>
+            </button>
+            <button class="btn-primary" id="expr-run" disabled>
+              <svg class="ico"><use href="#icon-bolt"/></svg><span>Compute reach</span>
+            </button>
+          </div>
+        </div>
+        <div class="expr-counters mono" id="expr-counters">
+          <span id="expr-count-nodes">0</span>/30 nodes · depth <span id="expr-count-depth">0</span>/5
+        </div>
+        <div class="expr-canvas" id="expr-canvas"></div>
+        <div class="lab-panel lab-panel-full" style="margin-top:14px">
+          <div class="lab-panel-title">Reach</div>
+          <div id="expr-result"><div class="empty-state"><div class="empty-desc">Build a tree above (click <strong>+ Signal</strong> inside a group to pick a catalog signal; click <strong>+ Group</strong> to add nested OR/AND), then hit <strong>Compute reach</strong>. Each subtree's reach will render inline on its node.</div></div></div>
+          <div id="expr-privacy"></div>
+          <div id="expr-holdout"></div>
+          <div id="expr-explainer"></div>
+        </div>
+        <div class="lab-panel lab-panel-full" style="margin-top:14px" id="expr-save-panel" hidden>
+          <div class="lab-panel-title">Save as snapshot</div>
+          <div class="expr-save-row">
+            <input id="expr-save-name" class="lab-input" placeholder="Snapshot name"/>
+            <input id="expr-save-tags" class="lab-input" placeholder="tags (comma-separated)" style="max-width:240px"/>
+            <button class="btn-primary" id="expr-save-btn">Save snapshot</button>
           </div>
         </div>
       </section>
@@ -3852,6 +3893,124 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .holdout-stats .k { font-size: 10.5px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.04em; }
 .holdout-stats .v { font-size: 15px; margin-top: 2px; }
 
+/* ── Sec-47: Expression Tree Builder ──────────────────────────────────── */
+.expr-counters {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--bg-surface); border: 1px solid var(--border); border-radius: 5px;
+  padding: 6px 12px; font-size: 11px; color: var(--text-mut); margin-bottom: 14px;
+}
+.expr-counters-warn { border-color: var(--warning); color: var(--warning); }
+.expr-canvas { display: flex; flex-direction: column; gap: 10px; }
+.expr-node {
+  position: relative;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.expr-node.expr-dragging { opacity: 0.4; }
+.expr-drag-handle {
+  cursor: grab; color: var(--text-mut); font-size: 13px; user-select: none;
+  padding: 0 4px; flex-shrink: 0;
+}
+.expr-drag-handle:active { cursor: grabbing; }
+.expr-btn-ghost {
+  background: transparent; border: 1px solid var(--border); color: var(--text-mut);
+  padding: 3px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;
+  font-family: inherit;
+}
+.expr-btn-ghost:hover { color: var(--text); border-color: var(--accent-border, var(--accent)); }
+.expr-btn-ghost.expr-btn-danger:hover { color: var(--error); border-color: var(--error); }
+
+/* Group (branch) node */
+.expr-group {
+  background: var(--bg-surface); border: 2px solid var(--border); border-radius: 8px;
+  padding: 10px 12px;
+}
+.expr-group.expr-root { border-width: 2px; }
+.expr-group.expr-op-or { border-left: 4px solid var(--accent); }
+.expr-group.expr-op-and { border-left: 4px solid var(--success); }
+.expr-group.expr-op-not { border-left: 4px solid var(--error); background: rgba(255, 92, 92, 0.04); }
+.expr-group.expr-drop-target { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79, 142, 255, 0.18); }
+.expr-group-head {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+}
+.expr-op-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em; cursor: pointer; user-select: none;
+}
+.expr-op-chip.expr-op-or { background: rgba(79, 142, 255, 0.18); color: var(--accent); }
+.expr-op-chip.expr-op-and { background: rgba(79, 195, 127, 0.15); color: var(--success); }
+.expr-op-chip.expr-op-not { background: rgba(255, 92, 92, 0.18); color: var(--error); cursor: default; }
+.expr-node-reach {
+  margin-left: auto; font-size: 12px; color: var(--text); font-weight: 500;
+  background: var(--bg-soft, var(--bg-base)); padding: 3px 10px; border-radius: 4px;
+}
+.expr-group-actions { display: flex; gap: 4px; }
+.expr-group-body {
+  display: flex; flex-direction: column; gap: 8px;
+  padding-left: 16px; border-left: 1px dashed var(--border);
+  margin-bottom: 8px;
+}
+.expr-empty-group {
+  color: var(--text-mut); font-size: 11.5px; font-style: italic; padding: 6px 0;
+}
+.expr-add-menu {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  padding-left: 16px; margin-top: 4px;
+}
+
+/* Leaf node */
+.expr-leaf {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 12px; position: relative;
+}
+.expr-leaf.expr-leaf-unfilled { border-style: dashed; }
+.expr-leaf-body { flex: 1; min-width: 0; }
+.expr-leaf-body.expr-leaf-empty { color: var(--text-mut); font-size: 12px; font-style: italic; }
+.expr-leaf-name { font-size: 12.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.expr-leaf-meta { font-size: 10.5px; color: var(--text-mut); margin-top: 2px; }
+.expr-leaf-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.expr-leaf-picker {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 10;
+  margin-top: 4px; background: var(--bg-raised, var(--bg-surface));
+  border: 1px solid var(--accent); border-radius: 6px;
+  padding: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+}
+.expr-leaf-picker-input {
+  width: 100%; background: var(--bg-soft, var(--bg-base));
+  border: 1px solid var(--border); border-radius: 4px; color: var(--text);
+  padding: 6px 10px; font-size: 12px; font-family: inherit; margin-bottom: 6px;
+}
+.expr-leaf-picker-input:focus { outline: none; border-color: var(--accent); }
+.expr-leaf-picker-list { max-height: 240px; overflow: auto; }
+.expr-leaf-picker-row {
+  padding: 6px 8px; cursor: pointer; border-radius: 4px;
+}
+.expr-leaf-picker-row:hover { background: var(--bg-soft, var(--bg-base)); }
+.expr-leaf-picker-name { font-size: 12px; font-weight: 500; }
+.expr-leaf-picker-meta { font-size: 10.5px; color: var(--text-mut); margin-top: 1px; }
+
+/* Result cards */
+.expr-result-cards {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px;
+}
+.expr-result-card {
+  background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px;
+  padding: 12px 14px;
+}
+.expr-result-card.expr-result-primary { background: var(--bg-soft, var(--bg-surface)); border-color: var(--accent); }
+.expr-result-card .k { font-size: 10.5px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.04em; }
+.expr-result-card .v { font-size: 20px; margin-top: 4px; font-weight: 500; }
+
+/* Save row */
+.expr-save-row { display: flex; gap: 8px; align-items: center; }
+.expr-save-row .lab-input { flex: 1; }
+
+@media (max-width: 900px) {
+  .expr-add-menu { padding-left: 8px; }
+  .expr-group-body { padding-left: 10px; }
+}
+
 /* ── Sec-46: Journey mode switch + clamp surfacing ─────────────────────── */
 .journey-mode-row {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -4076,6 +4235,8 @@ const state = {
   // Sec-44: Journey builder. Dynamic stage list; each stage has its own
   // include/intersect/exclude pool arrays.
   journey: { stages: [], lastResult: null, loaded: false, cumulative: true },
+  // Sec-47: boolean expression AST builder. Tree is null until ensureExpression seeds it.
+  expression: { tree: null, lastResult: null, loaded: false, nextId: 1, draggedNodeId: null, pickingLeafId: null },
   // Sec-44: Scenario Planner — current / add / remove pools.
   planner: { cur: [], add: [], rem: [], lastResult: null, loaded: false },
   // Sec-44: Snapshots — fetched index + diff selection.
@@ -4311,6 +4472,7 @@ function switchTab(name) {
     capabilities: "Capabilities", toollog: "Tool Log", overlap: "Overlap",
     embedding: "Embedding space", devkit: "Dev kit", destinations: "Destinations",
     lab: "Embedding Lab", portfolio: "Portfolio", composer: "Composer",
+    expression: "Expression",
     journey: "Journey", planner: "Scenario", snapshots: "Snapshots",
     freshness: "Freshness",
     seasonality: "Seasonality", federation: "Federation",
@@ -4330,6 +4492,7 @@ function switchTab(name) {
   if (name === "lab") ensureLab();
   if (name === "portfolio") ensurePortfolio();
   if (name === "composer") ensureComposer();
+  if (name === "expression") ensureExpression();
   if (name === "journey") ensureJourney();
   if (name === "planner") ensurePlanner();
   if (name === "snapshots") ensureSnapshots();
@@ -10053,6 +10216,582 @@ function _freshnessRender() {
       read: "For planning-heavy buys (upper-funnel, long flights) prioritize <strong>stable + low-volatility + high-authority</strong>. For time-sensitive campaigns (event-based, retail triggers) a short half-life is a feature, not a bug — just refresh before each flight.",
       limits: "All four facets are deterministic derivations from catalog metadata. They don't replace a clean-room validation; for regulated verticals treat them as planning signals, not audit evidence.",
     });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Sec-47: Expression Tree Builder — visual boolean AST over catalog signals.
+// Tree nodes: { type:"signal", id, signal_id? } | { type:"op", id, op, children }.
+// Invariants (enforced client + server): depth ≤ 5, nodes ≤ 30, NOT only
+// under AND. Drag-and-drop reparents any node to any group, blocking drops
+// into own descendants.
+// ─────────────────────────────────────────────────────────────────────────
+var _exprLoaded = false;
+var EXPR_MAX_DEPTH = 5;
+var EXPR_MAX_NODES = 30;
+
+async function ensureExpression() {
+  if (_exprLoaded) return;
+  _exprLoaded = true;
+  if (state.catalog.all.length === 0) await loadCatalog();
+  if (!state.expression.tree) {
+    state.expression.tree = _exprNewGroup("OR", [_exprNewLeaf(), _exprNewLeaf()]);
+  }
+  _exprRender();
+  document.getElementById("expr-reset").addEventListener("click", function () {
+    if (!window.confirm("Reset the tree? All current nodes will be cleared.")) return;
+    state.expression.tree = _exprNewGroup("OR", [_exprNewLeaf(), _exprNewLeaf()]);
+    state.expression.lastResult = null;
+    _exprRender();
+  });
+  document.getElementById("expr-run").addEventListener("click", runExpression);
+  document.getElementById("expr-save-btn").addEventListener("click", saveExpressionSnapshot);
+}
+
+function _exprNextId() {
+  var n = state.expression.nextId || 1;
+  state.expression.nextId = n + 1;
+  return "n" + n;
+}
+function _exprNewLeaf() {
+  return { type: "signal", id: _exprNextId(), signal_id: "" };
+}
+function _exprNewGroup(op, children) {
+  return { type: "op", id: _exprNextId(), op: op, children: (children || []).slice() };
+}
+
+// Walk the tree. cb(node, parent, indexInParent, depth). depth starts at 1 for root.
+function _exprWalk(node, cb, parent, idx, depth) {
+  parent = parent || null; idx = idx || 0; depth = depth || 1;
+  cb(node, parent, idx, depth);
+  if (node.type === "op") {
+    for (var i = 0; i < node.children.length; i++) {
+      _exprWalk(node.children[i], cb, node, i, depth + 1);
+    }
+  }
+}
+
+function _exprCountNodesAndDepth() {
+  var root = state.expression.tree;
+  if (!root) return { nodes: 0, depth: 0 };
+  var n = 0, d = 0;
+  _exprWalk(root, function (_node, _p, _i, depth) {
+    n++;
+    if (depth > d) d = depth;
+  });
+  return { nodes: n, depth: d };
+}
+
+function _exprFindNode(id) {
+  var found = null, foundParent = null, foundIdx = -1;
+  _exprWalk(state.expression.tree, function (node, parent, idx) {
+    if (node.id === id) { found = node; foundParent = parent; foundIdx = idx; }
+  });
+  return { node: found, parent: foundParent, idx: foundIdx };
+}
+
+function _exprIsDescendant(ancestor, descendantId) {
+  if (ancestor.id === descendantId) return true;
+  if (ancestor.type !== "op") return false;
+  for (var i = 0; i < ancestor.children.length; i++) {
+    if (_exprIsDescendant(ancestor.children[i], descendantId)) return true;
+  }
+  return false;
+}
+
+function _exprDetach(id) {
+  var loc = _exprFindNode(id);
+  if (!loc.node || !loc.parent) return null;
+  loc.parent.children.splice(loc.idx, 1);
+  return loc.node;
+}
+
+function _exprRender() {
+  var canvas = document.getElementById("expr-canvas");
+  if (!canvas) return;
+  canvas.innerHTML = _exprRenderNode(state.expression.tree, null, 1);
+  _exprWireNode(state.expression.tree);
+  _exprUpdateCounters();
+  _exprUpdateRunBtn();
+}
+
+function _exprRenderNode(node, parentOp, depth) {
+  if (node.type === "signal") return _exprRenderLeaf(node, parentOp);
+  return _exprRenderGroup(node, parentOp, depth);
+}
+
+function _exprRenderLeaf(node, parentOp) {
+  var sig = node.signal_id ? state.catalog.all.find(function (s) {
+    return (s.signal_agent_segment_id || (s.signal_id && s.signal_id.id)) === node.signal_id;
+  }) : null;
+  var reachTxt = "";
+  var lastResult = state.expression.lastResult;
+  if (lastResult) {
+    var match = _exprFindResultNode(lastResult.root, node.id);
+    if (match) reachTxt = '<span class="expr-node-reach mono">' + fmtNumber(match.reach) + '</span>';
+  }
+  var body = sig
+    ? '<div class="expr-leaf-body"><div class="expr-leaf-name">' + escapeHtml(sig.name) + '</div>' +
+      '<div class="expr-leaf-meta mono">' + fmtNumber(sig.estimated_audience_size) + ' · ' + escapeHtml(sig.category_type || "—") + '</div></div>'
+    : '<div class="expr-leaf-body expr-leaf-empty"><span>Click to pick a signal</span></div>';
+  var canNegate = parentOp === "AND";
+  return '<div class="expr-node expr-leaf' + (sig ? '' : ' expr-leaf-unfilled') + '" data-id="' + escapeHtml(node.id) + '" draggable="true">' +
+    '<span class="expr-drag-handle" title="Drag to reparent">⋮⋮</span>' +
+    body +
+    reachTxt +
+    '<div class="expr-leaf-actions">' +
+      (canNegate ? '<button class="expr-btn-ghost" data-expr-action="wrap-not" data-id="' + escapeHtml(node.id) + '" title="Wrap in NOT (exclude)">NOT</button>' : '') +
+      '<button class="expr-btn-ghost" data-expr-action="pick" data-id="' + escapeHtml(node.id) + '" title="Pick signal">' + (sig ? '↻' : '+') + '</button>' +
+      '<button class="expr-btn-ghost expr-btn-danger" data-expr-action="delete" data-id="' + escapeHtml(node.id) + '" title="Delete node">×</button>' +
+    '</div>' +
+    (state.expression.pickingLeafId === node.id ? _exprRenderLeafPicker(node.id) : '') +
+  '</div>';
+}
+
+function _exprRenderLeafPicker(leafId) {
+  return '<div class="expr-leaf-picker" data-leaf-id="' + escapeHtml(leafId) + '">' +
+    '<input class="expr-leaf-picker-input" placeholder="Search catalog\u2026" autocomplete="off"/>' +
+    '<div class="expr-leaf-picker-list" id="expr-picker-list-' + escapeHtml(leafId) + '"></div>' +
+  '</div>';
+}
+
+function _exprRenderGroup(node, parentOp, depth) {
+  var isRoot = depth === 1;
+  var lastResult = state.expression.lastResult;
+  var reachTxt = "";
+  if (lastResult) {
+    var match = _exprFindResultNode(lastResult.root, node.id);
+    if (match) reachTxt = '<span class="expr-node-reach mono">' + fmtNumber(match.reach) + '</span>';
+  }
+  var opLabel = node.op === "OR" ? "Any (OR)" : node.op === "AND" ? "All (AND)" : "NOT";
+  var opClass = "expr-op-" + node.op.toLowerCase();
+  var isNot = node.op === "NOT";
+  var childrenHtml = node.children.map(function (c) { return _exprRenderNode(c, node.op, depth + 1); }).join("");
+  var addMenu = isNot ? "" :
+    '<div class="expr-add-menu">' +
+      '<button class="expr-btn-ghost" data-expr-action="add-signal" data-id="' + escapeHtml(node.id) + '">+ Signal</button>' +
+      '<button class="expr-btn-ghost" data-expr-action="add-or" data-id="' + escapeHtml(node.id) + '">+ OR group</button>' +
+      '<button class="expr-btn-ghost" data-expr-action="add-and" data-id="' + escapeHtml(node.id) + '">+ AND group</button>' +
+      (node.op === "AND" ? '<button class="expr-btn-ghost" data-expr-action="add-not" data-id="' + escapeHtml(node.id) + '">+ NOT</button>' : '') +
+    '</div>';
+  var opSelector = isNot ? '<span class="expr-op-chip ' + opClass + '">NOT</span>' :
+    '<span class="expr-op-chip ' + opClass + '" data-expr-action="toggle-op" data-id="' + escapeHtml(node.id) + '" title="Click to toggle OR/AND">' + escapeHtml(opLabel) + '</span>';
+  return '<div class="expr-node expr-group ' + opClass + (isRoot ? ' expr-root' : '') + '" data-id="' + escapeHtml(node.id) + '"' + (isRoot ? '' : ' draggable="true"') + '>' +
+    '<div class="expr-group-head">' +
+      (isRoot ? '' : '<span class="expr-drag-handle" title="Drag to reparent">⋮⋮</span>') +
+      opSelector +
+      reachTxt +
+      '<div class="expr-group-actions">' +
+        (isRoot ? '' : '<button class="expr-btn-ghost expr-btn-danger" data-expr-action="delete" data-id="' + escapeHtml(node.id) + '" title="Delete group">×</button>') +
+      '</div>' +
+    '</div>' +
+    '<div class="expr-group-body">' +
+      (node.children.length === 0
+        ? '<div class="expr-empty-group">Empty group — add a child below</div>'
+        : childrenHtml) +
+    '</div>' +
+    addMenu +
+  '</div>';
+}
+
+function _exprFindResultNode(root, id) {
+  if (!root) return null;
+  if (root.node_id === id) return root;
+  if (root.children) {
+    for (var i = 0; i < root.children.length; i++) {
+      var hit = _exprFindResultNode(root.children[i], id);
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+function _exprWireNode(root) {
+  var canvas = document.getElementById("expr-canvas");
+  if (!canvas) return;
+  // Action buttons (bubbling listener).
+  canvas.onclick = function (ev) {
+    var t = ev.target;
+    while (t && t !== canvas && !(t.dataset && t.dataset.exprAction)) t = t.parentNode;
+    if (!t || t === canvas) return;
+    var action = t.dataset.exprAction;
+    var id = t.dataset.id;
+    _exprHandleAction(action, id);
+    ev.stopPropagation();
+  };
+  _exprWireDragAndDrop(canvas);
+  // If a leaf picker is open, wire it.
+  if (state.expression.pickingLeafId) {
+    _exprWireLeafPicker(state.expression.pickingLeafId);
+  }
+  void root;
+}
+
+function _exprHandleAction(action, id) {
+  var loc = _exprFindNode(id);
+  if (!loc.node && action !== "reset") return;
+  var counters = _exprCountNodesAndDepth();
+  switch (action) {
+    case "pick":
+      state.expression.pickingLeafId = state.expression.pickingLeafId === id ? null : id;
+      _exprRender();
+      break;
+    case "wrap-not":
+      // Replace the leaf with NOT(leaf).
+      if (!loc.parent) return;
+      if (loc.parent.op !== "AND") { showToast("NOT is only legal under AND.", true); return; }
+      if (counters.nodes + 1 > EXPR_MAX_NODES) { showToast("Node cap reached.", true); return; }
+      if (counters.depth + 1 > EXPR_MAX_DEPTH) { showToast("Depth cap reached.", true); return; }
+      var wrapped = _exprNewGroup("NOT", [loc.node]);
+      loc.parent.children[loc.idx] = wrapped;
+      _exprRender();
+      break;
+    case "delete":
+      if (!loc.parent) return;  // root can't be deleted here
+      loc.parent.children.splice(loc.idx, 1);
+      // If the parent is now empty (and it's an op), leave it — user can add children back or delete it.
+      if (state.expression.pickingLeafId === id) state.expression.pickingLeafId = null;
+      _exprRender();
+      break;
+    case "toggle-op":
+      if (loc.node.type !== "op") return;
+      if (loc.node.op === "OR") loc.node.op = "AND";
+      else if (loc.node.op === "AND") loc.node.op = "OR";
+      // Don't toggle NOT here
+      _exprRender();
+      break;
+    case "add-signal":
+    case "add-or":
+    case "add-and":
+    case "add-not":
+      if (loc.node.type !== "op") return;
+      if (counters.nodes + 1 > EXPR_MAX_NODES) { showToast("Node cap reached (" + EXPR_MAX_NODES + ").", true); return; }
+      var newDepth = _exprDepthOf(id) + 1;
+      if (newDepth > EXPR_MAX_DEPTH) { showToast("Depth cap reached (" + EXPR_MAX_DEPTH + ").", true); return; }
+      var child = null;
+      if (action === "add-signal") child = _exprNewLeaf();
+      else if (action === "add-or") child = _exprNewGroup("OR", [_exprNewLeaf(), _exprNewLeaf()]);
+      else if (action === "add-and") child = _exprNewGroup("AND", [_exprNewLeaf(), _exprNewLeaf()]);
+      else if (action === "add-not") {
+        if (loc.node.op !== "AND") { showToast("NOT only legal under AND.", true); return; }
+        child = _exprNewGroup("NOT", [_exprNewLeaf()]);
+      }
+      if (child) loc.node.children.push(child);
+      _exprRender();
+      break;
+  }
+}
+
+function _exprDepthOf(id) {
+  var d = 0;
+  _exprWalk(state.expression.tree, function (node, _p, _i, depth) {
+    if (node.id === id) d = depth;
+  });
+  return d;
+}
+
+function _exprWireDragAndDrop(canvas) {
+  // dragstart on any node, dragover/drop on any group body.
+  canvas.ondragstart = function (ev) {
+    var t = ev.target;
+    while (t && t !== canvas && !(t.dataset && t.dataset.id && t.draggable)) t = t.parentNode;
+    if (!t || t === canvas) return;
+    state.expression.draggedNodeId = t.dataset.id;
+    try { ev.dataTransfer.setData("text/plain", t.dataset.id); ev.dataTransfer.effectAllowed = "move"; } catch (_e) {}
+    t.classList.add("expr-dragging");
+  };
+  canvas.ondragend = function () {
+    state.expression.draggedNodeId = null;
+    Array.prototype.forEach.call(canvas.querySelectorAll(".expr-dragging,.expr-drop-target"), function (el) {
+      el.classList.remove("expr-dragging", "expr-drop-target");
+    });
+  };
+  canvas.ondragover = function (ev) {
+    var group = _exprFindGroupDropTarget(ev.target);
+    if (!group) return;
+    var draggedId = state.expression.draggedNodeId;
+    if (!draggedId) return;
+    var targetId = group.dataset.id;
+    if (targetId === draggedId) return;
+    var targetNode = _exprFindNode(targetId).node;
+    var draggedNode = _exprFindNode(draggedId).node;
+    if (!targetNode || !draggedNode) return;
+    // Descendant-guard: can't drop a node into its own subtree.
+    if (_exprIsDescendant(draggedNode, targetId)) return;
+    // NOT groups are unary — refuse drops if already has a child.
+    if (targetNode.op === "NOT" && targetNode.children.length >= 1) return;
+    ev.preventDefault();
+    group.classList.add("expr-drop-target");
+  };
+  canvas.ondragleave = function (ev) {
+    var group = _exprFindGroupDropTarget(ev.target);
+    if (group) group.classList.remove("expr-drop-target");
+  };
+  canvas.ondrop = function (ev) {
+    var group = _exprFindGroupDropTarget(ev.target);
+    if (!group) return;
+    var draggedId = state.expression.draggedNodeId;
+    if (!draggedId) return;
+    var targetId = group.dataset.id;
+    if (targetId === draggedId) return;
+    ev.preventDefault();
+    var draggedNode = _exprFindNode(draggedId).node;
+    if (!draggedNode) return;
+    if (_exprIsDescendant(draggedNode, targetId)) return;
+    var targetNode = _exprFindNode(targetId).node;
+    if (!targetNode || targetNode.type !== "op") return;
+    if (targetNode.op === "NOT" && targetNode.children.length >= 1) return;
+    // NOT-only-under-AND invariant: if the dragged node is a NOT group, only
+    // accept it under AND parents.
+    if (draggedNode.type === "op" && draggedNode.op === "NOT" && targetNode.op !== "AND") {
+      showToast("NOT is only legal under AND.", true); return;
+    }
+    // Detach, then append to target.
+    var detached = _exprDetach(draggedId);
+    if (!detached) return;
+    targetNode.children.push(detached);
+    state.expression.draggedNodeId = null;
+    _exprRender();
+  };
+}
+
+function _exprFindGroupDropTarget(node) {
+  // Walk up to the nearest expr-group element.
+  while (node && node.classList) {
+    if (node.classList.contains("expr-group")) return node;
+    node = node.parentNode;
+  }
+  return null;
+}
+
+function _exprWireLeafPicker(leafId) {
+  var input = document.querySelector('.expr-leaf-picker[data-leaf-id="' + leafId + '"] .expr-leaf-picker-input');
+  if (!input) return;
+  setTimeout(function () { try { input.focus(); } catch (_e) {} }, 10);
+  var render = function (q) {
+    var host = document.getElementById("expr-picker-list-" + leafId);
+    if (!host) return;
+    var rows = (state.catalog.all || []).slice();
+    if (q) rows = rows.filter(function (s) {
+      return (s.name || "").toLowerCase().includes(q) || (s.description || "").toLowerCase().includes(q);
+    });
+    rows = rows.slice(0, 12);
+    if (rows.length === 0) {
+      host.innerHTML = '<div style="color:var(--text-mut);font-size:11px;padding:6px 0">No matches.</div>';
+      return;
+    }
+    host.innerHTML = rows.map(function (s) {
+      var sid = s.signal_agent_segment_id || (s.signal_id && s.signal_id.id) || "";
+      return '<div class="expr-leaf-picker-row" data-sid="' + escapeHtml(sid) + '">' +
+        '<div class="expr-leaf-picker-name">' + escapeHtml(s.name) + '</div>' +
+        '<div class="expr-leaf-picker-meta mono">' + fmtNumber(s.estimated_audience_size) + ' · ' + escapeHtml(s.category_type || "—") + '</div>' +
+      '</div>';
+    }).join("");
+    Array.prototype.forEach.call(host.querySelectorAll(".expr-leaf-picker-row"), function (el) {
+      el.addEventListener("click", function () {
+        var sid = el.dataset.sid;
+        var loc = _exprFindNode(leafId);
+        if (!loc.node) return;
+        loc.node.signal_id = sid;
+        state.expression.pickingLeafId = null;
+        _exprRender();
+      });
+    });
+  };
+  render("");
+  input.addEventListener("input", function () { render(input.value.trim().toLowerCase()); });
+  input.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape") { state.expression.pickingLeafId = null; _exprRender(); }
+  });
+}
+
+function _exprUpdateCounters() {
+  var counters = _exprCountNodesAndDepth();
+  var n = document.getElementById("expr-count-nodes");
+  var d = document.getElementById("expr-count-depth");
+  if (n) n.textContent = counters.nodes;
+  if (d) d.textContent = counters.depth;
+  var wrap = document.getElementById("expr-counters");
+  if (wrap) {
+    wrap.classList.toggle("expr-counters-warn", counters.nodes >= EXPR_MAX_NODES * 0.8 || counters.depth >= EXPR_MAX_DEPTH);
+  }
+}
+
+function _exprUpdateRunBtn() {
+  var btn = document.getElementById("expr-run");
+  if (!btn) return;
+  // Tree is runnable if every leaf has a signal_id and every group is valid.
+  var ok = true;
+  _exprWalk(state.expression.tree, function (node) {
+    if (node.type === "signal" && !node.signal_id) ok = false;
+    if (node.type === "op") {
+      if (node.op === "NOT" && node.children.length !== 1) ok = false;
+      if ((node.op === "OR" || node.op === "AND") && node.children.length < 2) ok = false;
+    }
+  });
+  btn.disabled = !ok;
+}
+
+// Strip client-only runtime fields before sending to server.
+function _exprSerialize(node) {
+  if (node.type === "signal") return { type: "signal", id: node.id, signal_id: node.signal_id };
+  return { type: "op", id: node.id, op: node.op, children: node.children.map(_exprSerialize) };
+}
+
+async function runExpression() {
+  var host = document.getElementById("expr-result");
+  host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Evaluating expression\u2026</div></div>';
+  try {
+    var r = await fetch("/audience/compose-ast", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ast: _exprSerialize(state.expression.tree) }),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || "HTTP " + r.status);
+    state.expression.lastResult = data;
+    _renderExprResult(data);
+    _exprRender();  // re-render tree so per-node reach pills show up
+    document.getElementById("expr-save-panel").hidden = false;
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
+  }
+}
+
+function _renderExprResult(data) {
+  var host = document.getElementById("expr-result");
+  var reach = data.reach || 0;
+  var sigCount = (data.resolved_signal_ids || []).length;
+  host.innerHTML =
+    '<div class="expr-result-cards">' +
+      '<div class="expr-result-card expr-result-primary">' +
+        '<div class="k">Total reach</div>' +
+        '<div class="v mono">' + fmtNumber(reach) + '</div>' +
+      '</div>' +
+      '<div class="expr-result-card">' +
+        '<div class="k">Signals resolved</div>' +
+        '<div class="v mono">' + sigCount + '</div>' +
+      '</div>' +
+      '<div class="expr-result-card">' +
+        '<div class="k">Tree shape</div>' +
+        '<div class="v mono">' + escapeHtml(_exprShapeSummary(data.root)) + '</div>' +
+      '</div>' +
+    '</div>';
+  runExprPrivacyGate(reach, data.resolved_signal_ids || []);
+  runExprHoldout(reach);
+  var expl = document.getElementById("expr-explainer");
+  if (expl) {
+    expl.innerHTML = renderChartExplainer({
+      what: "Arbitrary boolean expression over catalog signals, evaluated bottom-up into a single reach estimate.",
+      how: "Every leaf returns its signal's reach. OR over leaves uses inclusion-exclusion with pairwise Jaccard. AND folds positives via intersect-decay and subtracts NOT-wrapped children via exclude-overlap. Between subtrees we synthesize a virtual composite signal carrying the subtree's reach and its dominant category, so the same heuristics compose recursively at any depth.",
+      read: "Each node shows its subtree's reach in the tree above after you Compute. The total at the root is the whole expression's reach. <strong>Privacy</strong> + <strong>Incrementality</strong> blocks below run automatically — same math as the Composer.",
+      limits: "Reach is estimated, not user-level. Subtree composition loses some pairwise detail vs flat lists; treat as a planning sketch, verify winning expressions in a clean-room before committing spend. Max depth 5, max 30 nodes.",
+    });
+  }
+}
+
+function _exprShapeSummary(root) {
+  if (!root) return "—";
+  var opCounts = { OR: 0, AND: 0, NOT: 0, leaf: 0 };
+  (function walk(n) {
+    if (n.type === "signal") { opCounts.leaf++; return; }
+    if (n.op === "OR") opCounts.OR++;
+    else if (n.op === "AND") opCounts.AND++;
+    else if (n.op === "NOT") opCounts.NOT++;
+    (n.children || []).forEach(walk);
+  })(root);
+  var parts = [];
+  if (opCounts.AND) parts.push(opCounts.AND + " AND");
+  if (opCounts.OR) parts.push(opCounts.OR + " OR");
+  if (opCounts.NOT) parts.push(opCounts.NOT + " NOT");
+  parts.push(opCounts.leaf + " signals");
+  return parts.join(" · ");
+}
+
+async function runExprPrivacyGate(cohortSize, signalIds) {
+  var host = document.getElementById("expr-privacy");
+  if (!host) return;
+  if (cohortSize <= 0 || signalIds.length === 0) { host.innerHTML = ""; return; }
+  try {
+    var r = await fetch("/audience/privacy-check", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ signal_ids: signalIds.slice(0, 20), cohort_size: cohortSize }),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) { host.innerHTML = ""; return; }
+    var statusColor = data.status === "ok" ? "var(--success)" : data.status === "warn" ? "var(--warning)" : "var(--error)";
+    var statusLabel = data.status === "ok" ? "Ok to activate" : data.status === "warn" ? "Warning" : "Blocked";
+    var reasons = (data.reasons || []).map(function (r) { return '<li>' + escapeHtml(r) + '</li>'; }).join("");
+    host.innerHTML =
+      '<div class="privacy-gate" style="border-left:3px solid ' + statusColor + '">' +
+        '<div class="privacy-title"><strong>Privacy gate: ' + statusLabel + '</strong>' +
+          '<span class="mono" style="color:var(--text-mut);margin-left:10px">k-anon floor ' + data.min_k + ' · cohort ' + fmtNumber(data.cohort_size) + '</span></div>' +
+        (reasons ? '<ul class="privacy-reasons">' + reasons + '</ul>' : '<div style="color:var(--text-mut);font-size:11.5px">No privacy concerns flagged.</div>') +
+      '</div>';
+  } catch (_e) { host.innerHTML = ""; }
+}
+
+async function runExprHoldout(reach) {
+  var host = document.getElementById("expr-holdout");
+  if (!host) return;
+  if (reach <= 0) { host.innerHTML = ""; return; }
+  try {
+    var r = await fetch("/audience/holdout", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reach: reach, holdout_pct: 0.10, baseline_conversion_rate: 0.02 }),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) { host.innerHTML = ""; return; }
+    host.innerHTML =
+      '<div class="holdout-block">' +
+        '<div class="holdout-title">Incrementality plan <span class="mono" style="color:var(--text-mut);font-weight:400;margin-left:8px">(10% holdout · 2% baseline CR · \u03b1=0.05 · 80% power)</span></div>' +
+        '<div class="holdout-stats">' +
+          '<div><div class="k">Exposed</div><div class="v">' + fmtNumber(data.exposed_size) + '</div></div>' +
+          '<div><div class="k">Control</div><div class="v">' + fmtNumber(data.control_size) + '</div></div>' +
+          '<div><div class="k">MDE (abs)</div><div class="v mono">' + (data.mde_absolute * 100).toFixed(2) + '%</div></div>' +
+          '<div><div class="k">MDE (rel)</div><div class="v mono">' + (data.mde_relative * 100).toFixed(1) + '%</div></div>' +
+        '</div>' +
+      '</div>';
+  } catch (_e) { host.innerHTML = ""; }
+}
+
+async function saveExpressionSnapshot() {
+  var nameEl = document.getElementById("expr-save-name");
+  var tagsEl = document.getElementById("expr-save-tags");
+  var name = (nameEl.value || "").trim();
+  if (!name) { showToast("Snapshot name required.", true); return; }
+  var lastResult = state.expression.lastResult;
+  if (!lastResult) { showToast("Compute the expression first.", true); return; }
+  var ast = _exprSerialize(state.expression.tree);
+  var tags = (tagsEl.value || "").split(",").map(function (t) { return t.trim(); }).filter(Boolean);
+  // Snapshot composition carries the AST in a new optional field; we also
+  // project the resolved signals as an include list so older diff code
+  // (which only understands include/intersect/exclude) can still produce
+  // a useful view.
+  var composition = {
+    include: (lastResult.resolved_signal_ids || []).slice(),
+    intersect: [],
+    exclude: [],
+    expression_ast: ast,
+  };
+  var body = {
+    name: name,
+    note: "Saved from Expression tab · " + _exprShapeSummary(lastResult.root),
+    tags: tags,
+    composition: composition,
+    reach_at_save: lastResult.reach || 0,
+  };
+  try {
+    var r = await fetch("/snapshots", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + DEMO_KEY },
+      body: JSON.stringify(body),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || "HTTP " + r.status);
+    showToast('Saved snapshot "' + name + '"');
+    nameEl.value = ""; tagsEl.value = "";
+  } catch (e) {
+    showToast(e.message, true);
   }
 }
 

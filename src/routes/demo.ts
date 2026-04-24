@@ -1005,7 +1005,7 @@ ${STYLES}
         <div class="pane-header">
           <div>
             <h1 class="pane-title">Journey Builder</h1>
-            <p class="pane-subtitle">Stack 2–5 audience stages (awareness → consideration → intent → conversion) and see per-stage reach, conversion rate vs the prior stage, cumulative rate vs top-of-funnel, and drop-off. Reach math reuses <code>/audience/compose</code> per stage; stages are clamped monotonically to preserve the subset invariant.</p>
+            <p class="pane-subtitle">Stack 2–6 audience stages (awareness → consideration → intent → conversion) and see per-stage reach, conversion rate vs the prior stage, cumulative rate vs top-of-funnel, and drop-off. <strong>Cumulative mode</strong> (default) makes each stage a subset of the prior by folding upstream signals in as implicit intersects — the mathematically correct funnel interpretation. <strong>Independent mode</strong> sizes each stage on its own and clamps after the fact — use when stages are sized from separate data sources.</p>
           </div>
           <div class="activations-controls">
             <button class="btn-secondary" id="journey-add">
@@ -1015,6 +1015,14 @@ ${STYLES}
               <svg class="ico"><use href="#icon-activations"/></svg><span>Compute funnel</span>
             </button>
           </div>
+        </div>
+        <div class="journey-mode-row">
+          <span class="journey-mode-label">Mode</span>
+          <div class="journey-mode-switch" role="tablist">
+            <button class="journey-mode-btn active" data-mode="cumulative" role="tab" aria-selected="true">Cumulative (subset)</button>
+            <button class="journey-mode-btn" data-mode="independent" role="tab" aria-selected="false">Independent (legacy)</button>
+          </div>
+          <span class="journey-mode-hint" id="journey-mode-hint">Each stage is a subset of the prior — upstream signals fold in as implicit intersects.</span>
         </div>
         <div id="journey-stages"></div>
         <div class="lab-panel lab-panel-full" style="margin-top:14px">
@@ -1687,6 +1695,7 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 }
 .pill-success { background: var(--success-dim); color: var(--success); }
 .pill-warning { background: var(--warning-dim); color: var(--warning); }
+.pill-error   { background: rgba(255, 92, 92, 0.18); color: var(--error); }
 .pill-accent  { background: var(--accent-dim);  color: var(--accent); }
 .pill-muted   { background: var(--bg-raised);   color: var(--text-dim); border: 1px solid var(--border); }
 
@@ -3843,6 +3852,37 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .holdout-stats .k { font-size: 10.5px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.04em; }
 .holdout-stats .v { font-size: 15px; margin-top: 2px; }
 
+/* ── Sec-46: Journey mode switch + clamp surfacing ─────────────────────── */
+.journey-mode-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin: 0 0 16px 0; padding: 10px 12px;
+  background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px;
+}
+.journey-mode-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-mut); }
+.journey-mode-switch { display: inline-flex; background: var(--bg-soft, var(--bg-base)); border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
+.journey-mode-btn {
+  background: transparent; border: none; color: var(--text-mut);
+  padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: inherit;
+}
+.journey-mode-btn.active { background: var(--accent); color: var(--bg-base); }
+.journey-mode-btn:not(.active):hover { color: var(--text); background: var(--bg-hover, var(--bg-surface)); }
+.journey-mode-hint { font-size: 11px; color: var(--text-mut); flex: 1; min-width: 200px; }
+.journey-warning-banner {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: rgba(255, 92, 92, 0.08); border: 1px solid var(--error); border-left: 3px solid var(--error);
+  border-radius: 6px; padding: 10px 12px; margin-bottom: 14px;
+}
+.journey-warning-icon {
+  width: 20px; height: 20px; border-radius: 50%; background: var(--error); color: var(--bg-base);
+  display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+  flex-shrink: 0;
+}
+.journey-warning-title { font-size: 12.5px; font-weight: 600; margin-bottom: 4px; color: var(--error); }
+.journey-warning-detail { font-size: 11.5px; line-height: 1.55; color: var(--text); }
+.journey-row-clamped { border-color: var(--error); }
+.journey-row-preclamp { color: var(--error); font-family: var(--font-mono); }
+.journey-row-preclamp-wrap { display: inline; }
+
 /* ── Sec-45: Journey Builder ───────────────────────────────────────────── */
 .journey-stage {
   background: var(--bg-surface); border: 1px solid var(--border);
@@ -4035,7 +4075,7 @@ const state = {
   },
   // Sec-44: Journey builder. Dynamic stage list; each stage has its own
   // include/intersect/exclude pool arrays.
-  journey: { stages: [], lastResult: null, loaded: false },
+  journey: { stages: [], lastResult: null, loaded: false, cumulative: true },
   // Sec-44: Scenario Planner — current / add / remove pools.
   planner: { cur: [], add: [], rem: [], lastResult: null, loaded: false },
   // Sec-44: Snapshots — fetched index + diff selection.
@@ -9260,6 +9300,22 @@ function ensureJourney() {
     _journeyRenderStages();
     _journeyRefreshRunBtn();
   });
+  // Sec-46: mode toggle (cumulative vs independent)
+  document.querySelectorAll(".journey-mode-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var mode = btn.dataset.mode;
+      state.journey.cumulative = mode === "cumulative";
+      document.querySelectorAll(".journey-mode-btn").forEach(function (b) {
+        var active = b === btn;
+        b.classList.toggle("active", active);
+        b.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      var hint = document.getElementById("journey-mode-hint");
+      if (hint) hint.textContent = state.journey.cumulative
+        ? "Each stage is a subset of the prior — upstream signals fold in as implicit intersects."
+        : "Each stage is sized independently, then clamped monotonically. Use when stages come from separate data sources.";
+    });
+  });
   document.getElementById("journey-run").addEventListener("click", runJourney);
   _journeyRefreshRunBtn();
 }
@@ -9433,7 +9489,7 @@ async function runJourney() {
   try {
     var r = await fetch("/audience/journey", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stages: stages }),
+      body: JSON.stringify({ stages: stages, cumulative: !!state.journey.cumulative }),
     });
     var data = await r.json();
     if (!r.ok || data.error) throw new Error(data.error || "HTTP " + r.status);
@@ -9449,12 +9505,17 @@ function _renderJourneyResult(data) {
   var stages = data.stages || [];
   if (stages.length === 0) { host.innerHTML = '<div class="empty-state"><div class="empty-title">Empty funnel</div></div>'; return; }
   var top = stages[0].reach || 0;
+  var mode = data.mode || "independent";
   var rows = stages.map(function (s, i) {
     var pct = top > 0 ? (s.reach / top) * 100 : 0;
     var convPrior = i === 0 ? null : (s.conversion_rate != null ? s.conversion_rate : null);
     var cumPct = (s.cumulative_rate != null ? s.cumulative_rate * 100 : pct);
-    var clampedMark = s.clamped ? ' <span class="pill pill-warning mono" style="font-size:10px">clamped</span>' : '';
-    return '<div class="journey-row">' +
+    var clampedMark = s.clamped ? ' <span class="pill pill-error mono" style="font-size:10px" title="Stage broader than its parent — clamped down. In cumulative mode this should never happen; in independent mode it means your stages aren\\'t a valid funnel.">clamped</span>' : '';
+    // Sec-46: when clamp happened, show both the pre-clamp (natively computed) reach and the clamped value.
+    var preClampLine = (s.clamped && s.pre_clamp_reach != null && s.pre_clamp_reach > s.reach)
+      ? '<span class="journey-row-preclamp">natively ' + fmtNumber(s.pre_clamp_reach) + ' · clamped to ' + fmtNumber(s.reach) + '</span>'
+      : '';
+    return '<div class="journey-row' + (s.clamped ? ' journey-row-clamped' : '') + '">' +
       '<div class="journey-row-head">' +
         '<span class="journey-row-name">' + escapeHtml(s.name || ("Stage " + (i + 1))) + clampedMark + '</span>' +
         '<span class="journey-row-reach mono">' + fmtNumber(s.reach || 0) + '</span>' +
@@ -9464,23 +9525,47 @@ function _renderJourneyResult(data) {
         '<span>' + cumPct.toFixed(1) + '% of top-of-funnel</span>' +
         (convPrior != null ? '<span>· ' + (convPrior * 100).toFixed(1) + '% vs prior</span>' : '<span>· top</span>') +
         (s.dropped_off != null && i > 0 ? '<span>· dropped ' + fmtNumber(s.dropped_off) + '</span>' : '') +
+        (preClampLine ? '<span class="journey-row-preclamp-wrap">· ' + preClampLine + '</span>' : '') +
       '</div>' +
     '</div>';
   }).join("");
   var overall = data.overall || {};
+  var modePill = '<span class="pill ' + (mode === "cumulative" ? "pill-success" : "pill-muted") + ' mono" style="font-size:10px;margin-left:8px">' + escapeHtml(mode) + '</span>';
   var summary =
     '<div class="journey-summary">' +
+      '<div><div class="k">Mode</div><div class="v">' + escapeHtml(mode) + '</div></div>' +
       '<div><div class="k">Top</div><div class="v mono">' + fmtNumber(overall.top_of_funnel || 0) + '</div></div>' +
       '<div><div class="k">Bottom</div><div class="v mono">' + fmtNumber(overall.bottom_of_funnel || 0) + '</div></div>' +
       '<div><div class="k">End-to-end</div><div class="v mono">' + ((overall.end_to_end_conversion || 0) * 100).toFixed(1) + '%</div></div>' +
       (overall.biggest_dropoff_stage ? '<div><div class="k">Biggest drop</div><div class="v">' + escapeHtml(overall.biggest_dropoff_stage) + '</div></div>' : '') +
     '</div>';
-  host.innerHTML = summary + '<div class="journey-funnel">' + rows + '</div>';
+  // Sec-46: surface a clear warning banner when ANY stage was clamped. In cumulative
+  // mode this is rare and points to a heuristic edge case; in independent mode it
+  // means the stages aren't actually a funnel (a later stage was broader than its
+  // parent) and the user should fix their composition, not trust the conversion
+  // numbers below (which read as 100% + 0 dropped after clamp — misleading).
+  var clampedStages = stages.filter(function (s) { return s.clamped; }).map(function (s) { return s.name; });
+  var warningBanner = "";
+  if (clampedStages.length > 0) {
+    warningBanner =
+      '<div class="journey-warning-banner">' +
+        '<div class="journey-warning-icon">!</div>' +
+        '<div class="journey-warning-body">' +
+          '<div class="journey-warning-title">' + clampedStages.length + ' stage' + (clampedStages.length === 1 ? '' : 's') + ' clamped: ' + escapeHtml(clampedStages.join(", ")) + '</div>' +
+          '<div class="journey-warning-detail">' +
+            (mode === "cumulative"
+              ? 'Cumulative mode should normally prevent this; heuristic edge case. Conversion + drop-off metrics on clamped stages read as 100% / 0 — ignore them.'
+              : 'Each clamped stage was <strong>broader than its parent</strong>, so it was capped. Conversion + drop-off metrics on clamped stages read as 100% / 0 — ignore them. Either fix the composition (later stages should narrow, not broaden) or switch to <strong>Cumulative</strong> mode to make subset-of-parent an enforced invariant.') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+  host.innerHTML = warningBanner + summary + '<div class="journey-funnel">' + rows + '</div>';
   document.getElementById("journey-explainer").innerHTML = renderChartExplainer({
     what: "Stacked per-stage segmentation with a monotone reach funnel.",
-    how: "Each stage's reach is computed exactly like /audience/compose (inclusion-exclusion for union, Jaccard-decayed intersect, subtracted overlap for exclude). Stages are clamped so a later stage can never exceed its predecessor — a <code>clamped</code> flag surfaces when the input breached the subset invariant.",
-    read: "Bars show each stage's reach as a share of top-of-funnel. The % vs prior value is the conversion rate between consecutive stages; cumulative % is vs stage 1.",
-    limits: "Reach math is estimated (catalog-level, not user-level); treat the funnel as a planning sketch, not a production attribution chain.",
+    how: "<strong>Cumulative mode (default):</strong> each stage's signals are intersected with the union of upstream-stage signals, so stage <code>i</code> is automatically a subset of stage <code>i−1</code>. <strong>Independent mode:</strong> each stage is sized on its own via <code>/audience/compose</code>, then reaches are clamped to be monotonically non-increasing after the fact. Reach math: inclusion-exclusion for union, Jaccard-decayed intersect, subtracted overlap for exclude.",
+    read: "Bars show each stage's reach as a share of top-of-funnel. % vs prior is the conversion rate between consecutive stages; cumulative % is vs stage 1. A red <code>clamped</code> pill marks stages whose native reach exceeded the parent's — in independent mode that's almost always a configuration error.",
+    limits: "Reach math is estimated (catalog-level, not user-level); treat the funnel as a planning sketch, not a production attribution chain. Clamped stages' conversion and drop-off metrics are meaningless after clamp — look at pre-clamp reach to understand what the stage actually described.",
   });
 }
 

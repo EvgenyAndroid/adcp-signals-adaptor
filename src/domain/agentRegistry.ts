@@ -137,7 +137,8 @@ export const AGENT_REGISTRY: RegisteredAgent[] = [
     id: "content_ignite",
     name: "Content Ignite",
     vendor: "Content Ignite",
-    mcp_url: "https://sales-agent.contentignite.com",
+    // Sec-48b: directory listed bare root URL; real endpoint is /mcp/ (trailing slash).
+    mcp_url: "https://sales-agent.contentignite.com/mcp/",
     stage: "live",
     role: "buying",
     protocols: ["adcp_3.0", "mcp_streamable_http"],
@@ -157,7 +158,8 @@ export const AGENT_REGISTRY: RegisteredAgent[] = [
     id: "claire_scope3",
     name: "Claire (Scope3 deployment)",
     vendor: "Philippe Giendaj",
-    mcp_url: "https://6138516b.sales-agent.scope3.com/mcp",
+    // Sec-48b: directory shows both /mcp and /mcp/; only /mcp/ responds.
+    mcp_url: "https://6138516b.sales-agent.scope3.com/mcp/",
     stage: "live",
     role: "buying",
     protocols: ["adcp_3.0", "mcp_streamable_http"],

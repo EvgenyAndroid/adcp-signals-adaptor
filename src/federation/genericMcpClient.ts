@@ -21,6 +21,9 @@
 // frequently; this is best-effort, we renew on every cold start.
 
 const SESSION_TTL_MS = 9 * 60 * 1000;
+/** Sentinel used for agents that negotiate stateless MCP (no mcp-session-id header
+ * on initialize). Subsequent calls for these agents don't send the header. */
+const STATELESS_SESSION = "__stateless__";
 const _sessions = new Map<string, { id: string; atMs: number }>();
 
 /** Parse an SSE response body and return the last `data:` payload as JSON. */
@@ -63,7 +66,7 @@ async function initializeSession(url: string, opts: InitOptions = {}): Promise<{
       const body = await res.text().catch(() => "");
       return { sessionId: null, error: `HTTP ${res.status}: ${body.slice(0, 200)}` };
     }
-    const sessionId = res.headers.get("mcp-session-id");
+    const headerSessionId = res.headers.get("mcp-session-id");
     const bodyText = await res.text();
     const parsed = parseSSELastData(bodyText) as {
       result?: {
@@ -72,6 +75,13 @@ async function initializeSession(url: string, opts: InitOptions = {}): Promise<{
       };
       error?: { code: number; message: string };
     } | null;
+    // Sec-48b: an initialize response with a successful `result` body means the
+    // server is live MCP. If it also returned a session id header, the server
+    // is stateful; otherwise it negotiated stateless transport (call each
+    // method independently, no session header). Treat both as success.
+    let sessionId: string | null = null;
+    if (headerSessionId) sessionId = headerSessionId;
+    else if (parsed?.result && !parsed.error) sessionId = STATELESS_SESSION;
     const result: {
       sessionId: string | null;
       serverInfo?: { name: string; version?: string };
@@ -81,16 +91,18 @@ async function initializeSession(url: string, opts: InitOptions = {}): Promise<{
     if (parsed?.result?.serverInfo) result.serverInfo = parsed.result.serverInfo;
     if (parsed?.result?.protocolVersion) result.protocolVersion = parsed.result.protocolVersion;
     if (parsed?.error) result.error = parsed.error.message;
-    // Post-initialize notification (best-effort — many servers require it before tool calls)
+    // Post-initialize notification (best-effort — many stateful servers require
+    // it before tool calls; stateless servers accept it as a no-op).
     if (sessionId) {
       try {
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+          "Accept": "application/json, text/event-stream",
+        };
+        if (sessionId !== STATELESS_SESSION) headers["mcp-session-id"] = sessionId;
         await fetch(url, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json, text/event-stream",
-            "mcp-session-id": sessionId,
-          },
+          headers,
           body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
           signal: AbortSignal.timeout(5_000),
         });
@@ -130,9 +142,32 @@ export interface ProbeResult {
   tools?: Array<{ name: string; description?: string }>;
 }
 
+/** Sec-48b: caller-installed hook to short-circuit probes of our own URL.
+ * Cloudflare Workers block a Worker from fetching its own public hostname
+ * (Cloudflare error 1042 / 522). When we know the URL is us, return the
+ * canonical tool list without hitting the network. The hook accepts a URL
+ * and returns a synth ProbeResult payload if the URL is self, null otherwise. */
+type SelfProbeHook = (url: string) => { server_info?: { name: string; version?: string }; tools?: Array<{ name: string; description?: string }> } | null;
+let SELF_PROBE_HOOK: SelfProbeHook | null = null;
+export function installSelfProbeHook(hook: SelfProbeHook | null): void { SELF_PROBE_HOOK = hook; }
+
 export async function probeAgent(url: string, opts?: { timeoutMs?: number }): Promise<ProbeResult> {
   const start = Date.now();
   const timeoutMs = opts?.timeoutMs ?? 10_000;
+  // Sec-48b: short-circuit self-probe. Cloudflare Workers block a Worker from
+  // calling its own public hostname (returns Cloudflare error 1042). We know
+  // our own tools from the self-registry — synthesize a probe result from
+  // that instead of hitting the network.
+  if (SELF_PROBE_HOOK && SELF_PROBE_HOOK(url)) {
+    const synth = SELF_PROBE_HOOK(url);
+    return {
+      url,
+      alive: true,
+      latency_ms: Date.now() - start,
+      ...(synth?.server_info ? { server_info: synth.server_info } : {}),
+      ...(synth?.tools ? { tools: synth.tools } : {}),
+    };
+  }
   const init = await initializeSession(url, { timeoutMs });
   if (!init.sessionId) {
     return {
@@ -146,13 +181,14 @@ export async function probeAgent(url: string, opts?: { timeoutMs?: number }): Pr
   _sessions.set(url, { id: init.sessionId, atMs: start });
   // tools/list
   try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Accept": "application/json, text/event-stream",
+    };
+    if (init.sessionId !== STATELESS_SESSION) headers["mcp-session-id"] = init.sessionId;
     const res = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json, text/event-stream",
-        "mcp-session-id": init.sessionId,
-      },
+      headers,
       body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }),
       signal: AbortSignal.timeout(timeoutMs),
     });
@@ -200,13 +236,14 @@ export interface ToolCallResult {
 
 async function callToolOnce(url: string, sessionId: string, name: string, args: Record<string, unknown>, timeoutMs: number): Promise<ToolCallResult> {
   const start = Date.now();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "Accept": "application/json, text/event-stream",
+  };
+  if (sessionId !== STATELESS_SESSION) headers["mcp-session-id"] = sessionId;
   const res = await fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Accept": "application/json, text/event-stream",
-      "mcp-session-id": sessionId,
-    },
+    headers,
     body: JSON.stringify({
       jsonrpc: "2.0", id: Date.now(), method: "tools/call",
       params: { name, arguments: args },
@@ -239,9 +276,25 @@ async function callToolOnce(url: string, sessionId: string, name: string, args: 
   return out;
 }
 
+/** Sec-48b: caller-installed hook for self-tool-calls. When the URL is us,
+ * the caller supplies a direct-dispatch function that runs the tool in-process
+ * (bypassing the HTTP round-trip that Cloudflare Workers would block anyway). */
+type SelfToolHook = (url: string, name: string, args: Record<string, unknown>) => Promise<ToolCallResult> | null;
+let SELF_TOOL_HOOK: SelfToolHook | null = null;
+export function installSelfToolHook(hook: SelfToolHook | null): void { SELF_TOOL_HOOK = hook; }
+
 export async function callAgentTool(url: string, name: string, args: Record<string, unknown>, opts?: { timeoutMs?: number }): Promise<ToolCallResult> {
   const timeoutMs = opts?.timeoutMs ?? 20_000;
   const start = Date.now();
+  // Sec-48b: if this is a call against our own URL, use the in-process hook
+  // to avoid Cloudflare Workers' self-fetch restriction.
+  if (SELF_TOOL_HOOK) {
+    const selfResult = SELF_TOOL_HOOK(url, name, args);
+    if (selfResult) {
+      try { return await selfResult; }
+      catch (e) { return { ok: false, error: String((e as Error).message || e), latency_ms: Date.now() - start }; }
+    }
+  }
   try {
     let session = await ensureSession(url, { timeoutMs });
     if (!session) {

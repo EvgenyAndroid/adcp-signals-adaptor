@@ -30,9 +30,12 @@
 // v21: Sec-48 adds agent-syndication endpoints (/agents/directory, /agents/probe-all,
 // /agents/orchestrate, /agents/capability-matrix) + federation.multi_agent_orchestrator
 // experimental feature flag.
+// v22: Sec-48b — no surface change, but bump so the capability-discovery cache
+// invalidates alongside the probe-handshake fixes (stateless MCP support,
+// self-fetch short-circuit, URL corrections for content_ignite + claire_scope3).
 // The key version must be bumped any time the SHAPE of the capability response
 // changes, so clients that cache by key pick up the new fields.
-const CACHE_KEY = "adcp_capabilities_v21";
+const CACHE_KEY = "adcp_capabilities_v22";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";

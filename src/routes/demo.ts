@@ -145,6 +145,10 @@ ${STYLES}
         <svg class="ico"><use href="#icon-network"/></svg><span>Federation</span>
         <span class="nav-tag nav-tag-muted">a2a</span>
       </button>
+      <button class="nav-item" data-tab="orchestrator">
+        <svg class="ico"><use href="#icon-network"/></svg><span>Orchestrator</span>
+        <span class="nav-tag">new</span>
+      </button>
       <button class="nav-item" data-tab="activations">
         <svg class="ico"><use href="#icon-activations"/></svg><span>Activations</span>
         <span class="nav-count" id="nav-activations-count">—</span>
@@ -1217,6 +1221,62 @@ ${STYLES}
         </div>
       </section>
 
+      <!-- ── TAB: Orchestrator (Sec-48) ────────────────────────────────── -->
+      <section class="tab-pane" data-tab="orchestrator">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Multi-A2A Orchestrator <span class="pill pill-success" style="margin-left:8px;font-size:10px">Sec-48</span></h1>
+            <p class="pane-subtitle">Role-routed fan-out across the full AdCP directory. Signals agents receive <code>get_signals</code>, buying agents <code>get_products</code>, creative agents <code>list_creative_formats</code>. Self routes internally. Per-agent tool overrides, live probe status, capability matrix.</p>
+          </div>
+          <div class="activations-controls">
+            <button class="btn-secondary" id="orch-probe-refresh">
+              <svg class="ico"><use href="#icon-network"/></svg><span>Probe all</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="orch-panel-stats" id="orch-stats">
+          <div class="lab-stat-card"><div class="lab-stat-label">Live agents</div><div class="lab-stat-val" id="orch-stat-live">\u2014</div></div>
+          <div class="lab-stat-card"><div class="lab-stat-label">Reachable</div><div class="lab-stat-val" id="orch-stat-ok">\u2014</div></div>
+          <div class="lab-stat-card"><div class="lab-stat-label">Tools discovered</div><div class="lab-stat-val" id="orch-stat-tools">\u2014</div></div>
+          <div class="lab-stat-card"><div class="lab-stat-label">Last probe</div><div class="lab-stat-val" id="orch-stat-last">\u2014</div></div>
+        </div>
+
+        <div class="lab-panel lab-panel-full" style="margin-top:12px">
+          <div class="lab-panel-title">Agent probe status</div>
+          <div id="orch-probe"><div class="empty-state"><span class="spinner"></span><div class="empty-title">Probing agents\u2026</div></div></div>
+        </div>
+
+        <div class="lab-grid" style="margin-top:14px">
+          <div class="lab-panel">
+            <div class="lab-panel-title">Orchestrate brief</div>
+            <label class="lab-label">Brief</label>
+            <textarea id="orch-brief" class="lab-input" rows="4" placeholder="luxury travelers planning APAC trips"></textarea>
+            <label class="lab-label" style="margin-top:8px">Role filter</label>
+            <div class="orch-role-filters" id="orch-roles">
+              <label class="orch-role-check"><input type="checkbox" value="self" checked/><span>self</span></label>
+              <label class="orch-role-check"><input type="checkbox" value="signals" checked/><span>signals</span></label>
+              <label class="orch-role-check"><input type="checkbox" value="buying" checked/><span>buying</span></label>
+              <label class="orch-role-check"><input type="checkbox" value="creative" checked/><span>creative</span></label>
+            </div>
+            <label class="lab-label" style="margin-top:8px">Max results per agent</label>
+            <input id="orch-max" type="number" min="1" max="20" value="5" class="lab-input"/>
+            <button class="btn-primary" id="orch-run" style="margin-top:12px;width:100%;justify-content:center">
+              <svg class="ico"><use href="#icon-network"/></svg><span>Orchestrate</span>
+            </button>
+          </div>
+          <div class="lab-panel lab-panel-wide">
+            <div class="lab-panel-title">Per-role results</div>
+            <div id="orch-results"><div class="empty-state"><div class="empty-desc">Enter a brief, pick role filters, hit Orchestrate. System calls the role-appropriate tool on every selected agent in parallel and renders results grouped by role.</div></div></div>
+          </div>
+        </div>
+
+        <div class="lab-panel lab-panel-full" style="margin-top:14px">
+          <div class="lab-panel-title">Capability matrix <span style="color:var(--text-mut);font-weight:400;font-size:11px;margin-left:6px">agents \u00d7 tools</span></div>
+          <div id="orch-matrix"><div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading matrix\u2026</div></div></div>
+        </div>
+      </section>
+
       <!-- ── TAB: Capabilities ──────────────────────────────────────────── -->
       <section class="tab-pane" data-tab="capabilities">
         <div class="pane-header">
@@ -1507,6 +1567,7 @@ ${STYLES}
     <div class="kbd-row"><span>Open Portfolio</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">p</span></span></div>
     <div class="kbd-row"><span>Open Seasonality</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">s</span></span></div>
     <div class="kbd-row"><span>Open Federation</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">f</span></span></div>
+    <div class="kbd-row"><span>Open Orchestrator</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">r</span></span></div>
     <div class="kbd-row"><span>Expand / collapse detail panel</span><span class="kbd-keys"><span class="kbd-key">f</span></span></div>
     <div class="kbd-row"><span>Close detail panel</span><span class="kbd-keys"><span class="kbd-key">Esc</span></span></div>
     <div class="kbd-row"><span>Toggle this sheet</span><span class="kbd-keys"><span class="kbd-key">?</span></span></div>
@@ -3332,6 +3393,123 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .fed-actionbar-info strong { color: var(--accent); font-weight: 600; }
 .fed-rows { display: flex; flex-direction: column; }
 
+/* Orchestrator (Sec-48) */
+.orch-panel-stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px; margin-top: 4px;
+}
+.orch-probe-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 10px;
+}
+.orch-agent-card {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px;
+  border-left: 3px solid var(--border);
+  transition: border-color 0.12s;
+}
+.orch-agent-card.ok { border-left-color: var(--accent); }
+.orch-agent-card.fail { border-left-color: var(--error); }
+.orch-agent-head {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; margin-bottom: 4px;
+}
+.orch-agent-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.orch-agent-vendor { font-size: 11px; color: var(--text-mut); margin-bottom: 4px; }
+.orch-agent-url {
+  font-size: 10.5px; color: var(--text-dim); margin-bottom: 8px;
+  word-break: break-all; font-family: var(--font-mono);
+}
+.orch-agent-meta {
+  display: flex; gap: 10px; font-size: 11px; color: var(--text-mut);
+  margin-bottom: 6px; flex-wrap: wrap;
+}
+.orch-agent-meta strong { color: var(--text); font-family: var(--font-mono); }
+.orch-agent-tools {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;
+}
+.orch-agent-tools .pill { font-size: 10px; }
+.orch-agent-error {
+  margin-top: 6px; padding: 6px 8px;
+  background: rgba(239, 83, 80, 0.08); border-radius: 4px;
+  font-size: 11px; color: var(--error); font-family: var(--font-mono);
+  word-break: break-all;
+}
+.orch-role-filters {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  padding: 6px 8px; background: var(--bg-input);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.orch-role-check {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--text-dim); cursor: pointer;
+  padding: 2px 6px; border-radius: 4px;
+}
+.orch-role-check:hover { color: var(--accent); }
+.orch-role-check input { width: 13px; height: 13px; accent-color: var(--accent); }
+.orch-results-section { margin-bottom: 16px; }
+.orch-results-section:last-child { margin-bottom: 0; }
+.orch-role-header {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-mut); font-weight: 600; margin-bottom: 6px;
+  padding-bottom: 4px; border-bottom: 1px solid var(--border);
+}
+.orch-role-header .count { font-family: var(--font-mono); color: var(--text-dim); font-weight: 400; }
+.orch-result-row {
+  padding: 8px 10px; margin-bottom: 4px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 4px; font-size: 12px;
+}
+.orch-result-row.fail { border-left: 2px solid var(--error); }
+.orch-result-row.ok { border-left: 2px solid var(--accent); }
+.orch-result-row.skip { border-left: 2px dashed var(--text-mut); opacity: 0.75; }
+.orch-result-head {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; flex-wrap: wrap;
+}
+.orch-result-agent { font-weight: 600; color: var(--text); font-size: 12.5px; }
+.orch-result-meta { font-size: 10.5px; color: var(--text-mut); font-family: var(--font-mono); }
+.orch-result-body { margin-top: 6px; font-size: 11.5px; color: var(--text-dim); }
+.orch-result-body code { background: var(--bg-raised); padding: 1px 4px; border-radius: 3px; font-size: 10.5px; }
+.orch-result-summary { color: var(--text-mut); font-size: 11px; }
+.orch-matrix-wrap { overflow-x: auto; }
+.orch-matrix-table {
+  border-collapse: collapse; width: 100%;
+  font-size: 11px; font-family: var(--font-mono);
+}
+.orch-matrix-table th, .orch-matrix-table td {
+  border: 1px solid var(--border);
+  padding: 4px 8px; text-align: center;
+  white-space: nowrap;
+}
+.orch-matrix-table thead th {
+  position: sticky; top: 0;
+  background: var(--bg-raised); color: var(--text-dim);
+  font-weight: 500; font-size: 10px;
+  writing-mode: vertical-rl; transform: rotate(180deg);
+  height: 140px; vertical-align: bottom;
+}
+.orch-matrix-table thead th.agent-col {
+  writing-mode: horizontal-tb; transform: none;
+  text-align: left; height: auto;
+}
+.orch-matrix-table tbody td.agent-name {
+  text-align: left; font-family: var(--font-sans);
+  color: var(--text); background: var(--bg-input);
+  font-weight: 500;
+}
+.orch-matrix-table tbody td.agent-name small {
+  display: block; color: var(--text-mut);
+  font-size: 9.5px; font-weight: 400;
+}
+.orch-matrix-cell.present {
+  color: var(--accent); background: var(--accent-dim);
+  cursor: help;
+}
+.orch-matrix-cell.absent { color: var(--text-mut); opacity: 0.4; }
+.orch-matrix-cell.failed { color: var(--error); background: rgba(239, 83, 80, 0.08); }
+
 /* Chart explainer (Sec-39) */
 .chart-explainer {
   margin-top: 10px;
@@ -4476,6 +4654,7 @@ function switchTab(name) {
     journey: "Journey", planner: "Scenario", snapshots: "Snapshots",
     freshness: "Freshness",
     seasonality: "Seasonality", federation: "Federation",
+    orchestrator: "Orchestrator",
   };
   document.getElementById("crumb-current").textContent = crumbMap[name] || name;
 
@@ -4499,6 +4678,7 @@ function switchTab(name) {
   if (name === "freshness") ensureFreshness();
   if (name === "seasonality") ensureSeasonality();
   if (name === "federation") ensureFederation();
+  if (name === "orchestrator") ensureOrchestrator();
 
   // Activations tab: start polling when visible, stop when hidden
   if (name === "activations") startActivationsPolling();
@@ -11133,6 +11313,233 @@ function fedCompareSelected() {
   host.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+// ─── Orchestrator (Sec-48) ─────────────────────────────────────────────────
+// Multi-A2A orchestrator UI. Wraps /agents/probe, /agents/orchestrate,
+// and /agents/capability-matrix. Each pane is independently refreshable
+// and shares a single registry snapshot to avoid N fetches.
+
+var _orchLoaded = false;
+var _orchLastProbe = null;
+
+async function ensureOrchestrator() {
+  if (_orchLoaded) return;
+  _orchLoaded = true;
+  document.getElementById("orch-run").addEventListener("click", runOrchestrate);
+  document.getElementById("orch-probe-refresh").addEventListener("click", function () {
+    renderOrchestratorProbe(true);
+    renderOrchestratorMatrix(true);
+  });
+  renderOrchestratorProbe(false);
+  renderOrchestratorMatrix(false);
+}
+
+function _orchRoleBadge(role) {
+  var cls = role === "signals" ? "pill-success"
+    : role === "buying" ? "pill-info"
+    : role === "creative" ? "pill-muted"
+    : role === "self" ? "pill-success"
+    : "pill-mut";
+  return '<span class="pill ' + cls + '" style="font-size:10px">' + escapeHtml(role) + '</span>';
+}
+
+async function renderOrchestratorProbe(forceRefresh) {
+  var host = document.getElementById("orch-probe");
+  if (forceRefresh) {
+    host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Probing agents\u2026</div></div>';
+  }
+  try {
+    var r = await fetch("/agents/probe");
+    var data = await r.json();
+    _orchLastProbe = data;
+
+    // Stats row
+    document.getElementById("orch-stat-live").textContent = (data.agents_probed || []).length;
+    document.getElementById("orch-stat-ok").textContent = (data.agents_ok || []).length;
+    document.getElementById("orch-stat-tools").textContent = data.total_tools_discovered || 0;
+    document.getElementById("orch-stat-last").textContent = (data.total_time_ms || 0) + "ms";
+
+    var perAgent = data.per_agent || [];
+    var cards = perAgent.map(function (p) {
+      var statusClass = p.ok ? "ok" : "fail";
+      var statusPill = p.ok
+        ? '<span class="pill pill-success" style="font-size:10px">reachable</span>'
+        : '<span class="pill" style="font-size:10px;background:rgba(239,83,80,.15);color:var(--error);border:1px solid rgba(239,83,80,.3)">failed</span>';
+      var tools = (p.tools || []).map(function (t) {
+        var label = escapeHtml(t.name);
+        var desc = t.description ? escapeHtml(t.description) : "";
+        return '<span class="pill pill-muted mono"' + (desc ? ' title="' + desc + '"' : '') + '>' + label + '</span>';
+      }).join("");
+      var meta = [];
+      if (p.protocol_version) meta.push('proto <strong>' + escapeHtml(p.protocol_version) + '</strong>');
+      if (p.server_info && p.server_info.name) meta.push('server <strong>' + escapeHtml(p.server_info.name) + (p.server_info.version ? " " + escapeHtml(p.server_info.version) : "") + '</strong>');
+      meta.push('<strong>' + (p.tools || []).length + '</strong> tools');
+      meta.push('<strong>' + (p.elapsed_ms || 0) + 'ms</strong>');
+      return '<div class="orch-agent-card ' + statusClass + '">' +
+        '<div class="orch-agent-head">' +
+          '<div class="orch-agent-name">' + escapeHtml(p.agent_id) + '</div>' +
+          statusPill +
+        '</div>' +
+        '<div class="orch-agent-vendor">' + escapeHtml(p.vendor || "") + ' \u00b7 ' + _orchRoleBadge(p.role) + '</div>' +
+        '<div class="orch-agent-url">' + escapeHtml(p.url || "") + '</div>' +
+        '<div class="orch-agent-meta">' + meta.join(" \u00b7 ") + '</div>' +
+        (tools ? '<div class="orch-agent-tools">' + tools + '</div>' : '') +
+        (p.error ? '<div class="orch-agent-error">' + escapeHtml(p.error) + '</div>' : '') +
+      '</div>';
+    }).join("");
+    host.innerHTML = '<div class="orch-probe-grid">' + cards + '</div>';
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">Probe failed</div><div class="empty-desc">' + escapeHtml(String(e.message || e)) + '</div></div>';
+  }
+}
+
+async function renderOrchestratorMatrix(forceRefresh) {
+  var host = document.getElementById("orch-matrix");
+  if (forceRefresh) {
+    host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Building matrix\u2026</div></div>';
+  }
+  try {
+    var r = await fetch("/agents/capability-matrix");
+    var data = await r.json();
+    var toolsUnion = data.tools_union || [];
+    var agents = data.agents || [];
+    var matrix = data.matrix || {};
+    if (toolsUnion.length === 0 || agents.length === 0) {
+      host.innerHTML = '<div class="empty-state"><div class="empty-desc">No tools discovered. Check probe status above \u2014 agents may be offline.</div></div>';
+      return;
+    }
+    var headCols = toolsUnion.map(function (t) { return '<th title="' + escapeHtml(t) + '">' + escapeHtml(t) + '</th>'; }).join("");
+    var bodyRows = agents.map(function (a) {
+      var row = matrix[a.agent_id] || {};
+      var cells = toolsUnion.map(function (t) {
+        if (!a.ok) return '<td class="orch-matrix-cell failed" title="agent unreachable">\u00b7</td>';
+        var cell = row[t];
+        if (cell && cell.present) {
+          var tt = cell.description ? escapeHtml(cell.description) : escapeHtml(t);
+          return '<td class="orch-matrix-cell present" title="' + tt + '">\u2713</td>';
+        }
+        return '<td class="orch-matrix-cell absent">\u2014</td>';
+      }).join("");
+      var sub = escapeHtml(a.role + (a.vendor ? " \u00b7 " + a.vendor : ""));
+      return '<tr><td class="agent-name">' + escapeHtml(a.agent_id) + '<small>' + sub + '</small></td>' + cells + '</tr>';
+    }).join("");
+    host.innerHTML = '<div class="orch-matrix-wrap"><table class="orch-matrix-table">' +
+      '<thead><tr><th class="agent-col">Agent</th>' + headCols + '</tr></thead>' +
+      '<tbody>' + bodyRows + '</tbody>' +
+    '</table></div>';
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">Matrix failed</div><div class="empty-desc">' + escapeHtml(String(e.message || e)) + '</div></div>';
+  }
+}
+
+async function runOrchestrate() {
+  var host = document.getElementById("orch-results");
+  var brief = document.getElementById("orch-brief").value.trim();
+  if (!brief) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">Enter a brief first</div></div>';
+    return;
+  }
+  var roleChecks = document.querySelectorAll("#orch-roles input[type=checkbox]");
+  var roles = [];
+  var includeSelf = false;
+  roleChecks.forEach(function (c) {
+    if (!c.checked) return;
+    if (c.value === "self") includeSelf = true;
+    else roles.push(c.value);
+  });
+  var maxPer = parseInt(document.getElementById("orch-max").value, 10) || 5;
+
+  host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Orchestrating across agents\u2026</div></div>';
+  try {
+    var body = { brief: brief, max_results_per_agent: maxPer, include_self: includeSelf };
+    if (roles.length > 0) body.roles = roles;
+    var r = await fetch("/agents/orchestrate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) {
+      host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(data.message || data.error || ("HTTP " + r.status)) + '</div></div>';
+      return;
+    }
+    renderOrchestrateResults(data);
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div></div>';
+  }
+}
+
+function _orchResultSummary(r) {
+  if (!r.ok) {
+    var parts = [];
+    if (r.skipped) parts.push('<span class="pill pill-muted" style="font-size:10px">' + escapeHtml(r.skipped) + '</span>');
+    if (r.error) parts.push('<code>' + escapeHtml(r.error) + '</code>');
+    return parts.join(" ") || '<span class="orch-result-summary">failed</span>';
+  }
+  var d = r.data;
+  if (!d) return '<span class="orch-result-summary">no data</span>';
+  // Try to recognize common AdCP shapes for a one-line summary.
+  if (Array.isArray(d.signals)) {
+    var names = d.signals.slice(0, 3).map(function (s) { return escapeHtml(s.name || s.signal_agent_segment_id || "signal"); }).join(", ");
+    var rest = d.signals.length > 3 ? " (+ " + (d.signals.length - 3) + " more)" : "";
+    return '<strong>' + d.signals.length + '</strong> signals \u00b7 <span class="orch-result-summary">' + names + rest + '</span>';
+  }
+  if (Array.isArray(d.products)) {
+    var pnames = d.products.slice(0, 3).map(function (p) { return escapeHtml(p.name || p.product_id || "product"); }).join(", ");
+    var prest = d.products.length > 3 ? " (+ " + (d.products.length - 3) + " more)" : "";
+    return '<strong>' + d.products.length + '</strong> products \u00b7 <span class="orch-result-summary">' + pnames + prest + '</span>';
+  }
+  if (Array.isArray(d.formats) || Array.isArray(d.creative_formats)) {
+    var fmts = d.formats || d.creative_formats;
+    return '<strong>' + fmts.length + '</strong> creative formats';
+  }
+  // Fallback: show top-level keys.
+  if (typeof d === "object") {
+    var keys = Object.keys(d).slice(0, 5).map(function (k) { return '<code>' + escapeHtml(k) + '</code>'; }).join(" ");
+    return '<span class="orch-result-summary">returned ' + keys + '</span>';
+  }
+  return '<span class="orch-result-summary">returned data</span>';
+}
+
+function renderOrchestrateResults(data) {
+  var host = document.getElementById("orch-results");
+  var byRole = data.by_role || {};
+  var roleOrder = ["self", "signals", "buying", "creative"];
+  var sections = roleOrder.map(function (role) {
+    var entries = byRole[role] || [];
+    if (entries.length === 0) return "";
+    var rows = entries.map(function (r) {
+      var statusClass = r.ok ? "ok" : (r.skipped ? "skip" : "fail");
+      var statusLabel = r.ok ? "ok" : (r.skipped ? "skipped" : "failed");
+      var statusPill = r.ok
+        ? '<span class="pill pill-success" style="font-size:10px">' + statusLabel + '</span>'
+        : '<span class="pill" style="font-size:10px;background:' + (r.skipped ? "var(--bg-raised)" : "rgba(239,83,80,.15)") + ';color:' + (r.skipped ? "var(--text-mut)" : "var(--error)") + ';border:1px solid var(--border)">' + statusLabel + '</span>';
+      var meta = [];
+      if (r.tool_called) meta.push('<code>' + escapeHtml(r.tool_called) + '</code>');
+      else if (r.role === "self") meta.push('<code>internal</code>');
+      meta.push(r.elapsed_ms + 'ms');
+      return '<div class="orch-result-row ' + statusClass + '">' +
+        '<div class="orch-result-head">' +
+          '<div><span class="orch-result-agent">' + escapeHtml(r.agent_id) + '</span> ' +
+            '<span class="orch-result-meta">' + escapeHtml(r.vendor || "") + '</span></div>' +
+          '<div>' + statusPill + ' <span class="orch-result-meta">' + meta.join(" \u00b7 ") + '</span></div>' +
+        '</div>' +
+        '<div class="orch-result-body">' + _orchResultSummary(r) + '</div>' +
+      '</div>';
+    }).join("");
+    return '<div class="orch-results-section">' +
+      '<div class="orch-role-header"><span>' + escapeHtml(role) + '</span>' +
+        '<span class="count">' + entries.length + '</span></div>' +
+      rows + '</div>';
+  }).filter(Boolean).join("");
+  var header = '<div class="fed-summary-grid">' +
+    '<div class="lab-stat-card"><div class="lab-stat-label">Agents targeted</div><div class="lab-stat-val">' + (data.agents_targeted || []).length + '</div></div>' +
+    '<div class="lab-stat-card"><div class="lab-stat-label">Succeeded</div><div class="lab-stat-val">' + (data.agents_ok || []).length + '</div></div>' +
+    '<div class="lab-stat-card"><div class="lab-stat-label">Failed</div><div class="lab-stat-val">' + (data.agents_failed || []).length + '</div></div>' +
+    '<div class="lab-stat-card"><div class="lab-stat-label">Round-trip</div><div class="lab-stat-val">' + (data.total_time_ms || 0) + 'ms</div></div>' +
+  '</div>';
+  host.innerHTML = header + (sections || '<div class="empty-state"><div class="empty-desc">No agents returned for the selected roles.</div></div>');
+}
+
 // Sec-38 A7: keyboard shortcuts. Two-key "go to" prefix (g+x). Single
 // keys: ? toggles the cheat sheet, Esc closes overlays + detail panel.
 // Ignore shortcuts while typing in an input/textarea.
@@ -11180,6 +11587,7 @@ document.addEventListener("keydown", function (ev) {
       // Sec-41 new tabs. Bare f is reserved for detail-panel expand; the
       // g f prefix disambiguates.
       x: "lab", p: "portfolio", s: "seasonality", f: "federation",
+      r: "orchestrator",
     };
     var tab = map[ev.key.toLowerCase()];
     if (tab) { switchTab(tab); _kbdPrefix = null; if (_kbdPrefixTimer) clearTimeout(_kbdPrefixTimer); return; }

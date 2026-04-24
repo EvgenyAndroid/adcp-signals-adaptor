@@ -31,6 +31,12 @@ interface Composition {
   intersect?: string[];
   exclude?: string[];
   lookalike?: { seed_signal_id: string; k?: number; min_cosine?: number };
+  // Sec-47: optional boolean expression AST for snapshots saved from the
+  // Expression Tree Builder. Shape: { type:"signal"|"op", id, signal_id?,
+  // op?, children? }. Stored as opaque JSON — backend doesn't interpret
+  // on read/write, only the Expression tab does. Kept as `unknown` here
+  // to avoid coupling the snapshot route to the audienceMath AST type.
+  expression_ast?: unknown;
 }
 
 interface SnapshotBody {
@@ -103,6 +109,8 @@ export async function handleSnapshotSave(request: Request, env: Env, logger: Log
       intersect: body.composition.intersect ?? [],
       exclude:   body.composition.exclude ?? [],
       ...(body.composition.lookalike ? { lookalike: body.composition.lookalike } : {}),
+      // Sec-47: pass through the AST if the caller included one. Stored verbatim.
+      ...(body.composition.expression_ast ? { expression_ast: body.composition.expression_ast } : {}),
     },
     reach_at_save: typeof body.reach_at_save === "number" ? body.reach_at_save : 0,
     saved_at: new Date().toISOString(),

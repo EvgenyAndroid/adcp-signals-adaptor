@@ -39,6 +39,7 @@ import {
   pickTopFormatIds,
   pickProductPerAgent,
   buildCreateMediaBuyPayload,
+  applyVendorAdapter,
   newWorkflowId,
   productId as productIdOf,
   signalId as signalIdOf,
@@ -565,11 +566,14 @@ async function runMediaBuyStage(
       fired: false,
     };
     if (!activateSet.has(a.id)) return base;
-    // User opted to fire on this agent.
+    // Sec-48r: apply per-vendor adapter just before firing. The preview
+    // above stays in the pre-transform shape so the UI shows the common
+    // synthesized payload; the wire call carries vendor-specific tweaks.
+    const wirePayload = applyVendorAdapter(a.id, payload);
     const res = await callAgentTool(
       a.mcp_url!,
       "create_media_buy",
-      payload as unknown as Record<string, unknown>,
+      wirePayload as unknown as Record<string, unknown>,
       { timeoutMs },
     );
     base.fired = true;
@@ -983,10 +987,11 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
             return;
           }
           const start = Date.now();
+          const wirePayload = applyVendorAdapter(a.id, payload);
           const res = await callAgentTool(
             a.mcp_url!,
             "create_media_buy",
-            payload as unknown as Record<string, unknown>,
+            wirePayload as unknown as Record<string, unknown>,
             { timeoutMs },
           );
           send({
@@ -1104,11 +1109,15 @@ export async function handleWorkflowFireBuy(request: Request, env: Env, logger: 
     chosenFormatIds: Array.isArray(body.format_ids) ? body.format_ids.filter((f) => typeof f === "string") : [],
   });
 
+  // Sec-48r: apply per-vendor adapter just before wire call. payload
+  // above stays as the common synthesized shape returned in the
+  // response's `payload_preview` — UI shows the base for comparison.
+  const wirePayload = applyVendorAdapter(agent.id, payload);
   const start = Date.now();
   const res = await callAgentTool(
     agent.mcp_url,
     "create_media_buy",
-    payload as unknown as Record<string, unknown>,
+    wirePayload as unknown as Record<string, unknown>,
     { timeoutMs },
   );
   const latency = Date.now() - start;

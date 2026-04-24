@@ -10,6 +10,7 @@ import {
   pickTopFormatIds,
   pickProductPerAgent,
   buildCreateMediaBuyPayload,
+  applyVendorAdapter,
   extractCategories,
   extractArrayPayload,
   extractMcpToolArray,
@@ -376,17 +377,19 @@ describe("deriveCreativeFilter", () => {
 });
 
 describe("deriveProductFilter", () => {
-  it("includes signals + formats + asset_types when all present", () => {
+  it("forwards signals + asset_types, strips format_ids (Sec-48r vendor-model mismatch)", () => {
     const out = deriveProductFilter(
       ["sig_1", "sig_2"],
-      ["fmt_a"],
+      ["fmt_a", "fmt_b"],
       { asset_types: ["video"] },
     );
     expect(out).toEqual({
       targeting_signals: ["sig_1", "sig_2"],
-      format_ids: ["fmt_a"],
       asset_types: ["video"],
     });
+    // NOT in output — see note in deriveProductFilter source about Pydantic
+    // FormatId model rejecting string[].
+    expect(out).not.toHaveProperty("format_ids");
   });
 
   it("omits keys with empty inputs", () => {
@@ -484,6 +487,68 @@ describe("buildCreateMediaBuyPayload with creatives (Sec-48q)", () => {
       chosenProductId: "p", chosenSignalIds: [], nowMs: NOW,
     });
     expect(p.packages[0]!.creatives).toBeUndefined();
+  });
+});
+
+describe("applyVendorAdapter (Sec-48r)", () => {
+  const NOW = Date.UTC(2026, 3, 24, 12, 0, 0);
+  const base = buildCreateMediaBuyPayload({
+    workflowId: "wf_x",
+    agentId: "dummy",
+    brief: "automotive intenders",
+    chosenProductId: "prod_1",
+    chosenSignalIds: ["sig_1"],
+    chosenFormatIds: ["fmt_1"],
+    nowMs: NOW,
+  });
+
+  it("adzymic_* gets brand_manifest.name alongside .brand", () => {
+    const out = applyVendorAdapter("adzymic_apx", base) as unknown as { brand_manifest: Record<string, unknown> };
+    expect(out.brand_manifest.brand).toBe("AdCP Workflow Demo");
+    expect(out.brand_manifest.name).toBe("AdCP Workflow Demo");
+  });
+
+  it("swivel also gets brand_manifest.name AND package buyer_ref", () => {
+    const out = applyVendorAdapter("swivel", base) as unknown as {
+      brand_manifest: Record<string, unknown>;
+      packages: Array<Record<string, unknown>>;
+    };
+    expect(out.brand_manifest.name).toBeDefined();
+    expect(out.packages[0]!.buyer_ref).toContain(base.buyer_ref);
+    expect(out.packages[0]!.buyer_ref).toContain("pkg_1");
+  });
+
+  it("claire_* gets package buyer_ref + budget flattened to number", () => {
+    const out = applyVendorAdapter("claire_scope3", base) as unknown as {
+      packages: Array<Record<string, unknown>>;
+      total_budget: unknown;
+    };
+    expect(out.packages[0]!.buyer_ref).toBeDefined();
+    expect(out.packages[0]!.budget).toBe(1000);
+    expect(out.total_budget).toBe(1000);
+  });
+
+  it("content_ignite follows claire rules", () => {
+    const out = applyVendorAdapter("content_ignite", base) as unknown as {
+      packages: Array<Record<string, unknown>>;
+      total_budget: unknown;
+    };
+    expect(out.packages[0]!.buyer_ref).toBeDefined();
+    expect(out.packages[0]!.budget).toBe(1000);
+    expect(out.total_budget).toBe(1000);
+  });
+
+  it("unknown agent passes through as identity", () => {
+    const out = applyVendorAdapter("random_new_agent", base);
+    expect(out).toEqual(base);
+    // Confirmed not the same reference — adapter deep-clones.
+    expect(out).not.toBe(base);
+  });
+
+  it("adapter is a deep-clone; mutating result doesn't touch base", () => {
+    const out = applyVendorAdapter("adzymic_apx", base);
+    (out.brand_manifest as unknown as Record<string, unknown>).name = "tampered";
+    expect(base.brand_manifest.brand).toBe("AdCP Workflow Demo");
   });
 });
 

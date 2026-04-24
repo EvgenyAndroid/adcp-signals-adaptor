@@ -145,6 +145,10 @@ ${STYLES}
         <svg class="ico"><use href="#icon-network"/></svg><span>Federation</span>
         <span class="nav-tag nav-tag-muted">a2a</span>
       </button>
+      <button class="nav-item" data-tab="orchestrator">
+        <svg class="ico"><use href="#icon-network"/></svg><span>Orchestrator</span>
+        <span class="nav-tag">new</span>
+      </button>
       <button class="nav-item" data-tab="activations">
         <svg class="ico"><use href="#icon-activations"/></svg><span>Activations</span>
         <span class="nav-count" id="nav-activations-count">—</span>
@@ -1214,6 +1218,47 @@ ${STYLES}
         <div class="lab-panel lab-panel-full" style="margin-top:14px">
           <div class="lab-panel-title">Agent registry</div>
           <div id="fed-registry"><div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading agent registry\u2026</div></div></div>
+        </div>
+      </section>
+
+      <!-- ── TAB: Orchestrator (Sec-48) ──────────────────────────────────── -->
+      <section class="tab-pane" data-tab="orchestrator">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Multi-Agent Orchestrator <span class="pill pill-accent" style="margin-left:8px;font-size:10px">Sec-48</span></h1>
+            <p class="pane-subtitle">Live view of every AdCP agent we know about. Probe each MCP endpoint in parallel to see who's up, what they expose, and how fast they respond. Fan out a signals brief to all live signals agents with one click, or compare tool surfaces side-by-side.</p>
+          </div>
+          <div class="activations-controls">
+            <button class="btn-secondary" id="orch-refresh">
+              <svg class="ico"><use href="#icon-chart"/></svg><span>Probe all</span>
+            </button>
+          </div>
+        </div>
+        <div class="orch-summary" id="orch-summary"></div>
+        <div class="lab-panel lab-panel-full" style="margin-top:8px">
+          <div class="lab-panel-title">Agents <span class="pill pill-muted mono" id="orch-agents-count" style="margin-left:8px">—</span></div>
+          <div id="orch-agents"><div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading directory\u2026</div></div></div>
+        </div>
+        <div class="lab-grid" style="margin-top:14px">
+          <div class="lab-panel">
+            <div class="lab-panel-title">Fan-out signals brief</div>
+            <label class="lab-label">Brief</label>
+            <textarea id="orch-brief" class="lab-input" rows="3" placeholder="automotive intenders in-market for EVs"></textarea>
+            <label class="lab-label" style="margin-top:8px">Max results per agent</label>
+            <input id="orch-max" type="number" min="1" max="50" value="10" class="lab-input"/>
+            <button class="btn-primary" id="orch-run" style="margin-top:12px;width:100%;justify-content:center">
+              <svg class="ico"><use href="#icon-bolt"/></svg><span>Fan out to all signals agents</span>
+            </button>
+            <div style="font-size:11px;color:var(--text-mut);margin-top:8px">Calls <code>/agents/orchestrate</code> → each signals agent's <code>get_signals</code> in parallel. Results tagged with <code>source_agent</code>.</div>
+          </div>
+          <div class="lab-panel lab-panel-wide">
+            <div class="lab-panel-title">Merged results</div>
+            <div id="orch-results"><div class="empty-state"><div class="empty-desc">Enter a brief, hit <strong>Fan out</strong>. Signals come back merged with per-agent latency + source tags.</div></div></div>
+          </div>
+        </div>
+        <div class="lab-panel lab-panel-full" style="margin-top:14px">
+          <div class="lab-panel-title">Capability matrix <button class="btn-secondary" id="orch-matrix-run" style="margin-left:8px;font-size:11px;padding:4px 10px">Build matrix</button></div>
+          <div id="orch-matrix"><div class="empty-state"><div class="empty-desc">Click <strong>Build matrix</strong> to compare every live agent's tool surface side-by-side. Each row is a tool name; columns are agents; cells mark which agents declare that tool.</div></div></div>
         </div>
       </section>
 
@@ -3893,6 +3938,101 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .holdout-stats .k { font-size: 10.5px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.04em; }
 .holdout-stats .v { font-size: 15px; margin-top: 2px; }
 
+/* ── Sec-48: Multi-Agent Orchestrator ─────────────────────────────────── */
+.orch-summary {
+  margin-bottom: 12px;
+}
+.orch-summary-cards {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;
+}
+.orch-summary-card {
+  background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 12px;
+}
+.orch-summary-card.orch-summary-ok { border-left: 3px solid var(--success); }
+.orch-summary-card .k { font-size: 10px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.04em; }
+.orch-summary-card .v { font-size: 16px; margin-top: 2px; font-weight: 500; }
+
+.orch-stage-section { margin-bottom: 14px; }
+.orch-stage-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-mut); margin-bottom: 8px;
+}
+.orch-agent-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px;
+}
+.orch-agent-card {
+  background: var(--bg-surface); border: 1px solid var(--border); border-left-width: 3px;
+  border-radius: 6px; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+  transition: border-color 0.15s;
+}
+.orch-agent-card.orch-agent-alive { border-left-color: var(--success); }
+.orch-agent-card.orch-agent-down { border-left-color: var(--error); opacity: 0.85; }
+.orch-agent-card.orch-agent-issue { border-left-color: var(--warning); opacity: 0.7; }
+.orch-agent-card.orch-agent-roadmap { border-left-color: var(--text-mut); opacity: 0.6; }
+.orch-agent-card.orch-agent-unknown { border-left-color: var(--text-mut); }
+.orch-agent-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
+.orch-agent-name { font-size: 12.5px; font-weight: 500; line-height: 1.2; }
+.orch-agent-meta { display: flex; gap: 8px; align-items: center; }
+.orch-role-badge {
+  display: inline-block; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 2px 6px; border-radius: 3px; font-weight: 600;
+}
+.orch-role-signals { background: rgba(79, 142, 255, 0.18); color: var(--accent); }
+.orch-role-buying { background: rgba(79, 195, 127, 0.15); color: var(--success); }
+.orch-role-creative { background: rgba(255, 204, 92, 0.18); color: var(--warning); }
+.orch-role-unclassified { background: var(--bg-soft, var(--bg-base)); color: var(--text-mut); }
+.orch-agent-url { font-size: 10.5px; color: var(--text-mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.orch-agent-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.orch-agent-stats .k { font-size: 9.5px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.04em; }
+.orch-agent-stats .v { font-size: 13px; font-family: var(--font-mono); margin-top: 1px; }
+.orch-small { font-size: 10px; color: var(--text-mut); }
+.orch-agent-server { font-size: 10.5px; color: var(--text-mut); }
+.orch-agent-tools { font-size: 10.5px; color: var(--text-mut); line-height: 1.3; }
+.orch-agent-error { font-size: 10px; color: var(--error); line-height: 1.3; }
+
+.orch-fanout-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.orch-fanout-card {
+  background: var(--bg-surface); border: 1px solid var(--border); border-left-width: 3px;
+  border-radius: 5px; padding: 8px 10px;
+}
+.orch-fanout-card.orch-fanout-ok { border-left-color: var(--success); }
+.orch-fanout-card.orch-fanout-err { border-left-color: var(--error); opacity: 0.85; }
+.orch-fanout-name { font-size: 12px; font-weight: 500; margin-bottom: 4px; }
+.orch-fanout-stats { display: flex; gap: 10px; font-size: 11px; color: var(--text-mut); }
+.orch-fanout-err-msg { font-size: 10px; color: var(--error); margin-top: 4px; }
+.orch-fanout-totals {
+  font-size: 12px; color: var(--text-mut); padding: 8px 12px;
+  background: var(--bg-soft, var(--bg-surface)); border-radius: 5px;
+}
+.orch-signals-table {
+  width: 100%; border-collapse: collapse; font-size: 11.5px;
+}
+.orch-signals-table th {
+  text-align: left; padding: 6px 8px; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--text-mut); border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.orch-signals-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+
+.orch-matrix-table {
+  border-collapse: collapse; font-size: 11.5px; margin: 0;
+}
+.orch-matrix-table th, .orch-matrix-table td {
+  padding: 5px 8px; border: 1px solid var(--border); text-align: center;
+}
+.orch-matrix-table .orch-matrix-tool-header { text-align: left; font-size: 10px; text-transform: uppercase; color: var(--text-mut); }
+.orch-matrix-tool { text-align: left; font-size: 11px; white-space: nowrap; background: var(--bg-surface); }
+.orch-matrix-agent {
+  vertical-align: top; font-weight: 500; min-width: 80px;
+}
+.orch-matrix-agent-name { font-size: 11px; }
+.orch-matrix-agent-meta { font-size: 9.5px; color: var(--text-mut); margin-top: 2px; }
+.orch-matrix-yes { color: var(--success); font-size: 14px; background: rgba(79, 195, 127, 0.08); }
+.orch-matrix-no { color: var(--border); }
+.orch-matrix-unique-row { padding: 4px 0; font-size: 11px; }
+
 /* ── Sec-47: Expression Tree Builder ──────────────────────────────────── */
 .expr-counters {
   display: inline-flex; align-items: center; gap: 8px;
@@ -4237,6 +4377,8 @@ const state = {
   journey: { stages: [], lastResult: null, loaded: false, cumulative: true },
   // Sec-47: boolean expression AST builder. Tree is null until ensureExpression seeds it.
   expression: { tree: null, lastResult: null, loaded: false, nextId: 1, draggedNodeId: null, pickingLeafId: null },
+  // Sec-48: multi-agent orchestrator state.
+  orchestrator: { directory: [], probe: null, orchestrate: null, matrix: null, loaded: false, probing: false, matrixing: false, orchestrating: false },
   // Sec-44: Scenario Planner — current / add / remove pools.
   planner: { cur: [], add: [], rem: [], lastResult: null, loaded: false },
   // Sec-44: Snapshots — fetched index + diff selection.
@@ -4476,6 +4618,7 @@ function switchTab(name) {
     journey: "Journey", planner: "Scenario", snapshots: "Snapshots",
     freshness: "Freshness",
     seasonality: "Seasonality", federation: "Federation",
+    orchestrator: "Orchestrator",
   };
   document.getElementById("crumb-current").textContent = crumbMap[name] || name;
 
@@ -4499,6 +4642,7 @@ function switchTab(name) {
   if (name === "freshness") ensureFreshness();
   if (name === "seasonality") ensureSeasonality();
   if (name === "federation") ensureFederation();
+  if (name === "orchestrator") ensureOrchestrator();
 
   // Activations tab: start polling when visible, stop when hidden
   if (name === "activations") startActivationsPolling();
@@ -10793,6 +10937,261 @@ async function saveExpressionSnapshot() {
   } catch (e) {
     showToast(e.message, true);
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Sec-48: Multi-Agent Orchestrator — live view + fan-out + capability matrix
+// across every AdCP agent in our curated directory.
+// ─────────────────────────────────────────────────────────────────────────
+var _orchLoaded = false;
+
+async function ensureOrchestrator() {
+  if (_orchLoaded) return;
+  _orchLoaded = true;
+  document.getElementById("orch-refresh").addEventListener("click", runOrchProbeAll);
+  document.getElementById("orch-run").addEventListener("click", runOrchFanout);
+  document.getElementById("orch-matrix-run").addEventListener("click", runOrchMatrix);
+  // Load static directory first, then kick off probe in parallel.
+  await loadOrchDirectory();
+  runOrchProbeAll();
+}
+
+async function loadOrchDirectory() {
+  var host = document.getElementById("orch-agents");
+  try {
+    var r = await fetch("/agents/directory");
+    var data = await r.json();
+    state.orchestrator.directory = data.agents || [];
+    var countEl = document.getElementById("orch-agents-count");
+    if (countEl) countEl.textContent = data.count;
+    _orchRenderAgentGrid();
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
+  }
+}
+
+async function runOrchProbeAll() {
+  if (state.orchestrator.probing) return;
+  state.orchestrator.probing = true;
+  var btn = document.getElementById("orch-refresh");
+  var label = btn ? btn.querySelector("span") : null;
+  var origText = label ? label.textContent : "";
+  if (label) label.textContent = "Probing\u2026";
+  if (btn) btn.disabled = true;
+  try {
+    var r = await fetch("/agents/probe-all?timeout_ms=10000");
+    var data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || "HTTP " + r.status);
+    state.orchestrator.probe = data;
+    _orchRenderAgentGrid();
+    _orchRenderSummary();
+  } catch (e) {
+    showToast("Probe failed: " + e.message, true);
+  } finally {
+    state.orchestrator.probing = false;
+    if (label) label.textContent = origText;
+    if (btn) btn.disabled = false;
+  }
+}
+
+function _orchRenderSummary() {
+  var host = document.getElementById("orch-summary");
+  if (!host) return;
+  var probe = state.orchestrator.probe;
+  if (!probe) { host.innerHTML = ""; return; }
+  host.innerHTML =
+    '<div class="orch-summary-cards">' +
+      '<div class="orch-summary-card"><div class="k">Probed</div><div class="v mono">' + probe.count + '</div></div>' +
+      '<div class="orch-summary-card orch-summary-ok"><div class="k">Alive</div><div class="v mono">' + probe.alive_count + '</div></div>' +
+      '<div class="orch-summary-card"><div class="k">Down</div><div class="v mono">' + (probe.count - probe.alive_count) + '</div></div>' +
+      '<div class="orch-summary-card"><div class="k">Avg latency</div><div class="v mono">' + probe.avg_latency_ms + ' ms</div></div>' +
+      '<div class="orch-summary-card"><div class="k">Probed at</div><div class="v mono" style="font-size:11px">' + escapeHtml(probe.probed_at) + '</div></div>' +
+    '</div>';
+}
+
+function _orchRenderAgentGrid() {
+  var host = document.getElementById("orch-agents");
+  if (!host) return;
+  var agents = state.orchestrator.directory || [];
+  if (agents.length === 0) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title">No agents in directory</div></div>';
+    return;
+  }
+  // Build per-agent probe lookup.
+  var probeByUrl = {};
+  if (state.orchestrator.probe) {
+    (state.orchestrator.probe.results || []).forEach(function (r) { probeByUrl[r.mcp_url] = r; });
+  }
+  // Group by role + stage for grid layout.
+  var groups = { signals: [], buying: [], creative: [], unclassified: [] };
+  var byStage = { live: [], known_issue: [], roadmap: [] };
+  agents.forEach(function (a) {
+    byStage[a.stage] = byStage[a.stage] || [];
+    byStage[a.stage].push(a);
+  });
+  function renderAgent(a) {
+    var probe = a.mcp_url ? probeByUrl[a.mcp_url] : null;
+    var probeInfo = probe ? probe.probe : null;
+    var alive = probeInfo && probeInfo.alive;
+    var status = a.stage === "roadmap" ? "roadmap" :
+                 a.stage === "known_issue" ? "issue" :
+                 !probeInfo ? "unknown" :
+                 alive ? "alive" : "down";
+    var statusClass = "orch-agent-" + status;
+    var pillClass = status === "alive" ? "pill-success" :
+                    status === "down" ? "pill-error" :
+                    status === "issue" ? "pill-warning" :
+                    status === "roadmap" ? "pill-muted" : "pill-muted";
+    var pillLabel = status === "alive" ? "alive" : status === "down" ? "down" :
+                    status === "issue" ? "issues" : status === "roadmap" ? "roadmap" : "unknown";
+    var toolCount = probeInfo && probeInfo.tools ? probeInfo.tools.length : (a.directory_tool_count != null ? a.directory_tool_count : "—");
+    var toolSource = probeInfo && probeInfo.tools ? "live" : "dir";
+    var latency = probeInfo ? probeInfo.latency_ms + " ms" : "—";
+    var serverInfo = probeInfo && probeInfo.server_info ? (probeInfo.server_info.name || "") + (probeInfo.server_info.version ? " " + probeInfo.server_info.version : "") : "";
+    var roleBadge = '<span class="orch-role-badge orch-role-' + a.role + '">' + escapeHtml(a.role) + '</span>';
+    var urlShort = a.mcp_url ? a.mcp_url.replace(/^https?:\/\//, "").slice(0, 50) : "no endpoint";
+    var errorLine = probeInfo && probeInfo.error && !alive
+      ? '<div class="orch-agent-error mono">' + escapeHtml(String(probeInfo.error).slice(0, 80)) + '</div>'
+      : '';
+    var firstTools = probeInfo && probeInfo.tools ? probeInfo.tools.slice(0, 3).map(function (t) { return t.name; }).join(", ") : "";
+    return '<div class="orch-agent-card ' + statusClass + '">' +
+      '<div class="orch-agent-head">' +
+        '<div class="orch-agent-name">' + escapeHtml(a.name) + '</div>' +
+        '<span class="pill ' + pillClass + ' mono" style="font-size:10px">' + pillLabel + '</span>' +
+      '</div>' +
+      '<div class="orch-agent-meta">' + roleBadge +
+        '<span class="mono" style="color:var(--text-mut);font-size:10.5px">' + escapeHtml(a.vendor) + '</span>' +
+      '</div>' +
+      '<div class="orch-agent-url mono" title="' + escapeHtml(a.mcp_url || "") + '">' + escapeHtml(urlShort) + '</div>' +
+      '<div class="orch-agent-stats">' +
+        '<div><div class="k">Tools</div><div class="v">' + toolCount + ' <span class="orch-small mono">(' + toolSource + ')</span></div></div>' +
+        '<div><div class="k">Latency</div><div class="v">' + latency + '</div></div>' +
+      '</div>' +
+      (serverInfo ? '<div class="orch-agent-server mono">' + escapeHtml(serverInfo) + '</div>' : '') +
+      (firstTools ? '<div class="orch-agent-tools mono">' + escapeHtml(firstTools) + (probeInfo.tools.length > 3 ? " +" + (probeInfo.tools.length - 3) : "") + '</div>' : '') +
+      errorLine +
+    '</div>';
+  }
+  var html = "";
+  ["live", "known_issue", "roadmap"].forEach(function (stage) {
+    var list = byStage[stage] || [];
+    if (list.length === 0) return;
+    var stageLabel = stage === "live" ? "Live" : stage === "known_issue" ? "Known Issues" : "Roadmap";
+    html +=
+      '<div class="orch-stage-section">' +
+        '<div class="orch-stage-label">' + stageLabel + ' <span class="mono" style="color:var(--text-mut);font-weight:400;margin-left:6px">' + list.length + '</span></div>' +
+        '<div class="orch-agent-grid">' + list.map(renderAgent).join("") + '</div>' +
+      '</div>';
+  });
+  host.innerHTML = html;
+  void groups;
+}
+
+async function runOrchFanout() {
+  if (state.orchestrator.orchestrating) return;
+  var briefEl = document.getElementById("orch-brief");
+  var maxEl = document.getElementById("orch-max");
+  var brief = (briefEl.value || "").trim();
+  if (!brief) { showToast("Brief required.", true); return; }
+  var maxResults = Number(maxEl.value) || 10;
+  state.orchestrator.orchestrating = true;
+  var host = document.getElementById("orch-results");
+  host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Fanning out\u2026</div></div>';
+  try {
+    var r = await fetch("/agents/orchestrate", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brief: brief, max_results_per_agent: maxResults, timeout_ms: 15000 }),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || "HTTP " + r.status);
+    state.orchestrator.orchestrate = data;
+    _orchRenderFanoutResult(data);
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
+  } finally {
+    state.orchestrator.orchestrating = false;
+  }
+}
+
+function _orchRenderFanoutResult(data) {
+  var host = document.getElementById("orch-results");
+  var summaryCards = (data.per_agent || []).map(function (p) {
+    var cls = p.ok ? "orch-fanout-ok" : "orch-fanout-err";
+    return '<div class="orch-fanout-card ' + cls + '">' +
+      '<div class="orch-fanout-name">' + escapeHtml(p.name) + ' <span class="mono" style="color:var(--text-mut);font-size:10px">· ' + escapeHtml(p.vendor) + '</span></div>' +
+      '<div class="orch-fanout-stats">' +
+        '<span class="mono">' + (p.ok ? p.signal_count + " signals" : "failed") + '</span>' +
+        '<span class="mono">' + p.latency_ms + ' ms</span>' +
+      '</div>' +
+      (p.error ? '<div class="orch-fanout-err-msg mono">' + escapeHtml(String(p.error).slice(0, 80)) + '</div>' : '') +
+    '</div>';
+  }).join("");
+  var signals = data.signals || [];
+  var signalRows = signals.slice(0, 50).map(function (s) {
+    var sourceAgent = s.source_agent || "?";
+    var badgeCls = sourceAgent === "evgeny_signals" ? "pill-success" : sourceAgent === "dstillery" ? "pill-info" : "pill-muted";
+    return '<tr>' +
+      '<td><span class="pill ' + badgeCls + ' mono" style="font-size:10px">' + escapeHtml(sourceAgent) + '</span></td>' +
+      '<td>' + escapeHtml(s.name || "(unnamed)") + '</td>' +
+      '<td class="mono">' + escapeHtml(s.signal_agent_segment_id || "") + '</td>' +
+      '<td class="mono">' + (s.coverage_percentage != null ? (s.coverage_percentage * 100).toFixed(1) + "%" : "—") + '</td>' +
+      '<td class="mono">' + (s.pricing && s.pricing.cpm != null ? "$" + s.pricing.cpm : "—") + '</td>' +
+    '</tr>';
+  }).join("");
+  host.innerHTML =
+    '<div class="orch-fanout-summary">' + summaryCards + '</div>' +
+    '<div class="orch-fanout-totals mono">' +
+      'Total: <strong>' + signals.length + '</strong> signals across <strong>' + data.agents_succeeded.length + '/' + data.agents_queried.length + '</strong> agents' +
+    '</div>' +
+    (signals.length > 0
+      ? '<div style="overflow:auto;margin-top:10px"><table class="orch-signals-table"><thead><tr><th>Source</th><th>Name</th><th>Segment ID</th><th>Coverage</th><th>CPM</th></tr></thead><tbody>' + signalRows + '</tbody></table>' + (signals.length > 50 ? '<div style="color:var(--text-mut);font-size:11px;padding:6px 0">Showing first 50 of ' + signals.length + '.</div>' : '') + '</div>'
+      : '<div class="empty-state" style="margin-top:10px"><div class="empty-desc">No signals returned from any agent. Check the per-agent summary above for per-agent errors.</div></div>');
+}
+
+async function runOrchMatrix() {
+  if (state.orchestrator.matrixing) return;
+  state.orchestrator.matrixing = true;
+  var host = document.getElementById("orch-matrix");
+  host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Building capability matrix\u2026</div></div>';
+  try {
+    var r = await fetch("/agents/capability-matrix?timeout_ms=10000");
+    var data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || "HTTP " + r.status);
+    state.orchestrator.matrix = data;
+    _orchRenderMatrix(data);
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
+  } finally {
+    state.orchestrator.matrixing = false;
+  }
+}
+
+function _orchRenderMatrix(data) {
+  var host = document.getElementById("orch-matrix");
+  var agents = data.agents || [];
+  var tools = data.tools || [];
+  if (agents.length === 0 || tools.length === 0) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title">No tools discovered</div><div class="empty-desc">All agents either failed to probe or exposed no tools/list.</div></div>';
+    return;
+  }
+  var headerCells = agents.map(function (a) {
+    var title = escapeHtml(a.name) + " — " + (a.alive ? "alive" : "down");
+    return '<th class="orch-matrix-agent" title="' + title + '"><div class="orch-matrix-agent-name">' + escapeHtml(a.id) + '</div><div class="orch-matrix-agent-meta mono">' + a.tool_count + ' tools</div></th>';
+  }).join("");
+  var rows = tools.map(function (t) {
+    var cells = agents.map(function (a) {
+      var supported = t.supported_by.indexOf(a.id) >= 0;
+      return '<td class="' + (supported ? "orch-matrix-yes" : "orch-matrix-no") + '">' + (supported ? "●" : "") + '</td>';
+    }).join("");
+    return '<tr><td class="orch-matrix-tool mono">' + escapeHtml(t.tool) + '</td>' + cells + '</tr>';
+  }).join("");
+  var uniqueSummary = agents.filter(function (a) { return a.unique_tools && a.unique_tools.length > 0; }).map(function (a) {
+    return '<div class="orch-matrix-unique-row"><span class="pill pill-accent mono" style="font-size:10px">' + escapeHtml(a.id) + '</span> <span class="mono" style="font-size:11px">' + escapeHtml(a.unique_tools.join(", ").slice(0, 100)) + '</span></div>';
+  }).join("");
+  host.innerHTML =
+    '<div style="overflow:auto"><table class="orch-matrix-table"><thead><tr><th class="orch-matrix-tool-header">Tool</th>' + headerCells + '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    (uniqueSummary ? '<div style="margin-top:10px"><div class="lab-label">Unique tools per agent</div>' + uniqueSummary + '</div>' : '') +
+    '<div style="font-size:11px;color:var(--text-mut);margin-top:8px">' + tools.length + ' tools across ' + agents.length + ' agents.</div>';
 }
 
 // ─── Federation (partial — more in Part 3) ───────────────────────────────

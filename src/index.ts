@@ -38,6 +38,12 @@ import {
   handleTaxonomyReverse,
 } from "./routes/federationEndpoints";
 import {
+  handleAgentsDirectory,
+  handleAgentsProbeAll,
+  handleAgentsOrchestrate,
+  handleAgentsCapabilityMatrix,
+} from "./routes/agentsEndpoints";
+import {
   handleAudienceCompose,
   handleAudienceSaturation,
   handleAffinityAudit,
@@ -203,6 +209,11 @@ export default {
             "/agents/registry",
             "/agents/federated-search",
             "/agents/cross-similarity",
+            // Sec-48: agent syndication — directory, live probe, multi-A2A orchestration.
+            "/agents/directory",
+            "/agents/probe-all",
+            "/agents/orchestrate",
+            "/agents/capability-matrix",
             "/taxonomy/reverse",
             // Sec-43: audience composer + activation-planning analytics.
             // Read-only — same posture as /portfolio/* and /analytics/*.
@@ -344,6 +355,16 @@ export default {
                 response = await handleCrossSimilarity(request);
             } else if (method === "POST" && path === "/taxonomy/reverse") {
                 response = await handleTaxonomyReverse(request, env, logger);
+
+                // ── Sec-48: agent syndication (directory + probe + orchestrate) ──
+            } else if (method === "GET" && path === "/agents/directory") {
+                response = handleAgentsDirectory();
+            } else if (method === "GET" && path === "/agents/probe-all") {
+                response = await handleAgentsProbeAll(request, env, logger);
+            } else if (method === "POST" && path === "/agents/orchestrate") {
+                response = await handleAgentsOrchestrate(request, env, logger);
+            } else if (method === "GET" && path === "/agents/capability-matrix") {
+                response = await handleAgentsCapabilityMatrix(request, env, logger);
 
                 // ── Sec-43: Audience Composer + activation analytics ────────────────
             } else if (method === "POST" && path === "/audience/compose") {

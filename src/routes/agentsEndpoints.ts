@@ -897,7 +897,12 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
               // Sec-48k: when the extractor finds nothing, attach a shape
               // diagnostic so the UI (and we) can see why. Cheap — runs
               // only on the zero-count path.
-              ...(formats.length === 0 && res.ok
+              // Sec-48r: fire diagnostic on any zero-count result — success
+              // (interpretation: "genuinely empty") or failure (interpretation:
+              // "isError:true; reason in content[0].text"). The diagnostic is
+              // how we triage vendor-shape mismatches without shipping a debug
+              // build.
+              ...(formats.length === 0
                 ? { diagnostic: describeToolResult(res.structured_content, res.content) }
                 : {}),
             },
@@ -951,7 +956,9 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
                 id: productIdOf(p),
                 name: p.name ?? "(unnamed product)",
               })),
-              ...(products.length === 0 && res.ok
+              // Sec-48r: fire on zero-count regardless of ok — see note in
+              // the creative stage above.
+              ...(products.length === 0
                 ? { diagnostic: describeToolResult(res.structured_content, res.content) }
                 : {}),
             },

@@ -955,6 +955,10 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
               fired: true,
               payload_preview: payload,
               result: res.structured_content ?? null,
+              // Sec-48p: surface content too so the UI can show vendor
+              // rejection messages (most agents that return isError:true
+              // put the reason in content[0].text, not in structured).
+              content: res.content ?? null,
             },
           });
         }));

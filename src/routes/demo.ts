@@ -11049,7 +11049,12 @@ function _orchRenderAgentGrid() {
     var latency = probeInfo ? probeInfo.latency_ms + " ms" : "—";
     var serverInfo = probeInfo && probeInfo.server_info ? (probeInfo.server_info.name || "") + (probeInfo.server_info.version ? " " + probeInfo.server_info.version : "") : "";
     var roleBadge = '<span class="orch-role-badge orch-role-' + a.role + '">' + escapeHtml(a.role) + '</span>';
-    var urlShort = a.mcp_url ? a.mcp_url.replace(/^https?:\/\//, "").slice(0, 50) : "no endpoint";
+    // Double-escape the slashes: the SCRIPT_TAG body is a TS template
+    // literal, so single-backslash-slash collapses to a plain slash at
+    // emission and the regex becomes /^https?:/// which JS reads as a
+    // regex followed by a line comment — missing ) after argument list.
+    // Using \\/\\/ here so the served JS sees \/\/.
+    var urlShort = a.mcp_url ? a.mcp_url.replace(/^https?:\\/\\//, "").slice(0, 50) : "no endpoint";
     var errorLine = probeInfo && probeInfo.error && !alive
       ? '<div class="orch-agent-error mono">' + escapeHtml(String(probeInfo.error).slice(0, 80)) + '</div>'
       : '';

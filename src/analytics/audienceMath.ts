@@ -234,6 +234,7 @@ export interface JourneyStageInput {
 export interface JourneyStageOut {
   name: string;
   reach: number;
+  pre_clamp_reach: number;   // Sec-46: reach before monotone clamp (= reach when not clamped)
   conversion_rate: number;   // vs previous stage; 1.0 for stage 0
   cumulative_rate: number;   // vs stage 0; 1.0 for stage 0
   dropped_off: number;       // reach[i-1] - reach[i], 0 for stage 0
@@ -246,7 +247,8 @@ export function journeyFunnel(stages: JourneyStageInput[]): JourneyStageOut[] {
   const base = prev;
   for (let i = 0; i < stages.length; i++) {
     const st = stages[i]!;
-    let r = st.reach;
+    const raw = st.reach;
+    let r = raw;
     let clamped = false;
     if (i > 0 && r > prev) { r = prev; clamped = true; }
     const conv = i === 0 ? 1 : (prev > 0 ? r / prev : 0);
@@ -254,6 +256,7 @@ export function journeyFunnel(stages: JourneyStageInput[]): JourneyStageOut[] {
     out.push({
       name: st.name,
       reach: r,
+      pre_clamp_reach: raw,
       conversion_rate: Math.round(conv * 10000) / 10000,
       cumulative_rate: Math.round(cum * 10000) / 10000,
       dropped_off: i === 0 ? 0 : Math.max(0, prev - r),

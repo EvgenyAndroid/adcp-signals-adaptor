@@ -363,6 +363,7 @@ interface JourneyStageBody {
 
 interface JourneyBody {
   stages?: JourneyStageBody[];
+  cumulative?: boolean;   // Sec-46: default true — each stage is a subset of the prior
 }
 
 export async function handleAudienceJourney(request: Request, env: Env, logger: Logger): Promise<Response> {
@@ -370,6 +371,10 @@ export async function handleAudienceJourney(request: Request, env: Env, logger: 
   if (parsed.kind === "invalid") return errorResponse("INVALID_JSON", parsed.reason, 400);
   const body: JourneyBody = parsed.kind === "parsed" ? parsed.data : {};
   const stages = body.stages ?? [];
+  // Sec-46: cumulative mode (default) makes each stage a subset of the prior stage by
+  // folding the prior stage's signals into the current stage's intersect pool. Opt-out
+  // (`cumulative:false`) preserves the legacy "independent stages + monotone clamp" math.
+  const cumulative = body.cumulative !== false;
   if (stages.length < 2) return errorResponse("INVALID_INPUT", "At least 2 stages required", 400);
   if (stages.length > 6) return errorResponse("TOO_MANY_STAGES", `Max 6 stages; got ${stages.length}`, 400);
 
@@ -377,14 +382,22 @@ export async function handleAudienceJourney(request: Request, env: Env, logger: 
   const byId = indexById(catalog);
 
   const stageReaches: { name: string; reach: number; includeCount: number; intersectCount: number; excludeCount: number }[] = [];
+  const priorFilterPool: SignalSummary[] = [];  // cumulative-mode accumulator
   for (let i = 0; i < stages.length; i++) {
     const st = stages[i]!;
     const inc = (st.include ?? []).map((id) => byId.get(id)).filter((x): x is SignalSummary => !!x);
-    const itx = (st.intersect ?? []).map((id) => byId.get(id)).filter((x): x is SignalSummary => !!x);
+    const itxRaw = (st.intersect ?? []).map((id) => byId.get(id)).filter((x): x is SignalSummary => !!x);
     const exc = (st.exclude ?? []).map((id) => byId.get(id)).filter((x): x is SignalSummary => !!x);
-    if (inc.length === 0 && itx.length === 0) {
+    if (inc.length === 0 && itxRaw.length === 0) {
       return errorResponse("INVALID_STAGE", `Stage ${i} (${st.name ?? "unnamed"}) needs at least one include or intersect signal`, 400);
     }
+    // Cumulative mode: prior stages' signals become implicit intersects on this stage,
+    // which geometrically narrows reach (inclusion-exclusion monotone). We dedupe against
+    // the current stage's raw itx to avoid double-counting.
+    const seenItxIds = new Set(itxRaw.map((s) => s.signal_agent_segment_id));
+    const itx = cumulative && i > 0
+      ? [...itxRaw, ...priorFilterPool.filter((s) => !seenItxIds.has(s.signal_agent_segment_id))]
+      : itxRaw;
     const baseSet = inc.length > 0 ? inc : itx;
     const unionR = unionReach(inc);
     const intersectBase = unionR > 0 ? unionR : (itx[0]?.estimated_audience_size ?? 0);
@@ -395,12 +408,16 @@ export async function handleAudienceJourney(request: Request, env: Env, logger: 
       name: st.name ?? `stage_${i + 1}`,
       reach: finalR,
       includeCount: inc.length,
-      intersectCount: itx.length,
+      intersectCount: itxRaw.length,   // surface user-declared count, not cumulative-augmented
       excludeCount: exc.length,
     });
+    // Accumulate this stage's own signals for downstream stages.
+    for (const s of inc) priorFilterPool.push(s);
+    for (const s of itxRaw) priorFilterPool.push(s);
   }
 
   const funnel = journeyFunnel(stageReaches.map((s) => ({ name: s.name, reach: s.reach })));
+  const anyClamped = funnel.some((f) => f.clamped);
 
   return jsonResponse({
     stages: funnel.map((f, i) => ({
@@ -416,9 +433,15 @@ export async function handleAudienceJourney(request: Request, env: Env, logger: 
       biggest_dropoff_stage: funnel
         .map((f, i) => ({ i, name: f.name, dropped: f.dropped_off }))
         .sort((a, b) => b.dropped - a.dropped)[0]?.name ?? null,
+      any_clamped: anyClamped,
     },
-    method: "per_stage_compose_then_monotone_funnel",
-    note: "Stage reaches are clamped to be monotonically non-increasing (a subsequent stage can't exceed its predecessor). A `clamped:true` flag signals that the input breached the subset invariant.",
+    mode: cumulative ? "cumulative" : "independent",
+    method: cumulative
+      ? "prior_stage_signals_folded_as_intersects_then_monotone_safety_clamp"
+      : "per_stage_compose_then_monotone_funnel",
+    note: cumulative
+      ? "Cumulative mode (default): each stage is constructed as a subset of the prior stage — upstream signals are automatically folded into the current stage's intersect pool. Clamping should be rare and indicates a non-monotone heuristic edge case. Set `cumulative:false` to get independent per-stage sizing with after-the-fact monotone clamping (the legacy behavior)."
+      : "Independent-stage mode: each stage is sized on its own, then reaches are clamped to be monotonically non-increasing. A `clamped:true` flag signals that the stage's raw composition breached the subset invariant — planners should treat any clamp as a configuration error (the stage is broader than its parent), not a genuine funnel.",
   });
 }
 

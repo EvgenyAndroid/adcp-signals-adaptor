@@ -254,6 +254,20 @@ describe("journeyFunnel", () => {
     expect(f[1]!.reach).toBe(500_000);
     expect(f[1]!.conversion_rate).toBe(1);
   });
+  // Sec-46: pre_clamp_reach surfaces the raw (pre-clamp) reach so the UI can explain
+  // why a clamped stage reads as "100% conversion, 0 dropped".
+  it("preserves the pre-clamp reach for surfacing in the UI", () => {
+    const f = journeyFunnel([{ name: "a", reach: 500_000 }, { name: "b", reach: 1_000_000 }]);
+    expect(f[1]!.clamped).toBe(true);
+    expect(f[1]!.pre_clamp_reach).toBe(1_000_000);
+    expect(f[1]!.reach).toBe(500_000);
+  });
+  it("pre_clamp_reach equals reach when no clamping occurred", () => {
+    const f = journeyFunnel([{ name: "a", reach: 1_000_000 }, { name: "b", reach: 300_000 }]);
+    expect(f[1]!.clamped).toBe(false);
+    expect(f[1]!.pre_clamp_reach).toBe(300_000);
+    expect(f[1]!.reach).toBe(300_000);
+  });
   it("conversion_rate is ratio of current to previous", () => {
     const f = journeyFunnel([{ name: "a", reach: 1_000_000 }, { name: "b", reach: 300_000 }, { name: "c", reach: 60_000 }]);
     expect(f[1]!.conversion_rate).toBeCloseTo(0.3, 3);

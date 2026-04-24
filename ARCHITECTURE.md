@@ -138,7 +138,7 @@ PseudoEmbeddingEngine:
 ```
 conceptRegistry.ts
   19 concepts, 7 categories: demographic | interest | behavioral | geo | archetype | content | purchase_intent
-  5 vendors per concept: iab | liveramp | tradedesk | experian | samba
+  5 vendors per concept: iab | liveramp | tradedesk | experian | mastercard
   Storage: in-memory on cold start; KV (TTL 24h) after POST /ucp/concepts/seed
 ```
 

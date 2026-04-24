@@ -14,7 +14,7 @@ The AdCP ecosystem is moving fast. As of 2026-04, there are 4+ production signal
 - **Peer39** — contextual + brand safety
 - **Scope3** — sustainability + signals
 - **NextData** — B2B intent
-- **Samba TV (us)** — MCP-native catalog with UCP embedding bridge
+- **Evgeny (us)** — MCP-native catalog with UCP embedding bridge
 
 A HoldCo buyer's day-1 question is "**which agent has the best coverage for my brief?**" Answering that requires calling many agents in parallel, comparing results, and surfacing the merged best. That's agent-to-agent (A2A) federation.
 
@@ -36,12 +36,12 @@ Curated list of known AdCP Signals agents with stage flags (live / sandbox / roa
 ```json
 {
   "version":    "sec_41_v1",
-  "self_agent": "samba_signals",
+  "self_agent": "evgeny_signals",
   "agents": [
     {
-      "id":            "samba_signals",
-      "name":          "Samba TV AdCP Signals Adaptor",
-      "vendor":        "Samba TV / Evgeny",
+      "id":            "evgeny_signals",
+      "name":          "Evgeny AdCP Signals adapter",
+      "vendor":        "Evgeny",
       "mcp_url":       "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
       "capabilities_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/capabilities",
       "stage":         "live",
@@ -102,7 +102,7 @@ async function ensureSession(): Promise<string> {
     body: JSON.stringify({
       jsonrpc: "2.0", id: 1, method: "initialize",
       params: { protocolVersion: "2024-11-05", capabilities: {},
-                clientInfo: { name: "samba_signals_fed", version: "41.0" } }
+                clientInfo: { name: "evgeny_signals_fed", version: "41.0" } }
     })
   });
   _sessionId = res.headers.get("mcp-session-id");
@@ -148,7 +148,7 @@ export async function dstillerySearch(brief: string, maxResults = 10) {
 Request:
 {
   "brief": "new homeowners interested in home improvement",
-  "agents": ["samba_signals", "dstillery"],      // omit = all live
+  "agents": ["evgeny_signals", "dstillery"],      // omit = all live
   "max_results_per_agent": 10,
   "merge_strategy": "interleaved_by_cosine"
 }
@@ -156,12 +156,12 @@ Request:
 Response:
 {
   "brief":      "new homeowners interested in home improvement",
-  "agents_queried": ["samba_signals", "dstillery"],
-  "agents_succeeded": ["samba_signals", "dstillery"],
+  "agents_queried": ["evgeny_signals", "dstillery"],
+  "agents_succeeded": ["evgeny_signals", "dstillery"],
   "agents_failed":    [],
-  "per_agent_count": { "samba_signals": 10, "dstillery": 8 },
+  "per_agent_count": { "evgeny_signals": 10, "dstillery": 8 },
   "merged": [
-    { "source_agent":"samba_signals", "signal":{...}, "merge_rank":1, "local_score":0.91 },
+    { "source_agent":"evgeny_signals", "signal":{...}, "merge_rank":1, "local_score":0.91 },
     { "source_agent":"dstillery",     "signal":{...}, "merge_rank":2, "local_score":0.87 },
     ...
   ],
@@ -311,7 +311,7 @@ Side-by-side catalog comparison for the same brief. Answers "does the partner ha
 
 ### UI
 Two-column layout:
-- Left: local results (Samba)
+- Left: local results (Evgeny)
 - Right: Dstillery results
 - Middle: arrows showing approximate matches (via AF-3 alignment)
 - Below: "unique to partner" and "unique to us" lists
@@ -357,7 +357,7 @@ All federation endpoints use KV (`SIGNALS_CACHE`) with stage-appropriate TTLs:
 
 ## 10. Security & compliance
 
-- All outbound federation calls use `User-Agent: samba-signals-federation/41.0`
+- All outbound federation calls use `User-Agent: evgeny-signals-federation/41.0`
 - No authentication forwarded (Dstillery is a public agent)
 - Per-IP rate limit on `/agents/federated-search`: 10 req/min (prevent abuse of free partner compute)
 - No caching of partner response bodies beyond in-memory TTL (respect partner's control over stale data)

@@ -24,7 +24,7 @@ import type {
 
 const DATA_PROVIDER = "AdCP Signals Adaptor - Demo Provider (Evgeny)";
 const PROVIDER_DOMAIN = "adcp-signals-adaptor.evgeny-193.workers.dev";
-const PROVIDER_EMAIL = "evgeny@samba.tv";
+const PROVIDER_EMAIL = "evgeny@evgeny.dev";
 const PRIVACY_POLICY_URL = `https://${PROVIDER_DOMAIN}/privacy`;
 const TOTAL_ADDRESSABLE = 240_000_000;
 

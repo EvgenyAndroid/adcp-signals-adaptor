@@ -16,28 +16,31 @@ import {
   affinityRows,
   skewScore,
   concentrationOf,
+  journeyFunnel,
+  inferSensitiveCategories,
+  privacyCheck,
+  holdoutPlan,
 } from "../src/analytics/audienceMath";
 
 // ── fixtures ────────────────────────────────────────────────────────────────
 
 function sig(over: Partial<SignalSummary> & { signal_agent_segment_id: string }): SignalSummary {
-  return {
+  const base = {
     signal_id: { source: "agent", agent_url: "https://x", id: over.signal_agent_segment_id },
-    signal_agent_segment_id: over.signal_agent_segment_id,
-    name: over.name ?? over.signal_agent_segment_id,
+    name: over.signal_agent_segment_id,
     description: "",
     signal_type: "marketplace",
     data_provider: "test",
     coverage_percentage: 1,
     deployments: [],
     pricing_options: [{ pricing_option_id: "p1", model: "cpm", cpm: 5, currency: "USD" }],
-    category_type: (over.category_type ?? "interest") as SignalSummary["category_type"],
+    category_type: "interest" as SignalSummary["category_type"],
     taxonomy_system: "iab_audience_1_1",
     generation_mode: "seeded",
-    estimated_audience_size: over.estimated_audience_size ?? 1_000_000,
+    estimated_audience_size: 1_000_000,
     status: "available",
-    ...over,
-  } as SignalSummary;
+  };
+  return { ...base, ...over } as SignalSummary;
 }
 
 // ── classifiers ─────────────────────────────────────────────────────────────
@@ -233,5 +236,104 @@ describe("concentrationOf", () => {
       new Map([["a", 0.25], ["b", 0.25], ["c", 0.25], ["d", 0.25]]),
     );
     expect(concentrationOf(rows)).toBeGreaterThanOrEqual(3);
+  });
+});
+
+// ── Sec-44: Journey funnel ──────────────────────────────────────────────────
+
+describe("journeyFunnel", () => {
+  it("first stage has conversion_rate = 1.0 and cumulative_rate = 1.0", () => {
+    const f = journeyFunnel([{ name: "top", reach: 1_000_000 }, { name: "mid", reach: 500_000 }]);
+    expect(f[0]!.conversion_rate).toBe(1);
+    expect(f[0]!.cumulative_rate).toBe(1);
+    expect(f[0]!.dropped_off).toBe(0);
+  });
+  it("clamps a stage whose reach exceeds its predecessor", () => {
+    const f = journeyFunnel([{ name: "a", reach: 500_000 }, { name: "b", reach: 1_000_000 }]);
+    expect(f[1]!.clamped).toBe(true);
+    expect(f[1]!.reach).toBe(500_000);
+    expect(f[1]!.conversion_rate).toBe(1);
+  });
+  it("conversion_rate is ratio of current to previous", () => {
+    const f = journeyFunnel([{ name: "a", reach: 1_000_000 }, { name: "b", reach: 300_000 }, { name: "c", reach: 60_000 }]);
+    expect(f[1]!.conversion_rate).toBeCloseTo(0.3, 3);
+    expect(f[2]!.conversion_rate).toBeCloseTo(0.2, 3);
+    expect(f[2]!.cumulative_rate).toBeCloseTo(0.06, 4);
+  });
+  it("dropped_off is prev - current", () => {
+    const f = journeyFunnel([{ name: "a", reach: 1_000_000 }, { name: "b", reach: 250_000 }]);
+    expect(f[1]!.dropped_off).toBe(750_000);
+  });
+});
+
+// ── Sec-44: Privacy check ───────────────────────────────────────────────────
+
+describe("inferSensitiveCategories", () => {
+  it("picks up sensitive keywords across name + description", () => {
+    const hits = inferSensitiveCategories([
+      { name: "Diabetes medication intenders", description: "Users with a chronic medical condition" },
+      { name: "High income households" },
+    ]);
+    expect(hits).toContain("medical");
+    expect(hits).toContain("medication");
+    expect(hits).toContain("condition");
+    expect(hits).toContain("income");
+  });
+  it("returns empty for non-sensitive signals", () => {
+    const hits = inferSensitiveCategories([
+      { name: "Streaming enthusiasts" },
+      { name: "Automotive intenders" },
+    ]);
+    expect(hits).toEqual([]);
+  });
+});
+
+describe("privacyCheck", () => {
+  it("blocks when cohort_size < min_k", () => {
+    const r = privacyCheck(500, [], 1000);
+    expect(r.status).toBe("block");
+    expect(r.k_anon_pass).toBe(false);
+  });
+  it("ok when k passes and no sensitive categories", () => {
+    const r = privacyCheck(2_000_000, [], 1000);
+    expect(r.status).toBe("ok");
+    expect(r.k_anon_pass).toBe(true);
+  });
+  it("warns when a single sensitive category is touched", () => {
+    const r = privacyCheck(2_000_000, ["medical"], 1000);
+    expect(r.status).toBe("warn");
+    expect(r.intersectional_sensitivity).toBe(false);
+  });
+  it("warns + flags intersectional when 2+ sensitive categories touched", () => {
+    const r = privacyCheck(2_000_000, ["medical", "income"], 1000);
+    expect(r.status).toBe("warn");
+    expect(r.intersectional_sensitivity).toBe(true);
+  });
+});
+
+// ── Sec-44: Holdout plan ────────────────────────────────────────────────────
+
+describe("holdoutPlan", () => {
+  it("splits reach into control + exposed per holdout_pct", () => {
+    const p = holdoutPlan(1_000_000, 0.10);
+    expect(p.control_size).toBe(100_000);
+    expect(p.exposed_size).toBe(900_000);
+    expect(p.control_size + p.exposed_size).toBe(1_000_000);
+  });
+  it("clamps holdout_pct to [0.01, 0.5]", () => {
+    const tiny = holdoutPlan(1_000_000, 0.001);
+    expect(tiny.holdout_pct).toBeGreaterThanOrEqual(0.01);
+    const huge = holdoutPlan(1_000_000, 0.9);
+    expect(huge.holdout_pct).toBeLessThanOrEqual(0.5);
+  });
+  it("MDE shrinks as reach grows (more power)", () => {
+    const small = holdoutPlan(100_000, 0.10, 0.02);
+    const large = holdoutPlan(10_000_000, 0.10, 0.02);
+    expect(large.mde_absolute).toBeLessThan(small.mde_absolute);
+  });
+  it("mde_relative = mde_absolute / baseline_conversion_rate (within rounding)", () => {
+    const p = holdoutPlan(1_000_000, 0.10, 0.02);
+    // Both fields are independently rounded to 4 decimals, so allow 1 d.p. slack.
+    expect(p.mde_relative).toBeCloseTo(p.mde_absolute / p.baseline_conversion_rate, 1);
   });
 });

@@ -19,12 +19,12 @@ const SELF_URL = "https://adcp-signals-adaptor.evgeny-193.workers.dev";
 export function handleAgentsRegistry(): Response {
   return jsonResponse({
     version: "sec_41_v1",
-    self_agent: "samba_signals",
+    self_agent: "evgeny_signals",
     agents: [
       {
-        id: "samba_signals",
-        name: "Samba TV AdCP Signals Adaptor",
-        vendor: "Samba TV / Evgeny",
+        id: "evgeny_signals",
+        name: "Evgeny AdCP Signals adapter",
+        vendor: "Evgeny",
         mcp_url: SELF_URL + "/mcp",
         capabilities_url: SELF_URL + "/capabilities",
         stage: "live",
@@ -116,7 +116,7 @@ export async function handleFederatedSearch(
     return errorResponse("INVALID_INPUT", "brief required", 400);
   }
 
-  const targetAgents = body.agents ?? ["samba_signals", "dstillery"];
+  const targetAgents = body.agents ?? ["evgeny_signals", "dstillery"];
   const maxPerAgent = Math.max(1, Math.min(20, body.max_results_per_agent ?? 5));
   const start = Date.now();
 
@@ -130,7 +130,7 @@ export async function handleFederatedSearch(
   };
   const tasks: Array<Promise<AgentResult>> = [];
 
-  if (targetAgents.includes("samba_signals")) {
+  if (targetAgents.includes("evgeny_signals")) {
     tasks.push((async () => {
       const t0 = Date.now();
       try {
@@ -139,14 +139,14 @@ export async function handleFederatedSearch(
           brief: body.brief, limit: maxPerAgent, offset: 0,
         });
         return {
-          agent: "samba_signals",
+          agent: "evgeny_signals",
           ok: true,
           signals: r.signals,
           elapsed_ms: Date.now() - t0,
         };
       } catch (e) {
         return {
-          agent: "samba_signals",
+          agent: "evgeny_signals",
           ok: false,
           signals: [],
           error: String((e as Error).message || e),

@@ -116,6 +116,21 @@ ${STYLES}
       </button>
       <button class="nav-item" data-tab="composer">
         <svg class="ico"><use href="#icon-builder"/></svg><span>Composer</span>
+      </button>
+      <button class="nav-item" data-tab="journey">
+        <svg class="ico"><use href="#icon-activations"/></svg><span>Journey</span>
+        <span class="nav-tag">new</span>
+      </button>
+      <button class="nav-item" data-tab="planner">
+        <svg class="ico"><use href="#icon-chart"/></svg><span>Scenario</span>
+        <span class="nav-tag">new</span>
+      </button>
+      <button class="nav-item" data-tab="snapshots">
+        <svg class="ico"><use href="#icon-book"/></svg><span>Snapshots</span>
+        <span class="nav-tag">new</span>
+      </button>
+      <button class="nav-item" data-tab="freshness">
+        <svg class="ico"><use href="#icon-info"/></svg><span>Freshness</span>
         <span class="nav-tag">new</span>
       </button>
       <button class="nav-item" data-tab="seasonality">
@@ -924,6 +939,8 @@ ${STYLES}
           <div class="lab-panel lab-panel-full" style="margin-top:14px">
             <div class="lab-panel-title">Result</div>
             <div id="comp-results"><div class="empty-state"><div class="empty-desc">Pick at least one signal, then hit <strong>Compute composition</strong>. The system applies pairwise inclusion-exclusion for union, category-affinity Jaccard for intersect, and subtracts suppressed overlap for exclude. A lookalike seed surfaces top-K embedding neighbors as candidates you can add to the <em>Include</em> pool on the next pass.</div></div></div>
+            <div id="comp-privacy"></div>
+            <div id="comp-holdout"></div>
             <div id="comp-explainer"></div>
           </div>
         </div>
@@ -981,6 +998,145 @@ ${STYLES}
         </div>
       </section>
 
+      <!-- TAB: Journey Builder (Sec-44) -->
+      <!-- Sequential segmentation. 2-5 stage cards; each stage has its own -->
+      <!-- include/intersect/exclude pickers. Funnel viz + drop-off stats.  -->
+      <section class="tab-pane" data-tab="journey">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Journey Builder</h1>
+            <p class="pane-subtitle">Stack 2–5 audience stages (awareness → consideration → intent → conversion) and see per-stage reach, conversion rate vs the prior stage, cumulative rate vs top-of-funnel, and drop-off. Reach math reuses <code>/audience/compose</code> per stage; stages are clamped monotonically to preserve the subset invariant.</p>
+          </div>
+          <div class="activations-controls">
+            <button class="btn-secondary" id="journey-add">
+              <svg class="ico"><use href="#icon-plus"/></svg><span>Add stage</span>
+            </button>
+            <button class="btn-primary" id="journey-run" disabled>
+              <svg class="ico"><use href="#icon-activations"/></svg><span>Compute funnel</span>
+            </button>
+          </div>
+        </div>
+        <div id="journey-stages"></div>
+        <div class="lab-panel lab-panel-full" style="margin-top:14px">
+          <div class="lab-panel-title">Funnel</div>
+          <div id="journey-result"><div class="empty-state"><div class="empty-desc">Define at least 2 stages (each with ≥1 include or intersect signal) and hit <strong>Compute funnel</strong>. Stages are rendered as descending bars with conversion rates between them and cumulative drop-off from the top of funnel.</div></div></div>
+          <div id="journey-explainer"></div>
+        </div>
+      </section>
+
+      <!-- TAB: Scenario Planner (Sec-44) — wires /portfolio/what-if -->
+      <section class="tab-pane" data-tab="planner">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Scenario Planner</h1>
+            <p class="pane-subtitle">Evaluate the impact of adding or removing signals from a portfolio. Returns delta reach, delta cost, reach-per-dollar efficiency, and a keep/marginal/reject recommendation.</p>
+          </div>
+        </div>
+        <div class="lab-grid">
+          <div class="lab-panel">
+            <div class="lab-panel-title">Current portfolio</div>
+            <div class="builder-section-label">Selected <span style="color:var(--text-mut);font-weight:400;font-family:var(--font-mono)" id="plan-cur-count">0 / 12</span></div>
+            <div class="overlap-chips" id="plan-cur-chips"></div>
+            <div class="overlap-search">
+              <svg class="ico"><use href="#icon-search"/></svg>
+              <input id="plan-cur-search" placeholder="Search catalog…" autocomplete="off"/>
+            </div>
+            <div class="overlap-suggestions" id="plan-cur-sugg"></div>
+          </div>
+          <div class="lab-panel">
+            <div class="lab-panel-title">Proposed changes</div>
+            <div class="builder-section-label">Add <span style="color:var(--text-mut);font-weight:400;font-family:var(--font-mono)" id="plan-add-count">0 / 6</span></div>
+            <div class="overlap-chips" id="plan-add-chips"></div>
+            <div class="overlap-search">
+              <svg class="ico"><use href="#icon-search"/></svg>
+              <input id="plan-add-search" placeholder="Search catalog to add…" autocomplete="off"/>
+            </div>
+            <div class="overlap-suggestions" id="plan-add-sugg"></div>
+            <div class="builder-section-label" style="margin-top:12px">Remove <span style="color:var(--text-mut);font-weight:400;font-family:var(--font-mono)" id="plan-rem-count">0 / 6</span></div>
+            <div class="overlap-chips" id="plan-rem-chips"></div>
+            <div id="plan-rem-candidates" style="font-size:11px;color:var(--text-mut);padding:6px 0">Remove picks are chosen from your current portfolio below.</div>
+            <button class="btn-primary" id="plan-run" style="margin-top:12px;width:100%;justify-content:center" disabled>
+              <svg class="ico"><use href="#icon-bolt"/></svg><span>Evaluate scenario</span>
+            </button>
+          </div>
+        </div>
+        <div class="lab-panel lab-panel-full" style="margin-top:14px">
+          <div class="lab-panel-title">Delta</div>
+          <div id="plan-result"><div class="empty-state"><div class="empty-desc">Build a current portfolio, propose additions or removals, and hit <strong>Evaluate scenario</strong>. The delta is computed against the same greedy marginal-reach math the portfolio optimizer uses.</div></div></div>
+          <div id="plan-explainer"></div>
+        </div>
+      </section>
+
+      <!-- TAB: Snapshots (Sec-44) -->
+      <section class="tab-pane" data-tab="snapshots">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Audience Snapshots</h1>
+            <p class="pane-subtitle">Named, dated freezes of a composition (include ∪ intersect ∩ exclude + optional lookalike seed). Diff two snapshots side-by-side to see what changed. Operator-scoped — each API-key owner has their own snapshot namespace.</p>
+          </div>
+          <div class="activations-controls">
+            <button class="btn-secondary" id="snap-refresh">
+              <svg class="ico"><use href="#icon-chart"/></svg><span>Refresh</span>
+            </button>
+          </div>
+        </div>
+        <div class="lab-grid">
+          <div class="lab-panel">
+            <div class="lab-panel-title">Save current composition</div>
+            <label class="lab-label">Source</label>
+            <div style="font-size:11.5px;color:var(--text-mut);padding:6px 0">Pulls from the <strong>Composer › Set Builder</strong> pools. Compose first there, then come back here.</div>
+            <label class="lab-label" style="margin-top:8px">Name</label>
+            <input id="snap-name" class="lab-input" placeholder="e.g. Q4 auto-intenders v3"/>
+            <label class="lab-label" style="margin-top:8px">Note (optional)</label>
+            <textarea id="snap-note" class="lab-input" rows="3" placeholder="Why this version?"></textarea>
+            <label class="lab-label" style="margin-top:8px">Tags (comma-separated)</label>
+            <input id="snap-tags" class="lab-input" placeholder="auto, q4, affluent"/>
+            <button class="btn-primary" id="snap-save" style="margin-top:12px;width:100%;justify-content:center">
+              <svg class="ico"><use href="#icon-plus"/></svg><span>Save snapshot</span>
+            </button>
+          </div>
+          <div class="lab-panel lab-panel-wide">
+            <div class="lab-panel-title">Snapshots <span class="pill pill-muted mono" id="snap-count" style="margin-left:8px">0</span></div>
+            <div id="snap-list"><div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading snapshots…</div></div></div>
+          </div>
+        </div>
+        <div class="lab-panel lab-panel-full" style="margin-top:14px">
+          <div class="lab-panel-title">Diff</div>
+          <div id="snap-diff"><div class="empty-state"><div class="empty-desc">Pick two snapshots from the list (click <strong>diff</strong> on two rows) and the comparison lands here: added / removed / kept per facet, plus delta reach.</div></div></div>
+        </div>
+      </section>
+
+      <!-- TAB: Freshness (Sec-44) -->
+      <section class="tab-pane" data-tab="freshness">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Signal Freshness</h1>
+            <p class="pane-subtitle">Per-signal data-quality facets derived at mapper time: decay half-life (in days), volatility index (0-100, coefficient-of-variation based), authority score (0-100, from DTS methodology), and ID stability class (stable / semi-stable / volatile). Sort by any column; the warning list at top surfaces signals with half-life &lt; 7 days.</p>
+          </div>
+        </div>
+        <div id="fresh-warnings"></div>
+        <div class="lab-panel lab-panel-full">
+          <div class="lab-panel-title">All signals</div>
+          <div style="overflow:auto">
+            <table class="fresh-table" id="fresh-table">
+              <thead>
+                <tr>
+                  <th data-sort="name">Signal</th>
+                  <th data-sort="vertical">Vertical</th>
+                  <th data-sort="halflife">Half-life (d)</th>
+                  <th data-sort="volatility">Volatility</th>
+                  <th data-sort="authority">Authority</th>
+                  <th data-sort="stability">ID stability</th>
+                  <th data-sort="reach">Reach</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div id="fresh-explainer"></div>
+        </div>
+      </section>
+
       <!-- ── TAB: Federation (Sec-41 Part 3 placeholder) ────────────────── -->
       <section class="tab-pane" data-tab="federation">
         <div class="pane-header">
@@ -1002,7 +1158,7 @@ ${STYLES}
           </div>
           <div class="lab-panel lab-panel-wide">
             <div class="lab-panel-title">Merged results across agents</div>
-            <div id="fed-results"><div class="empty-state"><div class="empty-desc">Enter a brief, hit Fan out. System queries <strong>Samba Signals (us)</strong> + <strong>Dstillery</strong> in parallel and merges results with agent badges. Partners added to <code>/agents/registry</code>.</div></div></div>
+            <div id="fed-results"><div class="empty-state"><div class="empty-desc">Enter a brief, hit Fan out. System queries <strong>Evgeny Signals (us)</strong> + <strong>Dstillery</strong> in parallel and merges results with agent badges. Partners added to <code>/agents/registry</code>.</div></div></div>
             <div id="fed-explainer"></div>
           </div>
         </div>
@@ -3090,7 +3246,7 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   display: flex; flex-direction: column; gap: 6px;
   align-items: flex-end; justify-self: end;
 }
-.fed-row-samba { border-left: 2px solid rgba(43, 212, 160, 0.5); }
+.fed-row-evgeny { border-left: 2px solid rgba(43, 212, 160, 0.5); }
 .fed-row-dstillery { border-left: 2px solid rgba(139, 110, 255, 0.5); }
 .fed-row-selected { background: var(--bg-hover); border-color: var(--accent-border); }
 .fed-check { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
@@ -3669,6 +3825,159 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   .composer-grid { grid-template-columns: 1fr; }
   .composer-lal-row { grid-template-columns: 1fr; }
 }
+
+/* ── Sec-45: Privacy gate + Holdout (in Composer result panel) ─────────── */
+.privacy-gate {
+  margin-top: 12px; padding: 10px 12px; background: var(--bg-soft, var(--bg-surface));
+  border-radius: 6px; border: 1px solid var(--border); border-left-width: 3px;
+}
+.privacy-title { font-size: 12.5px; display: flex; align-items: center; margin-bottom: 4px; }
+.privacy-reasons { margin: 6px 0 0 16px; padding: 0; color: var(--text-mut); font-size: 11.5px; line-height: 1.55; }
+.privacy-reasons li { margin: 2px 0; }
+.holdout-block {
+  margin-top: 10px; padding: 10px 12px; background: var(--bg-soft, var(--bg-surface));
+  border-radius: 6px; border: 1px solid var(--border);
+}
+.holdout-title { font-size: 12.5px; margin-bottom: 8px; }
+.holdout-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.holdout-stats .k { font-size: 10.5px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.04em; }
+.holdout-stats .v { font-size: 15px; margin-top: 2px; }
+
+/* ── Sec-45: Journey Builder ───────────────────────────────────────────── */
+.journey-stage {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px; margin-bottom: 12px;
+}
+.journey-stage-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.journey-stage-idx {
+  width: 24px; height: 24px; border-radius: 50%; background: var(--accent);
+  color: var(--bg-base); display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; flex-shrink: 0;
+}
+.journey-stage-name {
+  flex: 1; background: transparent; border: 1px solid transparent;
+  color: var(--text); font-size: 14px; font-weight: 600; padding: 4px 8px; border-radius: 4px;
+}
+.journey-stage-name:hover { border-color: var(--border); }
+.journey-stage-name:focus { outline: none; border-color: var(--accent); background: var(--bg-soft, var(--bg-base)); }
+.journey-stage-remove {
+  background: transparent; border: 1px solid var(--border); color: var(--text-mut);
+  padding: 4px 6px; border-radius: 4px; cursor: pointer;
+}
+.journey-stage-remove:hover { color: var(--error); border-color: var(--error); }
+.journey-stage-pools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.journey-pool { display: flex; flex-direction: column; }
+.journey-summary {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;
+  margin-bottom: 14px;
+}
+.journey-summary > div {
+  background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 12px;
+}
+.journey-summary .k { font-size: 10.5px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.04em; }
+.journey-summary .v { font-size: 16px; margin-top: 3px; }
+.journey-funnel { display: flex; flex-direction: column; gap: 10px; }
+.journey-row {
+  background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 12px;
+}
+.journey-row-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12.5px; }
+.journey-row-name { font-weight: 500; }
+.journey-bar-outer {
+  width: 100%; height: 10px; background: var(--bg-soft, var(--bg-base));
+  border-radius: 5px; overflow: hidden;
+}
+.journey-bar-inner {
+  height: 100%; background: linear-gradient(90deg, var(--accent) 0%, var(--accent-hot, var(--accent)) 100%);
+  transition: width 0.3s ease;
+}
+.journey-row-meta {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px;
+  font-size: 11px; color: var(--text-mut); font-family: var(--font-mono);
+}
+
+/* ── Sec-45: Scenario Planner ──────────────────────────────────────────── */
+.plan-cards {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px;
+}
+.plan-card {
+  background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px;
+  padding: 12px 14px;
+}
+.plan-card.plan-delta { background: var(--bg-soft, var(--bg-surface)); }
+.plan-card .label { font-size: 10.5px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.04em; }
+.plan-card .value { font-size: 18px; margin-top: 4px; font-weight: 500; }
+.plan-card .sub { font-size: 11px; color: var(--text-mut); margin-top: 4px; font-family: var(--font-mono); }
+
+/* ── Sec-45: Snapshots ─────────────────────────────────────────────────── */
+.snap-rows { display: flex; flex-direction: column; gap: 6px; }
+.snap-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px 12px;
+}
+.snap-row-picked { border-color: var(--accent); background: var(--bg-soft, var(--bg-surface)); }
+.snap-row-main { flex: 1; min-width: 0; }
+.snap-row-name { font-size: 13px; font-weight: 500; }
+.snap-row-meta { font-size: 10.5px; color: var(--text-mut); margin-top: 2px; }
+.snap-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.snap-row-actions button { font-size: 11px; padding: 5px 10px; }
+.snap-diff-header {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;
+  margin-bottom: 14px;
+}
+.snap-diff-header > div {
+  background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 12px;
+}
+.snap-diff-header .k { font-size: 10.5px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.04em; }
+.snap-diff-header .v { font-size: 13px; margin-top: 3px; font-weight: 500; word-break: break-word; }
+.snap-diff-header .sub { font-size: 11px; color: var(--text-mut); margin-top: 3px; }
+.snap-diff-facet {
+  background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 12px; margin-bottom: 8px;
+}
+.snap-diff-facet-head { font-size: 12px; font-weight: 500; margin-bottom: 4px; }
+.snap-diff-line { font-size: 11.5px; font-family: var(--font-mono); line-height: 1.6; word-break: break-all; }
+.snap-diff-line.snap-add { color: var(--success); }
+.snap-diff-line.snap-rem { color: var(--error); }
+
+/* ── Sec-45: Freshness table ───────────────────────────────────────────── */
+.fresh-table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+}
+.fresh-table th {
+  text-align: left; padding: 8px 10px; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--text-mut); font-weight: 500;
+  border-bottom: 1px solid var(--border); cursor: pointer; user-select: none;
+  white-space: nowrap; position: relative;
+}
+.fresh-table th:hover { color: var(--text); }
+.fresh-table th.fresh-sort-asc::after { content: " ▲"; font-size: 9px; color: var(--accent); }
+.fresh-table th.fresh-sort-desc::after { content: " ▼"; font-size: 9px; color: var(--accent); }
+.fresh-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.fresh-table td.fresh-name { min-width: 220px; }
+.fresh-table td.fresh-name .signal-id { font-size: 10px; color: var(--text-mut); font-family: var(--font-mono); margin-top: 2px; }
+.fresh-warn { color: var(--error); }
+.fresh-warm { color: var(--warning); }
+.fresh-good { color: var(--success); }
+.fresh-stab-stable { background: rgba(79, 195, 127, 0.15); color: var(--success); }
+.fresh-stab-semi-stable { background: rgba(255, 204, 92, 0.18); color: var(--warning); }
+.fresh-stab-volatile { background: rgba(255, 92, 92, 0.15); color: var(--error); }
+.fresh-stab-unknown { background: var(--bg-soft, var(--bg-surface)); color: var(--text-mut); }
+.fresh-warning-block {
+  background: var(--bg-soft, var(--bg-surface));
+  border: 1px solid var(--warning); border-left: 3px solid var(--warning);
+  border-radius: 6px; padding: 10px 12px; margin-bottom: 14px;
+}
+.fresh-warning-head { font-size: 12.5px; font-weight: 500; margin-bottom: 6px; }
+.fresh-warning-body { display: flex; flex-wrap: wrap; gap: 3px; }
+
+@media (max-width: 900px) {
+  .journey-stage-pools { grid-template-columns: 1fr; }
+  .holdout-stats { grid-template-columns: repeat(2, 1fr); }
+}
 </style>`;
 
 // The whole <script> block as a function so we can close-template it cleanly.
@@ -3724,6 +4033,15 @@ const state = {
     lastCompose: null, lastSat: null, lastAff: null,
     loaded: false,
   },
+  // Sec-44: Journey builder. Dynamic stage list; each stage has its own
+  // include/intersect/exclude pool arrays.
+  journey: { stages: [], lastResult: null, loaded: false },
+  // Sec-44: Scenario Planner — current / add / remove pools.
+  planner: { cur: [], add: [], rem: [], lastResult: null, loaded: false },
+  // Sec-44: Snapshots — fetched index + diff selection.
+  snapshots: { list: [], diffPair: [], loaded: false },
+  // Sec-44: Freshness — sort state + hydrated facets.
+  freshness: { sortCol: "halflife", sortDir: "asc", rows: null, loaded: false },
   reach: { budgetUsd: 10_000 },
   // Sec-39: detail panel UX — cycle-mode + collapsed-section memory
   ui: { detailMode: "narrow", collapsedSections: new Set() },
@@ -3953,6 +4271,8 @@ function switchTab(name) {
     capabilities: "Capabilities", toollog: "Tool Log", overlap: "Overlap",
     embedding: "Embedding space", devkit: "Dev kit", destinations: "Destinations",
     lab: "Embedding Lab", portfolio: "Portfolio", composer: "Composer",
+    journey: "Journey", planner: "Scenario", snapshots: "Snapshots",
+    freshness: "Freshness",
     seasonality: "Seasonality", federation: "Federation",
   };
   document.getElementById("crumb-current").textContent = crumbMap[name] || name;
@@ -3970,6 +4290,10 @@ function switchTab(name) {
   if (name === "lab") ensureLab();
   if (name === "portfolio") ensurePortfolio();
   if (name === "composer") ensureComposer();
+  if (name === "journey") ensureJourney();
+  if (name === "planner") ensurePlanner();
+  if (name === "snapshots") ensureSnapshots();
+  if (name === "freshness") ensureFreshness();
   if (name === "seasonality") ensureSeasonality();
   if (name === "federation") ensureFederation();
 
@@ -8618,6 +8942,60 @@ function renderComposeResult(data) {
     read: "<strong>Union</strong> ≥ largest single signal, ≤ sum of reaches. <strong>Final</strong> = after the whole set-op chain. Lookalike candidates are proposals — they do NOT auto-add to the reach math, so numbers stay auditable.",
     limits: "Catalog signals only expose estimated reach (not user-level membership); overlap is heuristic. For production deployments wire this to a clean-room with real membership data.",
   });
+  // Sec-44: fire privacy + holdout checks against the composed reach.
+  runPrivacyGate(r.final || 0, _ids(state.composer.inc).concat(_ids(state.composer.itx)));
+  runHoldoutForComposer(r.final || 0);
+}
+
+// Sec-44: Privacy gate — POST /audience/privacy-check with composed signals.
+async function runPrivacyGate(cohortSize, signalIds) {
+  var host = document.getElementById("comp-privacy");
+  if (!host) return;
+  if (cohortSize <= 0) { host.innerHTML = ""; return; }
+  try {
+    var r = await fetch("/audience/privacy-check", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ signal_ids: signalIds, cohort_size: cohortSize }),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) { host.innerHTML = ""; return; }
+    var statusColor = data.status === "ok" ? "var(--success)" : data.status === "warn" ? "var(--warning)" : "var(--error)";
+    var statusLabel = data.status === "ok" ? "Ok to activate" : data.status === "warn" ? "Warning" : "Blocked";
+    var reasons = (data.reasons || []).map(function (r) { return '<li>' + escapeHtml(r) + '</li>'; }).join("");
+    host.innerHTML =
+      '<div class="privacy-gate" style="border-left:3px solid ' + statusColor + '">' +
+        '<div class="privacy-title">' +
+          '<strong>Privacy gate: ' + statusLabel + '</strong>' +
+          '<span class="mono" style="color:var(--text-mut);margin-left:10px">k-anon floor ' + data.min_k + ' · cohort ' + fmtNumber(data.cohort_size) + '</span>' +
+        '</div>' +
+        (reasons ? '<ul class="privacy-reasons">' + reasons + '</ul>' : '<div style="color:var(--text-mut);font-size:11.5px">No privacy concerns flagged.</div>') +
+      '</div>';
+  } catch (e) { host.innerHTML = ""; }
+}
+
+// Sec-44: Holdout plan — POST /audience/holdout.
+async function runHoldoutForComposer(reach) {
+  var host = document.getElementById("comp-holdout");
+  if (!host) return;
+  if (reach <= 0) { host.innerHTML = ""; return; }
+  try {
+    var r = await fetch("/audience/holdout", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reach: reach, holdout_pct: 0.10, baseline_conversion_rate: 0.02 }),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) { host.innerHTML = ""; return; }
+    host.innerHTML =
+      '<div class="holdout-block">' +
+        '<div class="holdout-title">Incrementality plan <span class="mono" style="color:var(--text-mut);font-weight:400;margin-left:8px">(10% holdout · 2% baseline CR · α=0.05 · 80% power)</span></div>' +
+        '<div class="holdout-stats">' +
+          '<div><div class="k">Exposed</div><div class="v">' + fmtNumber(data.exposed_size) + '</div></div>' +
+          '<div><div class="k">Control</div><div class="v">' + fmtNumber(data.control_size) + '</div></div>' +
+          '<div><div class="k">MDE (abs)</div><div class="v mono">' + (data.mde_absolute * 100).toFixed(2) + '%</div></div>' +
+          '<div><div class="k">MDE (rel)</div><div class="v mono">' + (data.mde_relative * 100).toFixed(1) + '%</div></div>' +
+        '</div>' +
+      '</div>';
+  } catch (e) { host.innerHTML = ""; }
 }
 
 // ── Saturation run ──────────────────────────────────────────────────────
@@ -8856,6 +9234,743 @@ function renderAffinityResult(data) {
   });
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Sec-45: Journey Builder — sequential segmentation + funnel viz.
+// Each stage has its own include/intersect/exclude pools; the backend
+// reach-sizes every stage via /audience/compose then returns a funnel
+// with per-stage conversion vs prior, cumulative vs top-of-funnel, and
+// drop-off. Stages are clamped monotonically (a later stage's reach can
+// never exceed the prior stage).
+// ─────────────────────────────────────────────────────────────────────────
+var _journeyLoaded = false;
+
+function ensureJourney() {
+  if (_journeyLoaded) return;
+  _journeyLoaded = true;
+  if (state.journey.stages.length === 0) {
+    state.journey.stages.push(_journeyBlankStage("Awareness"));
+    state.journey.stages.push(_journeyBlankStage("Intent"));
+  }
+  _journeyRenderStages();
+  document.getElementById("journey-add").addEventListener("click", function () {
+    if (state.journey.stages.length >= 6) { showToast("Max 6 stages.", true); return; }
+    var names = ["Awareness", "Consideration", "Intent", "Evaluation", "Conversion", "Retention"];
+    var name = names[state.journey.stages.length] || ("Stage " + (state.journey.stages.length + 1));
+    state.journey.stages.push(_journeyBlankStage(name));
+    _journeyRenderStages();
+    _journeyRefreshRunBtn();
+  });
+  document.getElementById("journey-run").addEventListener("click", runJourney);
+  _journeyRefreshRunBtn();
+}
+
+function _journeyBlankStage(name) {
+  return { name: name, inc: [], itx: [], exc: [] };
+}
+
+function _journeyRenderStages() {
+  var host = document.getElementById("journey-stages");
+  if (!host) return;
+  host.innerHTML = state.journey.stages.map(function (_st, i) {
+    return _journeyStageCardHtml(i);
+  }).join("");
+  state.journey.stages.forEach(function (_st, i) { _journeyWireStage(i); });
+}
+
+function _journeyStageCardHtml(i) {
+  var st = state.journey.stages[i];
+  var canRemove = state.journey.stages.length > 2;
+  return '<div class="journey-stage" data-i="' + i + '">' +
+    '<div class="journey-stage-head">' +
+      '<div class="journey-stage-idx">' + (i + 1) + '</div>' +
+      '<input class="journey-stage-name" id="journey-name-' + i + '" value="' + escapeHtml(st.name) + '"/>' +
+      (canRemove ? '<button class="journey-stage-remove" id="journey-remove-' + i + '" title="Remove stage"><svg class="ico"><use href="#icon-close"/></svg></button>' : '') +
+    '</div>' +
+    '<div class="journey-stage-pools">' +
+      _journeyPoolHtml(i, "inc", "Include", 4) +
+      _journeyPoolHtml(i, "itx", "Intersect", 3) +
+      _journeyPoolHtml(i, "exc", "Exclude", 3) +
+    '</div>' +
+  '</div>';
+}
+
+function _journeyPoolHtml(i, pool, label, max) {
+  var st = state.journey.stages[i];
+  return '<div class="journey-pool">' +
+    '<div class="builder-section-label">' + label + ' <span style="color:var(--text-mut);font-weight:400;font-family:var(--font-mono)" id="journey-count-' + i + '-' + pool + '">' + st[pool].length + ' / ' + max + '</span></div>' +
+    '<div class="overlap-chips" id="journey-chips-' + i + '-' + pool + '"></div>' +
+    '<div class="overlap-search">' +
+      '<svg class="ico"><use href="#icon-search"/></svg>' +
+      '<input id="journey-search-' + i + '-' + pool + '" placeholder="Search catalog…" autocomplete="off"/>' +
+    '</div>' +
+    '<div class="overlap-suggestions" id="journey-sugg-' + i + '-' + pool + '"></div>' +
+  '</div>';
+}
+
+function _journeyWireStage(i) {
+  var st = state.journey.stages[i];
+  var nameEl = document.getElementById("journey-name-" + i);
+  if (nameEl) nameEl.addEventListener("input", function () {
+    state.journey.stages[i].name = nameEl.value.slice(0, 40);
+  });
+  var rm = document.getElementById("journey-remove-" + i);
+  if (rm) rm.addEventListener("click", function () {
+    if (state.journey.stages.length <= 2) { showToast("Need at least 2 stages.", true); return; }
+    state.journey.stages.splice(i, 1);
+    _journeyRenderStages();
+    _journeyRefreshRunBtn();
+  });
+  ["inc", "itx", "exc"].forEach(function (pool) {
+    var max = pool === "inc" ? 4 : 3;
+    _journeyRenderChips(i, pool, max);
+    _journeyRenderSugg(i, pool, "", max);
+    var searchEl = document.getElementById("journey-search-" + i + "-" + pool);
+    if (searchEl) {
+      searchEl.addEventListener("input", function () {
+        _journeyRenderSugg(i, pool, searchEl.value.trim().toLowerCase(), max);
+      });
+      searchEl.addEventListener("focus", function () {
+        _journeyRenderSugg(i, pool, searchEl.value.trim().toLowerCase(), max);
+      });
+    }
+    void st;
+  });
+}
+
+function _journeyRenderChips(i, pool, max) {
+  var st = state.journey.stages[i];
+  var list = st[pool] || [];
+  var host = document.getElementById("journey-chips-" + i + "-" + pool);
+  var countEl = document.getElementById("journey-count-" + i + "-" + pool);
+  if (countEl) countEl.textContent = list.length + " / " + max;
+  if (!host) return;
+  if (list.length === 0) {
+    host.innerHTML = '<div style="color:var(--text-mut);font-size:11px;padding:4px 0;font-style:italic">None.</div>';
+  } else {
+    host.innerHTML = list.map(function (s, idx) {
+      var sid = s.signal_agent_segment_id || (s.signal_id && s.signal_id.id) || "";
+      return '<div class="overlap-chip" data-sid="' + escapeHtml(sid) + '">' +
+        '<div><div class="oc-name">' + escapeHtml(s.name) + '</div>' +
+        '<div style="font-size:10.5px;color:var(--text-mut);font-family:var(--font-mono)">' + fmtNumber(s.estimated_audience_size) + '</div></div>' +
+        '<button class="oc-remove" data-idx="' + idx + '"><svg class="ico"><use href="#icon-close"/></svg></button>' +
+      '</div>';
+    }).join("");
+    host.querySelectorAll(".oc-remove").forEach(function (b) {
+      b.addEventListener("click", function () {
+        state.journey.stages[i][pool].splice(Number(b.dataset.idx), 1);
+        _journeyRenderChips(i, pool, max);
+        _journeyRenderSugg(i, pool, "", max);
+        _journeyRefreshRunBtn();
+      });
+    });
+  }
+  _journeyRefreshRunBtn();
+}
+
+function _journeyRenderSugg(i, pool, q, max) {
+  var st = state.journey.stages[i];
+  var host = document.getElementById("journey-sugg-" + i + "-" + pool);
+  if (!host) return;
+  var list = st[pool] || [];
+  if (list.length >= max) {
+    host.innerHTML = '<div style="color:var(--text-mut);font-size:11px;padding:4px 0">Max ' + max + '.</div>';
+    return;
+  }
+  var selected = new Set(list.map(function (s) { return s.signal_agent_segment_id || (s.signal_id && s.signal_id.id); }));
+  var rows = state.catalog.all || [];
+  if (q) rows = rows.filter(function (s) {
+    return (s.name || "").toLowerCase().includes(q) || (s.description || "").toLowerCase().includes(q);
+  });
+  rows = rows.filter(function (s) {
+    return !selected.has(s.signal_agent_segment_id || (s.signal_id && s.signal_id.id));
+  }).slice(0, 6);
+  if (rows.length === 0) {
+    host.innerHTML = '<div style="color:var(--text-mut);font-size:11px;padding:4px 0">No matches.</div>';
+    return;
+  }
+  host.innerHTML = rows.map(function (s) {
+    var sid = s.signal_agent_segment_id || (s.signal_id && s.signal_id.id) || "";
+    return '<div class="overlap-suggestion" data-sid="' + escapeHtml(sid) + '">' +
+      '<div>' + escapeHtml(s.name) + '</div>' +
+      '<div class="sub">' + fmtNumber(s.estimated_audience_size) + ' · ' + escapeHtml(s.category_type || "—") + '</div>' +
+    '</div>';
+  }).join("");
+  host.querySelectorAll(".overlap-suggestion").forEach(function (el) {
+    el.addEventListener("click", function () {
+      var sid = el.dataset.sid;
+      var sig = state.catalog.all.find(function (x) {
+        return (x.signal_agent_segment_id || (x.signal_id && x.signal_id.id)) === sid;
+      });
+      if (!sig) return;
+      if (state.journey.stages[i][pool].length >= max) return;
+      state.journey.stages[i][pool].push(sig);
+      _journeyRenderChips(i, pool, max);
+      _journeyRenderSugg(i, pool, "", max);
+    });
+  });
+}
+
+function _journeyRefreshRunBtn() {
+  var btn = document.getElementById("journey-run");
+  if (!btn) return;
+  var ok = state.journey.stages.length >= 2 && state.journey.stages.every(function (st) {
+    return (st.inc.length + st.itx.length) >= 1;
+  });
+  btn.disabled = !ok;
+}
+
+async function runJourney() {
+  var host = document.getElementById("journey-result");
+  var stages = state.journey.stages.map(function (st) {
+    return {
+      name: st.name || "stage",
+      include: st.inc.map(function (s) { return s.signal_agent_segment_id || (s.signal_id && s.signal_id.id); }).filter(Boolean),
+      intersect: st.itx.map(function (s) { return s.signal_agent_segment_id || (s.signal_id && s.signal_id.id); }).filter(Boolean),
+      exclude: st.exc.map(function (s) { return s.signal_agent_segment_id || (s.signal_id && s.signal_id.id); }).filter(Boolean),
+    };
+  });
+  host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Computing funnel…</div></div>';
+  try {
+    var r = await fetch("/audience/journey", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stages: stages }),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || "HTTP " + r.status);
+    state.journey.lastResult = data;
+    _renderJourneyResult(data);
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
+  }
+}
+
+function _renderJourneyResult(data) {
+  var host = document.getElementById("journey-result");
+  var stages = data.stages || [];
+  if (stages.length === 0) { host.innerHTML = '<div class="empty-state"><div class="empty-title">Empty funnel</div></div>'; return; }
+  var top = stages[0].reach || 0;
+  var rows = stages.map(function (s, i) {
+    var pct = top > 0 ? (s.reach / top) * 100 : 0;
+    var convPrior = i === 0 ? null : (s.conversion_rate != null ? s.conversion_rate : null);
+    var cumPct = (s.cumulative_rate != null ? s.cumulative_rate * 100 : pct);
+    var clampedMark = s.clamped ? ' <span class="pill pill-warning mono" style="font-size:10px">clamped</span>' : '';
+    return '<div class="journey-row">' +
+      '<div class="journey-row-head">' +
+        '<span class="journey-row-name">' + escapeHtml(s.name || ("Stage " + (i + 1))) + clampedMark + '</span>' +
+        '<span class="journey-row-reach mono">' + fmtNumber(s.reach || 0) + '</span>' +
+      '</div>' +
+      '<div class="journey-bar-outer"><div class="journey-bar-inner" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+      '<div class="journey-row-meta">' +
+        '<span>' + cumPct.toFixed(1) + '% of top-of-funnel</span>' +
+        (convPrior != null ? '<span>· ' + (convPrior * 100).toFixed(1) + '% vs prior</span>' : '<span>· top</span>') +
+        (s.dropped_off != null && i > 0 ? '<span>· dropped ' + fmtNumber(s.dropped_off) + '</span>' : '') +
+      '</div>' +
+    '</div>';
+  }).join("");
+  var overall = data.overall || {};
+  var summary =
+    '<div class="journey-summary">' +
+      '<div><div class="k">Top</div><div class="v mono">' + fmtNumber(overall.top_of_funnel || 0) + '</div></div>' +
+      '<div><div class="k">Bottom</div><div class="v mono">' + fmtNumber(overall.bottom_of_funnel || 0) + '</div></div>' +
+      '<div><div class="k">End-to-end</div><div class="v mono">' + ((overall.end_to_end_conversion || 0) * 100).toFixed(1) + '%</div></div>' +
+      (overall.biggest_dropoff_stage ? '<div><div class="k">Biggest drop</div><div class="v">' + escapeHtml(overall.biggest_dropoff_stage) + '</div></div>' : '') +
+    '</div>';
+  host.innerHTML = summary + '<div class="journey-funnel">' + rows + '</div>';
+  document.getElementById("journey-explainer").innerHTML = renderChartExplainer({
+    what: "Stacked per-stage segmentation with a monotone reach funnel.",
+    how: "Each stage's reach is computed exactly like /audience/compose (inclusion-exclusion for union, Jaccard-decayed intersect, subtracted overlap for exclude). Stages are clamped so a later stage can never exceed its predecessor — a <code>clamped</code> flag surfaces when the input breached the subset invariant.",
+    read: "Bars show each stage's reach as a share of top-of-funnel. The % vs prior value is the conversion rate between consecutive stages; cumulative % is vs stage 1.",
+    limits: "Reach math is estimated (catalog-level, not user-level); treat the funnel as a planning sketch, not a production attribution chain.",
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Sec-45: Scenario Planner — wraps /portfolio/what-if.
+// Three pools: current portfolio, adds, removes. Remove picks are chosen
+// from the current pool (you can't remove something you don't own).
+// ─────────────────────────────────────────────────────────────────────────
+var _plannerLoaded = false;
+
+async function ensurePlanner() {
+  if (_plannerLoaded) return;
+  _plannerLoaded = true;
+  if (state.catalog.all.length === 0) await loadCatalog();
+  _plannerWirePool("cur", "plan-cur-chips", "plan-cur-search", "plan-cur-sugg", "plan-cur-count", 12, true);
+  _plannerWirePool("add", "plan-add-chips", "plan-add-search", "plan-add-sugg", "plan-add-count", 6, true);
+  _plannerWirePool("rem", "plan-rem-chips", null, null, "plan-rem-count", 6, false);
+  _plannerRenderRemCandidates();
+  document.getElementById("plan-run").addEventListener("click", runPlanner);
+  _plannerRefreshRunBtn();
+}
+
+function _plannerWirePool(key, chipsId, searchId, suggId, countId, max, fromCatalog) {
+  _plannerRenderChips(key, chipsId, countId, max, fromCatalog);
+  if (!searchId || !suggId) return;
+  _plannerRenderSugg(key, "", suggId, max, chipsId, countId);
+  var searchEl = document.getElementById(searchId);
+  if (!searchEl) return;
+  searchEl.addEventListener("input", function () {
+    _plannerRenderSugg(key, searchEl.value.trim().toLowerCase(), suggId, max, chipsId, countId);
+  });
+  searchEl.addEventListener("focus", function () {
+    _plannerRenderSugg(key, searchEl.value.trim().toLowerCase(), suggId, max, chipsId, countId);
+  });
+}
+
+function _plannerRenderChips(key, chipsId, countId, max, _fromCatalog) {
+  var host = document.getElementById(chipsId);
+  var countEl = document.getElementById(countId);
+  var list = state.planner[key] || [];
+  if (countEl) countEl.textContent = list.length + " / " + max;
+  if (!host) return;
+  if (list.length === 0) {
+    host.innerHTML = '<div style="color:var(--text-mut);font-size:11px;padding:4px 0;font-style:italic">None.</div>';
+  } else {
+    host.innerHTML = list.map(function (s, i) {
+      var sid = s.signal_agent_segment_id || (s.signal_id && s.signal_id.id) || "";
+      return '<div class="overlap-chip" data-sid="' + escapeHtml(sid) + '">' +
+        '<div><div class="oc-name">' + escapeHtml(s.name) + '</div>' +
+        '<div style="font-size:10.5px;color:var(--text-mut);font-family:var(--font-mono)">' + fmtNumber(s.estimated_audience_size) + '</div></div>' +
+        '<button class="oc-remove" data-idx="' + i + '"><svg class="ico"><use href="#icon-close"/></svg></button>' +
+      '</div>';
+    }).join("");
+    host.querySelectorAll(".oc-remove").forEach(function (b) {
+      b.addEventListener("click", function () {
+        state.planner[key].splice(Number(b.dataset.idx), 1);
+        _plannerRenderChips(key, chipsId, countId, max, _fromCatalog);
+        if (key === "cur") { _plannerRenderRemCandidates(); }
+        _plannerRefreshRunBtn();
+      });
+    });
+  }
+  _plannerRefreshRunBtn();
+}
+
+function _plannerRenderSugg(key, q, suggId, max, chipsId, countId) {
+  var host = document.getElementById(suggId);
+  if (!host) return;
+  var list = state.planner[key] || [];
+  if (list.length >= max) {
+    host.innerHTML = '<div style="color:var(--text-mut);font-size:11px;padding:4px 0">Max ' + max + '.</div>';
+    return;
+  }
+  var selectedIds = new Set(list.map(function (s) { return s.signal_agent_segment_id || (s.signal_id && s.signal_id.id); }));
+  // For Add pool, also filter out anything already in current.
+  if (key === "add") {
+    state.planner.cur.forEach(function (s) { selectedIds.add(s.signal_agent_segment_id || (s.signal_id && s.signal_id.id)); });
+  }
+  var rows = state.catalog.all || [];
+  if (q) rows = rows.filter(function (s) {
+    return (s.name || "").toLowerCase().includes(q) || (s.description || "").toLowerCase().includes(q);
+  });
+  rows = rows.filter(function (s) {
+    return !selectedIds.has(s.signal_agent_segment_id || (s.signal_id && s.signal_id.id));
+  }).slice(0, 8);
+  if (rows.length === 0) {
+    host.innerHTML = '<div style="color:var(--text-mut);font-size:11px;padding:4px 0">No catalog matches.</div>';
+    return;
+  }
+  host.innerHTML = rows.map(function (s) {
+    var sid = s.signal_agent_segment_id || (s.signal_id && s.signal_id.id) || "";
+    return '<div class="overlap-suggestion" data-sid="' + escapeHtml(sid) + '">' +
+      '<div>' + escapeHtml(s.name) + '</div>' +
+      '<div class="sub">' + fmtNumber(s.estimated_audience_size) + ' · ' + escapeHtml(s.category_type || "—") + '</div>' +
+    '</div>';
+  }).join("");
+  host.querySelectorAll(".overlap-suggestion").forEach(function (el) {
+    el.addEventListener("click", function () {
+      var sid = el.dataset.sid;
+      var sig = state.catalog.all.find(function (x) {
+        return (x.signal_agent_segment_id || (x.signal_id && x.signal_id.id)) === sid;
+      });
+      if (!sig) return;
+      if (state.planner[key].length >= max) return;
+      state.planner[key].push(sig);
+      _plannerRenderChips(key, chipsId, countId, max, true);
+      _plannerRenderSugg(key, "", suggId, max, chipsId, countId);
+      if (key === "cur") {
+        _plannerRenderRemCandidates();
+        // Adds pool may now need to refilter.
+        _plannerRenderSugg("add", "", "plan-add-sugg", 6, "plan-add-chips", "plan-add-count");
+      }
+    });
+  });
+}
+
+function _plannerRenderRemCandidates() {
+  var host = document.getElementById("plan-rem-candidates");
+  if (!host) return;
+  if (state.planner.cur.length === 0) {
+    host.innerHTML = '<div style="color:var(--text-mut);font-size:11px;padding:4px 0">Remove picks come from your current portfolio. Add some first.</div>';
+    return;
+  }
+  var candidates = state.planner.cur.filter(function (s) {
+    var sid = s.signal_agent_segment_id || (s.signal_id && s.signal_id.id);
+    return !state.planner.rem.some(function (r) {
+      return (r.signal_agent_segment_id || (r.signal_id && r.signal_id.id)) === sid;
+    });
+  });
+  if (candidates.length === 0) {
+    host.innerHTML = '<div style="color:var(--text-mut);font-size:11px;padding:4px 0">All current signals marked for removal.</div>';
+    return;
+  }
+  host.innerHTML = '<div style="font-size:10.5px;color:var(--text-mut);padding:4px 0 6px">Click to mark for removal:</div>' +
+    candidates.map(function (s) {
+      var sid = s.signal_agent_segment_id || (s.signal_id && s.signal_id.id) || "";
+      return '<div class="overlap-suggestion" data-sid="' + escapeHtml(sid) + '" style="padding:6px 8px">' +
+        '<div style="font-size:11.5px">' + escapeHtml(s.name) + '</div>' +
+      '</div>';
+    }).join("");
+  host.querySelectorAll(".overlap-suggestion").forEach(function (el) {
+    el.addEventListener("click", function () {
+      if (state.planner.rem.length >= 6) { showToast("Remove pool full (max 6).", true); return; }
+      var sid = el.dataset.sid;
+      var sig = state.planner.cur.find(function (x) {
+        return (x.signal_agent_segment_id || (x.signal_id && x.signal_id.id)) === sid;
+      });
+      if (!sig) return;
+      state.planner.rem.push(sig);
+      _plannerRenderChips("rem", "plan-rem-chips", "plan-rem-count", 6, false);
+      _plannerRenderRemCandidates();
+    });
+  });
+}
+
+function _plannerRefreshRunBtn() {
+  var btn = document.getElementById("plan-run");
+  if (!btn) return;
+  var hasCurrent = state.planner.cur.length > 0;
+  var hasChange = state.planner.add.length > 0 || state.planner.rem.length > 0;
+  btn.disabled = !(hasCurrent && hasChange);
+}
+
+async function runPlanner() {
+  var host = document.getElementById("plan-result");
+  var curIds = state.planner.cur.map(function (s) { return s.signal_agent_segment_id || (s.signal_id && s.signal_id.id); }).filter(Boolean);
+  var addIds = state.planner.add.map(function (s) { return s.signal_agent_segment_id || (s.signal_id && s.signal_id.id); }).filter(Boolean);
+  var remIds = state.planner.rem.map(function (s) { return s.signal_agent_segment_id || (s.signal_id && s.signal_id.id); }).filter(Boolean);
+  host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Evaluating scenario…</div></div>';
+  try {
+    var r = await fetch("/portfolio/what-if", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current: curIds, add: addIds, remove: remIds }),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || "HTTP " + r.status);
+    state.planner.lastResult = data;
+    _renderPlannerResult(data);
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
+  }
+}
+
+function _renderPlannerResult(data) {
+  var host = document.getElementById("plan-result");
+  var before = data.before || {};
+  var after = data.after || {};
+  var recColor = data.recommendation === "operation_accepted" ? "var(--success)" :
+                 data.recommendation === "operation_marginal" ? "var(--warning)" : "var(--error)";
+  var recLabel = data.recommendation === "operation_accepted" ? "Keep" :
+                 data.recommendation === "operation_marginal" ? "Marginal" : "Reject";
+  var deltaReach = data.delta_reach || 0;
+  var deltaCost = data.delta_cost || 0;
+  var cards =
+    '<div class="plan-cards">' +
+      '<div class="plan-card"><div class="label">Before</div><div class="value mono">' + fmtNumber(before.reach || 0) + '</div><div class="sub">$' + fmtNumber(Math.round(before.cost || 0)) + ' · ' + (before.signal_count || 0) + ' signals</div></div>' +
+      '<div class="plan-card"><div class="label">After</div><div class="value mono">' + fmtNumber(after.reach || 0) + '</div><div class="sub">$' + fmtNumber(Math.round(after.cost || 0)) + ' · ' + (after.signal_count || 0) + ' signals</div></div>' +
+      '<div class="plan-card plan-delta"><div class="label">Δ Reach</div><div class="value mono" style="color:' + (deltaReach >= 0 ? 'var(--success)' : 'var(--error)') + '">' + (deltaReach >= 0 ? '+' : '') + fmtNumber(deltaReach) + '</div><div class="sub">' + (deltaCost >= 0 ? '+' : '') + '$' + fmtNumber(Math.round(deltaCost)) + '</div></div>' +
+      '<div class="plan-card"><div class="label">Reach / $</div><div class="value mono">' + (data.delta_reach_per_dollar != null ? fmtNumber(data.delta_reach_per_dollar) : '—') + '</div><div class="sub">efficiency</div></div>' +
+      '<div class="plan-card" style="border-left:3px solid ' + recColor + '"><div class="label">Recommendation</div><div class="value" style="color:' + recColor + '">' + recLabel + '</div><div class="sub">' + escapeHtml((data.reasoning || "").slice(0, 80)) + (data.reasoning && data.reasoning.length > 80 ? '…' : '') + '</div></div>' +
+    '</div>';
+  host.innerHTML = cards;
+  document.getElementById("plan-explainer").innerHTML = renderChartExplainer({
+    what: "Portfolio what-if: compare the current set against the current + adds − removes.",
+    how: "Both sets are scored by the same greedy-marginal-reach engine the optimizer uses (<code>/portfolio/optimize</code>). Delta reach and delta cost come from the difference of the two scores; recommendation is keep / marginal / reject based on reach-per-dollar thresholds.",
+    read: "Positive Δ reach at low Δ cost is a <strong>keep</strong>. Positive reach but expensive is <strong>marginal</strong> — verify creative alignment first. Flat or negative reach is a <strong>reject</strong>.",
+    limits: "Reach is estimated at the signal level; dedup uses Jaccard affinity, not real ID intersection. Verify winning scenarios in a clean-room before committing spend.",
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Sec-45: Audience Snapshots — save/list/diff current composition.
+// Snapshots are auth-gated + operator-scoped in KV. This UI uses the
+// Composer's current Set-Builder pools as the source of truth for "save".
+// ─────────────────────────────────────────────────────────────────────────
+var _snapshotsLoaded = false;
+
+async function ensureSnapshots() {
+  if (_snapshotsLoaded) return;
+  _snapshotsLoaded = true;
+  document.getElementById("snap-save").addEventListener("click", saveSnapshot);
+  document.getElementById("snap-refresh").addEventListener("click", loadSnapshots);
+  await loadSnapshots();
+}
+
+async function loadSnapshots() {
+  var host = document.getElementById("snap-list");
+  host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Loading snapshots…</div></div>';
+  try {
+    var r = await fetch("/snapshots", {
+      headers: { "Authorization": "Bearer " + DEMO_KEY },
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || "HTTP " + r.status);
+    state.snapshots.list = data.snapshots || [];
+    var countEl = document.getElementById("snap-count");
+    if (countEl) countEl.textContent = state.snapshots.list.length;
+    _renderSnapList();
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
+  }
+}
+
+function _renderSnapList() {
+  var host = document.getElementById("snap-list");
+  if (!host) return;
+  if (state.snapshots.list.length === 0) {
+    host.innerHTML = '<div class="empty-state"><div class="empty-title">No snapshots yet</div><div class="empty-desc">Compose a set in the <strong>Composer</strong> tab, come back here, and hit <strong>Save snapshot</strong>.</div></div>';
+    return;
+  }
+  var selected = new Set(state.snapshots.diffPair);
+  host.innerHTML = '<div class="snap-rows">' + state.snapshots.list.map(function (e) {
+    var picked = selected.has(e.id);
+    var tags = (e.tags || []).map(function (t) { return '<span class="pill pill-muted mono" style="font-size:10px;margin-right:3px">' + escapeHtml(t) + '</span>'; }).join("");
+    var when = new Date(e.saved_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return '<div class="snap-row' + (picked ? ' snap-row-picked' : '') + '" data-id="' + escapeHtml(e.id) + '">' +
+      '<div class="snap-row-main">' +
+        '<div class="snap-row-name">' + escapeHtml(e.name) + '</div>' +
+        '<div class="snap-row-meta mono">' + escapeHtml(when) + ' · reach ' + fmtNumber(e.reach_at_save || 0) + '</div>' +
+        (tags ? '<div style="margin-top:4px">' + tags + '</div>' : '') +
+      '</div>' +
+      '<div class="snap-row-actions">' +
+        '<button class="btn-secondary snap-diff-btn" data-id="' + escapeHtml(e.id) + '">' + (picked ? '✓ for diff' : 'mark diff') + '</button>' +
+        '<button class="btn-secondary snap-del-btn" data-id="' + escapeHtml(e.id) + '" title="Delete"><svg class="ico"><use href="#icon-close"/></svg></button>' +
+      '</div>' +
+    '</div>';
+  }).join("") + '</div>';
+  host.querySelectorAll(".snap-diff-btn").forEach(function (b) {
+    b.addEventListener("click", function () { toggleSnapDiff(b.dataset.id); });
+  });
+  host.querySelectorAll(".snap-del-btn").forEach(function (b) {
+    b.addEventListener("click", function () { deleteSnapshot(b.dataset.id); });
+  });
+}
+
+async function saveSnapshot() {
+  var nameEl = document.getElementById("snap-name");
+  var noteEl = document.getElementById("snap-note");
+  var tagsEl = document.getElementById("snap-tags");
+  var name = (nameEl.value || "").trim();
+  if (!name) { showToast("Name required.", true); return; }
+  if (state.composer.inc.length === 0 && state.composer.itx.length === 0) {
+    showToast("Compose an audience first (at least one include or intersect signal).", true);
+    return;
+  }
+  var composition = {
+    include:   state.composer.inc.map(function (s) { return s.signal_agent_segment_id || (s.signal_id && s.signal_id.id); }).filter(Boolean),
+    intersect: state.composer.itx.map(function (s) { return s.signal_agent_segment_id || (s.signal_id && s.signal_id.id); }).filter(Boolean),
+    exclude:   state.composer.exc.map(function (s) { return s.signal_agent_segment_id || (s.signal_id && s.signal_id.id); }).filter(Boolean),
+  };
+  var seedEl = document.getElementById("comp-lal-seed");
+  var kEl = document.getElementById("comp-lal-k");
+  var minEl = document.getElementById("comp-lal-min");
+  if (seedEl && seedEl.value) {
+    composition.lookalike = { seed_signal_id: seedEl.value, k: Number(kEl && kEl.value) || 8, min_cosine: Number(minEl && minEl.value) || 0 };
+  }
+  var reachAtSave = state.composer.lastCompose && state.composer.lastCompose.reach && state.composer.lastCompose.reach.final || 0;
+  var tags = (tagsEl.value || "").split(",").map(function (t) { return t.trim(); }).filter(Boolean);
+  var body = { name: name, note: noteEl.value || "", tags: tags, composition: composition, reach_at_save: reachAtSave };
+  try {
+    var r = await fetch("/snapshots", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + DEMO_KEY },
+      body: JSON.stringify(body),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || "HTTP " + r.status);
+    showToast("Saved snapshot “" + name + "”");
+    nameEl.value = ""; noteEl.value = ""; tagsEl.value = "";
+    await loadSnapshots();
+  } catch (e) {
+    showToast(e.message, true);
+  }
+}
+
+async function deleteSnapshot(id) {
+  try {
+    var r = await fetch("/snapshots/" + encodeURIComponent(id), {
+      method: "DELETE",
+      headers: { "Authorization": "Bearer " + DEMO_KEY },
+    });
+    if (!r.ok) { var data = await r.json(); throw new Error(data.error || "HTTP " + r.status); }
+    state.snapshots.diffPair = state.snapshots.diffPair.filter(function (x) { return x !== id; });
+    await loadSnapshots();
+  } catch (e) {
+    showToast(e.message, true);
+  }
+}
+
+function toggleSnapDiff(id) {
+  var pair = state.snapshots.diffPair.slice();
+  var idx = pair.indexOf(id);
+  if (idx >= 0) pair.splice(idx, 1);
+  else {
+    if (pair.length >= 2) pair.shift();
+    pair.push(id);
+  }
+  state.snapshots.diffPair = pair;
+  _renderSnapList();
+  if (pair.length === 2) runSnapDiff();
+}
+
+async function runSnapDiff() {
+  var host = document.getElementById("snap-diff");
+  var pair = state.snapshots.diffPair;
+  if (pair.length !== 2) return;
+  host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Diffing…</div></div>';
+  try {
+    var r = await fetch("/snapshots/diff", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + DEMO_KEY },
+      body: JSON.stringify({ a: pair[0], b: pair[1] }),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || "HTTP " + r.status);
+    _renderSnapDiff(data);
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
+  }
+}
+
+function _renderSnapDiff(data) {
+  var host = document.getElementById("snap-diff");
+  function facetBlock(label, d) {
+    var add = (d.added || []).length, rem = (d.removed || []).length, kept = (d.kept || []).length;
+    return '<div class="snap-diff-facet">' +
+      '<div class="snap-diff-facet-head">' + escapeHtml(label) +
+        ' <span class="mono" style="color:var(--text-mut);font-weight:400;margin-left:6px">+' + add + ' · −' + rem + ' · =' + kept + '</span>' +
+      '</div>' +
+      (add > 0 ? '<div class="snap-diff-line snap-add">+ ' + d.added.map(escapeHtml).join(", ") + '</div>' : '') +
+      (rem > 0 ? '<div class="snap-diff-line snap-rem">− ' + d.removed.map(escapeHtml).join(", ") + '</div>' : '') +
+    '</div>';
+  }
+  var dr = data.delta_reach || 0;
+  var header =
+    '<div class="snap-diff-header">' +
+      '<div><div class="k">A</div><div class="v">' + escapeHtml(data.a.name) + '</div><div class="sub mono">' + fmtNumber(data.a.reach_at_save) + '</div></div>' +
+      '<div><div class="k">B</div><div class="v">' + escapeHtml(data.b.name) + '</div><div class="sub mono">' + fmtNumber(data.b.reach_at_save) + '</div></div>' +
+      '<div><div class="k">Δ reach</div><div class="v mono" style="color:' + (dr >= 0 ? 'var(--success)' : 'var(--error)') + '">' + (dr >= 0 ? '+' : '') + fmtNumber(dr) + '</div></div>' +
+      (data.lookalike_changed ? '<div><div class="k">Lookalike</div><div class="v pill pill-warning">changed</div></div>' : '') +
+    '</div>';
+  host.innerHTML = header +
+    facetBlock("Include", data.include || {}) +
+    facetBlock("Intersect", data.intersect || {}) +
+    facetBlock("Exclude", data.exclude || {});
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Sec-45: Signal Freshness — per-signal x_analytics facets (half-life,
+// volatility, authority, stability). All data comes from the already-
+// loaded catalog — no new endpoint needed.
+// ─────────────────────────────────────────────────────────────────────────
+var _freshnessLoaded = false;
+
+async function ensureFreshness() {
+  if (_freshnessLoaded) return;
+  _freshnessLoaded = true;
+  if (state.catalog.all.length === 0) await loadCatalog();
+  state.freshness.rows = _freshnessExtractRows();
+  document.querySelectorAll("#fresh-table th[data-sort]").forEach(function (th) {
+    th.addEventListener("click", function () {
+      var col = th.dataset.sort;
+      if (state.freshness.sortCol === col) {
+        state.freshness.sortDir = state.freshness.sortDir === "asc" ? "desc" : "asc";
+      } else {
+        state.freshness.sortCol = col;
+        state.freshness.sortDir = (col === "name" || col === "vertical" || col === "stability") ? "asc" : "desc";
+      }
+      _freshnessRender();
+    });
+  });
+  _freshnessRender();
+}
+
+function _freshnessExtractRows() {
+  return (state.catalog.all || []).map(function (s) {
+    var xa = s.x_analytics || {};
+    return {
+      id: s.signal_agent_segment_id || (s.signal_id && s.signal_id.id) || "",
+      name: s.name || "(unnamed)",
+      vertical: verticalOf(s),
+      halflife: Number(xa.decayHalfLifeDays) || 0,
+      volatility: Number(xa.volatilityIndex) || 0,
+      authority: Number(xa.authorityScore) || 0,
+      stability: xa.idStabilityClass || "unknown",
+      reach: Number(s.estimated_audience_size) || 0,
+    };
+  });
+}
+
+function _freshnessRender() {
+  var rows = (state.freshness.rows || []).slice();
+  var col = state.freshness.sortCol;
+  var dir = state.freshness.sortDir;
+  var stabOrder = { stable: 0, "semi-stable": 1, "semi_stable": 1, volatile: 2, unknown: 3 };
+  rows.sort(function (a, b) {
+    var av = a[col], bv = b[col];
+    if (col === "stability") { av = stabOrder[av] != null ? stabOrder[av] : 99; bv = stabOrder[bv] != null ? stabOrder[bv] : 99; }
+    if (typeof av === "string") { var cmp = av.localeCompare(bv); return dir === "asc" ? cmp : -cmp; }
+    return dir === "asc" ? av - bv : bv - av;
+  });
+  // Update th arrows
+  document.querySelectorAll("#fresh-table th[data-sort]").forEach(function (th) {
+    th.classList.remove("fresh-sort-asc", "fresh-sort-desc");
+    if (th.dataset.sort === col) th.classList.add(dir === "asc" ? "fresh-sort-asc" : "fresh-sort-desc");
+  });
+  var tbody = document.querySelector("#fresh-table tbody");
+  if (!tbody) return;
+  tbody.innerHTML = rows.map(function (r) {
+    var hlCls = r.halflife < 7 ? "fresh-warn" : r.halflife < 30 ? "fresh-warm" : "";
+    var stabCls = "fresh-stab-" + (r.stability || "unknown").replace("_", "-");
+    var volCls = r.volatility > 60 ? "fresh-warn" : r.volatility > 30 ? "fresh-warm" : "";
+    var authCls = r.authority >= 80 ? "fresh-good" : r.authority < 40 ? "fresh-warn" : "";
+    return '<tr>' +
+      '<td class="fresh-name"><div>' + escapeHtml(r.name) + '</div><div class="signal-id">' + escapeHtml(r.id) + '</div></td>' +
+      '<td>' + escapeHtml(r.vertical) + '</td>' +
+      '<td class="mono ' + hlCls + '">' + r.halflife.toFixed(1) + '</td>' +
+      '<td class="mono ' + volCls + '">' + r.volatility.toFixed(0) + '</td>' +
+      '<td class="mono ' + authCls + '">' + r.authority.toFixed(0) + '</td>' +
+      '<td><span class="pill ' + stabCls + '">' + escapeHtml(r.stability) + '</span></td>' +
+      '<td class="mono">' + fmtNumber(r.reach) + '</td>' +
+    '</tr>';
+  }).join("");
+  // Warnings list: signals with halflife < 7
+  var warnHost = document.getElementById("fresh-warnings");
+  if (warnHost) {
+    var warn = rows.filter(function (r) { return r.halflife > 0 && r.halflife < 7; });
+    if (warn.length === 0) {
+      warnHost.innerHTML = '';
+    } else {
+      warnHost.innerHTML =
+        '<div class="fresh-warning-block">' +
+          '<div class="fresh-warning-head">' + warn.length + ' signal' + (warn.length === 1 ? '' : 's') + ' with half-life &lt; 7 days — refresh required before each flight</div>' +
+          '<div class="fresh-warning-body">' + warn.slice(0, 10).map(function (r) {
+            return '<span class="pill pill-warning" style="font-size:10.5px;margin:3px">' + escapeHtml(r.name) + ' · ' + r.halflife.toFixed(1) + 'd</span>';
+          }).join("") + (warn.length > 10 ? '<span style="color:var(--text-mut);font-size:11px;margin-left:6px">+' + (warn.length - 10) + ' more</span>' : '') + '</div>' +
+        '</div>';
+    }
+  }
+  var explHost = document.getElementById("fresh-explainer");
+  if (explHost && !explHost.innerHTML) {
+    explHost.innerHTML = renderChartExplainer({
+      what: "Per-signal data-quality facets derived at mapper time from the Sec-41 x_analytics block.",
+      how: "Half-life = exponential-decay parameter estimated from observed refresh cadence + category norms. Volatility = coefficient-of-variation over the monthly seasonality profile, 0–100 scaled. Authority = DTS methodology score (provenance + scale + freshness + licensing). Stability class = stable if IDs persist across flights, semi-stable if partial churn, volatile if large churn window-to-window.",
+      read: "For planning-heavy buys (upper-funnel, long flights) prioritize <strong>stable + low-volatility + high-authority</strong>. For time-sensitive campaigns (event-based, retail triggers) a short half-life is a feature, not a bug — just refresh before each flight.",
+      limits: "All four facets are deterministic derivations from catalog metadata. They don't replace a clean-room validation; for regulated verticals treat them as planning signals, not audit evidence.",
+    });
+  }
+}
+
 // ─── Federation (partial — more in Part 3) ───────────────────────────────
 var _fedLoaded = false;
 async function ensureFederation() {
@@ -8886,7 +10001,7 @@ async function renderAgentRegistry() {
 }
 // Federation shortlist — cross-agent selection that persists while the
 // user tries different briefs. Each entry: { agent, signal }. Used by
-// the bulk action bar (activate samba rows / copy TTD ids / export CSV /
+// the bulk action bar (activate evgeny rows / copy TTD ids / export CSV /
 // send to portfolio builder).
 var _fedShortlist = [];
 var _fedLastResults = [];
@@ -8925,7 +10040,7 @@ function renderFederatedResults(data) {
   var blendedCpm = totalReach > 0 ? totalCostWeighted / totalReach : 0;
 
   var agentStats = Object.entries(data.per_agent_count || {}).map(function (kv) {
-    var badge = kv[0] === "samba_signals" ? "pill-success" : kv[0] === "dstillery" ? "pill-info" : "pill-mut";
+    var badge = kv[0] === "evgeny_signals" ? "pill-success" : kv[0] === "dstillery" ? "pill-info" : "pill-mut";
     return '<div class="lab-stat-card"><div class="lab-stat-label"><span class="pill ' + badge + '" style="font-size:10px">' + escapeHtml(kv[0]) + '</span></div><div class="lab-stat-val">' + kv[1] + '</div></div>';
   }).join('');
   var summary = '<div class="fed-summary-grid">' + agentStats +
@@ -8941,8 +10056,8 @@ function renderFederatedResults(data) {
     var key = fedSigKey(m);
     var selected = shortlistKeys.has(key);
     var sid = sig.signal_agent_segment_id || "";
-    var agentClass = agent === "samba_signals" ? "fed-row-samba" : agent === "dstillery" ? "fed-row-dstillery" : "";
-    var agentPill = agent === "samba_signals" ? "pill-success" : agent === "dstillery" ? "pill-info" : "pill-mut";
+    var agentClass = agent === "evgeny_signals" ? "fed-row-evgeny" : agent === "dstillery" ? "fed-row-dstillery" : "";
+    var agentPill = agent === "evgeny_signals" ? "pill-success" : agent === "dstillery" ? "pill-info" : "pill-mut";
     // Enriched fields
     var desc = sig.description ? escapeHtml(sig.description.slice(0, 120) + (sig.description.length > 120 ? "\u2026" : "")) : "";
     var cpm = 0;
@@ -8960,7 +10075,7 @@ function renderFederatedResults(data) {
     }
     // Action button — agent-specific
     var actionBtn;
-    if (agent === "samba_signals") {
+    if (agent === "evgeny_signals") {
       actionBtn = '<button class="fed-action-btn primary" data-action="activate" data-sid="' + escapeHtml(sid) + '" title="Activate to mock_dsp"><svg class="ico"><use href="#icon-bolt"/></svg><span>Activate</span></button>';
     } else if (agent === "dstillery") {
       var ttdId = deployment.match(/id (\d+)/) ? deployment.match(/id (\d+)/)[1] : (sig.deployments && sig.deployments[0] && sig.deployments[0].decisioning_platform_segment_id) || sid;
@@ -9025,7 +10140,7 @@ function renderFederatedResults(data) {
       var idx = parseInt(row.dataset.idx, 10);
       var m = _fedLastResults[idx];
       if (!m) return;
-      if (m.source_agent === "samba_signals") {
+      if (m.source_agent === "evgeny_signals") {
         openDetailHydrated(m.signal.signal_agent_segment_id, m.signal);
       } else if (m.source_agent === "dstillery") {
         openDstilleryDetail(m.signal);
@@ -9058,8 +10173,8 @@ function renderFederatedResults(data) {
 
   document.getElementById("fed-explainer").innerHTML = renderChartExplainer({
     what: "Results from every AdCP Signals agent queried in parallel, merged with provenance badges. Each row is directly actionable.",
-    how: "Parallel fan-out via MCP tools/call. Samba results come from our local catalog (with full deployment metadata). Dstillery results are native TTD segments — the 'Copy TTD ID' button gives you the exact segment_id for use inside TTD's UI.",
-    read: "Check rows to shortlist across agents, then use the action bar: <strong>Activate selected</strong> fires samba signals to mock_dsp and copies Dstillery TTD IDs. <strong>Compare</strong> shows attributes side-by-side. <strong>Export CSV</strong> gives your planner a shareable shortlist.",
+    how: "Parallel fan-out via MCP tools/call. Evgeny results come from our local catalog (with full deployment metadata). Dstillery results are native TTD segments — the 'Copy TTD ID' button gives you the exact segment_id for use inside TTD's UI.",
+    read: "Check rows to shortlist across agents, then use the action bar: <strong>Activate selected</strong> fires evgeny signals to mock_dsp and copies Dstillery TTD IDs. <strong>Compare</strong> shows attributes side-by-side. <strong>Export CSV</strong> gives your planner a shareable shortlist.",
     limits: "Dstillery signals are activated via TTD, not our agent — we surface the segment_id they need. Future: direct TTD OAuth flow.",
   });
 }
@@ -9107,17 +10222,17 @@ async function fedActivateSignal(sid) {
 
 async function fedActivateSelected() {
   if (_fedShortlist.length === 0) return;
-  var samba = _fedShortlist.filter(function (m) { return m.source_agent === "samba_signals"; });
+  var evg = _fedShortlist.filter(function (m) { return m.source_agent === "evgeny_signals"; });
   var dstill = _fedShortlist.filter(function (m) { return m.source_agent === "dstillery"; });
   var messages = [];
-  // Activate samba signals in parallel
-  if (samba.length) {
-    showToast("Activating " + samba.length + " Samba signals\u2026");
-    var results = await Promise.allSettled(samba.map(function (m) {
+  // Activate evgeny signals in parallel
+  if (evg.length) {
+    showToast("Activating " + evg.length + " Evgeny signals\u2026");
+    var results = await Promise.allSettled(evg.map(function (m) {
       return callTool("activate_signal", { signal_agent_segment_id: m.signal.signal_agent_segment_id, destination_platform: "mock_dsp" });
     }));
     var ok = results.filter(function (r) { return r.status === "fulfilled"; }).length;
-    messages.push(ok + "/" + samba.length + " Samba activated");
+    messages.push(ok + "/" + evg.length + " Evgeny activated");
   }
   // Copy all TTD IDs to clipboard
   if (dstill.length) {
@@ -9172,7 +10287,7 @@ function fedCompareSelected() {
     };
   });
   var rows = [
-    ["Agent", cols.map(function (c) { var p = c.agent === "samba_signals" ? "pill-success" : "pill-info"; return '<span class="pill ' + p + '" style="font-size:10px">' + escapeHtml(c.agent) + '</span>'; })],
+    ["Agent", cols.map(function (c) { var p = c.agent === "evgeny_signals" ? "pill-success" : "pill-info"; return '<span class="pill ' + p + '" style="font-size:10px">' + escapeHtml(c.agent) + '</span>'; })],
     ["Signal ID", cols.map(function (c) { return '<span class="mono" style="font-size:11px">' + escapeHtml(c.sid || '') + '</span>'; })],
     ["Reach", cols.map(function (c) { return c.reach ? fmtNumber(c.reach) : '\u2014'; })],
     ["CPM", cols.map(function (c) { return c.cpm ? '$' + c.cpm.toFixed(2) : '\u2014'; })],

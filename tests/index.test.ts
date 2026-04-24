@@ -342,7 +342,7 @@ describe("buildDtsLabel", () => {
     const dts = buildDtsLabel(baseSignal);
     expect(dts.provider_name).toBe("AdCP Signals Adaptor - Demo Provider (Evgeny)");
     expect(dts.provider_domain).toBe("adcp-signals-adaptor.evgeny-193.workers.dev");
-    expect(dts.provider_email).toBe("evgeny@samba.tv");
+    expect(dts.provider_email).toBe("evgeny@evgeny.dev");
   });
 
   it("mirrors signal identity fields", () => {

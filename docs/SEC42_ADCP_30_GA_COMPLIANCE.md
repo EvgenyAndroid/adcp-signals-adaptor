@@ -82,7 +82,7 @@ Per `/schemas/3.0.0/protocol/get-adcp-capabilities-response.json`:
   ],
 
   "signals": {
-    "data_provider_domains": ["samba.tv"],
+    "data_provider_domains": ["evgeny.dev"],
     "features": { "catalog_signals": true },
     // ... existing rich fields retained for backward-compat ...
   },

@@ -45,7 +45,7 @@ The AdCP ecosystem now has multiple viable signals agents:
 - **Scope3** (sustainability + signals)
 - **NextData** (B2B intent)
 - **Dstillery** (real-time audience graph, behavioral)
-- **Samba TV / us** (MCP-native, UCP embedding bridge, IAB-DTS v1.2 label, cross-taxonomy)
+- **Evgeny / us** (MCP-native, UCP embedding bridge, IAB-DTS v1.2 label, cross-taxonomy)
 
 Our differentiation, stack-ranked by strategic value:
 
@@ -106,7 +106,7 @@ Each feature below has a full spec in a companion document. This section is the 
 
 | # | Feature | Spec doc | Acceptance |
 |---|---|---|---|
-| AF-1 | **Agent registry** | AGENT_FEDERATION_SPEC §2 | `GET /agents/registry` returns curated agent list with capabilities flags; includes Dstillery (live), Peer39/Scope3/NextData (roadmap), Samba (self) |
+| AF-1 | **Agent registry** | AGENT_FEDERATION_SPEC §2 | `GET /agents/registry` returns curated agent list with capabilities flags; includes Dstillery (live), Peer39/Scope3/NextData (roadmap), Evgeny (self) |
 | AF-2 | **Live Dstillery federation** | AGENT_FEDERATION_SPEC §3 | `POST /agents/federated-search` queries Dstillery's `/mcp` `get_signals` tool in parallel with ours; merged ranked results |
 | AF-3 | **Cross-agent similarity via Procrustes** | AGENT_FEDERATION_SPEC §4 | `POST /agents/cross-similarity` aligns embedding spaces via shared anchor signals; reports alignment quality |
 | AF-4 | **Interop matrix** | AGENT_FEDERATION_SPEC §5 | UI table: agent × capability (signals, activation, embedding, DTS, federation, …) |

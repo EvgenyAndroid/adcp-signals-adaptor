@@ -54,6 +54,10 @@ import {
   affinityRows,
   skewScore,
   concentrationOf,
+  journeyFunnel,
+  inferSensitiveCategories,
+  privacyCheck,
+  holdoutPlan,
   type AffinityRow,
 } from "../analytics/audienceMath";
 
@@ -342,5 +346,168 @@ export async function handleAffinityAudit(request: Request, env: Env, logger: Lo
     summary,
     method: "reach_weighted_share_then_index_vs_catalog_baseline",
     note: "Index = 100 × (selection_share / catalog_share). 100 = parity, 200 = 2× over-represented, 50 = under-represented. Capped at 600.",
+  });
+}
+
+// ── POST /audience/journey ──────────────────────────────────────────────────
+// Sequential segmentation: each stage supplies its own include/intersect
+// /exclude set. We reach-size each stage (reusing /audience/compose math)
+// then compute funnel conversion + drop-off.
+
+interface JourneyStageBody {
+  name?: string;
+  include?: string[];
+  intersect?: string[];
+  exclude?: string[];
+}
+
+interface JourneyBody {
+  stages?: JourneyStageBody[];
+}
+
+export async function handleAudienceJourney(request: Request, env: Env, logger: Logger): Promise<Response> {
+  const parsed = await readJsonBody<JourneyBody>(request);
+  if (parsed.kind === "invalid") return errorResponse("INVALID_JSON", parsed.reason, 400);
+  const body: JourneyBody = parsed.kind === "parsed" ? parsed.data : {};
+  const stages = body.stages ?? [];
+  if (stages.length < 2) return errorResponse("INVALID_INPUT", "At least 2 stages required", 400);
+  if (stages.length > 6) return errorResponse("TOO_MANY_STAGES", `Max 6 stages; got ${stages.length}`, 400);
+
+  const catalog = await loadCatalog(env, logger);
+  const byId = indexById(catalog);
+
+  const stageReaches: { name: string; reach: number; includeCount: number; intersectCount: number; excludeCount: number }[] = [];
+  for (let i = 0; i < stages.length; i++) {
+    const st = stages[i]!;
+    const inc = (st.include ?? []).map((id) => byId.get(id)).filter((x): x is SignalSummary => !!x);
+    const itx = (st.intersect ?? []).map((id) => byId.get(id)).filter((x): x is SignalSummary => !!x);
+    const exc = (st.exclude ?? []).map((id) => byId.get(id)).filter((x): x is SignalSummary => !!x);
+    if (inc.length === 0 && itx.length === 0) {
+      return errorResponse("INVALID_STAGE", `Stage ${i} (${st.name ?? "unnamed"}) needs at least one include or intersect signal`, 400);
+    }
+    const baseSet = inc.length > 0 ? inc : itx;
+    const unionR = unionReach(inc);
+    const intersectBase = unionR > 0 ? unionR : (itx[0]?.estimated_audience_size ?? 0);
+    const intersectFold = itx.length > 0 ? (unionR > 0 ? itx : itx.slice(1)) : [];
+    const afterIntersect = intersectReach(intersectBase, baseSet[0] ?? null, intersectFold);
+    const finalR = excludeReach(afterIntersect, baseSet, exc);
+    stageReaches.push({
+      name: st.name ?? `stage_${i + 1}`,
+      reach: finalR,
+      includeCount: inc.length,
+      intersectCount: itx.length,
+      excludeCount: exc.length,
+    });
+  }
+
+  const funnel = journeyFunnel(stageReaches.map((s) => ({ name: s.name, reach: s.reach })));
+
+  return jsonResponse({
+    stages: funnel.map((f, i) => ({
+      ...f,
+      include_count: stageReaches[i]!.includeCount,
+      intersect_count: stageReaches[i]!.intersectCount,
+      exclude_count: stageReaches[i]!.excludeCount,
+    })),
+    overall: {
+      top_of_funnel: funnel[0]?.reach ?? 0,
+      bottom_of_funnel: funnel[funnel.length - 1]?.reach ?? 0,
+      end_to_end_conversion: funnel[funnel.length - 1]?.cumulative_rate ?? 0,
+      biggest_dropoff_stage: funnel
+        .map((f, i) => ({ i, name: f.name, dropped: f.dropped_off }))
+        .sort((a, b) => b.dropped - a.dropped)[0]?.name ?? null,
+    },
+    method: "per_stage_compose_then_monotone_funnel",
+    note: "Stage reaches are clamped to be monotonically non-increasing (a subsequent stage can't exceed its predecessor). A `clamped:true` flag signals that the input breached the subset invariant.",
+  });
+}
+
+// ── POST /audience/privacy-check ────────────────────────────────────────────
+
+interface PrivacyBody {
+  signal_ids?: string[];
+  cohort_size?: number;     // optional override
+  min_k?: number;           // default 1000
+}
+
+export async function handleAudiencePrivacyCheck(request: Request, env: Env, logger: Logger): Promise<Response> {
+  const parsed = await readJsonBody<PrivacyBody>(request);
+  if (parsed.kind === "invalid") return errorResponse("INVALID_JSON", parsed.reason, 400);
+  const body: PrivacyBody = parsed.kind === "parsed" ? parsed.data : {};
+  const ids = body.signal_ids ?? [];
+  if (ids.length === 0 && typeof body.cohort_size !== "number") {
+    return errorResponse("INVALID_INPUT", "Provide signal_ids[] or cohort_size", 400);
+  }
+  if (ids.length > 20) return errorResponse("TOO_MANY_SIGNALS", `Max 20 signal_ids; got ${ids.length}`, 400);
+
+  let cohortSize = body.cohort_size ?? 0;
+  let sensitiveTokens: string[] = [];
+
+  if (ids.length > 0) {
+    const catalog = await loadCatalog(env, logger);
+    const byId = indexById(catalog);
+    const resolved: SignalSummary[] = [];
+    const missing: string[] = [];
+    for (const id of ids) {
+      const s = byId.get(id);
+      if (s) resolved.push(s);
+      else missing.push(id);
+    }
+    if (missing.length > 0) return errorResponse("UNKNOWN_SIGNALS", `Unknown signal ids: ${missing.join(", ")}`, 400);
+    if (cohortSize === 0) cohortSize = unionReach(resolved);
+    sensitiveTokens = inferSensitiveCategories(resolved.map((s) => ({ name: s.name, description: s.description })));
+  }
+
+  const result = privacyCheck(cohortSize, sensitiveTokens, body.min_k ?? 1000);
+  return jsonResponse({
+    ...result,
+    note: "k-anonymity floor defaults to 1000 per common GDPR/CCPA cohort conventions. Sensitive-category inference uses keyword matches on signal name + description; override via `min_k` for stricter thresholds.",
+  });
+}
+
+// ── POST /audience/holdout ──────────────────────────────────────────────────
+
+interface HoldoutBody {
+  signal_ids?: string[];
+  reach?: number;
+  holdout_pct?: number;
+  baseline_conversion_rate?: number;
+  power?: number;
+  alpha?: number;
+}
+
+export async function handleAudienceHoldout(request: Request, env: Env, logger: Logger): Promise<Response> {
+  const parsed = await readJsonBody<HoldoutBody>(request);
+  if (parsed.kind === "invalid") return errorResponse("INVALID_JSON", parsed.reason, 400);
+  const body: HoldoutBody = parsed.kind === "parsed" ? parsed.data : {};
+
+  let reach = body.reach ?? 0;
+  const ids = body.signal_ids ?? [];
+  if (reach === 0 && ids.length === 0) return errorResponse("INVALID_INPUT", "Provide reach or signal_ids[]", 400);
+  if (ids.length > 0) {
+    const catalog = await loadCatalog(env, logger);
+    const byId = indexById(catalog);
+    const resolved: SignalSummary[] = [];
+    const missing: string[] = [];
+    for (const id of ids) {
+      const s = byId.get(id);
+      if (s) resolved.push(s);
+      else missing.push(id);
+    }
+    if (missing.length > 0) return errorResponse("UNKNOWN_SIGNALS", `Unknown signal ids: ${missing.join(", ")}`, 400);
+    if (reach === 0) reach = unionReach(resolved);
+  }
+  if (reach <= 0) return errorResponse("INVALID_REACH", "reach must be > 0", 400);
+
+  const plan = holdoutPlan(
+    reach,
+    typeof body.holdout_pct === "number" ? body.holdout_pct : 0.10,
+    typeof body.baseline_conversion_rate === "number" ? body.baseline_conversion_rate : 0.02,
+    typeof body.power === "number" ? body.power : 0.80,
+    typeof body.alpha === "number" ? body.alpha : 0.05,
+  );
+  return jsonResponse({
+    ...plan,
+    note: "MDE is the smallest lift the experiment can reliably detect. To detect smaller lifts, either grow total reach, raise the baseline conversion rate assumption, relax alpha, or reduce required power.",
   });
 }

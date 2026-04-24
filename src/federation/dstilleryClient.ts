@@ -48,7 +48,7 @@ async function initializeSession(): Promise<string | null> {
       params: {
         protocolVersion: "2024-11-05",
         capabilities: {},
-        clientInfo: { name: "samba_signals_fed", version: "41.0" },
+        clientInfo: { name: "evgeny_signals_fed", version: "41.0" },
       },
     }),
     signal: AbortSignal.timeout(15_000),

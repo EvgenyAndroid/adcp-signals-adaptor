@@ -7,11 +7,14 @@ import {
   signalId,
   productId,
   pickTopSignals,
+  pickTopFormatIds,
   pickProductPerAgent,
   buildCreateMediaBuyPayload,
   extractCategories,
   extractArrayPayload,
   extractMcpToolArray,
+  deriveCreativeFilter,
+  deriveProductFilter,
   newWorkflowId,
 } from "../src/domain/workflowOrchestration";
 
@@ -341,6 +344,146 @@ describe("extractMcpToolArray", () => {
     );
     expect(out).toHaveLength(2);
     expect((out[0] as { name: string }).name).toBe("2 Images Display 160x600");
+  });
+});
+
+describe("deriveCreativeFilter", () => {
+  it("detects video intent from common keywords", () => {
+    expect(deriveCreativeFilter("luxury APAC video campaign")).toEqual({ asset_types: ["video"] });
+    expect(deriveCreativeFilter("pre-roll CTV across OTT")).toEqual({ asset_types: ["video"] });
+  });
+
+  it("detects image/display intent", () => {
+    expect(deriveCreativeFilter("banner campaign for auto intenders")).toEqual({ asset_types: ["image"] });
+    expect(deriveCreativeFilter("static display retargeting")).toEqual({ asset_types: ["image"] });
+  });
+
+  it("leaves asset_types unset when both or neither are mentioned", () => {
+    expect(deriveCreativeFilter("multimedia: video and display")).toEqual({});
+    expect(deriveCreativeFilter("luxury travel")).toEqual({});
+  });
+
+  it("layers mobile hint on top of asset type", () => {
+    const out = deriveCreativeFilter("mobile video for commuters");
+    expect(out.asset_types).toEqual(["video"]);
+    expect(out.max_width).toBe(500);
+  });
+
+  it("recognizes desktop takeover pattern", () => {
+    const out = deriveCreativeFilter("desktop home page takeover");
+    expect(out.min_width).toBe(728);
+  });
+});
+
+describe("deriveProductFilter", () => {
+  it("includes signals + formats + asset_types when all present", () => {
+    const out = deriveProductFilter(
+      ["sig_1", "sig_2"],
+      ["fmt_a"],
+      { asset_types: ["video"] },
+    );
+    expect(out).toEqual({
+      targeting_signals: ["sig_1", "sig_2"],
+      format_ids: ["fmt_a"],
+      asset_types: ["video"],
+    });
+  });
+
+  it("omits keys with empty inputs", () => {
+    expect(deriveProductFilter([], [], {})).toEqual({});
+    expect(deriveProductFilter(["s"], [], {})).toEqual({ targeting_signals: ["s"] });
+  });
+});
+
+describe("pickTopFormatIds", () => {
+  it("takes one format id per vendor first, then fills the remainder", () => {
+    // n=5, vendors have 2+1=3 total: per-vendor pass picks a1 + b1,
+    // fill pass adds a2 from the first vendor's overflow.
+    const out = pickTopFormatIds(
+      [
+        { payload: { formats: [{ id: "a1" }, { id: "a2" }] } },
+        { payload: { formats: [{ id: "b1" }] } },
+      ],
+      5,
+    );
+    expect(out).toEqual(["a1", "b1", "a2"]);
+  });
+
+  it("caps at n even when more are available", () => {
+    const out = pickTopFormatIds(
+      [
+        { payload: { formats: [{ id: "a1" }, { id: "a2" }] } },
+        { payload: { formats: [{ id: "b1" }, { id: "b2" }] } },
+      ],
+      2,
+    );
+    expect(out).toEqual(["a1", "b1"]);
+  });
+
+  it("flattens Celtra's nested format_id.{agent_url,id} shape", () => {
+    const out = pickTopFormatIds(
+      [{ payload: { formats: [{ format_id: { agent_url: "x", id: "celtra_123" }, name: "x" }] } }],
+      3,
+    );
+    expect(out).toEqual(["celtra_123"]);
+  });
+
+  it("fills remaining slots from first vendor after per-vendor pass", () => {
+    const out = pickTopFormatIds(
+      [{ payload: { formats: [{ id: "a1" }, { id: "a2" }, { id: "a3" }] } }],
+      3,
+    );
+    expect(out).toEqual(["a1", "a2", "a3"]);
+  });
+
+  it("dedupes ids if the same one appears in multiple vendors", () => {
+    const out = pickTopFormatIds(
+      [
+        { payload: { formats: [{ id: "shared" }] } },
+        { payload: { formats: [{ id: "shared" }, { id: "unique" }] } },
+      ],
+      5,
+    );
+    expect(out).toEqual(["shared", "unique"]);
+  });
+
+  it("returns [] when no formats have ids", () => {
+    expect(pickTopFormatIds([{ payload: { formats: [{ name: "no id" }] } }], 3)).toEqual([]);
+  });
+});
+
+describe("buildCreateMediaBuyPayload with creatives (Sec-48q)", () => {
+  const NOW = Date.UTC(2026, 3, 24, 12, 0, 0);
+  it("emits packages[0].creatives with each chosen format id", () => {
+    const p = buildCreateMediaBuyPayload({
+      workflowId: "wf_test",
+      agentId: "adzymic_apx",
+      brief: "x",
+      chosenProductId: "prod",
+      chosenSignalIds: [],
+      chosenFormatIds: ["fmt_a", "fmt_b"],
+      nowMs: NOW,
+    });
+    expect(p.packages[0]!.creatives).toEqual([
+      { format_id: "fmt_a" },
+      { format_id: "fmt_b" },
+    ]);
+  });
+
+  it("omits creatives key when no formats are chosen", () => {
+    const p = buildCreateMediaBuyPayload({
+      workflowId: "w", agentId: "a", brief: "x",
+      chosenProductId: "p", chosenSignalIds: [], chosenFormatIds: [], nowMs: NOW,
+    });
+    expect(p.packages[0]!.creatives).toBeUndefined();
+  });
+
+  it("treats missing chosenFormatIds as empty", () => {
+    const p = buildCreateMediaBuyPayload({
+      workflowId: "w", agentId: "a", brief: "x",
+      chosenProductId: "p", chosenSignalIds: [], nowMs: NOW,
+    });
+    expect(p.packages[0]!.creatives).toBeUndefined();
   });
 });
 

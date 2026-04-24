@@ -4261,6 +4261,31 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   transition: background-color 0.25s;
 }
 
+/* Sec-48q: pickable signal rows + format pills. */
+.wf-signal-pickable { cursor: pointer; border-radius: 3px; padding: 3px 4px; margin: 0 -4px; }
+.wf-signal-pickable:hover { background: var(--bg-hover); outline: 1px solid var(--accent-border); }
+.wf-signal-pickable:hover .wf-signal-name { color: var(--accent); }
+.wf-signal-chosen {
+  background: var(--accent-dim);
+  border-left: 2px solid var(--accent);
+  padding-left: 6px !important;
+}
+.wf-signal-chosen .wf-signal-name { color: var(--accent); font-weight: 500; }
+
+.wf-format-pickable {
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+.wf-format-pickable:hover { background: var(--bg-hover); color: var(--accent); border-color: var(--accent-border); }
+.wf-format-chosen {
+  background: var(--accent-dim) !important;
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+  font-weight: 600;
+}
+
+.wf-chosen-empty { opacity: 0.7; font-style: italic; }
+
 /* Sec-48n: pickable product rows + fire-buy button. */
 .wf-product-pickable { cursor: pointer; border-radius: 3px; }
 .wf-product-pickable:hover {
@@ -11265,12 +11290,140 @@ function _wfOnClick(ev) {
     if (agentId && productId) _wfPickProduct(agentId, productId);
     return;
   }
+  // Sec-48q: signal + format toggles.
+  var sigRow = target.closest ? target.closest(".wf-signal-pickable") : null;
+  if (sigRow) {
+    var sid = sigRow.getAttribute("data-wf-pick-signal");
+    if (sid) _wfToggleSignal(sid);
+    return;
+  }
+  var fmtPill = target.closest ? target.closest(".wf-format-pickable") : null;
+  if (fmtPill) {
+    var fid = fmtPill.getAttribute("data-wf-pick-format");
+    if (fid) _wfToggleFormat(fid);
+    return;
+  }
   var fireBtn = target.closest ? target.closest(".wf-refire-btn") : null;
   if (fireBtn) {
     var fa = fireBtn.getAttribute("data-wf-refire-agent");
     if (fa) _wfFireBuy(fa, fireBtn);
     return;
   }
+}
+
+// ── Signal + format pick helpers (Sec-48q) ──────────────────────────────
+// Both follow the same pattern as _wfPickProduct: mutate state, repaint
+// the chosen markers, rewrite every stage-4 payload in place.
+
+function _wfToggleSignal(sid) {
+  if (!_wfState) return;
+  var chosen = _wfState.stages.signals.chosen || [];
+  var idx = chosen.indexOf(sid);
+  if (idx >= 0) chosen.splice(idx, 1);
+  else chosen.push(sid);
+  _wfState.stages.signals.chosen = chosen;
+  _wfRenderChosenSignals();
+  _wfMarkChosenSignalRows();
+  _wfRewriteAllPayloads();
+}
+
+function _wfToggleFormat(fid) {
+  if (!_wfState) return;
+  var chosen = _wfState.stages.creative.chosen || [];
+  var idx = chosen.indexOf(fid);
+  if (idx >= 0) chosen.splice(idx, 1);
+  else chosen.push(fid);
+  _wfState.stages.creative.chosen = chosen;
+  _wfRenderChosenFormats();
+  _wfMarkChosenFormatPills();
+  _wfRewriteAllPayloads();
+}
+
+function _wfRenderChosenSignals() {
+  var host = document.getElementById("wf-chosen-signals");
+  if (!host) return;
+  var chosen = _wfState.stages.signals.chosen || [];
+  if (chosen.length === 0) {
+    host.innerHTML = '<div class="wf-chosen wf-chosen-empty"><span class="wf-chosen-label">No signals chosen \u2014 click a row above to add.</span></div>';
+    return;
+  }
+  var html = chosen.map(function (s) {
+    return '<code class="mono wf-chosen-chip" data-signal-id="' + escapeHtml(s) + '">' + escapeHtml(s) + '</code>';
+  }).join(" ");
+  host.innerHTML = '<div class="wf-chosen wf-chosen-anim">' +
+    '<span class="wf-chosen-label">Targeting \u2192</span>' + html +
+  '</div>';
+}
+
+function _wfRenderChosenFormats() {
+  var host = document.getElementById("wf-chosen-formats");
+  if (!host) return;
+  var chosen = _wfState.stages.creative.chosen || [];
+  if (chosen.length === 0) {
+    host.innerHTML = '<div class="wf-chosen wf-chosen-empty"><span class="wf-chosen-label">No creative chosen \u2014 click a format pill above to add.</span></div>';
+    return;
+  }
+  var html = chosen.map(function (f) {
+    return '<code class="mono wf-chosen-chip">' + escapeHtml(f) + '</code>';
+  }).join(" ");
+  host.innerHTML = '<div class="wf-chosen wf-chosen-anim">' +
+    '<span class="wf-chosen-label">Creative \u2192</span>' + html +
+  '</div>';
+}
+
+function _wfMarkChosenSignalRows() {
+  var chosen = new Set(_wfState.stages.signals.chosen || []);
+  document.querySelectorAll("#wf-stage-signals .wf-signal-row").forEach(function (row) {
+    var sid = row.getAttribute("data-signal-id");
+    if (sid && chosen.has(sid)) row.classList.add("wf-signal-chosen");
+    else row.classList.remove("wf-signal-chosen");
+  });
+}
+
+function _wfMarkChosenFormatPills() {
+  var chosen = new Set(_wfState.stages.creative.chosen || []);
+  document.querySelectorAll("#wf-stage-creative .wf-format-pickable").forEach(function (pill) {
+    var fid = pill.getAttribute("data-wf-pick-format");
+    if (fid && chosen.has(fid)) pill.classList.add("wf-format-chosen");
+    else pill.classList.remove("wf-format-chosen");
+  });
+}
+
+function _wfRewriteAllPayloads() {
+  // On any upstream pick change, rebuild every stage-4 payload so the
+  // JSON previews (and the per-agent "Fire this buy" payload) stay in
+  // sync. Mutates the cached payload objects.
+  if (!_wfState) return;
+  var payloads = (_wfState.stages.media_buy.payload_by_agent) || {};
+  var signals = _wfState.stages.signals.chosen || [];
+  var formats = _wfState.stages.creative.chosen || [];
+  Object.keys(payloads).forEach(function (agentId) {
+    var p = payloads[agentId];
+    if (!p) return;
+    // targeting_overlay.required_axe_signals
+    if (signals.length === 0) {
+      delete p.targeting_overlay;
+    } else {
+      p.targeting_overlay = { required_axe_signals: signals.slice() };
+    }
+    // packages[0].creatives
+    if (Array.isArray(p.packages) && p.packages.length > 0) {
+      if (formats.length === 0) {
+        delete p.packages[0].creatives;
+      } else {
+        p.packages[0].creatives = formats.map(function (fid) { return { format_id: fid }; });
+      }
+    }
+    var pre = document.getElementById("wf-payload-pre-" + agentId);
+    if (pre) {
+      try {
+        pre.textContent = JSON.stringify(p, null, 2);
+        pre.classList.remove("wf-body-anim");
+        void pre.offsetWidth;
+        pre.classList.add("wf-body-anim");
+      } catch (e) { /* noop */ }
+    }
+  });
 }
 
 function _wfPickProduct(agentId, productId) {
@@ -11319,6 +11472,7 @@ async function _wfFireBuy(agentId, btn) {
   btn.innerHTML = '<span class="spinner" style="width:10px;height:10px;margin-right:6px"></span><span>Firing\u2026</span>';
   var chosenProduct = (_wfState.stages.products.chosen_per_agent || {})[agentId] || null;
   var signalIds = _wfState.stages.signals.chosen || [];
+  var formatIds = _wfState.stages.creative.chosen || [];
   try {
     var r = await fetch("/agents/workflow/fire-buy", {
       method: "POST",
@@ -11327,6 +11481,7 @@ async function _wfFireBuy(agentId, btn) {
         agent_id: agentId,
         product_id: chosenProduct,
         signal_ids: signalIds,
+        format_ids: formatIds,
         brief: _wfState.brief,
         workflow_id: _wfState.workflow_id,
         timeout_ms: 20000,
@@ -11710,8 +11865,11 @@ function _wfNewState() {
     brief: "",
     plan: { signals_agents: [], creative_agents: [], buying_agents: [], activate_agents: [] },
     stages: {
-      signals:   { status: "pending", agents: {}, chosen: [],  total_count: 0 },
-      creative:  { status: "pending", agents: {}, total_count: 0 },
+      signals:   { status: "pending", agents: {}, chosen: [], total_count: 0 },
+      // Sec-48q: creative stage tracks chosen_format_ids (defaulted to
+      // top one per vendor when the stage completes; user can click
+      // pills to toggle). Same pattern as signals.chosen.
+      creative:  { status: "pending", agents: {}, chosen: [], total_count: 0 },
       products:  { status: "pending", agents: {}, chosen_per_agent: {}, total_count: 0 },
       media_buy: { status: "pending", agents: {}, activated: [] },
     },
@@ -11834,6 +11992,7 @@ function _wfPaintStageShell(key, num, title) {
       '<div class="wf-stage-pending orch-small">waiting\u2026</div>' +
     '</div>' +
     (key === "signals" ? '<div id="wf-chosen-signals"></div>' : "") +
+    (key === "creative" ? '<div id="wf-chosen-formats"></div>' : "") +
   '</div>';
 }
 
@@ -11917,15 +12076,14 @@ function _wfApplyEvent(ev) {
   }
   if (ev.type === "targeting_chosen") {
     _wfState.stages.signals.chosen = ev.chosen_signal_ids || [];
-    var host = document.getElementById("wf-chosen-signals");
-    if (host) {
-      var chosen = (ev.chosen_signal_ids || []).map(function (s) {
-        return '<code class="mono wf-chosen-chip" data-signal-id="' + escapeHtml(s) + '">' + escapeHtml(s) + '</code>';
-      }).join(" ");
-      host.innerHTML = '<div class="wf-chosen wf-chosen-anim">' +
-        '<span class="wf-chosen-label">Chosen for targeting \u2192</span>' + chosen +
-      '</div>';
-    }
+    _wfRenderChosenSignals();
+    _wfMarkChosenSignalRows();
+    return;
+  }
+  if (ev.type === "formats_chosen") {
+    _wfState.stages.creative.chosen = ev.chosen_format_ids || [];
+    _wfRenderChosenFormats();
+    _wfMarkChosenFormatPills();
     return;
   }
   if (ev.type === "products_chosen") {
@@ -11987,11 +12145,20 @@ function _wfPaintAgentComplete(ev) {
   var body = "";
   if (ev.stage === "signals") {
     var preview = (ev.summary && ev.summary.preview) || [];
+    // Sec-48q: each signal row is pickable — click toggles membership in
+    // _wfState.stages.signals.chosen; the active chips render below the
+    // stage and the stage-4 payloads live-rewrite.
+    var chosenSignalsSet = new Set(_wfState.stages.signals.chosen || []);
     body = '<div class="wf-stage-count mono">' + (ev.summary && ev.summary.count || 0) + ' signals</div>' +
       preview.map(function (s) {
         var cov = typeof s.coverage_percentage === "number" ? (Math.round(s.coverage_percentage * 100) + "%") : "";
         var reach = typeof s.estimated_audience_size === "number" ? ((s.estimated_audience_size / 1e6).toFixed(1) + "M") : "";
-        return '<div class="wf-signal-row" data-signal-id="' + escapeHtml(s.id || '') + '">' +
+        var isChosen = s.id && chosenSignalsSet.has(s.id);
+        var cls = "wf-signal-row" + (s.id ? " wf-signal-pickable" : "") + (isChosen ? " wf-signal-chosen" : "");
+        return '<div class="' + cls + '" ' +
+                 'data-signal-id="' + escapeHtml(s.id || '') + '" ' +
+                 (s.id ? ('data-wf-pick-signal="' + escapeHtml(s.id) + '" ') : '') +
+                 'title="' + (s.id ? 'click to toggle as targeting signal' : 'no id, unpickable') + '">' +
           '<span class="mono wf-signal-id">' + escapeHtml(s.id || '-') + '</span>' +
           '<span class="wf-signal-name">' + escapeHtml(s.name) + '</span>' +
           (cov ? '<span class="pill pill-muted mono" style="font-size:9.5px">cov ' + cov + '</span>' : '') +
@@ -12000,9 +12167,24 @@ function _wfPaintAgentComplete(ev) {
       }).join("");
   } else if (ev.stage === "creative") {
     var previewC = (ev.summary && ev.summary.preview) || [];
+    var chosenFormatsSet = new Set(_wfState.stages.creative.chosen || []);
+    // Normalize preview: either array of {id, name} objects (new shape) or
+    // array of strings (old shape, for safety). Only objects w/ id are pickable.
+    var normalized = previewC.map(function (p) {
+      if (p && typeof p === "object") return { id: p.id || "", name: p.name || p.id || "(format)" };
+      return { id: "", name: String(p) };
+    });
     body = '<div class="wf-stage-count mono">' + (ev.summary && ev.summary.count || 0) + ' formats</div>' +
       '<div class="wf-formats-list">' +
-        previewC.map(function (n) { return '<span class="pill pill-muted mono" style="font-size:10px">' + escapeHtml(String(n).slice(0, 40)) + '</span>'; }).join(" ") +
+        normalized.map(function (p) {
+          var isChosen = p.id && chosenFormatsSet.has(p.id);
+          var cls = "pill pill-muted mono" + (p.id ? " wf-format-pickable" : "") + (isChosen ? " wf-format-chosen" : "");
+          return '<span class="' + cls + '" ' +
+                   'style="font-size:10px" ' +
+                   (p.id ? ('data-wf-pick-format="' + escapeHtml(p.id) + '" ') : '') +
+                   (p.id ? 'title="click to toggle as creative for media buy"' : '') +
+                   '>' + escapeHtml(String(p.name).slice(0, 40)) + '</span>';
+        }).join(" ") +
       '</div>';
   } else if (ev.stage === "products") {
     var previewP = (ev.summary && ev.summary.preview) || [];

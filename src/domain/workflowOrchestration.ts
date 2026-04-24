@@ -102,6 +102,13 @@ export interface MediaBuyPayloadInput {
   nowMs?: number;
 }
 
+export interface MediaBuyPayloadInputWithCreative extends MediaBuyPayloadInput {
+  /** Optional format IDs chosen in the creative stage. Populate
+   *  `packages[0].creatives` so the vendor sees a compatible
+   *  format declaration alongside the product + targeting. */
+  chosenFormatIds?: string[];
+}
+
 export interface MediaBuyPayload {
   buyer_ref: string;
   brand_manifest: {
@@ -113,6 +120,7 @@ export interface MediaBuyPayload {
     package_ref: string;
     product_id: string | null;
     budget: { amount: number; currency: "USD" };
+    creatives?: Array<{ format_id: string }>;
   }>;
   start_time: string;
   end_time: string;
@@ -127,13 +135,23 @@ export interface MediaBuyPayload {
  *  required fields across Adzymic / Claire / Swivel. Same payload is
  *  emitted for every agent in the workflow — any per-vendor tailoring
  *  happens at the transport layer. */
-export function buildCreateMediaBuyPayload(input: MediaBuyPayloadInput): MediaBuyPayload {
+export function buildCreateMediaBuyPayload(input: MediaBuyPayloadInputWithCreative): MediaBuyPayload {
   const now = input.nowMs ?? Date.now();
   const startDelayMs = (input.startDelayHours ?? 24) * 60 * 60 * 1000;
   const durationMs = (input.durationDays ?? 7) * 24 * 60 * 60 * 1000;
   const startIso = new Date(now + startDelayMs).toISOString();
   const endIso = new Date(now + startDelayMs + durationMs).toISOString();
   const totalBudget = input.totalBudgetUsd ?? 1000;
+  const formats = input.chosenFormatIds ?? [];
+
+  const pkg: MediaBuyPayload["packages"][number] = {
+    package_ref: "pkg_1",
+    product_id: input.chosenProductId,
+    budget: { amount: totalBudget, currency: "USD" },
+  };
+  if (formats.length > 0) {
+    pkg.creatives = formats.map((fid) => ({ format_id: fid }));
+  }
 
   const payload: MediaBuyPayload = {
     buyer_ref: `wf_${input.workflowId}_${input.agentId}`,
@@ -142,13 +160,7 @@ export function buildCreateMediaBuyPayload(input: MediaBuyPayloadInput): MediaBu
       advertiser: "AdCP Workflow Demo",
       categories: extractCategories(input.brief),
     },
-    packages: [
-      {
-        package_ref: "pkg_1",
-        product_id: input.chosenProductId,
-        budget: { amount: totalBudget, currency: "USD" },
-      },
-    ],
+    packages: [pkg],
     start_time: startIso,
     end_time: endIso,
     total_budget: { amount: totalBudget, currency: "USD" },
@@ -174,6 +186,104 @@ export function extractCategories(brief: string): string[] {
     if (uniq.length >= 3) break;
   }
   return uniq.length > 0 ? uniq : ["general"];
+}
+
+/** Sec-48q: pick up to N format IDs from the creative stage results.
+ *  Takes the first good format from each vendor (per-vendor diversity),
+ *  then fills remaining slots from the first vendor's overflow. */
+export function pickTopFormatIds(
+  creativeResults: Array<{ payload: { formats: unknown[] } }>,
+  n: number,
+): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  function fmtId(f: unknown): string | null {
+    if (!f || typeof f !== "object") return null;
+    const o = f as { format_id?: unknown; id?: unknown };
+    // Celtra returns format_id as {agent_url, id}; flatten to the id field.
+    if (typeof o.format_id === "string") return o.format_id;
+    if (o.format_id && typeof o.format_id === "object") {
+      const inner = (o.format_id as { id?: unknown }).id;
+      if (typeof inner === "string") return inner;
+    }
+    if (typeof o.id === "string") return o.id;
+    return null;
+  }
+  // Pass 1: one from each vendor.
+  for (const r of creativeResults) {
+    if (ids.length >= n) break;
+    const formats = r.payload.formats;
+    for (const f of formats) {
+      const id = fmtId(f);
+      if (id && !seen.has(id)) { ids.push(id); seen.add(id); break; }
+    }
+  }
+  // Pass 2: fill remaining from first vendor's overflow.
+  for (const r of creativeResults) {
+    if (ids.length >= n) break;
+    for (const f of r.payload.formats) {
+      if (ids.length >= n) break;
+      const id = fmtId(f);
+      if (id && !seen.has(id)) { ids.push(id); seen.add(id); }
+    }
+  }
+  return ids;
+}
+
+/** Sec-48q: keyword-driven creative filter. Parses the brief for
+ *  obvious format hints (video / display, mobile / desktop) and
+ *  returns arguments suitable for `list_creative_formats`.
+ *
+ *  Intentionally shallow — production would use LLM intent parsing.
+ *  Here we just map a few canonical keywords so the creative stage
+ *  doesn't drown the UI with 81 formats when the user clearly asked
+ *  for, e.g., "video APAC" or "mobile display". */
+export interface CreativeFilter {
+  asset_types?: ("image" | "video")[];
+  max_width?: number;
+  min_width?: number;
+  max_height?: number;
+  min_height?: number;
+}
+
+export function deriveCreativeFilter(brief: string): CreativeFilter {
+  const out: CreativeFilter = {};
+  const b = brief.toLowerCase();
+  const wantsVideo = /\bvideo\b|\bpre[- ]?roll\b|\bmid[- ]?roll\b|\bott\b|\bctv\b/.test(b);
+  const wantsImage = /\bdisplay\b|\bbanner\b|\bimage\b|\bstatic\b/.test(b);
+  // If both or neither are matched, leave asset_types unset — full catalog.
+  if (wantsVideo && !wantsImage) out.asset_types = ["video"];
+  else if (wantsImage && !wantsVideo) out.asset_types = ["image"];
+  if (/\bmobile\b|\bphone\b|\bios\b|\bandroid\b/.test(b)) {
+    out.max_width = 500;
+  }
+  if (/\bdesktop\b|\bhome[- ]?page\b|\btake[- ]?over\b/.test(b)) {
+    out.min_width = 728;
+  }
+  return out;
+}
+
+/** Sec-48q: filter args for `get_products`. Passed under `filters` in the
+ *  tools/call. Vendors that don't honor any given key just ignore it; this
+ *  is best-effort intent-signaling. */
+export interface ProductFilter {
+  targeting_signals?: string[];
+  format_ids?: string[];
+  asset_types?: ("image" | "video")[];
+}
+
+export function deriveProductFilter(
+  chosenSignalIds: string[],
+  chosenFormatIds: string[],
+  creativeFilter: CreativeFilter,
+): ProductFilter {
+  const out: ProductFilter = {};
+  if (chosenSignalIds.length > 0) out.targeting_signals = chosenSignalIds;
+  if (chosenFormatIds.length > 0) out.format_ids = chosenFormatIds;
+  if (creativeFilter.asset_types && creativeFilter.asset_types.length > 0) {
+    out.asset_types = creativeFilter.asset_types;
+  }
+  return out;
 }
 
 /** Create a reasonably unique + human-recognizable workflow id.

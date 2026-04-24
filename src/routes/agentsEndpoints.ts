@@ -36,6 +36,7 @@ import { searchSignalsService } from "../domain/signalService";
 import { getDb } from "../storage/db";
 import {
   pickTopSignals,
+  pickTopFormatIds,
   pickProductPerAgent,
   buildCreateMediaBuyPayload,
   newWorkflowId,
@@ -43,9 +44,13 @@ import {
   signalId as signalIdOf,
   extractMcpToolArray,
   describeToolResult,
+  deriveCreativeFilter,
+  deriveProductFilter,
   type SignalLite,
   type ProductLite,
   type MediaBuyPayload,
+  type CreativeFilter,
+  type ProductFilter,
 } from "../domain/workflowOrchestration";
 import { ADCP_TOOLS } from "../mcp/tools";
 
@@ -482,12 +487,17 @@ async function runSignalsStage(
 
 async function runCreativeStage(
   agents: RegisteredAgent[],
+  creativeFilter: CreativeFilter,
   timeoutMs: number,
 ): Promise<CreativeStageAgent[]> {
+  // Sec-48q: pass brief-derived filter args so the catalog is narrowed by
+  // intent (video vs display, mobile width cap, etc.). Empty filter == all.
   return Promise.all(agents.map(async (a): Promise<CreativeStageAgent> => {
-    // list_creative_formats is a directory scan — no args required across
-    // Advertible, Celtra, and the buying-agent implementations.
-    const res = await callAgentTool(a.mcp_url!, "list_creative_formats", {}, { timeoutMs });
+    const res = await callAgentTool(
+      a.mcp_url!, "list_creative_formats",
+      creativeFilter as unknown as Record<string, unknown>,
+      { timeoutMs },
+    );
     const formats = extractMcpToolArray(res.structured_content, res.content, ["formats", "creative_formats", "items"]);
     const out: CreativeStageAgent = {
       id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
@@ -502,14 +512,17 @@ async function runCreativeStage(
 async function runProductsStage(
   agents: RegisteredAgent[],
   brief: string,
+  productFilter: ProductFilter,
   maxResults: number,
   timeoutMs: number,
 ): Promise<ProductsStageAgent[]> {
+  // Sec-48q: products stage now inherits targeting signals + format hints
+  // from upstream stages. Vendors that don't honor these keys ignore them;
+  // the point is to signal intent so the buying agent can narrow inventory.
   return Promise.all(agents.map(async (a): Promise<ProductsStageAgent> => {
-    // Across the 3 default buying agents, `brief` is the only universally-
-    // accepted arg. Max_results is nonstandard on these endpoints so we
-    // rely on server-side paging defaults.
-    const res = await callAgentTool(a.mcp_url!, "get_products", { brief }, { timeoutMs });
+    const args: Record<string, unknown> = { brief };
+    if (Object.keys(productFilter).length > 0) args.filters = productFilter;
+    const res = await callAgentTool(a.mcp_url!, "get_products", args, { timeoutMs });
     const products = extractMcpToolArray<ProductLite>(
       res.structured_content,
       res.content,
@@ -531,6 +544,7 @@ async function runMediaBuyStage(
   brief: string,
   chosenProductByAgent: Record<string, string | null>,
   chosenSignalIds: string[],
+  chosenFormatIds: string[],
   activateSet: Set<string>,
   timeoutMs: number,
 ): Promise<MediaBuyStageAgent[]> {
@@ -542,6 +556,7 @@ async function runMediaBuyStage(
       brief,
       chosenProductId,
       chosenSignalIds,
+      chosenFormatIds,
     });
     const base: MediaBuyStageAgent = {
       id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
@@ -601,22 +616,25 @@ export async function handleWorkflowRun(request: Request, env: Env, logger: Logg
 
   const workflowId = newWorkflowId();
   const t0 = Date.now();
+  // Sec-48q: derive brief-driven filters before the stages fire.
+  const creativeFilter = deriveCreativeFilter(body.brief);
 
   // Stage 1 + Stage 2 in parallel (independent).
   const [signalsResults, creativeResults] = await Promise.all([
     runSignalsStage(signalsAgents, body.brief, maxSignals, timeoutMs),
-    creativeAgents.length > 0 ? runCreativeStage(creativeAgents, timeoutMs) : Promise.resolve([]),
+    creativeAgents.length > 0 ? runCreativeStage(creativeAgents, creativeFilter, timeoutMs) : Promise.resolve([]),
   ]);
 
-  // Stage 3 depends on the brief only — could have run in parallel with
-  // stages 1/2 but sequencing it after signals gives the UI a clear
-  // "step arrow" between "I know the audience" and "I know the inventory"
-  // moments. Cheap to re-order later.
-  const productsResults = await runProductsStage(buyingAgents, body.brief, maxProducts, timeoutMs);
-
-  // Pick downstream targeting.
+  // Pick downstream artefacts once upstream stages land.
   const mergedSignals = signalsResults.flatMap((r) => r.payload.signals);
   const chosenSignalIds = pickTopSignals(mergedSignals, 3);
+  const chosenFormatIds = pickTopFormatIds(creativeResults, 2);
+
+  // Sec-48q: products now sequences AFTER signals + creative so it
+  // can receive targeting_signals + format hints in its filters arg.
+  const productFilter = deriveProductFilter(chosenSignalIds, chosenFormatIds, creativeFilter);
+  const productsResults = await runProductsStage(buyingAgents, body.brief, productFilter, maxProducts, timeoutMs);
+
   const chosenProductByAgent = pickProductPerAgent(productsResults.map((r) => ({ id: r.id, products: r.payload.products })));
 
   // Stage 4 — payload synth + optional fire.
@@ -626,6 +644,7 @@ export async function handleWorkflowRun(request: Request, env: Env, logger: Logg
     body.brief,
     chosenProductByAgent,
     chosenSignalIds,
+    chosenFormatIds,
     activateSet,
     timeoutMs,
   );
@@ -736,6 +755,7 @@ type StreamEvent =
   | { type: "agent_complete"; stage: string; agent_id: string; ok: boolean; error?: string; latency_ms: number; summary: unknown }
   | { type: "stage_complete"; stage: string; summary: unknown }
   | { type: "targeting_chosen"; chosen_signal_ids: string[] }
+  | { type: "formats_chosen"; chosen_format_ids: string[] }
   | { type: "products_chosen"; chosen_product_per_agent: Record<string, string | null> }
   | { type: "workflow_complete"; mode: string; total_time_ms: number; warnings: string[] };
 
@@ -835,8 +855,15 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
           return out;
         }));
 
+        // Sec-48q: derive brief-driven creative filter once; applied below.
+        const creativeFilter = deriveCreativeFilter(body.brief!);
+
         const creativePromise = Promise.all(creativeAgents.map(async (a): Promise<CreativeStageAgent> => {
-          const res = await callAgentTool(a.mcp_url!, "list_creative_formats", {}, { timeoutMs });
+          const res = await callAgentTool(
+            a.mcp_url!, "list_creative_formats",
+            creativeFilter as unknown as Record<string, unknown>,
+            { timeoutMs },
+          );
           const formats = extractMcpToolArray(res.structured_content, res.content, ["formats", "creative_formats", "items"]);
           const out: CreativeStageAgent = {
             id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
@@ -853,9 +880,19 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
             latency_ms: res.latency_ms,
             summary: {
               count: formats.length,
+              // Sec-48q: include id alongside name so the UI can make format
+              // pills clickable and track chosen set by id. Celtra's format_id
+              // is nested ({agent_url, id}); flatten to the inner id.
               preview: formats.slice(0, 5).map((f) => {
-                const fo = f as { name?: string; format_id?: string; id?: string } | null;
-                return fo ? (fo.name ?? fo.format_id ?? fo.id ?? "(format)") : "(format)";
+                const fo = f as { name?: string; format_id?: unknown; id?: string } | null;
+                let id: string | null = null;
+                if (fo && typeof fo.format_id === "string") id = fo.format_id;
+                else if (fo && fo.format_id && typeof fo.format_id === "object") {
+                  const inner = (fo.format_id as { id?: unknown }).id;
+                  if (typeof inner === "string") id = inner;
+                }
+                if (!id && fo && typeof fo.id === "string") id = fo.id;
+                return { id: id ?? "", name: (fo && fo.name) ?? id ?? "(format)" };
               }),
               // Sec-48k: when the extractor finds nothing, attach a shape
               // diagnostic so the UI (and we) can see why. Cheap — runs
@@ -877,10 +914,19 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
         const chosenSignalIds = pickTopSignals(mergedSignals, 3);
         send({ type: "targeting_chosen", chosen_signal_ids: chosenSignalIds });
 
+        // Sec-48q: pick top formats per vendor (one each), then narrow
+        // products by those IDs + the brief's asset-type intent. Vendors
+        // that don't honor any of these keys simply ignore them.
+        const chosenFormatIds = pickTopFormatIds(creativeResults, 2);
+        send({ type: "formats_chosen", chosen_format_ids: chosenFormatIds });
+        const productFilter = deriveProductFilter(chosenSignalIds, chosenFormatIds, creativeFilter);
+
         send({ type: "stage_start", stage: "products", agents_queried: buyingAgents.map((a) => a.id) });
         for (const a of buyingAgents) send({ type: "agent_start", stage: "products", agent_id: a.id });
         const productsResults = await Promise.all(buyingAgents.map(async (a): Promise<ProductsStageAgent> => {
-          const res = await callAgentTool(a.mcp_url!, "get_products", { brief: body.brief }, { timeoutMs });
+          const args: Record<string, unknown> = { brief: body.brief };
+          if (Object.keys(productFilter).length > 0) args.filters = productFilter;
+          const res = await callAgentTool(a.mcp_url!, "get_products", args, { timeoutMs });
           const products = extractMcpToolArray<ProductLite>(
             res.structured_content,
             res.content,
@@ -923,7 +969,7 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
           const chosenProductId = chosenProductByAgent[a.id] ?? null;
           const payload = buildCreateMediaBuyPayload({
             workflowId, agentId: a.id, brief: body.brief!,
-            chosenProductId, chosenSignalIds,
+            chosenProductId, chosenSignalIds, chosenFormatIds,
           });
           if (!activateSet.has(a.id)) {
             send({
@@ -1022,6 +1068,8 @@ interface FireBuyBody {
   agent_id?: string;
   product_id?: string;
   signal_ids?: string[];
+  /** Sec-48q: chosen creative format IDs. Emitted as packages[0].creatives. */
+  format_ids?: string[];
   brief?: string;
   workflow_id?: string;
   timeout_ms?: number;
@@ -1053,6 +1101,7 @@ export async function handleWorkflowFireBuy(request: Request, env: Env, logger: 
     brief: body.brief,
     chosenProductId: body.product_id ?? null,
     chosenSignalIds: Array.isArray(body.signal_ids) ? body.signal_ids.filter((s) => typeof s === "string") : [],
+    chosenFormatIds: Array.isArray(body.format_ids) ? body.format_ids.filter((f) => typeof f === "string") : [],
   });
 
   const start = Date.now();

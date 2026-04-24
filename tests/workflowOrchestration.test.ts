@@ -287,6 +287,61 @@ describe("extractMcpToolArray", () => {
     );
     expect(out).toEqual([{ id: "nested" }]);
   });
+
+  // Sec-48l: Celtra-style human-prefix + JSON text. Direct JSON.parse
+  // fails on "Available Creative Formats:\n\n{...}". Fallback slices
+  // from the first opener to the last matching closer.
+  it("recovers JSON from a text block with a human-readable prefix", () => {
+    const out = extractMcpToolArray(
+      {},
+      [{
+        type: "text",
+        text:
+          "Available Creative Formats:\n\n" +
+          JSON.stringify({ formats: [{ id: "f1" }, { id: "f2" }] }),
+      }],
+      ["formats"],
+    );
+    expect(out).toEqual([{ id: "f1" }, { id: "f2" }]);
+  });
+
+  it("recovers an array payload with a human-readable prefix", () => {
+    const out = extractMcpToolArray(
+      {},
+      [{
+        type: "text",
+        text: "Results:\n\n" + JSON.stringify([{ id: "a" }, { id: "b" }]),
+      }],
+      ["formats"], // no preferred key matches an array at top level
+    );
+    // extractArrayPayload's generic fallback takes the first array-valued
+    // key — but the parsed JSON is itself an array, not an object. That
+    // doesn't match any of the lookup rules, so we expect empty.
+    // This test documents the current behavior: we recover arrays only
+    // when they're inside an object under a preferred or any key.
+    expect(out).toEqual([]);
+  });
+
+  it("handles the Celtra-observed payload shape end-to-end", () => {
+    // Real shape captured 2026-04-24 via /agents/workflow/run/stream
+    // diagnostic: structured_content null/other, content[0].text starts
+    // with "Available Creative Formats:\n\n{\"formats\":[...]}".
+    const text =
+      "Available Creative Formats:\n\n" +
+      JSON.stringify({
+        formats: [
+          { format_id: { agent_url: "...", id: "ed4e8559" }, name: "2 Images Display 160x600" },
+          { format_id: { agent_url: "...", id: "abc12345" }, name: "Video 16:9" },
+        ],
+      });
+    const out = extractMcpToolArray(
+      null,
+      [{ type: "text", text }],
+      ["formats", "creative_formats", "items"],
+    );
+    expect(out).toHaveLength(2);
+    expect((out[0] as { name: string }).name).toBe("2 Images Display 160x600");
+  });
 });
 
 describe("newWorkflowId", () => {

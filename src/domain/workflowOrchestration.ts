@@ -291,13 +291,42 @@ export function extractMcpToolArray<T = unknown>(
     if (!block || typeof block !== "object") continue;
     const b = block as { type?: string; text?: string };
     if (b.type !== "text" || typeof b.text !== "string") continue;
-    try {
-      const parsed = JSON.parse(b.text);
-      const fromText = extractArrayPayload<T>(parsed, preferredKeys);
-      if (fromText.length > 0) return fromText;
-    } catch { /* not JSON; try next block */ }
+    for (const candidate of jsonCandidatesFromText(b.text)) {
+      try {
+        const parsed = JSON.parse(candidate);
+        const fromText = extractArrayPayload<T>(parsed, preferredKeys);
+        if (fromText.length > 0) return fromText;
+      } catch { /* candidate didn't parse; try next */ }
+    }
   }
   return fromStructured;
+}
+
+/** Produce JSON-parse candidates from a text block. Tries the whole
+ *  text first (happy path for pure-JSON responses), then falls back
+ *  to sliced ranges starting at the first `{`/`[` and ending at the
+ *  last matching bracket.
+ *
+ *  Celtra (and other MCP servers that prioritize human readability)
+ *  emit "Available Creative Formats:\n\n{...}" — a prefix followed
+ *  by JSON. A plain JSON.parse on that fails. Slicing from the first
+ *  `{` to the matching `}` (or `[`/`]`) recovers the payload without
+ *  needing vendor-specific parsers. */
+function jsonCandidatesFromText(text: string): string[] {
+  const out: string[] = [text];
+  const firstBrace = text.indexOf("{");
+  const firstBracket = text.indexOf("[");
+  // Pick whichever opener appears first (and exists).
+  let start = -1;
+  if (firstBrace >= 0 && firstBracket >= 0) start = Math.min(firstBrace, firstBracket);
+  else if (firstBrace >= 0) start = firstBrace;
+  else if (firstBracket >= 0) start = firstBracket;
+  if (start < 0 || start === 0) return out; // nothing to slice, or already pure JSON
+  const opener = text[start];
+  const closer = opener === "{" ? "}" : "]";
+  const end = text.lastIndexOf(closer);
+  if (end > start) out.push(text.slice(start, end + 1));
+  return out;
 }
 
 export function extractArrayPayload<T = unknown>(

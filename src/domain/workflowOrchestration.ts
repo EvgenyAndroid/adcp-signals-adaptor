@@ -242,10 +242,17 @@ export function applyVendorAdapter(agentId: string, payload: MediaBuyPayload): M
   if (isAdzymic || isSwivel) {
     (p.brand_manifest as unknown as Record<string, unknown>).name = p.brand_manifest.brand;
   } else if (isClaire || isContentIgnite) {
+    // Sec-48r6: live probe of Sec-48r5 deploy revealed the actual
+    // BrandReference shape Claire validates against. Errors:
+    //   brand.domain — Required field is missing
+    //   brand.id     — Extra field not allowed by AdCP spec
+    // So Claire's BrandReference is {domain, name} — NOT {id, name}.
+    // The error explicitly cited "AdCP spec", so this is canonical:
+    //   https://adcontextprotocol.org/schemas/v1/
     const name = p.brand_manifest?.brand ?? "Demo Brand";
     delete (p as unknown as Record<string, unknown>).brand_manifest;
     (p as unknown as Record<string, unknown>).brand = {
-      id: "demo_brand",
+      domain: "demo.example.com",
       name,
     };
   }

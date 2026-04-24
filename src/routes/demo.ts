@@ -4261,6 +4261,28 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   transition: background-color 0.25s;
 }
 
+/* Sec-48n: pickable product rows + fire-buy button. */
+.wf-product-pickable { cursor: pointer; border-radius: 3px; }
+.wf-product-pickable:hover {
+  background: var(--bg-hover);
+  outline: 1px solid var(--accent-border);
+}
+.wf-product-pickable:hover .wf-product-name { color: var(--accent); }
+.wf-refire-btn {
+  display: inline-flex; align-items: center; gap: 4px; justify-content: center;
+  background: var(--accent); color: #000; border: 1px solid var(--accent);
+  border-radius: 4px; padding: 6px 10px; font-size: 11px; font-weight: 500;
+  cursor: pointer; transition: background-color 0.15s, opacity 0.15s;
+}
+.wf-refire-btn:hover:not(:disabled) { background: var(--accent-hover, var(--accent)); filter: brightness(1.1); }
+.wf-refire-btn:disabled { opacity: 0.6; cursor: wait; }
+.wf-refire-btn .ico { width: 11px; height: 11px; }
+.wf-refire-btn .spinner {
+  display: inline-block; border: 1.5px solid rgba(0,0,0,0.2);
+  border-top-color: #000; border-radius: 50%;
+  animation: wf-spinner-rotate 0.7s linear infinite;
+}
+
 .orch-fanout-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-bottom: 10px; }
 .orch-fanout-card {
   background: var(--bg-surface); border: 1px solid var(--border); border-left-width: 3px;
@@ -11222,9 +11244,122 @@ async function ensureOrchestrator() {
   document.getElementById("orch-matrix-run").addEventListener("click", runOrchMatrix);
   var wfRunBtn = document.getElementById("wf-run");
   if (wfRunBtn) wfRunBtn.addEventListener("click", runWorkflow);
+  // Sec-48n: delegated click handler for workflow interactivity — product
+  // re-pick + per-card "Fire this buy". Attached once per tab-load, picks
+  // up future dynamic content in #wf-results.
+  var wfResults = document.getElementById("wf-results");
+  if (wfResults) wfResults.addEventListener("click", _wfOnClick);
   // Load static directory first, then kick off probe in parallel.
   await loadOrchDirectory();
   runOrchProbeAll();
+}
+
+function _wfOnClick(ev) {
+  var target = ev.target;
+  if (!target) return;
+  // Walk up to find an actionable wrapper.
+  var pickRow = target.closest ? target.closest(".wf-product-pickable") : null;
+  if (pickRow) {
+    var agentId = pickRow.getAttribute("data-wf-pick-agent");
+    var productId = pickRow.getAttribute("data-wf-pick-product");
+    if (agentId && productId) _wfPickProduct(agentId, productId);
+    return;
+  }
+  var fireBtn = target.closest ? target.closest(".wf-refire-btn") : null;
+  if (fireBtn) {
+    var fa = fireBtn.getAttribute("data-wf-refire-agent");
+    if (fa) _wfFireBuy(fa, fireBtn);
+    return;
+  }
+}
+
+function _wfPickProduct(agentId, productId) {
+  if (!_wfState) return;
+  var previous = (_wfState.stages.products.chosen_per_agent || {})[agentId];
+  if (previous === productId) return; // no-op
+  _wfState.stages.products.chosen_per_agent[agentId] = productId;
+
+  // Swap the visual "chosen" marker across rows within the same agent card.
+  var card = document.getElementById("wf-agent-products-" + agentId);
+  if (card) {
+    card.querySelectorAll(".wf-product-row").forEach(function (row) {
+      row.classList.remove("wf-product-chosen");
+      row.classList.remove("wf-chosen-pulse");
+    });
+    var newRow = card.querySelector('.wf-product-row[data-product-id="' + productId + '"]');
+    if (newRow) {
+      newRow.classList.add("wf-product-chosen", "wf-chosen-pulse");
+      setTimeout(function () { newRow.classList.remove("wf-chosen-pulse"); }, 900);
+    }
+  }
+
+  // Live-rewrite the stage-4 payload JSON for that agent. Mutate the cached
+  // payload object, re-serialize, fade in the new text.
+  var payload = (_wfState.stages.media_buy.payload_by_agent || {})[agentId];
+  if (payload && Array.isArray(payload.packages) && payload.packages.length > 0) {
+    payload.packages[0].product_id = productId;
+    var pre = document.getElementById("wf-payload-pre-" + agentId);
+    if (pre) {
+      try {
+        pre.textContent = JSON.stringify(payload, null, 2);
+        pre.classList.remove("wf-body-anim");
+        // Force reflow so the animation restarts cleanly on repeated picks.
+        void pre.offsetWidth;
+        pre.classList.add("wf-body-anim");
+      } catch (e) { /* noop */ }
+    }
+  }
+}
+
+async function _wfFireBuy(agentId, btn) {
+  if (!_wfState) return;
+  if (btn.disabled) return;
+  var origHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="width:10px;height:10px;margin-right:6px"></span><span>Firing\u2026</span>';
+  var chosenProduct = (_wfState.stages.products.chosen_per_agent || {})[agentId] || null;
+  var signalIds = _wfState.stages.signals.chosen || [];
+  try {
+    var r = await fetch("/agents/workflow/fire-buy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        agent_id: agentId,
+        product_id: chosenProduct,
+        signal_ids: signalIds,
+        brief: _wfState.brief,
+        workflow_id: _wfState.workflow_id,
+        timeout_ms: 20000,
+      }),
+    });
+    var data = await r.json();
+    if (!r.ok) {
+      btn.innerHTML = origHTML;
+      btn.disabled = false;
+      showToast((data && (data.error || data.message)) || ("HTTP " + r.status), true);
+      return;
+    }
+    // Synthesize an agent_complete-like event so the existing renderer
+    // re-paints the card as a fired result.
+    _wfApplyEvent({
+      type: "agent_complete",
+      stage: "media_buy",
+      agent_id: agentId,
+      ok: !!data.ok,
+      error: data.error,
+      latency_ms: data.latency_ms || 0,
+      summary: {
+        dry_run: false,
+        fired: true,
+        payload_preview: data.payload_preview,
+        result: data.result,
+      },
+    });
+  } catch (e) {
+    btn.innerHTML = origHTML;
+    btn.disabled = false;
+    showToast(String((e && e.message) || e), true);
+  }
 }
 
 async function loadOrchDirectory() {
@@ -11874,8 +12009,15 @@ function _wfPaintAgentComplete(ev) {
   } else if (ev.stage === "products") {
     var previewP = (ev.summary && ev.summary.preview) || [];
     body = '<div class="wf-stage-count mono">' + (ev.summary && ev.summary.count || 0) + ' products</div>' +
+      (previewP.length > 1 ? '<div class="orch-small" style="margin-bottom:2px">click a row to pick</div>' : '') +
       previewP.map(function (p) {
-        return '<div class="wf-product-row" data-product-id="' + escapeHtml(p.id || '') + '">' +
+        // Sec-48n: clickable product rows. data-wf-pick-agent + product
+        // attrs let the delegated handler on #wf-results identify the
+        // target without re-querying the card hierarchy.
+        return '<div class="wf-product-row wf-product-pickable" ' +
+                 'data-wf-pick-agent="' + escapeHtml(ev.agent_id) + '" ' +
+                 'data-wf-pick-product="' + escapeHtml(p.id || '') + '" ' +
+                 'data-product-id="' + escapeHtml(p.id || '') + '">' +
           '<span class="mono wf-product-id">' + escapeHtml(p.id || '-') + '</span>' +
           '<span class="wf-product-name">' + escapeHtml(p.name) + '</span>' +
         '</div>';
@@ -11883,18 +12025,33 @@ function _wfPaintAgentComplete(ev) {
   } else if (ev.stage === "media_buy") {
     var sum = ev.summary || {};
     var payload = sum.payload_preview || {};
+    // Preserve the server-emitted payload on state so re-picks can mutate it
+    // locally without re-calling /run/stream.
+    if (!_wfState.stages.media_buy.payload_by_agent) _wfState.stages.media_buy.payload_by_agent = {};
+    _wfState.stages.media_buy.payload_by_agent[ev.agent_id] = payload;
     var payloadJson = "";
     try { payloadJson = JSON.stringify(payload, null, 2); } catch (e) { payloadJson = String(e); }
     var fireBadge = sum.fired
       ? (ev.ok ? '<span class="pill pill-success mono" style="font-size:10px">fired \u2713</span>'
                : '<span class="pill pill-error mono" style="font-size:10px">fired \u2717</span>')
       : '<span class="pill pill-muted mono" style="font-size:10px">dry run</span>';
+    // Sec-48n: Fire button appears only on dry-run cards. Clicking it posts
+    // to /agents/workflow/fire-buy with the current pick state.
+    var fireBtn = !sum.fired
+      ? '<button class="btn-primary wf-refire-btn" ' +
+               'data-wf-refire-agent="' + escapeHtml(ev.agent_id) + '" ' +
+               'style="margin-top:8px;width:100%;justify-content:center;padding:6px 10px;font-size:11px">' +
+          '<svg class="ico"><use href="#icon-bolt"/></svg>' +
+          '<span>Fire this buy (live)</span>' +
+        '</button>'
+      : '';
     body = '<div class="wf-stage-count mono" style="display:flex;justify-content:space-between;align-items:center">' + fireBadge + '</div>' +
       '<details class="wf-payload-details"' + (sum.fired ? '' : ' open') + '>' +
         '<summary class="orch-small">create_media_buy payload</summary>' +
-        '<pre class="wf-json mono">' + escapeHtml(payloadJson) + '</pre>' +
+        '<pre class="wf-json mono" id="wf-payload-pre-' + escapeHtml(ev.agent_id) + '">' + escapeHtml(payloadJson) + '</pre>' +
       '</details>' +
-      (sum.fired && sum.result ? '<details class="wf-result-details"><summary class="orch-small">view agent response</summary><pre class="wf-json mono">' + escapeHtml(JSON.stringify(sum.result, null, 2)) + '</pre></details>' : '');
+      (sum.fired && sum.result ? '<details class="wf-result-details"><summary class="orch-small">view agent response</summary><pre class="wf-json mono">' + escapeHtml(JSON.stringify(sum.result, null, 2)) + '</pre></details>' : '') +
+      fireBtn;
   }
   var headHTML = '<div class="wf-agent-head">' +
     '<span class="wf-agent-name mono">' + escapeHtml(ev.agent_id) + '</span>' +

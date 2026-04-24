@@ -44,6 +44,7 @@ import {
   handleAgentsCapabilityMatrix,
   handleWorkflowRun,
   handleWorkflowRunStream,
+  handleWorkflowFireBuy,
 } from "./routes/agentsEndpoints";
 import {
   handleAudienceCompose,
@@ -218,6 +219,7 @@ export default {
             "/agents/capability-matrix",
             "/agents/workflow/run",
             "/agents/workflow/run/stream",
+            "/agents/workflow/fire-buy",
             "/taxonomy/reverse",
             // Sec-43: audience composer + activation-planning analytics.
             // Read-only — same posture as /portfolio/* and /analytics/*.
@@ -373,6 +375,8 @@ export default {
                 response = await handleWorkflowRun(request, env, logger);
             } else if (method === "POST" && path === "/agents/workflow/run/stream") {
                 response = await handleWorkflowRunStream(request, env, logger);
+            } else if (method === "POST" && path === "/agents/workflow/fire-buy") {
+                response = await handleWorkflowFireBuy(request, env, logger);
 
                 // ── Sec-43: Audience Composer + activation analytics ────────────────
             } else if (method === "POST" && path === "/audience/compose") {

@@ -11753,12 +11753,9 @@ async function runWorkflow() {
       if (chunk.done) break;
       buf += dec.decode(chunk.value, { stream: true });
       var nl;
-      // Double-escape: SCRIPT_TAG is a template literal, so the source
-      // "\\n" collapses to "\n" (2 chars, backslash+n) when emitted,
-      // which the browser parses as the newline escape. A single "\n"
-      // in source becomes a raw newline inside the string literal —
-      // a multi-line "..." is a SyntaxError at parse time. See Sec-48c
-      // for the same trap with a regex.
+      // See Sec-48c / Sec-48h. This SCRIPT_TAG body is a template
+      // literal, so string-literal escapes must be doubled at source.
+      // Split NDJSON frames on the newline escape.
       while ((nl = buf.indexOf("\\n")) >= 0) {
         var line = buf.slice(0, nl).trim();
         buf = buf.slice(nl + 1);

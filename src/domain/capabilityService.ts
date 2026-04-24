@@ -27,9 +27,12 @@
 // v19: Sec-44 adds ext.compliance — in-band conformance results +
 // non-applicable scenario explanation referencing upstream adcp#2916.
 // v20: Sec-47 adds audience_compose_ast endpoint for boolean expression trees.
+// v21: Sec-48 adds agent-syndication endpoints (/agents/directory, /agents/probe-all,
+// /agents/orchestrate, /agents/capability-matrix) + federation.multi_agent_orchestrator
+// experimental feature flag.
 // The key version must be bumped any time the SHAPE of the capability response
 // changes, so clients that cache by key pick up the new fields.
-const CACHE_KEY = "adcp_capabilities_v20";
+const CACHE_KEY = "adcp_capabilities_v21";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
@@ -153,6 +156,7 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       "portfolio.from_brief",
       "federation.a2a_dstillery",
       "federation.cross_similarity",
+      "federation.multi_agent_orchestrator",
       "governance.data_hygiene",
       "governance.audit_log",
       "measurement.reach_forecaster",
@@ -523,6 +527,11 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
           audience_holdout:        { method: "POST", path: "/audience/holdout" },
           // Sec-47: boolean expression AST composer.
           audience_compose_ast:    { method: "POST", path: "/audience/compose-ast" },
+          // Sec-48: agent syndication — multi-A2A orchestration over a curated directory.
+          agents_directory:        { method: "GET",  path: "/agents/directory" },
+          agents_probe_all:        { method: "GET",  path: "/agents/probe-all" },
+          agents_orchestrate:      { method: "POST", path: "/agents/orchestrate" },
+          agents_capability_matrix:{ method: "GET",  path: "/agents/capability-matrix" },
           snapshot_save:           { method: "POST",   path: "/snapshots" },
           snapshot_list:           { method: "GET",    path: "/snapshots" },
           snapshot_get:            { method: "GET",    path: "/snapshots/:id" },

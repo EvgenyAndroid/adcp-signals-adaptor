@@ -46,6 +46,7 @@ import {
   type ProductLite,
   type MediaBuyPayload,
 } from "../domain/workflowOrchestration";
+import { ADCP_TOOLS } from "../mcp/tools";
 
 // Sec-48b: hook the generic MCP client with a self-detector. When the orchestrator
 // probes or fans-out to our own URL, Cloudflare Workers refuse self-fetch; we
@@ -57,9 +58,19 @@ function ensureSelfHooksInstalled(env: Env, logger: Logger): void {
   installSelfProbeHook((url) => {
     if (!isSelfUrl(url)) return null;
     const self = AGENT_REGISTRY.find((a) => a.id === SELF_AGENT_ID);
+    // Sec-48e: emit the same shape as a real tools/list — every external
+    // agent's probe returns description + inputSchema, and the Orchestrator
+    // UI renders a params table from those. Without this, the self card
+    // showed 8 tools with "No parameter schema advertised" while Claire and
+    // Adzymic rendered full schemas. Source ADCP_TOOLS is the single tool
+    // registry also served at POST /mcp tools/list.
     return {
       server_info: { name: self?.name ?? "evgeny-signals", version: "48.0" },
-      tools: (self?.tools_exposed ?? []).map((name) => ({ name })),
+      tools: ADCP_TOOLS.map((t) => ({
+        name: t.name,
+        description: t.description,
+        inputSchema: t.inputSchema,
+      })),
     };
   });
   installSelfToolHook((url, name, args) => {

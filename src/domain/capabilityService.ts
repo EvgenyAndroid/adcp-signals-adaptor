@@ -26,7 +26,10 @@
 // v10 baseline: ext.ucp.
 // v19: Sec-44 adds ext.compliance — in-band conformance results +
 // non-applicable scenario explanation referencing upstream adcp#2916.
-const CACHE_KEY = "adcp_capabilities_v19";
+// v20: Sec-47 adds audience_compose_ast endpoint for boolean expression trees.
+// The key version must be bumped any time the SHAPE of the capability response
+// changes, so clients that cache by key pick up the new fields.
+const CACHE_KEY = "adcp_capabilities_v20";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";

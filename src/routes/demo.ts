@@ -11618,7 +11618,13 @@ async function runWorkflow() {
       if (chunk.done) break;
       buf += dec.decode(chunk.value, { stream: true });
       var nl;
-      while ((nl = buf.indexOf("\n")) >= 0) {
+      // Double-escape: SCRIPT_TAG is a template literal, so the source
+      // "\\n" collapses to "\n" (2 chars, backslash+n) when emitted,
+      // which the browser parses as the newline escape. A single "\n"
+      // in source becomes a raw newline inside the string literal —
+      // a multi-line "..." is a SyntaxError at parse time. See Sec-48c
+      // for the same trap with a regex.
+      while ((nl = buf.indexOf("\\n")) >= 0) {
         var line = buf.slice(0, nl).trim();
         buf = buf.slice(nl + 1);
         if (!line) continue;

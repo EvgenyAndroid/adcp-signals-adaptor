@@ -33,6 +33,7 @@ import {
 } from "./routes/portfolioEndpoints";
 import {
   handleAgentsRegistry,
+  handleAgentsProbe,
   handleFederatedSearch,
   handleCrossSimilarity,
   handleTaxonomyReverse,
@@ -201,6 +202,7 @@ export default {
             "/portfolio/what-if",
             "/portfolio/hit-target",
             "/agents/registry",
+            "/agents/probe",
             "/agents/federated-search",
             "/agents/cross-similarity",
             "/taxonomy/reverse",
@@ -335,9 +337,11 @@ export default {
             } else if (method === "POST" && path === "/portfolio/from-brief") {
                 response = await handleFromBrief(request, env, logger);
 
-                // ── Sec-41 Part 3: Agent Federation (A2A) ───────────────────────────
+                // ── Sec-41 Part 3 + Sec-48 Part 1: Agent Federation (A2A) ───────────
             } else if (method === "GET" && path === "/agents/registry") {
                 response = handleAgentsRegistry();
+            } else if (method === "GET" && path === "/agents/probe") {
+                response = await handleAgentsProbe(request);
             } else if (method === "POST" && path === "/agents/federated-search") {
                 response = await handleFederatedSearch(request, env, logger);
             } else if (method === "POST" && path === "/agents/cross-similarity") {

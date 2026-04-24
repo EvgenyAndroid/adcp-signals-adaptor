@@ -1,97 +1,105 @@
 // src/routes/federationEndpoints.ts
-// Sec-41 Part 3: Agent Federation endpoints.
-//   GET  /agents/registry
+// Sec-41 Part 3 + Sec-48 Part 1: Agent Federation endpoints.
+//   GET  /agents/registry            (static list, sourced from domain/agentRegistry)
+//   GET  /agents/probe               (Sec-48: fan-out initialize + tools/list)
 //   POST /agents/federated-search
-//   POST /agents/cross-similarity     (roadmap stub)
+//   POST /agents/cross-similarity    (roadmap stub)
 //   POST /taxonomy/reverse
 
 import type { Env } from "../types/env";
 import type { Logger } from "../utils/logger";
 import { jsonResponse, errorResponse } from "./shared";
-import { dstillerySearch, DSTILLERY_MCP_URL } from "../federation/dstilleryClient";
+import { dstillerySearch } from "../federation/dstilleryClient";
+import { probeAgent, type ProbeResult } from "../federation/genericMcpClient";
 import { searchSignalsService } from "../domain/signalService";
+import {
+  AGENT_REGISTRY,
+  listLiveAgents,
+  getAgent,
+  type RegisteredAgent,
+} from "../domain/agentRegistry";
 import { getDb } from "../storage/db";
-
-const SELF_URL = "https://adcp-signals-adaptor.evgeny-193.workers.dev";
 
 // ── /agents/registry ─────────────────────────────────────────────────────────
 
+function publicAgentView(a: RegisteredAgent) {
+  const base: Record<string, unknown> = {
+    id: a.id,
+    name: a.name,
+    vendor: a.vendor,
+    mcp_url: a.mcp_url,
+    stage: a.stage,
+    role: a.role,
+    protocols: a.protocols,
+    specialties: a.specialties,
+  };
+  if (a.capabilities_url !== undefined) base.capabilities_url = a.capabilities_url;
+  if (a.tools_expected) base.tools_exposed = a.tools_expected;
+  if (a.mcp_version) base.mcp_version = a.mcp_version;
+  if (a.notes) base.notes = a.notes;
+  return base;
+}
+
 export function handleAgentsRegistry(): Response {
   return jsonResponse({
-    version: "sec_41_v1",
+    version: "sec_48_v1",
     self_agent: "evgeny_signals",
-    agents: [
-      {
-        id: "evgeny_signals",
-        name: "Evgeny AdCP Signals adapter",
-        vendor: "Evgeny",
-        mcp_url: SELF_URL + "/mcp",
-        capabilities_url: SELF_URL + "/capabilities",
-        stage: "live",
-        protocols: ["adcp_3.0", "ucp_0.2", "dts_1.2", "mcp_streamable_http"],
-        specialties: [
-          "cross_taxonomy_bridge_9_systems",
-          "ucp_embedding_live",
-          "dts_label_v12",
-          "embedding_lab_analytics",
-          "portfolio_optimizer",
-        ],
-        tools_exposed: [
-          "get_adcp_capabilities", "get_signals", "activate_signal",
-          "get_operation_status", "get_similar_signals", "query_signals_nl",
-          "get_concept", "search_concepts",
-        ],
-      },
-      {
-        id: "dstillery",
-        name: "AdCP Signals Discovery Agent (Dstillery)",
-        vendor: "Dstillery",
-        mcp_url: DSTILLERY_MCP_URL,
-        capabilities_url: null,
-        stage: "live",
-        protocols: ["adcp_3.0", "mcp_streamable_http"],
-        specialties: ["behavioral_audiences", "ttd_deployment", "precision_segments"],
-        tools_exposed: ["get_signals"],
-        mcp_version: "2.13.1",
-      },
-      {
-        id: "peer39",
-        name: "Peer39 (roadmap)",
-        vendor: "Peer39",
-        mcp_url: null,
-        stage: "roadmap",
-        protocols: ["adcp_3.0"],
-        specialties: ["contextual", "brand_safety", "cookieless_contextual"],
-      },
-      {
-        id: "scope3",
-        name: "Scope3 (roadmap)",
-        vendor: "Scope3",
-        mcp_url: null,
-        stage: "roadmap",
-        protocols: ["adcp_3.0"],
-        specialties: ["sustainability", "carbon_aware_audiences"],
-      },
-      {
-        id: "nextdata",
-        name: "NextData (roadmap)",
-        vendor: "NextData",
-        mcp_url: null,
-        stage: "roadmap",
-        protocols: ["adcp_3.0"],
-        specialties: ["b2b_intent", "firmographic"],
-      },
-      {
-        id: "liveramp",
-        name: "LiveRamp (roadmap)",
-        vendor: "LiveRamp",
-        mcp_url: null,
-        stage: "roadmap",
-        protocols: ["adcp_3.0"],
-        specialties: ["id_resolution", "abilitec_graph", "ramp_id"],
-      },
-    ],
-    method: "curated_list_with_live_probe_for_dstillery",
+    agents: AGENT_REGISTRY.map(publicAgentView),
+    method: "curated_registry_see_src_domain_agentRegistry",
+  });
+}
+
+// ── /agents/probe ────────────────────────────────────────────────────────────
+// Fan out `initialize` + `tools/list` across all live registry agents (or a
+// caller-specified subset). Results are cached at the session layer for
+// SESSION_TTL_MS (~9 min), so rapid repeat probes are cheap.
+
+export async function handleAgentsProbe(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const onlyParam = url.searchParams.get("agents");
+  const requested = onlyParam
+    ? onlyParam.split(",").map((s) => s.trim()).filter(Boolean)
+    : null;
+
+  const targets: RegisteredAgent[] = requested
+    ? requested
+        .map((id) => getAgent(id))
+        .filter((a): a is RegisteredAgent => Boolean(a && a.mcp_url && a.role !== "self"))
+    : listLiveAgents();
+
+  if (targets.length === 0) {
+    return errorResponse(
+      "NO_PROBE_TARGETS",
+      "No live agents in registry match the requested ids",
+      400,
+    );
+  }
+
+  const start = Date.now();
+  const probes: Array<Promise<ProbeResult & { agent_id: string; vendor: string; role: string }>> =
+    targets.map((a) =>
+      probeAgent({ url: a.mcp_url as string }).then((r) => ({
+        ...r,
+        agent_id: a.id,
+        vendor: a.vendor,
+        role: a.role,
+      })),
+    );
+
+  const results = await Promise.all(probes);
+  const okIds = results.filter((r) => r.ok).map((r) => r.agent_id);
+  const failedIds = results.filter((r) => !r.ok).map((r) => r.agent_id);
+  const totalTools = results.reduce((n, r) => n + r.tools.length, 0);
+
+  return jsonResponse({
+    probed_at: new Date().toISOString(),
+    agents_probed: targets.map((a) => a.id),
+    agents_ok: okIds,
+    agents_failed: failedIds,
+    total_tools_discovered: totalTools,
+    total_time_ms: Date.now() - start,
+    per_agent: results,
+    cache_note: "Session ids are cached per-URL for ~9min; repeat probes reuse the session and only cost one tools/list roundtrip.",
   });
 }
 

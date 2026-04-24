@@ -188,6 +188,58 @@ export function extractCategories(brief: string): string[] {
   return uniq.length > 0 ? uniq : ["general"];
 }
 
+/** Sec-48r: per-vendor transform applied to the synthesized media-buy
+ *  payload JUST before the create_media_buy tool call. Compensates for
+ *  schema drift across live implementations observed during Sec-48
+ *  interop probing.
+ *
+ *  Rules discovered via Sec-48k/p diagnostic probes:
+ *
+ *    adzymic_*    — brand_manifest requires `name` (we emit `brand`).
+ *                   Claire-style `buyer_ref` on the package is harmless.
+ *    claire_*     — packages[].buyer_ref is required; budget must be a
+ *                   number (not {amount, currency}).
+ *    swivel       — wants packages[].buyer_ref. Also validates more
+ *                   strictly than others; keep payload minimal.
+ *    content_ignite — similar to claire shape.
+ *
+ *  Unknown vendor_ids fall through to the identity transform (base
+ *  payload unchanged). This keeps new-vendor support additive. */
+export function applyVendorAdapter(agentId: string, payload: MediaBuyPayload): MediaBuyPayload {
+  // Deep-clone so callers can still inspect the pre-transform shape.
+  const p: MediaBuyPayload = JSON.parse(JSON.stringify(payload));
+
+  if (agentId.startsWith("adzymic_") || agentId === "swivel") {
+    // brand_manifest.name alongside brand (Pydantic accepts extra fields
+    // but a missing `name` is a hard reject).
+    (p.brand_manifest as unknown as Record<string, unknown>).name = p.brand_manifest.brand;
+  }
+
+  if (agentId.startsWith("claire_") || agentId === "content_ignite" || agentId === "swivel") {
+    // Package-level buyer_ref required. Reuse the top-level buyer_ref
+    // as the seed + append the package_ref for uniqueness.
+    for (const pkg of p.packages) {
+      (pkg as unknown as Record<string, unknown>).buyer_ref = `${p.buyer_ref}_${pkg.package_ref}`;
+    }
+  }
+
+  if (agentId.startsWith("claire_") || agentId === "content_ignite") {
+    // Their Pydantic wants budget as a scalar number, not an object. Also
+    // propagate at package level (same lib validates both).
+    for (const pkg of p.packages) {
+      const b = pkg.budget;
+      if (b && typeof b === "object" && typeof b.amount === "number") {
+        (pkg as unknown as Record<string, unknown>).budget = b.amount;
+      }
+    }
+    if (p.total_budget && typeof p.total_budget === "object" && typeof p.total_budget.amount === "number") {
+      (p as unknown as Record<string, unknown>).total_budget = p.total_budget.amount;
+    }
+  }
+
+  return p;
+}
+
 /** Sec-48q: pick up to N format IDs from the creative stage results.
  *  Takes the first good format from each vendor (per-vendor diversity),
  *  then fills remaining slots from the first vendor's overflow. */
@@ -279,7 +331,22 @@ export function deriveProductFilter(
 ): ProductFilter {
   const out: ProductFilter = {};
   if (chosenSignalIds.length > 0) out.targeting_signals = chosenSignalIds;
-  if (chosenFormatIds.length > 0) out.format_ids = chosenFormatIds;
+  // Sec-48r: format_ids is DELIBERATELY not forwarded as string[]. Live
+  // probe 2026-04-24 of the 8 buying agents revealed that 5 of 8
+  // (adzymic_sph/tsl/mediacorp, content_ignite, claire_pub) validate
+  // format_ids against an AdCP `FormatId` Pydantic model that expects
+  // {agent_url, id} objects — passing bare strings trips:
+  //   "Input should be a valid dictionary or instance of FormatId
+  //    [type=model_type, input_value='sizeless-native-app-v1'...]"
+  // Only adzymic_apx tolerates the scalar form. Stripping format_ids
+  // from the filter recovers the other 5. The proper object shape
+  // needs creative-agent URL provenance threaded through the picker —
+  // tracked as a follow-up.
+  //
+  // chosenFormatIds ARE still emitted into packages[0].creatives in
+  // create_media_buy (that's a different protocol shape on a different
+  // tool, and does accept bare strings under {format_id}).
+  void chosenFormatIds;
   if (creativeFilter.asset_types && creativeFilter.asset_types.length > 0) {
     out.asset_types = creativeFilter.asset_types;
   }

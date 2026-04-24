@@ -34,6 +34,17 @@ import {
 } from "../federation/genericMcpClient";
 import { searchSignalsService } from "../domain/signalService";
 import { getDb } from "../storage/db";
+import {
+  pickTopSignals,
+  pickProductPerAgent,
+  buildCreateMediaBuyPayload,
+  newWorkflowId,
+  productId as productIdOf,
+  signalId as signalIdOf,
+  type SignalLite,
+  type ProductLite,
+  type MediaBuyPayload,
+} from "../domain/workflowOrchestration";
 
 // Sec-48b: hook the generic MCP client with a self-detector. When the orchestrator
 // probes or fans-out to our own URL, Cloudflare Workers refuse self-fetch; we
@@ -338,6 +349,338 @@ export async function handleAgentsCapabilityMatrix(request: Request, env: Env, l
     tools: matrix,
     tool_count: toolList.length,
     note: "Matrix rows = tool names (union across probed agents), columns = supported_by list. Summary shows each agent's tool count + tools unique to it.",
+  });
+}
+
+// ── POST /agents/workflow/run ───────────────────────────────────────────────
+// Sec-48f: four-stage end-to-end orchestration across 2+ signals agents,
+// 2+ creative agents, and 3+ buying agents. Stages 1-3 always fire live
+// (read-only tools). Stage 4 always emits a dry-run payload preview
+// per buying agent; any agent ID listed in `activate_agents` also gets
+// its create_media_buy fired for real.
+//
+// Default target fleet (demo diversity by design):
+//   signals  → evgeny_signals + dstillery           (2)
+//   creative → advertible + celtra                  (2)
+//   buying   → adzymic_apx + claire_pub + swivel    (3 — one per fleet)
+//
+// Request shape (POST body, JSON):
+//   {
+//     brief:               string   required
+//     signal_agent_ids?:   string[] default = live signals agents
+//     creative_agent_ids?: string[] default = live creative agents
+//     buying_agent_ids?:   string[] default = 3 diverse buying agents
+//     max_signals_per_agent?:   number  default 5
+//     max_products_per_agent?:  number  default 3
+//     activate_agents?:    string[] buying agents to ACTUALLY fire
+//                                   create_media_buy on (default = []
+//                                   = dry-run preview only)
+//     timeout_ms?:         number  default 15000
+//   }
+
+const DEFAULT_BUYING_TRIO = ["adzymic_apx", "claire_pub", "swivel"] as const;
+const DEFAULT_CREATIVE_PAIR = ["advertible", "celtra"] as const;
+
+interface WorkflowRunBody {
+  brief?: string;
+  signal_agent_ids?: string[];
+  creative_agent_ids?: string[];
+  buying_agent_ids?: string[];
+  max_signals_per_agent?: number;
+  max_products_per_agent?: number;
+  activate_agents?: string[];
+  timeout_ms?: number;
+}
+
+interface StageAgentResult<TPayload> {
+  id: string;
+  name: string;
+  vendor: string;
+  url: string;
+  ok: boolean;
+  error?: string;
+  latency_ms: number;
+  payload: TPayload;
+}
+
+type SignalsStageAgent = StageAgentResult<{ signals: SignalLite[]; count: number }>;
+type CreativeStageAgent = StageAgentResult<{ formats: unknown[]; count: number }>;
+type ProductsStageAgent = StageAgentResult<{ products: ProductLite[]; count: number }>;
+
+interface MediaBuyStageAgent {
+  id: string;
+  name: string;
+  vendor: string;
+  url: string;
+  dry_run: boolean;
+  payload_preview: MediaBuyPayload;
+  fired: boolean;
+  ok?: boolean;
+  error?: string;
+  latency_ms?: number;
+  result?: unknown;
+}
+
+function resolveAgents(ids: string[] | undefined, fallback: readonly string[]): RegisteredAgent[] {
+  const candidateIds = (ids && ids.length > 0 ? ids : fallback.slice()) as string[];
+  const out: RegisteredAgent[] = [];
+  for (const id of candidateIds) {
+    const a = findAgent(id);
+    if (a && a.stage === "live" && a.mcp_url) out.push(a);
+  }
+  return out;
+}
+
+async function runSignalsStage(
+  agents: RegisteredAgent[],
+  brief: string,
+  maxResults: number,
+  timeoutMs: number,
+): Promise<SignalsStageAgent[]> {
+  return Promise.all(agents.map(async (a): Promise<SignalsStageAgent> => {
+    const res = await callAgentTool(
+      a.mcp_url!,
+      "get_signals",
+      { signal_spec: brief, max_results: maxResults },
+      { timeoutMs },
+    );
+    const structured = res.structured_content as { signals?: SignalLite[] } | undefined;
+    const signals = (structured?.signals ?? []).map((s) => ({ source_agent: a.id, ...s }));
+    const out: SignalsStageAgent = {
+      id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
+      ok: res.ok, latency_ms: res.latency_ms,
+      payload: { signals, count: signals.length },
+    };
+    if (res.error) out.error = res.error;
+    return out;
+  }));
+}
+
+async function runCreativeStage(
+  agents: RegisteredAgent[],
+  timeoutMs: number,
+): Promise<CreativeStageAgent[]> {
+  return Promise.all(agents.map(async (a): Promise<CreativeStageAgent> => {
+    // list_creative_formats is a directory scan — no args required across
+    // Advertible, Celtra, and the buying-agent implementations.
+    const res = await callAgentTool(a.mcp_url!, "list_creative_formats", {}, { timeoutMs });
+    const structured = res.structured_content as { formats?: unknown[]; creative_formats?: unknown[] } | undefined;
+    const formats = structured?.formats ?? structured?.creative_formats ?? [];
+    const out: CreativeStageAgent = {
+      id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
+      ok: res.ok, latency_ms: res.latency_ms,
+      payload: { formats, count: formats.length },
+    };
+    if (res.error) out.error = res.error;
+    return out;
+  }));
+}
+
+async function runProductsStage(
+  agents: RegisteredAgent[],
+  brief: string,
+  maxResults: number,
+  timeoutMs: number,
+): Promise<ProductsStageAgent[]> {
+  return Promise.all(agents.map(async (a): Promise<ProductsStageAgent> => {
+    // Across the 3 default buying agents, `brief` is the only universally-
+    // accepted arg. Max_results is nonstandard on these endpoints so we
+    // rely on server-side paging defaults.
+    const res = await callAgentTool(a.mcp_url!, "get_products", { brief }, { timeoutMs });
+    const structured = res.structured_content as { products?: ProductLite[] } | undefined;
+    const products = (structured?.products ?? []).slice(0, maxResults);
+    const out: ProductsStageAgent = {
+      id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
+      ok: res.ok, latency_ms: res.latency_ms,
+      payload: { products, count: products.length },
+    };
+    if (res.error) out.error = res.error;
+    return out;
+  }));
+}
+
+async function runMediaBuyStage(
+  workflowId: string,
+  agents: RegisteredAgent[],
+  brief: string,
+  chosenProductByAgent: Record<string, string | null>,
+  chosenSignalIds: string[],
+  activateSet: Set<string>,
+  timeoutMs: number,
+): Promise<MediaBuyStageAgent[]> {
+  return Promise.all(agents.map(async (a): Promise<MediaBuyStageAgent> => {
+    const chosenProductId = chosenProductByAgent[a.id] ?? null;
+    const payload = buildCreateMediaBuyPayload({
+      workflowId,
+      agentId: a.id,
+      brief,
+      chosenProductId,
+      chosenSignalIds,
+    });
+    const base: MediaBuyStageAgent = {
+      id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
+      dry_run: !activateSet.has(a.id),
+      payload_preview: payload,
+      fired: false,
+    };
+    if (!activateSet.has(a.id)) return base;
+    // User opted to fire on this agent.
+    const res = await callAgentTool(
+      a.mcp_url!,
+      "create_media_buy",
+      payload as unknown as Record<string, unknown>,
+      { timeoutMs },
+    );
+    base.fired = true;
+    base.ok = res.ok;
+    base.latency_ms = res.latency_ms;
+    if (res.error) base.error = res.error;
+    if (res.structured_content !== undefined) base.result = res.structured_content;
+    return base;
+  }));
+}
+
+export async function handleWorkflowRun(request: Request, env: Env, logger: Logger): Promise<Response> {
+  ensureSelfHooksInstalled(env, logger);
+  const parsed = await readJsonBody<WorkflowRunBody>(request);
+  if (parsed.kind === "invalid") return errorResponse("INVALID_JSON", parsed.reason, 400);
+  const body: WorkflowRunBody = parsed.kind === "parsed" ? parsed.data : {};
+
+  if (!body.brief || body.brief.trim().length === 0) return errorResponse("INVALID_INPUT", "brief required", 400);
+  if (body.brief.length > 500) return errorResponse("INVALID_INPUT", "brief max 500 chars", 400);
+
+  const maxSignals = Math.max(1, Math.min(50, body.max_signals_per_agent ?? 5));
+  const maxProducts = Math.max(1, Math.min(20, body.max_products_per_agent ?? 3));
+  const timeoutMs = Math.max(1000, Math.min(30_000, body.timeout_ms ?? 15_000));
+
+  // Resolve targets. Fall back to default demo diversity when not specified.
+  const signalsAgents = resolveAgents(
+    body.signal_agent_ids,
+    getAgentsByRole("signals").filter((a) => a.stage === "live" && a.mcp_url).map((a) => a.id),
+  );
+  const creativeAgents = resolveAgents(body.creative_agent_ids, DEFAULT_CREATIVE_PAIR);
+  const buyingAgents = resolveAgents(body.buying_agent_ids, DEFAULT_BUYING_TRIO);
+
+  if (signalsAgents.length === 0) return errorResponse("NO_TARGETS", "No live signals agents matched.", 400);
+  if (buyingAgents.length === 0) return errorResponse("NO_TARGETS", "No live buying agents matched.", 400);
+
+  // Activation list — only buying agents can be activated. Anything else
+  // in the list is ignored with a soft warning surfaced in the response.
+  const activateSet = new Set<string>();
+  const activateWarnings: string[] = [];
+  for (const id of body.activate_agents ?? []) {
+    if (buyingAgents.find((a) => a.id === id)) activateSet.add(id);
+    else activateWarnings.push(`ignored_non_buying_activate_target:${id}`);
+  }
+
+  const workflowId = newWorkflowId();
+  const t0 = Date.now();
+
+  // Stage 1 + Stage 2 in parallel (independent).
+  const [signalsResults, creativeResults] = await Promise.all([
+    runSignalsStage(signalsAgents, body.brief, maxSignals, timeoutMs),
+    creativeAgents.length > 0 ? runCreativeStage(creativeAgents, timeoutMs) : Promise.resolve([]),
+  ]);
+
+  // Stage 3 depends on the brief only — could have run in parallel with
+  // stages 1/2 but sequencing it after signals gives the UI a clear
+  // "step arrow" between "I know the audience" and "I know the inventory"
+  // moments. Cheap to re-order later.
+  const productsResults = await runProductsStage(buyingAgents, body.brief, maxProducts, timeoutMs);
+
+  // Pick downstream targeting.
+  const mergedSignals = signalsResults.flatMap((r) => r.payload.signals);
+  const chosenSignalIds = pickTopSignals(mergedSignals, 3);
+  const chosenProductByAgent = pickProductPerAgent(productsResults.map((r) => ({ id: r.id, products: r.payload.products })));
+
+  // Stage 4 — payload synth + optional fire.
+  const mediaBuyResults = await runMediaBuyStage(
+    workflowId,
+    buyingAgents,
+    body.brief,
+    chosenProductByAgent,
+    chosenSignalIds,
+    activateSet,
+    timeoutMs,
+  );
+
+  const totalTimeMs = Date.now() - t0;
+  const allActivatedOk = mediaBuyResults.filter((r) => r.fired).every((r) => r.ok === true);
+  const anyActivated = mediaBuyResults.some((r) => r.fired);
+
+  logger.info("agents_workflow_run", {
+    workflow_id: workflowId,
+    brief_chars: body.brief.length,
+    signals_agents: signalsAgents.length,
+    creative_agents: creativeAgents.length,
+    buying_agents: buyingAgents.length,
+    activated: activateSet.size,
+    total_time_ms: totalTimeMs,
+  });
+
+  // Normalize into a compact response. The full per-agent products +
+  // signals are preserved on the stage objects so the UI can render
+  // everything without follow-up calls.
+  return jsonResponse({
+    workflow_id: workflowId,
+    brief: body.brief,
+    mode: activateSet.size === 0 ? "dry_run" : activateSet.size === buyingAgents.length ? "all_live" : "partial_live",
+    total_time_ms: totalTimeMs,
+    stages: {
+      signals: {
+        agents_queried: signalsAgents.map((a) => a.id),
+        per_agent: signalsResults.map((r) => ({
+          id: r.id, name: r.name, vendor: r.vendor,
+          ok: r.ok, latency_ms: r.latency_ms,
+          signal_count: r.payload.count,
+          ...(r.error ? { error: r.error } : {}),
+          signals: r.payload.signals.map((s) => ({
+            source_agent: r.id,
+            id: signalIdOf(s),
+            name: s.name ?? "(unnamed)",
+            description: typeof s.description === "string" ? s.description.slice(0, 200) : "",
+            coverage_percentage: s.coverage_percentage,
+            estimated_audience_size: s.estimated_audience_size,
+          })),
+        })),
+        total_signals: mergedSignals.length,
+        chosen_signal_ids: chosenSignalIds,
+      },
+      creative: {
+        agents_queried: creativeAgents.map((a) => a.id),
+        per_agent: creativeResults.map((r) => ({
+          id: r.id, name: r.name, vendor: r.vendor,
+          ok: r.ok, latency_ms: r.latency_ms,
+          format_count: r.payload.count,
+          ...(r.error ? { error: r.error } : {}),
+          formats: r.payload.formats.slice(0, 10),
+        })),
+      },
+      products: {
+        agents_queried: buyingAgents.map((a) => a.id),
+        per_agent: productsResults.map((r) => ({
+          id: r.id, name: r.name, vendor: r.vendor,
+          ok: r.ok, latency_ms: r.latency_ms,
+          product_count: r.payload.count,
+          ...(r.error ? { error: r.error } : {}),
+          products: r.payload.products.map((p) => ({
+            id: productIdOf(p),
+            name: p.name ?? "(unnamed product)",
+            description: typeof p.description === "string" ? p.description.slice(0, 200) : "",
+          })),
+        })),
+        chosen_product_per_agent: chosenProductByAgent,
+      },
+      media_buy: {
+        agents_queried: buyingAgents.map((a) => a.id),
+        activated: Array.from(activateSet),
+        all_activated_ok: anyActivated ? allActivatedOk : null,
+        per_agent: mediaBuyResults,
+      },
+    },
+    warnings: activateWarnings,
+    method: "sec48f_parallel_multi_role_fanout",
+    note: "Stages 1+2 run in parallel. Products sequential after signals to give the UI a clean step. Stage 4 is payload-synth + optional create_media_buy firing per `activate_agents`. Dry-run default: preview only, zero side effects on buying agents.",
   });
 }
 

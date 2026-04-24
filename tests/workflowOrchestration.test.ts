@@ -1,0 +1,161 @@
+// tests/workflowOrchestration.test.ts
+// Unit coverage for Sec-48f workflow helpers. These are pure functions
+// (no network, no Env binding) so the tests are deterministic.
+
+import { describe, it, expect } from "vitest";
+import {
+  signalId,
+  productId,
+  pickTopSignals,
+  pickProductPerAgent,
+  buildCreateMediaBuyPayload,
+  extractCategories,
+  newWorkflowId,
+} from "../src/domain/workflowOrchestration";
+
+describe("signalId / productId", () => {
+  it("signalId prefers signal_agent_segment_id, falls back to id", () => {
+    expect(signalId({ signal_agent_segment_id: "seg_1" })).toBe("seg_1");
+    expect(signalId({ id: "abc" })).toBe("abc");
+    expect(signalId({ name: "no id" })).toBeNull();
+  });
+
+  it("productId prefers product_id over id", () => {
+    expect(productId({ product_id: "p1" })).toBe("p1");
+    expect(productId({ id: "alt" })).toBe("alt");
+    expect(productId({ name: "no id" })).toBeNull();
+  });
+});
+
+describe("pickTopSignals", () => {
+  it("ranks by coverage_percentage desc, ties broken by input order", () => {
+    const merged = [
+      { signal_agent_segment_id: "low",   coverage_percentage: 0.2 },
+      { signal_agent_segment_id: "high",  coverage_percentage: 0.9 },
+      { signal_agent_segment_id: "mid_a", coverage_percentage: 0.5 },
+      { signal_agent_segment_id: "mid_b", coverage_percentage: 0.5 },
+    ];
+    expect(pickTopSignals(merged, 3)).toEqual(["high", "mid_a", "mid_b"]);
+  });
+
+  it("deduplicates by id across source agents", () => {
+    const merged = [
+      { signal_agent_segment_id: "seg1", coverage_percentage: 0.7, source_agent: "a" },
+      { signal_agent_segment_id: "seg1", coverage_percentage: 0.7, source_agent: "b" },
+      { signal_agent_segment_id: "seg2", coverage_percentage: 0.5 },
+    ];
+    expect(pickTopSignals(merged, 5)).toEqual(["seg1", "seg2"]);
+  });
+
+  it("skips signals without any id", () => {
+    const merged = [
+      { name: "no id",  coverage_percentage: 0.9 },
+      { id: "seg_alt", coverage_percentage: 0.3 },
+    ];
+    expect(pickTopSignals(merged, 2)).toEqual(["seg_alt"]);
+  });
+
+  it("returns empty array when no signals", () => {
+    expect(pickTopSignals([], 5)).toEqual([]);
+  });
+});
+
+describe("pickProductPerAgent", () => {
+  it("picks the first product with an id per agent", () => {
+    const out = pickProductPerAgent([
+      { id: "agent_a", products: [{ product_id: "p_a1" }, { product_id: "p_a2" }] },
+      { id: "agent_b", products: [{ id: "p_b1" }] },
+    ]);
+    expect(out).toEqual({ agent_a: "p_a1", agent_b: "p_b1" });
+  });
+
+  it("returns null for agents with no products or no ids", () => {
+    const out = pickProductPerAgent([
+      { id: "empty",  products: [] },
+      { id: "no_ids", products: [{ name: "untagged" }] },
+    ]);
+    expect(out).toEqual({ empty: null, no_ids: null });
+  });
+});
+
+describe("buildCreateMediaBuyPayload", () => {
+  const NOW = Date.UTC(2026, 3, 24, 12, 0, 0); // 2026-04-24T12:00:00Z
+
+  it("emits buyer_ref + all union-required fields", () => {
+    const p = buildCreateMediaBuyPayload({
+      workflowId: "wf_abc",
+      agentId: "claire_pub",
+      brief: "luxury travelers APAC",
+      chosenProductId: "prod_123",
+      chosenSignalIds: ["sig_1", "sig_2"],
+      nowMs: NOW,
+    });
+    expect(p.buyer_ref).toBe("wf_wf_abc_claire_pub");
+    expect(p.brand_manifest.categories).toContain("luxury");
+    expect(p.packages).toHaveLength(1);
+    expect(p.packages[0]!.product_id).toBe("prod_123");
+    expect(p.packages[0]!.budget.currency).toBe("USD");
+    expect(p.start_time).toBe("2026-04-25T12:00:00.000Z");
+    expect(p.end_time).toBe("2026-05-02T12:00:00.000Z");
+    expect(p.total_budget.amount).toBe(1000);
+    expect(p.po_number).toBe("demo_wf_abc");
+    expect(p.targeting_overlay?.required_axe_signals).toEqual(["sig_1", "sig_2"]);
+  });
+
+  it("omits targeting_overlay when no signals chosen", () => {
+    const p = buildCreateMediaBuyPayload({
+      workflowId: "w", agentId: "a", brief: "t",
+      chosenProductId: "p", chosenSignalIds: [], nowMs: NOW,
+    });
+    expect(p.targeting_overlay).toBeUndefined();
+  });
+
+  it("honors custom budget + duration overrides", () => {
+    const p = buildCreateMediaBuyPayload({
+      workflowId: "w", agentId: "a", brief: "t",
+      chosenProductId: "p", chosenSignalIds: [],
+      totalBudgetUsd: 5000, startDelayHours: 48, durationDays: 14, nowMs: NOW,
+    });
+    expect(p.total_budget.amount).toBe(5000);
+    expect(p.packages[0]!.budget.amount).toBe(5000);
+    expect(p.start_time).toBe("2026-04-26T12:00:00.000Z");
+    expect(p.end_time).toBe("2026-05-10T12:00:00.000Z");
+  });
+
+  it("handles null product id (agent returned no products)", () => {
+    const p = buildCreateMediaBuyPayload({
+      workflowId: "w", agentId: "a", brief: "t",
+      chosenProductId: null, chosenSignalIds: [], nowMs: NOW,
+    });
+    expect(p.packages[0]!.product_id).toBeNull();
+  });
+});
+
+describe("extractCategories", () => {
+  it("keeps the first 3 unique alpha tokens length >= 4", () => {
+    expect(extractCategories("luxury travelers planning APAC trips")).toEqual(["luxury", "travelers", "planning"]);
+  });
+
+  it("deduplicates repeated tokens", () => {
+    expect(extractCategories("travel travel travel luxury")).toEqual(["travel", "luxury"]);
+  });
+
+  it("falls back to ['general'] when no tokens match", () => {
+    expect(extractCategories("a b c")).toEqual(["general"]);
+    expect(extractCategories("")).toEqual(["general"]);
+  });
+
+  it("lowercases and strips punctuation", () => {
+    expect(extractCategories("LUXURY! travel_segments (APAC)")).toEqual(["luxury", "travel", "segments"]);
+  });
+});
+
+describe("newWorkflowId", () => {
+  it("starts with wf_ and is unique on repeated calls", () => {
+    const a = newWorkflowId();
+    const b = newWorkflowId();
+    expect(a.startsWith("wf_")).toBe(true);
+    expect(b.startsWith("wf_")).toBe(true);
+    expect(a).not.toEqual(b);
+  });
+});

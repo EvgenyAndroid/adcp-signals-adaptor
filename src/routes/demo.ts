@@ -1256,6 +1256,39 @@ ${STYLES}
             <div id="orch-results"><div class="empty-state"><div class="empty-desc">Enter a brief, hit <strong>Fan out</strong>. Signals come back merged with per-agent latency + source tags.</div></div></div>
           </div>
         </div>
+        <!-- ── End-to-end multi-role workflow (Sec-48f) ──────────────── -->
+        <div class="lab-panel lab-panel-full" style="margin-top:14px">
+          <div class="lab-panel-title">
+            End-to-end workflow
+            <span class="pill pill-accent mono" style="margin-left:8px;font-size:10px">Sec-48f</span>
+            <span style="margin-left:8px;color:var(--text-mut);font-weight:400;font-size:11px">signals \u2192 creative \u2192 products \u2192 media buy</span>
+          </div>
+          <div class="wf-controls">
+            <div class="wf-control-row">
+              <label class="lab-label">Brief</label>
+              <textarea id="wf-brief" class="lab-input" rows="2" placeholder="luxury travelers in-market for APAC trips"></textarea>
+            </div>
+            <div class="wf-control-row wf-activate-row">
+              <div class="wf-activate-label">Stage 4 activation <span class="orch-small">(default: dry-run only)</span></div>
+              <div class="wf-activate-toggles" id="wf-activate-toggles">
+                <label class="wf-toggle"><input type="checkbox" value="adzymic_apx" class="wf-activate-cb"/><span>adzymic_apx</span></label>
+                <label class="wf-toggle"><input type="checkbox" value="claire_pub" class="wf-activate-cb"/><span>claire_pub</span></label>
+                <label class="wf-toggle"><input type="checkbox" value="swivel" class="wf-activate-cb"/><span>swivel</span></label>
+              </div>
+            </div>
+            <button class="btn-primary" id="wf-run" style="width:100%;justify-content:center;margin-top:6px">
+              <svg class="ico"><use href="#icon-bolt"/></svg><span>Run workflow</span>
+            </button>
+            <div style="font-size:11px;color:var(--text-mut);margin-top:8px">
+              Fans out to <strong>2 signals</strong> + <strong>2 creative</strong> + <strong>3 buying</strong> agents via <code>/agents/workflow/run</code>.
+              Stage 4 always returns a payload preview per buying agent; checked agents also fire <code>create_media_buy</code> for real.
+            </div>
+          </div>
+          <div id="wf-results" style="margin-top:14px">
+            <div class="empty-state"><div class="empty-desc">Run the workflow to see all four stages fan out live. Each stage's per-agent results render below as cards.</div></div>
+          </div>
+        </div>
+
         <div class="lab-panel lab-panel-full" style="margin-top:14px">
           <div class="lab-panel-title">Capability matrix <button class="btn-secondary" id="orch-matrix-run" style="margin-left:8px;font-size:11px;padding:4px 10px">Build matrix</button></div>
           <div id="orch-matrix"><div class="empty-state"><div class="empty-desc">Click <strong>Build matrix</strong> to compare every live agent's tool surface side-by-side. Each row is a tool name; columns are agents; cells mark which agents declare that tool.</div></div></div>
@@ -4022,6 +4055,122 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .orch-tool-preq { white-space: nowrap; }
 .orch-tool-pdesc { color: var(--text-mut); line-height: 1.4; }
 .orch-tool-enum { color: var(--text-dim); font-size: 10px; }
+
+/* Sec-48f: end-to-end workflow UI. */
+.wf-controls { display: flex; flex-direction: column; gap: 8px; }
+.wf-control-row { display: flex; flex-direction: column; gap: 4px; }
+.wf-activate-row { flex-direction: row; align-items: center; gap: 12px; flex-wrap: wrap; }
+.wf-activate-label { font-size: 11px; color: var(--text-mut); font-weight: 500; }
+.wf-activate-toggles { display: flex; gap: 8px; flex-wrap: wrap; }
+.wf-toggle {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 11px;
+  padding: 3px 8px; background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: 4px; cursor: pointer; color: var(--text-mut);
+}
+.wf-toggle:hover { color: var(--text); }
+.wf-toggle input[type=checkbox] { width: 12px; height: 12px; margin: 0; }
+.wf-toggle input[type=checkbox]:checked + span { color: var(--accent); font-weight: 500; }
+
+.wf-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 12px; background: var(--bg-raised);
+  border: 1px solid var(--border); border-radius: 5px; margin-bottom: 10px;
+}
+.wf-header-id { font-size: 11px; color: var(--text-mut); }
+.wf-header-brief { font-size: 13px; color: var(--text); margin-top: 2px; }
+.wf-header-right { display: flex; align-items: center; }
+
+.wf-timeline {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px; background: var(--bg-surface);
+  border: 1px solid var(--border); border-radius: 5px;
+  margin-bottom: 12px; gap: 6px;
+}
+.wf-timeline-cell {
+  flex: 1; text-align: center; padding: 4px 8px;
+  background: var(--bg-raised); border-radius: 4px;
+  border: 1px solid var(--border);
+}
+.wf-timeline-label { font-size: 11px; color: var(--text); font-weight: 500; }
+.wf-timeline-count { font-size: 10px; color: var(--text-mut); margin-top: 2px; }
+.wf-timeline-arrow { color: var(--accent); font-size: 16px; }
+
+.wf-stage {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-left-width: 3px; border-radius: 5px;
+  padding: 10px 12px; margin-bottom: 10px;
+}
+.wf-stage-signals   { border-left-color: #64b5f6; }
+.wf-stage-creative  { border-left-color: #ba68c8; }
+.wf-stage-products  { border-left-color: #ffb74d; }
+.wf-stage-media-buy { border-left-color: var(--accent); }
+
+.wf-stage-head {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+.wf-stage-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%; background: var(--bg-raised);
+  border: 1px solid var(--border); font-size: 11px; color: var(--text);
+}
+.wf-stage-title { font-size: 13px; font-weight: 500; color: var(--text); }
+
+.wf-stage-agents {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px;
+}
+.wf-agent-card {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-left-width: 2px; border-radius: 4px;
+  padding: 8px 10px;
+}
+.wf-agent-ok  { border-left-color: var(--success); }
+.wf-agent-err { border-left-color: var(--error); }
+.wf-agent-dry { border-left-color: var(--text-mut); opacity: 0.9; }
+
+.wf-agent-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+.wf-agent-name { font-size: 11.5px; font-weight: 500; color: var(--text); }
+.wf-agent-vendor { font-size: 10.5px; color: var(--text-mut); flex: 1; }
+.wf-agent-error {
+  font-size: 10.5px; color: var(--error); margin-top: 4px;
+  background: rgba(239,83,80,0.06); padding: 4px 6px; border-radius: 3px;
+  word-break: break-word;
+}
+
+.wf-stage-body { font-size: 11px; color: var(--text-mut); margin-top: 4px; }
+.wf-stage-count { font-size: 10px; color: var(--text-dim); margin-bottom: 4px; }
+.wf-signal-row, .wf-product-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px 0; border-top: 1px solid var(--border);
+  font-size: 11px;
+}
+.wf-signal-row:first-child, .wf-product-row:first-child { border-top: none; }
+.wf-signal-id, .wf-product-id { color: var(--text-dim); font-size: 10px; white-space: nowrap; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+.wf-signal-name, .wf-product-name { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wf-product-chosen { background: var(--accent-dim); padding: 3px 6px; margin: 2px -4px; border-radius: 3px; }
+
+.wf-formats-list { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+
+.wf-chosen {
+  margin-top: 8px; padding: 6px 10px;
+  background: var(--accent-dim); border: 1px solid var(--accent);
+  border-radius: 4px; font-size: 11px;
+}
+.wf-chosen-label { color: var(--text-mut); margin-right: 6px; }
+.wf-chosen code { margin-right: 4px; font-size: 10.5px; }
+
+.wf-payload-details, .wf-result-details { margin-top: 6px; }
+.wf-payload-details summary, .wf-result-details summary {
+  cursor: pointer; font-size: 10.5px; color: var(--text-mut);
+  padding: 2px 0;
+}
+.wf-payload-details summary:hover, .wf-result-details summary:hover { color: var(--accent); }
+.wf-json {
+  font-size: 10.5px; background: var(--bg-surface);
+  padding: 6px 8px; border-radius: 4px; overflow: auto; max-height: 280px;
+  color: var(--text-dim); line-height: 1.45;
+}
 
 .orch-fanout-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-bottom: 10px; }
 .orch-fanout-card {
@@ -10982,6 +11131,8 @@ async function ensureOrchestrator() {
   document.getElementById("orch-refresh").addEventListener("click", runOrchProbeAll);
   document.getElementById("orch-run").addEventListener("click", runOrchFanout);
   document.getElementById("orch-matrix-run").addEventListener("click", runOrchMatrix);
+  var wfRunBtn = document.getElementById("wf-run");
+  if (wfRunBtn) wfRunBtn.addEventListener("click", runWorkflow);
   // Load static directory first, then kick off probe in parallel.
   await loadOrchDirectory();
   runOrchProbeAll();
@@ -11314,6 +11465,192 @@ function _orchRenderMatrix(data) {
     '<div style="overflow:auto"><table class="orch-matrix-table"><thead><tr><th class="orch-matrix-tool-header">Tool</th>' + headerCells + '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
     (uniqueSummary ? '<div style="margin-top:10px"><div class="lab-label">Unique tools per agent</div>' + uniqueSummary + '</div>' : '') +
     '<div style="font-size:11px;color:var(--text-mut);margin-top:8px">' + tools.length + ' tools across ' + agents.length + ' agents.</div>';
+}
+
+// ─── Workflow (Sec-48f: signals → creative → products → media_buy) ───────
+var _wfRunning = false;
+
+async function runWorkflow() {
+  if (_wfRunning) return;
+  var host = document.getElementById("wf-results");
+  var briefEl = document.getElementById("wf-brief");
+  var brief = (briefEl.value || "").trim();
+  if (!brief) { showToast("Workflow brief required.", true); return; }
+  var activateIds = Array.prototype.slice
+    .call(document.querySelectorAll(".wf-activate-cb"))
+    .filter(function (cb) { return cb.checked; })
+    .map(function (cb) { return cb.value; });
+  var mode = activateIds.length === 0 ? "dry-run" : "live (" + activateIds.length + " agent" + (activateIds.length === 1 ? "" : "s") + ")";
+  _wfRunning = true;
+  host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Running 4-stage workflow\u2026 <span class="orch-small">(' + escapeHtml(mode) + ')</span></div></div>';
+  try {
+    var r = await fetch("/agents/workflow/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brief: brief, activate_agents: activateIds, timeout_ms: 20000 }),
+    });
+    var data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || data.message || "HTTP " + r.status);
+    _wfRenderResults(data);
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
+  } finally {
+    _wfRunning = false;
+  }
+}
+
+function _wfRenderResults(data) {
+  var host = document.getElementById("wf-results");
+  var st = data.stages || {};
+  var header =
+    '<div class="wf-header">' +
+      '<div class="wf-header-left">' +
+        '<div class="wf-header-id mono">' + escapeHtml(data.workflow_id) + '</div>' +
+        '<div class="wf-header-brief">' + escapeHtml(data.brief) + '</div>' +
+      '</div>' +
+      '<div class="wf-header-right">' +
+        '<span class="pill ' + (data.mode === "dry_run" ? "pill-muted" : "pill-accent") + ' mono" style="font-size:10px">' + escapeHtml(data.mode) + '</span>' +
+        '<span class="orch-small mono" style="margin-left:8px">' + (data.total_time_ms || 0) + ' ms</span>' +
+      '</div>' +
+    '</div>';
+  var timeline = _wfRenderTimeline(st);
+  var s1 = _wfRenderSignalsStage(st.signals || {});
+  var s2 = _wfRenderCreativeStage(st.creative || {});
+  var s3 = _wfRenderProductsStage(st.products || {});
+  var s4 = _wfRenderMediaBuyStage(st.media_buy || {});
+  host.innerHTML = header + timeline + s1 + s2 + s3 + s4;
+}
+
+function _wfRenderTimeline(stages) {
+  var items = [
+    { key: "signals",   label: "Signals",   agents: (stages.signals  || {}).agents_queried || [] },
+    { key: "creative",  label: "Creative",  agents: (stages.creative || {}).agents_queried || [] },
+    { key: "products",  label: "Products",  agents: (stages.products || {}).agents_queried || [] },
+    { key: "media_buy", label: "Media buy", agents: (stages.media_buy|| {}).agents_queried || [] },
+  ];
+  var cells = items.map(function (it, i) {
+    var arrow = i < items.length - 1 ? '<span class="wf-timeline-arrow">\u2192</span>' : '';
+    return '<div class="wf-timeline-cell">' +
+      '<div class="wf-timeline-label">' + escapeHtml(it.label) + '</div>' +
+      '<div class="wf-timeline-count mono">' + it.agents.length + ' agent' + (it.agents.length === 1 ? '' : 's') + '</div>' +
+    '</div>' + arrow;
+  }).join("");
+  return '<div class="wf-timeline">' + cells + '</div>';
+}
+
+function _wfRenderStageAgentCard(kind, r, extra) {
+  var statusClass = r.ok ? "wf-agent-ok" : "wf-agent-err";
+  var statusPill = r.ok
+    ? '<span class="pill pill-success mono" style="font-size:10px">ok</span>'
+    : '<span class="pill pill-error mono" style="font-size:10px">err</span>';
+  return '<div class="wf-agent-card ' + statusClass + '">' +
+    '<div class="wf-agent-head"><span class="wf-agent-name mono">' + escapeHtml(r.id) + '</span>' +
+      '<span class="wf-agent-vendor">' + escapeHtml(r.vendor || '') + '</span>' +
+      statusPill + '<span class="orch-small mono" style="margin-left:6px">' + (r.latency_ms || 0) + ' ms</span>' +
+    '</div>' +
+    (r.error ? '<div class="wf-agent-error mono">' + escapeHtml(r.error.slice(0, 200)) + '</div>' : '') +
+    (extra || '') +
+  '</div>';
+}
+
+function _wfRenderSignalsStage(stage) {
+  var perAgent = (stage.per_agent || []).map(function (r) {
+    var signals = r.signals || [];
+    var rows = signals.slice(0, 5).map(function (s) {
+      var cov = typeof s.coverage_percentage === "number" ? (Math.round(s.coverage_percentage * 100) + "%") : "";
+      var reach = typeof s.estimated_audience_size === "number" ? ((s.estimated_audience_size / 1e6).toFixed(1) + "M") : "";
+      return '<div class="wf-signal-row"><span class="mono wf-signal-id">' + escapeHtml(s.id || '-') + '</span>' +
+        '<span class="wf-signal-name">' + escapeHtml(s.name) + '</span>' +
+        (cov ? '<span class="pill pill-muted mono" style="font-size:9.5px">cov ' + cov + '</span>' : '') +
+        (reach ? '<span class="pill pill-muted mono" style="font-size:9.5px">' + reach + '</span>' : '') +
+      '</div>';
+    }).join("");
+    var more = signals.length > 5 ? '<div class="orch-small" style="margin-top:4px">+ ' + (signals.length - 5) + ' more</div>' : '';
+    var extra = '<div class="wf-stage-body"><div class="wf-stage-count mono">' + r.signal_count + ' signals</div>' + rows + more + '</div>';
+    return _wfRenderStageAgentCard("signals", r, extra);
+  }).join("");
+  var chosen = (stage.chosen_signal_ids || []).map(function (s) { return '<code class="mono">' + escapeHtml(s) + '</code>'; }).join(" ");
+  var chosenLine = chosen ? '<div class="wf-chosen"><span class="wf-chosen-label">Chosen for targeting \u2192</span> ' + chosen + '</div>' : '';
+  return '<div class="wf-stage wf-stage-signals">' +
+    '<div class="wf-stage-head"><span class="wf-stage-num mono">1</span><span class="wf-stage-title">Signals</span><span class="orch-small mono">' + (stage.total_signals || 0) + ' total</span></div>' +
+    '<div class="wf-stage-agents">' + perAgent + '</div>' + chosenLine +
+  '</div>';
+}
+
+function _wfRenderCreativeStage(stage) {
+  var perAgent = (stage.per_agent || []).map(function (r) {
+    var formats = r.formats || [];
+    var names = formats.slice(0, 5).map(function (f) {
+      var n = (f && (f.name || f.format_id || f.id)) || "(format)";
+      return '<span class="pill pill-muted mono" style="font-size:10px">' + escapeHtml(String(n).slice(0, 40)) + '</span>';
+    }).join(" ");
+    var more = formats.length > 5 ? '<span class="orch-small" style="margin-left:4px">+ ' + (formats.length - 5) + '</span>' : '';
+    var extra = '<div class="wf-stage-body"><div class="wf-stage-count mono">' + r.format_count + ' formats</div><div class="wf-formats-list">' + names + more + '</div></div>';
+    return _wfRenderStageAgentCard("creative", r, extra);
+  }).join("");
+  return '<div class="wf-stage wf-stage-creative">' +
+    '<div class="wf-stage-head"><span class="wf-stage-num mono">2</span><span class="wf-stage-title">Creative</span></div>' +
+    '<div class="wf-stage-agents">' + perAgent + '</div>' +
+  '</div>';
+}
+
+function _wfRenderProductsStage(stage) {
+  var chosenMap = stage.chosen_product_per_agent || {};
+  var perAgent = (stage.per_agent || []).map(function (r) {
+    var prods = r.products || [];
+    var rows = prods.slice(0, 3).map(function (p) {
+      var chosen = chosenMap[r.id] && chosenMap[r.id] === p.id;
+      return '<div class="wf-product-row' + (chosen ? ' wf-product-chosen' : '') + '">' +
+        '<span class="mono wf-product-id">' + escapeHtml(p.id || '-') + '</span>' +
+        '<span class="wf-product-name">' + escapeHtml(p.name) + '</span>' +
+        (chosen ? '<span class="pill pill-accent mono" style="font-size:9.5px">chosen</span>' : '') +
+      '</div>';
+    }).join("");
+    var more = prods.length > 3 ? '<div class="orch-small" style="margin-top:4px">+ ' + (prods.length - 3) + ' more</div>' : '';
+    var extra = '<div class="wf-stage-body"><div class="wf-stage-count mono">' + r.product_count + ' products</div>' + rows + more + '</div>';
+    return _wfRenderStageAgentCard("products", r, extra);
+  }).join("");
+  return '<div class="wf-stage wf-stage-products">' +
+    '<div class="wf-stage-head"><span class="wf-stage-num mono">3</span><span class="wf-stage-title">Products</span></div>' +
+    '<div class="wf-stage-agents">' + perAgent + '</div>' +
+  '</div>';
+}
+
+function _wfRenderMediaBuyStage(stage) {
+  var activated = stage.activated || [];
+  var perAgent = (stage.per_agent || []).map(function (r) {
+    var headClass = r.fired ? (r.ok ? "wf-agent-ok" : "wf-agent-err") : "wf-agent-dry";
+    var fireBadge = r.fired
+      ? (r.ok ? '<span class="pill pill-success mono" style="font-size:10px">fired \u2713</span>'
+              : '<span class="pill pill-error mono" style="font-size:10px">fired \u2717</span>')
+      : '<span class="pill pill-muted mono" style="font-size:10px">dry run</span>';
+    var payload = r.payload_preview || {};
+    var payloadJson = "";
+    try { payloadJson = JSON.stringify(payload, null, 2); } catch (e) { payloadJson = String(e); }
+    var resultBlock = r.fired && r.result
+      ? '<details class="wf-result-details"><summary class="orch-small">view agent response</summary><pre class="wf-json mono">' + escapeHtml(JSON.stringify(r.result, null, 2)) + '</pre></details>'
+      : '';
+    return '<div class="wf-agent-card ' + headClass + '">' +
+      '<div class="wf-agent-head"><span class="wf-agent-name mono">' + escapeHtml(r.id) + '</span>' +
+        '<span class="wf-agent-vendor">' + escapeHtml(r.vendor || '') + '</span>' +
+        fireBadge +
+        (typeof r.latency_ms === "number" ? '<span class="orch-small mono" style="margin-left:6px">' + r.latency_ms + ' ms</span>' : '') +
+      '</div>' +
+      (r.error ? '<div class="wf-agent-error mono">' + escapeHtml(r.error.slice(0, 200)) + '</div>' : '') +
+      '<details class="wf-payload-details"' + (r.fired ? '' : ' open') + '>' +
+        '<summary class="orch-small">create_media_buy payload preview</summary>' +
+        '<pre class="wf-json mono">' + escapeHtml(payloadJson) + '</pre>' +
+      '</details>' +
+      resultBlock +
+    '</div>';
+  }).join("");
+  var summary = activated.length === 0
+    ? 'Dry run \u2014 no agents fired. Check boxes above to activate per-agent.'
+    : activated.length + ' agent' + (activated.length === 1 ? '' : 's') + ' fired: ' + activated.map(function (id) { return '<code>' + escapeHtml(id) + '</code>'; }).join(" ");
+  return '<div class="wf-stage wf-stage-media-buy">' +
+    '<div class="wf-stage-head"><span class="wf-stage-num mono">4</span><span class="wf-stage-title">Media buy</span><span class="orch-small">' + summary + '</span></div>' +
+    '<div class="wf-stage-agents">' + perAgent + '</div>' +
+  '</div>';
 }
 
 // ─── Federation (partial — more in Part 3) ───────────────────────────────

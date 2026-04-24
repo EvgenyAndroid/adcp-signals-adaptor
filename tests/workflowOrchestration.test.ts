@@ -531,31 +531,33 @@ describe("applyVendorAdapter (Sec-48r)", () => {
     expect(out.packages[0]!.pricing_option_id).toBe("default");
   });
 
-  it("claire_*: OMITS brand_manifest (not just narrowed); other fields present", () => {
+  it("claire_*: swap brand_manifest for top-level brand BrandReference (Sec-48r5)", () => {
     const out = applyVendorAdapter("claire_scope3", base) as unknown as {
       brand_manifest?: unknown;
+      brand?: Record<string, unknown>;
       packages: Array<Record<string, unknown>>;
       total_budget: unknown;
     };
-    // Sec-48r4: claire rejected {name, categories} too — omit entirely.
+    // Sec-48r5: Claire expects top-level `brand: BrandReference`, not
+    // `brand_manifest: BrandManifest`. Different schema family.
     expect(out.brand_manifest).toBeUndefined();
+    expect(out.brand).toEqual({ id: "demo_brand", name: "AdCP Workflow Demo" });
     expect(out.packages[0]!.buyer_ref).toBeDefined();
     expect(out.packages[0]!.budget).toBe(1000);
     expect(out.packages[0]!.pricing_option_id).toBe("default");
     expect(out.total_budget).toBe(1000);
   });
 
-  it("content_ignite follows claire rules (including brand_manifest omit)", () => {
+  it("content_ignite follows claire rules (brand swap, not brand_manifest)", () => {
     const out = applyVendorAdapter("content_ignite", base) as unknown as {
       brand_manifest?: unknown;
+      brand?: Record<string, unknown>;
       packages: Array<Record<string, unknown>>;
-      total_budget: unknown;
     };
     expect(out.brand_manifest).toBeUndefined();
-    expect(out.packages[0]!.buyer_ref).toBeDefined();
-    expect(out.packages[0]!.budget).toBe(1000);
+    expect(out.brand).toBeDefined();
+    expect(out.brand!.name).toBe("AdCP Workflow Demo");
     expect(out.packages[0]!.pricing_option_id).toBe("default");
-    expect(out.total_budget).toBe(1000);
   });
 
   it("unknown agent passes through as identity", () => {

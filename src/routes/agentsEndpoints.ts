@@ -42,6 +42,7 @@ import {
   productId as productIdOf,
   signalId as signalIdOf,
   extractMcpToolArray,
+  describeToolResult,
   type SignalLite,
   type ProductLite,
   type MediaBuyPayload,
@@ -845,6 +846,12 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
                 const fo = f as { name?: string; format_id?: string; id?: string } | null;
                 return fo ? (fo.name ?? fo.format_id ?? fo.id ?? "(format)") : "(format)";
               }),
+              // Sec-48k: when the extractor finds nothing, attach a shape
+              // diagnostic so the UI (and we) can see why. Cheap — runs
+              // only on the zero-count path.
+              ...(formats.length === 0 && res.ok
+                ? { diagnostic: describeToolResult(res.structured_content, res.content) }
+                : {}),
             },
           });
           return out;
@@ -887,6 +894,9 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
                 id: productIdOf(p),
                 name: p.name ?? "(unnamed product)",
               })),
+              ...(products.length === 0 && res.ok
+                ? { diagnostic: describeToolResult(res.structured_content, res.content) }
+                : {}),
             },
           });
           return out;

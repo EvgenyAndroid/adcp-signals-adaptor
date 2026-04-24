@@ -186,16 +186,23 @@ export function newWorkflowId(): string {
 
 /** Extract an array from an MCP tool's `structured_content` payload.
  *
- * Different vendors return their results under different top-level keys:
+ * Different vendors return their results under different top-level keys,
+ * and some nest them one level deeper inside a wrapper object:
  *   - Our get_signals:              { signals: [...] }
  *   - Adzymic get_products:         { products: [...] }
- *   - Swivel get_products:          { items: [...] }  (observed)
  *   - Advertible list_formats:      { formats: [...] }
- *   - Celtra list_formats:          { creative_formats: [...] }  (observed)
+ *   - Celtra list_formats:          { formats: [...] } nested under a
+ *                                     wrapper (Sec-48i: depth-1 search)
  *
- * We try the caller's preferred keys first, then fall back to the first
- * array-valued top-level key. This keeps the workflow extractor tolerant
- * of vendor drift without needing per-vendor code.
+ * Lookup priority:
+ *   1. preferredKeys at depth 0 — the fast path
+ *   2. preferredKeys at depth 1 — wrapper envelopes like {result:{…}}
+ *   3. any array at depth 0 — generic fallback
+ *   4. any array at depth 1 — last-resort for deeply-wrapped responses
+ *
+ * Bounded to depth 1. If a future vendor nests the array at depth 2+,
+ * we add an explicit preferred-key entry rather than making this walk
+ * the whole object graph.
  */
 export function extractArrayPayload<T = unknown>(
   structured: unknown,
@@ -203,13 +210,42 @@ export function extractArrayPayload<T = unknown>(
 ): T[] {
   if (!structured || typeof structured !== "object") return [];
   const obj = structured as Record<string, unknown>;
+
+  // 1. preferred keys at top level
   for (const k of preferredKeys) {
     const v = obj[k];
     if (Array.isArray(v)) return v as T[];
   }
+
+  // 2. preferred keys inside any object-valued top-level key
+  for (const k of Object.keys(obj)) {
+    const v = obj[k];
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      const inner = v as Record<string, unknown>;
+      for (const pk of preferredKeys) {
+        const nv = inner[pk];
+        if (Array.isArray(nv)) return nv as T[];
+      }
+    }
+  }
+
+  // 3. first array-valued top-level key
   for (const k of Object.keys(obj)) {
     const v = obj[k];
     if (Array.isArray(v)) return v as T[];
   }
+
+  // 4. first array-valued key inside any object-valued top-level key
+  for (const k of Object.keys(obj)) {
+    const v = obj[k];
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      const inner = v as Record<string, unknown>;
+      for (const nk of Object.keys(inner)) {
+        const nv = inner[nk];
+        if (Array.isArray(nv)) return nv as T[];
+      }
+    }
+  }
+
   return [];
 }

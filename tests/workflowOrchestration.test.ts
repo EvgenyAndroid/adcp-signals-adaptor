@@ -176,6 +176,50 @@ describe("extractArrayPayload", () => {
     expect(extractArrayPayload("string", ["products"])).toEqual([]);
     expect(extractArrayPayload(42, ["products"])).toEqual([]);
   });
+
+  // Sec-48i: depth-1 nested search for vendors that wrap in an envelope.
+  it("finds a preferred key nested one level deep in a wrapper object", () => {
+    const out = extractArrayPayload(
+      { result: { formats: [{ id: "f1" }, { id: "f2" }] } },
+      ["formats", "creative_formats"],
+    );
+    expect(out).toEqual([{ id: "f1" }, { id: "f2" }]);
+  });
+
+  it("prefers a top-level preferred key over a nested one", () => {
+    const out = extractArrayPayload(
+      { formats: ["top"], result: { formats: ["nested"] } },
+      ["formats"],
+    );
+    expect(out).toEqual(["top"]);
+  });
+
+  it("prefers a nested preferred key over a top-level generic-array fallback", () => {
+    const out = extractArrayPayload(
+      { meta: [1, 2, 3], data: { products: [{ id: "p" }] } },
+      ["products"],
+    );
+    expect(out).toEqual([{ id: "p" }]);
+  });
+
+  it("falls back to the first nested array when no preferred key matches", () => {
+    const out = extractArrayPayload(
+      { output: { unknown_key: [{ id: "x" }] } },
+      ["products"],
+    );
+    expect(out).toEqual([{ id: "x" }]);
+  });
+
+  it("does not dive into array-valued top-level keys when looking nested", () => {
+    // Arrays of objects at top-level that themselves contain arrays
+    // should not confuse the nested search. Here no preferred key is
+    // present, so the top-level array wins via rule 3.
+    const out = extractArrayPayload(
+      { items: [{ sub: [1] }, { sub: [2] }] },
+      ["products"],
+    );
+    expect(out).toEqual([{ sub: [1] }, { sub: [2] }]);
+  });
 });
 
 describe("newWorkflowId", () => {

@@ -43,6 +43,7 @@ import {
   handleAgentsOrchestrate,
   handleAgentsCapabilityMatrix,
   handleWorkflowRun,
+  handleWorkflowRunStream,
 } from "./routes/agentsEndpoints";
 import {
   handleAudienceCompose,
@@ -216,6 +217,7 @@ export default {
             "/agents/orchestrate",
             "/agents/capability-matrix",
             "/agents/workflow/run",
+            "/agents/workflow/run/stream",
             "/taxonomy/reverse",
             // Sec-43: audience composer + activation-planning analytics.
             // Read-only — same posture as /portfolio/* and /analytics/*.
@@ -369,6 +371,8 @@ export default {
                 response = await handleAgentsCapabilityMatrix(request, env, logger);
             } else if (method === "POST" && path === "/agents/workflow/run") {
                 response = await handleWorkflowRun(request, env, logger);
+            } else if (method === "POST" && path === "/agents/workflow/run/stream") {
+                response = await handleWorkflowRunStream(request, env, logger);
 
                 // ── Sec-43: Audience Composer + activation analytics ────────────────
             } else if (method === "POST" && path === "/audience/compose") {

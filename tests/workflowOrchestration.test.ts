@@ -10,6 +10,7 @@ import {
   pickProductPerAgent,
   buildCreateMediaBuyPayload,
   extractCategories,
+  extractArrayPayload,
   newWorkflowId,
 } from "../src/domain/workflowOrchestration";
 
@@ -147,6 +148,33 @@ describe("extractCategories", () => {
 
   it("lowercases and strips punctuation", () => {
     expect(extractCategories("LUXURY! travel_segments (APAC)")).toEqual(["luxury", "travel", "segments"]);
+  });
+});
+
+describe("extractArrayPayload", () => {
+  it("returns the array under the first preferred key that matches", () => {
+    const out = extractArrayPayload({ creative_formats: [1, 2], formats: [9] }, ["formats", "creative_formats"]);
+    expect(out).toEqual([9]);
+  });
+
+  it("checks all preferred keys in order before the fallback", () => {
+    const out = extractArrayPayload({ creative_formats: [1, 2] }, ["formats", "creative_formats"]);
+    expect(out).toEqual([1, 2]);
+  });
+
+  it("falls back to the first array-valued key when no preferred key matches", () => {
+    const out = extractArrayPayload({ items: [{ x: 1 }], meta: {} }, ["products"]);
+    expect(out).toEqual([{ x: 1 }]);
+  });
+
+  it("returns [] when no arrays are present", () => {
+    expect(extractArrayPayload({ a: 1, b: "x" }, ["anything"])).toEqual([]);
+  });
+
+  it("returns [] on null / non-object", () => {
+    expect(extractArrayPayload(null, ["products"])).toEqual([]);
+    expect(extractArrayPayload("string", ["products"])).toEqual([]);
+    expect(extractArrayPayload(42, ["products"])).toEqual([]);
   });
 });
 

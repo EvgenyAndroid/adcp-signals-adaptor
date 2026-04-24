@@ -391,7 +391,18 @@ export async function handleAgentsCapabilityMatrix(request: Request, env: Env, l
 //     timeout_ms?:         number  default 15000
 //   }
 
-const DEFAULT_BUYING_TRIO = ["adzymic_apx", "claire_pub", "swivel"] as const;
+// Sec-48n: default trio picked for live-demo completeness. Ground-truth
+// probe 2026-04-24 across all 8 live buying agents with the same brief:
+//   adzymic_apx        → ok, 2 products   ✓
+//   claire_scope3      → ok, 1 product    ✓
+//   swivel             → ok, 0 (legit)    ✓ (workflow still advances)
+//   adzymic_{sph,tsl,mediacorp} → isError:true, vendor-side (Sec-48m
+//                                  diagnostic unwraps the cause)
+//   claire_pub         → isError:true
+//   content_ignite     → isError:true
+// Claire-Scope3 is the most product-diverse of the Claire fleet; swapping
+// claire_pub out of the default makes stage 3 land 3/3 OK in the demo.
+const DEFAULT_BUYING_TRIO = ["adzymic_apx", "claire_scope3", "swivel"] as const;
 const DEFAULT_CREATIVE_PAIR = ["advertible", "celtra"] as const;
 
 interface WorkflowRunBody {
@@ -979,6 +990,95 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
       "X-Accel-Buffering": "no",
       "Access-Control-Allow-Origin": "*",
     },
+  });
+}
+
+// ── POST /agents/workflow/fire-buy ──────────────────────────────────────────
+// Sec-48n: fire a single create_media_buy against one buying agent after
+// the user has re-picked a product (or the chosen signals) in the UI.
+// Complements the dry-run-by-default /agents/workflow/run: lets the
+// operator inspect the full workflow result, swap in a different product,
+// and THEN fire the buy — without re-running the whole 4-stage fan-out.
+//
+// Request body:
+//   {
+//     agent_id:    string   required  — must be a live buying agent
+//     product_id:  string   required  — target product (from stage 3)
+//     signal_ids:  string[]           — targeting signals (from stage 1)
+//     brief:       string   required
+//     workflow_id?: string            — reused in buyer_ref + po_number if present
+//     timeout_ms?: number
+//   }
+//
+// Returns the full create_media_buy result body (including the synthesized
+// payload we sent, for transparency) so the UI can render it as a drop-in
+// replacement for the stage-4 dry-run card.
+
+interface FireBuyBody {
+  agent_id?: string;
+  product_id?: string;
+  signal_ids?: string[];
+  brief?: string;
+  workflow_id?: string;
+  timeout_ms?: number;
+}
+
+export async function handleWorkflowFireBuy(request: Request, env: Env, logger: Logger): Promise<Response> {
+  ensureSelfHooksInstalled(env, logger);
+  const parsed = await readJsonBody<FireBuyBody>(request);
+  if (parsed.kind === "invalid") return errorResponse("INVALID_JSON", parsed.reason, 400);
+  const body: FireBuyBody = parsed.kind === "parsed" ? parsed.data : {};
+
+  if (!body.agent_id) return errorResponse("INVALID_INPUT", "agent_id required", 400);
+  if (!body.brief || body.brief.trim().length === 0) return errorResponse("INVALID_INPUT", "brief required", 400);
+  if (body.brief.length > 500) return errorResponse("INVALID_INPUT", "brief max 500 chars", 400);
+
+  const agent = findAgent(body.agent_id);
+  if (!agent) return errorResponse("UNKNOWN_AGENT", `agent ${body.agent_id} not in registry`, 400);
+  if (agent.role !== "buying") return errorResponse("INVALID_AGENT_ROLE", `agent ${agent.id} is ${agent.role}, not buying`, 400);
+  if (agent.stage !== "live" || !agent.mcp_url) return errorResponse("AGENT_NOT_LIVE", `agent ${agent.id} is not live`, 400);
+
+  const timeoutMs = Math.max(1000, Math.min(30_000, body.timeout_ms ?? 15_000));
+  const workflowId = body.workflow_id && /^wf_[a-z0-9]+$/i.test(body.workflow_id)
+    ? body.workflow_id
+    : newWorkflowId();
+
+  const payload = buildCreateMediaBuyPayload({
+    workflowId,
+    agentId: agent.id,
+    brief: body.brief,
+    chosenProductId: body.product_id ?? null,
+    chosenSignalIds: Array.isArray(body.signal_ids) ? body.signal_ids.filter((s) => typeof s === "string") : [],
+  });
+
+  const start = Date.now();
+  const res = await callAgentTool(
+    agent.mcp_url,
+    "create_media_buy",
+    payload as unknown as Record<string, unknown>,
+    { timeoutMs },
+  );
+  const latency = Date.now() - start;
+
+  logger.info("agents_workflow_fire_buy", {
+    workflow_id: workflowId,
+    agent_id: agent.id,
+    ok: res.ok,
+    latency_ms: latency,
+    has_product: !!body.product_id,
+    signal_count: Array.isArray(body.signal_ids) ? body.signal_ids.length : 0,
+  });
+
+  return jsonResponse({
+    workflow_id: workflowId,
+    agent_id: agent.id,
+    vendor: agent.vendor,
+    ok: res.ok,
+    ...(res.error ? { error: res.error } : {}),
+    latency_ms: res.latency_ms ?? latency,
+    payload_preview: payload,
+    ...(res.structured_content !== undefined ? { result: res.structured_content } : {}),
+    ...(res.content !== undefined ? { content: res.content } : {}),
   });
 }
 

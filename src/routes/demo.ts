@@ -11353,6 +11353,7 @@ async function _wfFireBuy(agentId, btn) {
         fired: true,
         payload_preview: data.payload_preview,
         result: data.result,
+        content: data.content,
       },
     });
   } catch (e) {
@@ -12032,22 +12033,68 @@ function _wfPaintAgentComplete(ev) {
       ? (ev.ok ? '<span class="pill pill-success mono" style="font-size:10px">fired \u2713</span>'
                : '<span class="pill pill-error mono" style="font-size:10px">fired \u2717</span>')
       : '<span class="pill pill-muted mono" style="font-size:10px">dry run</span>';
-    // Sec-48n: Fire button appears only on dry-run cards. Clicking it posts
-    // to /agents/workflow/fire-buy with the current pick state.
+    // Sec-48n: fire button appears only on dry-run cards. Clicking it
+    // posts to /agents/workflow/fire-buy with the current pick.
+    // Sec-48p: honest copy. We do actually call the vendor with our
+    // synthesized payload; the payload satisfies the required-field
+    // union but not each vendor's business-logic validation (real
+    // brand IDs, authorized properties, PO numbers, inventory
+    // windows, ...). Rename from "Fire this buy (live)" to signal that.
     var fireBtn = !sum.fired
       ? '<button class="btn-primary wf-refire-btn" ' +
                'data-wf-refire-agent="' + escapeHtml(ev.agent_id) + '" ' +
+               'title="Calls create_media_buy on the agent with our synthesized payload. Vendors typically reject on validation; response body is surfaced below." ' +
                'style="margin-top:8px;width:100%;justify-content:center;padding:6px 10px;font-size:11px">' +
           '<svg class="ico"><use href="#icon-bolt"/></svg>' +
-          '<span>Fire this buy (live)</span>' +
+          '<span>Simulate live fire</span>' +
         '</button>'
       : '';
+    // Sec-48p: always surface vendor response when fired, not just on
+    // success. Failed calls are the interesting case — the vendor's
+    // error message tells us what they reject and why. Auto-open on
+    // err so the user sees the reason without clicking.
+    var responseBlock = "";
+    if (sum.fired) {
+      var hasResult = sum.result !== undefined && sum.result !== null;
+      var hasContent = Array.isArray(sum.content) && sum.content.length > 0;
+      var autoOpen = !ev.ok ? ' open' : '';
+      if (hasResult) {
+        responseBlock +=
+          '<details class="wf-result-details"' + autoOpen + '>' +
+            '<summary class="orch-small">' + (ev.ok ? 'vendor response' : 'vendor rejection \u2014 result') + '</summary>' +
+            '<pre class="wf-json mono">' + escapeHtml(JSON.stringify(sum.result, null, 2)) + '</pre>' +
+          '</details>';
+      }
+      if (hasContent) {
+        // MCP content blocks — prefer the first text block's content,
+        // fall back to the whole array serialized.
+        var textBlock = null;
+        for (var ci = 0; ci < sum.content.length; ci++) {
+          var blk = sum.content[ci];
+          if (blk && typeof blk === "object" && blk.type === "text" && typeof blk.text === "string") {
+            textBlock = blk.text; break;
+          }
+        }
+        var display = textBlock !== null ? textBlock : JSON.stringify(sum.content, null, 2);
+        responseBlock +=
+          '<details class="wf-result-details"' + autoOpen + '>' +
+            '<summary class="orch-small">' + (ev.ok ? 'vendor content' : 'vendor rejection \u2014 content') + '</summary>' +
+            '<pre class="wf-json mono">' + escapeHtml(display) + '</pre>' +
+          '</details>';
+      }
+      if (!hasResult && !hasContent && !ev.ok && !ev.error) {
+        responseBlock +=
+          '<div class="orch-small" style="margin-top:6px;color:var(--text-mut);font-style:italic">' +
+            'vendor returned no body or error message (isError:true, empty content)' +
+          '</div>';
+      }
+    }
     body = '<div class="wf-stage-count mono" style="display:flex;justify-content:space-between;align-items:center">' + fireBadge + '</div>' +
       '<details class="wf-payload-details"' + (sum.fired ? '' : ' open') + '>' +
         '<summary class="orch-small">create_media_buy payload</summary>' +
         '<pre class="wf-json mono" id="wf-payload-pre-' + escapeHtml(ev.agent_id) + '">' + escapeHtml(payloadJson) + '</pre>' +
       '</details>' +
-      (sum.fired && sum.result ? '<details class="wf-result-details"><summary class="orch-small">view agent response</summary><pre class="wf-json mono">' + escapeHtml(JSON.stringify(sum.result, null, 2)) + '</pre></details>' : '') +
+      responseBlock +
       fireBtn;
   }
   var headHTML = '<div class="wf-agent-head">' +

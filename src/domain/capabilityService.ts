@@ -518,6 +518,8 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
           audience_journey:        { method: "POST", path: "/audience/journey" },
           audience_privacy_check:  { method: "POST", path: "/audience/privacy-check" },
           audience_holdout:        { method: "POST", path: "/audience/holdout" },
+          // Sec-47: boolean expression AST composer.
+          audience_compose_ast:    { method: "POST", path: "/audience/compose-ast" },
           snapshot_save:           { method: "POST",   path: "/snapshots" },
           snapshot_list:           { method: "GET",    path: "/snapshots" },
           snapshot_get:            { method: "GET",    path: "/snapshots/:id" },

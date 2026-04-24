@@ -44,6 +44,7 @@ import {
   handleAudienceJourney,
   handleAudiencePrivacyCheck,
   handleAudienceHoldout,
+  handleAudienceComposeAst,
 } from "./routes/audienceAnalytics";
 import {
   handleSnapshotSave,
@@ -212,6 +213,8 @@ export default {
             "/audience/journey",
             "/audience/privacy-check",
             "/audience/holdout",
+            // Sec-47: boolean expression AST composer (arbitrary trees over signals).
+            "/audience/compose-ast",
             // Sec-41 seed diagnostic + idempotent incremental seed
             // trigger. /admin/reseed remains auth-gated (force=true path).
             "/admin/seed-status",
@@ -355,6 +358,8 @@ export default {
                 response = await handleAudiencePrivacyCheck(request, env, logger);
             } else if (method === "POST" && path === "/audience/holdout") {
                 response = await handleAudienceHoldout(request, env, logger);
+            } else if (method === "POST" && path === "/audience/compose-ast") {
+                response = await handleAudienceComposeAst(request, env, logger);
 
                 // ── Sec-44: Snapshots (auth-gated, operator-scoped) ───────────────────
             } else if (method === "POST" && path === "/snapshots") {

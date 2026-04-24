@@ -20,6 +20,11 @@ import {
   inferSensitiveCategories,
   privacyCheck,
   holdoutPlan,
+  validateAST,
+  evaluateAST,
+  MAX_AST_DEPTH,
+  MAX_AST_NODES,
+  type ASTNode,
 } from "../src/analytics/audienceMath";
 
 // ── fixtures ────────────────────────────────────────────────────────────────
@@ -349,5 +354,178 @@ describe("holdoutPlan", () => {
     const p = holdoutPlan(1_000_000, 0.10, 0.02);
     // Both fields are independently rounded to 4 decimals, so allow 1 d.p. slack.
     expect(p.mde_relative).toBeCloseTo(p.mde_absolute / p.baseline_conversion_rate, 1);
+  });
+});
+
+// ── Sec-47: Expression AST ──────────────────────────────────────────────────
+
+describe("validateAST", () => {
+  it("accepts a well-formed OR of signal leaves", () => {
+    const ast: ASTNode = {
+      type: "op", id: "root", op: "OR",
+      children: [
+        { type: "signal", id: "n1", signal_id: "a" },
+        { type: "signal", id: "n2", signal_id: "b" },
+      ],
+    };
+    expect(validateAST(ast)).toEqual([]);
+  });
+  it("rejects OR / AND with fewer than 2 children", () => {
+    const ast: ASTNode = {
+      type: "op", id: "root", op: "AND",
+      children: [{ type: "signal", id: "n1", signal_id: "a" }],
+    };
+    const errs = validateAST(ast);
+    expect(errs.length).toBeGreaterThan(0);
+    expect(errs[0]!.reason).toMatch(/at least 2/);
+  });
+  it("rejects NOT with !=1 child", () => {
+    const ast: ASTNode = {
+      type: "op", id: "root", op: "AND",
+      children: [
+        { type: "signal", id: "n1", signal_id: "a" },
+        { type: "op", id: "n2", op: "NOT", children: [] },
+      ],
+    };
+    const errs = validateAST(ast);
+    expect(errs.some((e) => /NOT takes exactly 1/.test(e.reason))).toBe(true);
+  });
+  it("rejects NOT under OR (only legal under AND)", () => {
+    const ast: ASTNode = {
+      type: "op", id: "root", op: "OR",
+      children: [
+        { type: "signal", id: "n1", signal_id: "a" },
+        { type: "op", id: "n2", op: "NOT", children: [{ type: "signal", id: "n3", signal_id: "b" }] },
+      ],
+    };
+    const errs = validateAST(ast);
+    expect(errs.some((e) => /only legal as a child of AND/.test(e.reason))).toBe(true);
+  });
+  it("accepts NOT under AND", () => {
+    const ast: ASTNode = {
+      type: "op", id: "root", op: "AND",
+      children: [
+        { type: "signal", id: "n1", signal_id: "a" },
+        { type: "signal", id: "n2", signal_id: "b" },
+        { type: "op", id: "n3", op: "NOT", children: [{ type: "signal", id: "n4", signal_id: "c" }] },
+      ],
+    };
+    expect(validateAST(ast)).toEqual([]);
+  });
+  it("rejects depth > MAX_AST_DEPTH", () => {
+    // Build a left-deep AND chain
+    let leaf: ASTNode = { type: "signal", id: "leaf", signal_id: "x" };
+    let tree: ASTNode = leaf;
+    for (let i = 0; i < MAX_AST_DEPTH + 2; i++) {
+      tree = {
+        type: "op", id: "n" + i, op: "AND",
+        children: [tree, { type: "signal", id: "s" + i, signal_id: "y" + i }],
+      };
+    }
+    const errs = validateAST(tree);
+    expect(errs.some((e) => /max depth/.test(e.reason))).toBe(true);
+  });
+  it("rejects > MAX_AST_NODES total nodes", () => {
+    const children: ASTNode[] = [];
+    for (let i = 0; i < MAX_AST_NODES + 5; i++) {
+      children.push({ type: "signal", id: "s" + i, signal_id: "x" + i });
+    }
+    const ast: ASTNode = { type: "op", id: "root", op: "OR", children };
+    const errs = validateAST(ast);
+    expect(errs.some((e) => /too many nodes/.test(e.reason))).toBe(true);
+  });
+});
+
+describe("evaluateAST", () => {
+  const A = sig({ signal_agent_segment_id: "a", estimated_audience_size: 1_000_000, category_type: "interest" });
+  const B = sig({ signal_agent_segment_id: "b", estimated_audience_size: 1_000_000, category_type: "interest" });
+  const C = sig({ signal_agent_segment_id: "c", estimated_audience_size: 500_000, category_type: "demographic" });
+  const byId = new Map<string, SignalSummary>([["a", A], ["b", B], ["c", C]]);
+
+  it("leaf returns signal reach", () => {
+    const r = evaluateAST({ type: "signal", id: "n", signal_id: "a" }, byId);
+    expect(r.reach).toBe(1_000_000);
+    expect(r.type).toBe("signal");
+  });
+  it("OR of 2 overlapping same-category leaves equals unionReach(A,B)", () => {
+    const ast: ASTNode = {
+      type: "op", id: "root", op: "OR",
+      children: [
+        { type: "signal", id: "n1", signal_id: "a" },
+        { type: "signal", id: "n2", signal_id: "b" },
+      ],
+    };
+    const r = evaluateAST(ast, byId);
+    // Expected: 1M + max(0, 1M − overlap). With same category (aff=0.55), overlap = 550k → union = 1.45M
+    expect(r.reach).toBeGreaterThan(1_000_000);
+    expect(r.reach).toBeLessThan(2_000_000);
+  });
+  it("AND of 2 same-category leaves decays via intersect", () => {
+    const ast: ASTNode = {
+      type: "op", id: "root", op: "AND",
+      children: [
+        { type: "signal", id: "n1", signal_id: "a" },
+        { type: "signal", id: "n2", signal_id: "b" },
+      ],
+    };
+    const r = evaluateAST(ast, byId);
+    expect(r.reach).toBeLessThan(1_000_000);
+    expect(r.reach).toBeGreaterThan(0);
+  });
+  it("AND with NOT subtracts the NOT-wrapped subtree", () => {
+    const withoutNot: ASTNode = {
+      type: "op", id: "root", op: "AND",
+      children: [
+        { type: "signal", id: "n1", signal_id: "a" },
+        { type: "signal", id: "n2", signal_id: "b" },
+      ],
+    };
+    const withNot: ASTNode = {
+      type: "op", id: "root", op: "AND",
+      children: [
+        { type: "signal", id: "n1", signal_id: "a" },
+        { type: "signal", id: "n2", signal_id: "b" },
+        { type: "op", id: "n3", op: "NOT", children: [{ type: "signal", id: "n4", signal_id: "c" }] },
+      ],
+    };
+    const a = evaluateAST(withoutNot, byId);
+    const b = evaluateAST(withNot, byId);
+    expect(b.reach).toBeLessThanOrEqual(a.reach);
+  });
+  it("nested OR inside AND composes recursively", () => {
+    const ast: ASTNode = {
+      type: "op", id: "root", op: "AND",
+      children: [
+        {
+          type: "op", id: "or1", op: "OR",
+          children: [
+            { type: "signal", id: "n1", signal_id: "a" },
+            { type: "signal", id: "n2", signal_id: "b" },
+          ],
+        },
+        { type: "signal", id: "n3", signal_id: "c" },
+      ],
+    };
+    const r = evaluateAST(ast, byId);
+    expect(r.reach).toBeGreaterThan(0);
+    expect(r.children).toHaveLength(2);
+    expect(r.children![0]!.op).toBe("OR");
+    expect(r.children![0]!.reach).toBeGreaterThan(1_000_000);
+  });
+  it("unknown signal_id surfaces error at the leaf", () => {
+    const r = evaluateAST({ type: "signal", id: "n", signal_id: "does_not_exist" }, byId);
+    expect(r.reach).toBe(0);
+    expect(r.error).toMatch(/unknown signal/);
+  });
+  it("AND with all children NOT returns error", () => {
+    const ast: ASTNode = {
+      type: "op", id: "root", op: "AND",
+      children: [
+        { type: "op", id: "n1", op: "NOT", children: [{ type: "signal", id: "n2", signal_id: "a" }] },
+        { type: "op", id: "n3", op: "NOT", children: [{ type: "signal", id: "n4", signal_id: "b" }] },
+      ],
+    };
+    const r = evaluateAST(ast, byId);
+    expect(r.error).toMatch(/at least one non-NOT/);
   });
 });

@@ -58,6 +58,12 @@ import {
   inferSensitiveCategories,
   privacyCheck,
   holdoutPlan,
+  validateAST,
+  evaluateAST,
+  MAX_AST_DEPTH,
+  MAX_AST_NODES,
+  type ASTNode,
+  type ASTEvalResult,
   type AffinityRow,
 } from "../analytics/audienceMath";
 
@@ -533,4 +539,70 @@ export async function handleAudienceHoldout(request: Request, env: Env, logger: 
     ...plan,
     note: "MDE is the smallest lift the experiment can reliably detect. To detect smaller lifts, either grow total reach, raise the baseline conversion rate assumption, relax alpha, or reduce required power.",
   });
+}
+
+// ── POST /audience/compose-ast ──────────────────────────────────────────────
+// Sec-47: arbitrary boolean expression over catalog signals. Body = { ast }
+// where ast is a tree of { type:"signal", id, signal_id } leaves and
+// { type:"op", id, op:"OR"|"AND"|"NOT", children[] } branches. Constraints
+// (depth ≤ 5, node count ≤ 30, NOT only under AND) are enforced server-side.
+
+interface ComposeAstBody {
+  ast?: ASTNode;
+}
+
+export async function handleAudienceComposeAst(request: Request, env: Env, logger: Logger): Promise<Response> {
+  const parsed = await readJsonBody<ComposeAstBody>(request);
+  if (parsed.kind === "invalid") return errorResponse("INVALID_JSON", parsed.reason, 400);
+  const body: ComposeAstBody = parsed.kind === "parsed" ? parsed.data : {};
+  if (!body.ast) return errorResponse("INVALID_INPUT", "ast required", 400);
+  const errors = validateAST(body.ast);
+  if (errors.length > 0) {
+    return errorResponse(
+      "INVALID_AST",
+      errors.map((e) => `${e.path}: ${e.reason}`).join("; "),
+      400,
+    );
+  }
+
+  const catalog = await loadCatalog(env, logger);
+  const byId = indexById(catalog);
+  const result: ASTEvalResult = evaluateAST(body.ast, byId);
+
+  // Flatten resolved signals for the caller's convenience (used by the UI
+  // to pipe into privacy-check + holdout without re-resolving IDs).
+  const resolvedSignalIds = Array.from(new Set(result.signals_under.map((s) => s.signal_agent_segment_id)));
+  logger.info("audience_compose_ast", {
+    reach: result.reach,
+    signal_count: resolvedSignalIds.length,
+  });
+
+  return jsonResponse({
+    root: stripInternalFields(result),
+    reach: result.reach,
+    resolved_signal_ids: resolvedSignalIds,
+    limits: { max_depth: MAX_AST_DEPTH, max_nodes: MAX_AST_NODES },
+    method: "recursive_evaluation_via_virtual_composites_at_subtree_roots",
+    note: "Leaves evaluate to signal reach. OR children collapse via inclusion-exclusion (pairwise Jaccard). AND folds positive children via intersect-decay; NOT-wrapped children subtract via exclude-overlap. Between subtrees we synthesize a virtual composite signal carrying the subtree's reach and its dominant category — same heuristic the Composer uses, lifted to trees.",
+  });
+}
+
+/** Remove signals_under from the response tree — internal-only, keeps the JSON compact. */
+type StrippedAstNode = {
+  node_id: string;
+  type: "signal" | "op";
+  reach: number;
+  op?: "OR" | "AND" | "NOT";
+  signal_id?: string;
+  error?: string;
+  children?: StrippedAstNode[];
+};
+
+function stripInternalFields(n: ASTEvalResult): StrippedAstNode {
+  const out: StrippedAstNode = { node_id: n.node_id, type: n.type, reach: n.reach };
+  if (n.op !== undefined) out.op = n.op;
+  if (n.signal_id !== undefined) out.signal_id = n.signal_id;
+  if (n.error !== undefined) out.error = n.error;
+  if (n.children !== undefined) out.children = n.children.map(stripInternalFields);
+  return out;
 }

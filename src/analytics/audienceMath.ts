@@ -383,3 +383,195 @@ export function holdoutPlan(
     method: "two_proportion_z_test_balanced_arms",
   };
 }
+
+// ── Sec-47: Expression AST ──────────────────────────────────────────────────
+// A user-built tree of boolean set operations over catalog signals. Leaves
+// are signal IDs; branch nodes are OR / AND / NOT. NOT is unary and must
+// appear as a child of AND (it maps to the existing exclude-from-intersect
+// math). Reach is evaluated bottom-up: at each subtree we synthesize a
+// virtual composite signal that carries the subtree's reach and dominant
+// category, so the existing pairwise Jaccard heuristics compose recursively.
+//
+// Invariants enforced by validateAST:
+//   - MAX_AST_DEPTH = 5    (avoid stack + UX blow-ups)
+//   - MAX_AST_NODES = 30   (render + compute bounded)
+//   - OR / AND require ≥ 2 children
+//   - NOT takes exactly 1 child
+//   - NOT is only legal as a child of AND (meaningless elsewhere)
+//
+// Evaluator semantics:
+//   leaf       → { reach: signal.estimated_audience_size, signals_under: [signal] }
+//   OR(..)     → unionReach across children; flatten to leaf signals when
+//                every child is a leaf (more accurate); otherwise use virtual
+//                composites.
+//   AND(..)    → first non-NOT child anchors; remaining non-NOT children fold
+//                in via intersectReach; NOT-wrapped children subtract via
+//                excludeReach.
+//   NOT(x)     → passthrough with an error flag if hit outside AND context.
+
+export const MAX_AST_DEPTH = 5;
+export const MAX_AST_NODES = 30;
+
+export type ASTNode =
+  | { type: "signal"; id: string; signal_id: string }
+  | { type: "op"; id: string; op: "OR" | "AND" | "NOT"; children: ASTNode[] };
+
+export interface ASTEvalResult {
+  node_id: string;
+  type: "signal" | "op";
+  op?: "OR" | "AND" | "NOT";
+  signal_id?: string;
+  reach: number;
+  children?: ASTEvalResult[];
+  signals_under: SignalSummary[];
+  error?: string;
+}
+
+export interface ASTValidationError {
+  path: string;
+  reason: string;
+}
+
+export function validateAST(root: ASTNode): ASTValidationError[] {
+  const errors: ASTValidationError[] = [];
+  let nodeCount = 0;
+  function walk(node: ASTNode, depth: number, path: string, parentOp: string | null): void {
+    nodeCount++;
+    if (depth > MAX_AST_DEPTH) {
+      errors.push({ path, reason: `exceeds max depth ${MAX_AST_DEPTH}` });
+      return;
+    }
+    if (node.type === "signal") {
+      if (!node.signal_id) errors.push({ path, reason: "signal leaf missing signal_id" });
+      return;
+    }
+    // op node
+    if (node.op === "NOT") {
+      if (parentOp !== "AND") errors.push({ path, reason: "NOT is only legal as a child of AND (use it to exclude)" });
+      if (node.children.length !== 1) errors.push({ path, reason: "NOT takes exactly 1 child" });
+    } else {
+      if (node.children.length < 2) errors.push({ path, reason: `${node.op} needs at least 2 children` });
+    }
+    for (let i = 0; i < node.children.length; i++) {
+      walk(node.children[i]!, depth + 1, `${path}/${i}`, node.op);
+    }
+  }
+  walk(root, 1, "root", null);
+  if (nodeCount > MAX_AST_NODES) errors.push({ path: "root", reason: `too many nodes (${nodeCount}/${MAX_AST_NODES})` });
+  return errors;
+}
+
+/** Build a virtual composite signal carrying a subtree's reach + dominant category. */
+function buildVirtualComposite(signals: SignalSummary[], reach: number): SignalSummary {
+  if (signals.length === 0) {
+    // Synthetic placeholder — only pairOverlap fields matter (category_type + reach).
+    // Cast is safe since downstream consumers only read those two.
+    return {
+      category_type: "composite",
+      estimated_audience_size: reach,
+    } as unknown as SignalSummary;
+  }
+  const counts = new Map<string, number>();
+  for (const s of signals) {
+    const c = s.category_type || "composite";
+    counts.set(c, (counts.get(c) ?? 0) + (s.estimated_audience_size ?? 0));
+  }
+  const dominant = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "composite";
+  // pairOverlap only reads category_type for equality, so the underlying string
+  // doesn't need to be a canonical SignalCategoryType enum value.
+  return { ...signals[0]!, estimated_audience_size: reach, category_type: dominant as SignalSummary["category_type"] };
+}
+
+export function evaluateAST(
+  root: ASTNode,
+  byId: Map<string, SignalSummary>,
+): ASTEvalResult {
+  function walk(node: ASTNode): ASTEvalResult {
+    if (node.type === "signal") {
+      const s = byId.get(node.signal_id);
+      if (!s) {
+        return {
+          node_id: node.id, type: "signal", signal_id: node.signal_id,
+          reach: 0, signals_under: [],
+          error: `unknown signal: ${node.signal_id}`,
+        };
+      }
+      return {
+        node_id: node.id, type: "signal", signal_id: node.signal_id,
+        reach: s.estimated_audience_size ?? 0, signals_under: [s],
+      };
+    }
+    // op node
+    const childResults = node.children.map(walk);
+    const childErrors = childResults.filter((r) => r.error).map((r) => r.error!).join("; ");
+    const errorSuffix = childErrors ? childErrors : undefined;
+
+    if (node.op === "OR") {
+      const allLeaves = node.children.every((c) => c.type === "signal");
+      const signalsFlat = childResults.flatMap((r) => r.signals_under);
+      const reach = allLeaves
+        ? unionReach(signalsFlat)
+        : unionReach(childResults.map((r) => buildVirtualComposite(r.signals_under, r.reach)));
+      return {
+        node_id: node.id, type: "op", op: "OR", reach,
+        children: childResults, signals_under: signalsFlat,
+        ...(errorSuffix ? { error: errorSuffix } : {}),
+      };
+    }
+
+    if (node.op === "AND") {
+      const positives = childResults.filter((r) => !(r.type === "op" && r.op === "NOT"));
+      const negatives = childResults.filter((r) => r.type === "op" && r.op === "NOT");
+      if (positives.length === 0) {
+        return {
+          node_id: node.id, type: "op", op: "AND", reach: 0,
+          children: childResults, signals_under: [],
+          error: "AND needs at least one non-NOT child",
+        };
+      }
+      // First positive anchors; remaining positives fold in via intersect-decay.
+      const anchor = positives[0]!;
+      const anchorComposite = buildVirtualComposite(anchor.signals_under, anchor.reach);
+      const foldComposites = positives.slice(1).map((r) => buildVirtualComposite(r.signals_under, r.reach));
+      let r = intersectReach(anchor.reach, anchorComposite, foldComposites);
+      // Each negative subtree subtracts its overlap with the current running set.
+      if (negatives.length > 0) {
+        const negComposites = negatives.map((neg) => {
+          const inner = (neg.children && neg.children[0]) ? neg.children[0] : neg;
+          return buildVirtualComposite(inner.signals_under, inner.reach);
+        });
+        r = excludeReach(r, [anchorComposite], negComposites);
+      }
+      const signalsFlat = positives.flatMap((p) => p.signals_under);
+      return {
+        node_id: node.id, type: "op", op: "AND", reach: r,
+        children: childResults, signals_under: signalsFlat,
+        ...(errorSuffix ? { error: errorSuffix } : {}),
+      };
+    }
+
+    if (node.op === "NOT") {
+      const child = childResults[0];
+      if (!child) {
+        return {
+          node_id: node.id, type: "op", op: "NOT", reach: 0,
+          children: childResults, signals_under: [],
+          error: "NOT has no child",
+        };
+      }
+      return {
+        node_id: node.id, type: "op", op: "NOT", reach: child.reach,
+        children: childResults, signals_under: child.signals_under,
+        // Reached outside AND → validator emits; here we surface on the result too
+        ...(errorSuffix ? { error: errorSuffix } : {}),
+      };
+    }
+
+    return {
+      node_id: node.id, type: "op", reach: 0,
+      children: childResults, signals_under: [],
+      error: `unknown op: ${(node as { op?: string }).op ?? "(missing)"}`,
+    };
+  }
+  return walk(root);
+}

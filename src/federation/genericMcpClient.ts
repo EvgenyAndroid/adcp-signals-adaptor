@@ -139,7 +139,7 @@ export interface ProbeResult {
   latency_ms: number;
   server_info?: { name: string; version?: string };
   protocol_version?: string;
-  tools?: Array<{ name: string; description?: string }>;
+  tools?: Array<{ name: string; description?: string; inputSchema?: unknown }>;
 }
 
 /** Sec-48b: caller-installed hook to short-circuit probes of our own URL.
@@ -147,7 +147,7 @@ export interface ProbeResult {
  * (Cloudflare error 1042 / 522). When we know the URL is us, return the
  * canonical tool list without hitting the network. The hook accepts a URL
  * and returns a synth ProbeResult payload if the URL is self, null otherwise. */
-type SelfProbeHook = (url: string) => { server_info?: { name: string; version?: string }; tools?: Array<{ name: string; description?: string }> } | null;
+type SelfProbeHook = (url: string) => { server_info?: { name: string; version?: string }; tools?: Array<{ name: string; description?: string; inputSchema?: unknown }> } | null;
 let SELF_PROBE_HOOK: SelfProbeHook | null = null;
 export function installSelfProbeHook(hook: SelfProbeHook | null): void { SELF_PROBE_HOOK = hook; }
 
@@ -194,7 +194,7 @@ export async function probeAgent(url: string, opts?: { timeoutMs?: number }): Pr
     });
     const text = await res.text();
     const body = parseSSELastData(text) as {
-      result?: { tools?: Array<{ name: string; description?: string }> };
+      result?: { tools?: Array<{ name: string; description?: string; inputSchema?: unknown }> };
       error?: { code: number; message: string };
     } | null;
     const result: ProbeResult = {

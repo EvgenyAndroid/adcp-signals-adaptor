@@ -188,44 +188,60 @@ export function extractCategories(brief: string): string[] {
   return uniq.length > 0 ? uniq : ["general"];
 }
 
-/** Sec-48r: per-vendor transform applied to the synthesized media-buy
- *  payload JUST before the create_media_buy tool call. Compensates for
- *  schema drift across live implementations observed during Sec-48
- *  interop probing.
+/** Sec-48r (expanded in Sec-48r3): per-vendor transform applied to the
+ *  synthesized media-buy payload just before the `create_media_buy`
+ *  tool call. Compensates for validation drift across live
+ *  implementations observed via the Sec-48k/p diagnostic probes.
  *
- *  Rules discovered via Sec-48k/p diagnostic probes:
+ *  Rules after iterating against live responses:
  *
- *    adzymic_*    — brand_manifest requires `name` (we emit `brand`).
- *                   Claire-style `buyer_ref` on the package is harmless.
- *    claire_*     — packages[].buyer_ref is required; budget must be a
- *                   number (not {amount, currency}).
- *    swivel       — wants packages[].buyer_ref. Also validates more
- *                   strictly than others; keep payload minimal.
- *    content_ignite — similar to claire shape.
+ *    adzymic_*      — brand_manifest.name required (synth emits brand);
+ *                     packages[].buyer_ref required; budget + total_budget
+ *                     must be scalar numbers, not {amount, currency} objects.
+ *    swivel         — brand_manifest.name required; packages[].buyer_ref
+ *                     required. Budget shape lenient (keep object).
+ *    claire_*       — packages[].buyer_ref required; budget + total_budget
+ *                     scalar numbers; brand_manifest narrower — accepts
+ *                     ONLY `name` + `categories` (rejects `brand` and
+ *                     `advertiser` as unexpected keyword arguments);
+ *                     packages[].pricing_option_id required.
+ *    content_ignite — same as claire_*.
  *
- *  Unknown vendor_ids fall through to the identity transform (base
- *  payload unchanged). This keeps new-vendor support additive. */
+ *  Unknown vendor_ids fall through to identity (base payload unchanged).
+ *
+ *  The `packages[].pricing_option_id` default is a known-bad placeholder —
+ *  Claire's real schema expects a value sourced from the product's
+ *  pricing_options array. Wiring that through requires re-threading the
+ *  product result into fire-buy; tracked as follow-up. For now the
+ *  placeholder surfaces as a different vendor error message, which is
+ *  still better than the current outright rejection. */
 export function applyVendorAdapter(agentId: string, payload: MediaBuyPayload): MediaBuyPayload {
   // Deep-clone so callers can still inspect the pre-transform shape.
   const p: MediaBuyPayload = JSON.parse(JSON.stringify(payload));
 
-  if (agentId.startsWith("adzymic_") || agentId === "swivel") {
-    // brand_manifest.name alongside brand (Pydantic accepts extra fields
-    // but a missing `name` is a hard reject).
+  const isAdzymic = agentId.startsWith("adzymic_");
+  const isClaire = agentId.startsWith("claire_");
+  const isContentIgnite = agentId === "content_ignite";
+  const isSwivel = agentId === "swivel";
+
+  // brand_manifest.name — required by adzymic + swivel; for claire/ci we
+  // rebuild the object entirely below with only name + categories.
+  if (isAdzymic || isSwivel) {
     (p.brand_manifest as unknown as Record<string, unknown>).name = p.brand_manifest.brand;
   }
 
-  if (agentId.startsWith("claire_") || agentId === "content_ignite" || agentId === "swivel") {
-    // Package-level buyer_ref required. Reuse the top-level buyer_ref
-    // as the seed + append the package_ref for uniqueness.
+  // packages[].buyer_ref — required by every known vendor except bare
+  // adzymic_apx (which tolerates its absence; harmless to add).
+  if (isAdzymic || isClaire || isContentIgnite || isSwivel) {
     for (const pkg of p.packages) {
       (pkg as unknown as Record<string, unknown>).buyer_ref = `${p.buyer_ref}_${pkg.package_ref}`;
     }
   }
 
-  if (agentId.startsWith("claire_") || agentId === "content_ignite") {
-    // Their Pydantic wants budget as a scalar number, not an object. Also
-    // propagate at package level (same lib validates both).
+  // Budget + total_budget as scalar number — required by adzymic + claire
+  // + content_ignite. Swivel's pydantic is lenient here so we leave the
+  // object form in place for it.
+  if (isAdzymic || isClaire || isContentIgnite) {
     for (const pkg of p.packages) {
       const b = pkg.budget;
       if (b && typeof b === "object" && typeof b.amount === "number") {
@@ -234,6 +250,21 @@ export function applyVendorAdapter(agentId: string, payload: MediaBuyPayload): M
     }
     if (p.total_budget && typeof p.total_budget === "object" && typeof p.total_budget.amount === "number") {
       (p as unknown as Record<string, unknown>).total_budget = p.total_budget.amount;
+    }
+  }
+
+  // claire_* + content_ignite: rebuild brand_manifest to their narrow
+  // contract (rejects `brand` and `advertiser` as unexpected keyword
+  // arguments), and add a placeholder pricing_option_id on each package.
+  if (isClaire || isContentIgnite) {
+    const origName = p.brand_manifest.brand ?? "Demo Brand";
+    const origCats = p.brand_manifest.categories ?? [];
+    (p as unknown as Record<string, unknown>).brand_manifest = {
+      name: origName,
+      categories: origCats,
+    };
+    for (const pkg of p.packages) {
+      (pkg as unknown as Record<string, unknown>).pricing_option_id = "default";
     }
   }
 

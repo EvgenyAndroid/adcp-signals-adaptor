@@ -1,7 +1,9 @@
 // src/routes/federationEndpoints.ts
-// Sec-41 Part 3 + Sec-48 Part 1: Agent Federation endpoints.
+// Sec-41 Part 3 + Sec-48 Parts 1/2: Agent Federation endpoints.
 //   GET  /agents/registry            (static list, sourced from domain/agentRegistry)
-//   GET  /agents/probe               (Sec-48: fan-out initialize + tools/list)
+//   GET  /agents/probe               (Sec-48 P1: fan-out initialize + tools/list)
+//   POST /agents/orchestrate         (Sec-48 P2: role-routed brief fan-out)
+//   GET  /agents/capability-matrix   (Sec-48 P2: agents × tools grid)
 //   POST /agents/federated-search
 //   POST /agents/cross-similarity    (roadmap stub)
 //   POST /taxonomy/reverse
@@ -10,14 +12,25 @@ import type { Env } from "../types/env";
 import type { Logger } from "../utils/logger";
 import { jsonResponse, errorResponse } from "./shared";
 import { dstillerySearch } from "../federation/dstilleryClient";
-import { probeAgent, type ProbeResult } from "../federation/genericMcpClient";
+import {
+  probeAgent,
+  callTool,
+  type ProbeResult,
+  type ToolCallResult,
+} from "../federation/genericMcpClient";
 import { searchSignalsService } from "../domain/signalService";
 import {
   AGENT_REGISTRY,
   listLiveAgents,
   getAgent,
   type RegisteredAgent,
+  type AgentRole,
 } from "../domain/agentRegistry";
+import {
+  defaultToolForRole,
+  defaultArgsForTool,
+  ROLE_DEFAULT_TOOL,
+} from "../domain/agentOrchestration";
 import { getDb } from "../storage/db";
 
 // ── /agents/registry ─────────────────────────────────────────────────────────
@@ -100,6 +113,311 @@ export async function handleAgentsProbe(request: Request): Promise<Response> {
     total_time_ms: Date.now() - start,
     per_agent: results,
     cache_note: "Session ids are cached per-URL for ~9min; repeat probes reuse the session and only cost one tools/list roundtrip.",
+  });
+}
+
+// ── /agents/orchestrate ──────────────────────────────────────────────────────
+// Fan a brief across multiple agents, calling the role-appropriate tool on
+// each (signals → get_signals, buying → get_products, creative →
+// list_creative_formats, self → local signalService). Per-agent tool and
+// arg overrides are accepted in the body for advanced use.
+//
+// Response shape is flat-per-agent rather than a merged list — the UI
+// needs to render signals / products / creative formats side-by-side
+// (they don't share a schema) and callers can merge selectively.
+
+interface OrchestrateBody {
+  brief: string;
+  /** Target specific agents by id. If omitted, defaults to all live + self. */
+  agent_ids?: string[];
+  /** Alternative filter by role. If both agent_ids and roles are provided, intersect. */
+  roles?: AgentRole[];
+  /** Per-agent tool override: { "dstillery": "get_signals" }. */
+  tool_overrides?: Record<string, string>;
+  max_results_per_agent?: number;
+  /** Include the self agent? Default true. */
+  include_self?: boolean;
+}
+
+interface OrchestrateAgentResult {
+  agent_id: string;
+  vendor: string;
+  role: AgentRole;
+  ok: boolean;
+  /** The tool name actually invoked (null for the self agent — routed internally). */
+  tool_called: string | null;
+  /** Tool result payload. For get_signals this is `{signals: [...]}`; for get_products `{products: [...]}`; varies by tool. */
+  data?: unknown;
+  error?: string;
+  /** Reason the agent was skipped (e.g. "no_default_tool_for_role", "tool_not_available"). */
+  skipped?: string;
+  elapsed_ms: number;
+}
+
+async function orchestrateSelf(
+  env: Env,
+  brief: string,
+  maxResultsPerAgent: number,
+): Promise<OrchestrateAgentResult> {
+  const t0 = Date.now();
+  try {
+    const db = getDb(env);
+    const r = await searchSignalsService(db, env.SIGNALS_CACHE, {
+      brief,
+      limit: maxResultsPerAgent,
+      offset: 0,
+    });
+    return {
+      agent_id: "evgeny_signals",
+      vendor: "No Fluff Advisory",
+      role: "self",
+      ok: true,
+      tool_called: null,
+      data: { signals: r.signals },
+      elapsed_ms: Date.now() - t0,
+    };
+  } catch (e) {
+    return {
+      agent_id: "evgeny_signals",
+      vendor: "No Fluff Advisory",
+      role: "self",
+      ok: false,
+      tool_called: null,
+      error: String((e as Error).message || e),
+      elapsed_ms: Date.now() - t0,
+    };
+  }
+}
+
+async function orchestrateRemote(
+  agent: RegisteredAgent,
+  brief: string,
+  maxResultsPerAgent: number,
+  override?: string,
+): Promise<OrchestrateAgentResult> {
+  const t0 = Date.now();
+  const toolName = override ?? defaultToolForRole(agent.role);
+  if (!toolName) {
+    return {
+      agent_id: agent.id,
+      vendor: agent.vendor,
+      role: agent.role,
+      ok: false,
+      tool_called: null,
+      skipped: "no_default_tool_for_role",
+      elapsed_ms: Date.now() - t0,
+    };
+  }
+
+  // Probe first to confirm the tool exists — session is cached from PR-A
+  // so this costs at most one tools/list roundtrip after the first call.
+  const probe = await probeAgent({ url: agent.mcp_url as string });
+  if (!probe.ok) {
+    return {
+      agent_id: agent.id,
+      vendor: agent.vendor,
+      role: agent.role,
+      ok: false,
+      tool_called: toolName,
+      error: probe.error ?? "probe_failed",
+      elapsed_ms: Date.now() - t0,
+    };
+  }
+  const toolAvailable = probe.tools.some((t) => t.name === toolName);
+  if (!toolAvailable) {
+    return {
+      agent_id: agent.id,
+      vendor: agent.vendor,
+      role: agent.role,
+      ok: false,
+      tool_called: toolName,
+      skipped: "tool_not_available",
+      error: `tool ${toolName} not advertised by agent (observed: ${probe.tools.map((t) => t.name).join(", ") || "none"})`,
+      elapsed_ms: Date.now() - t0,
+    };
+  }
+
+  const args = defaultArgsForTool(toolName, { brief, maxResultsPerAgent });
+  const r: ToolCallResult = await callTool({ url: agent.mcp_url as string }, toolName, args);
+
+  const base = {
+    agent_id: agent.id,
+    vendor: agent.vendor,
+    role: agent.role,
+    tool_called: toolName,
+    elapsed_ms: Date.now() - t0,
+  };
+  return r.ok
+    ? { ...base, ok: true, data: r.data }
+    : { ...base, ok: false, error: r.error ?? "tool_call_failed" };
+}
+
+export async function handleAgentsOrchestrate(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  let body: OrchestrateBody;
+  try { body = (await request.json()) as OrchestrateBody; }
+  catch { return errorResponse("INVALID_JSON", "Body must be valid JSON", 400); }
+
+  if (!body.brief || body.brief.trim().length === 0) {
+    return errorResponse("INVALID_INPUT", "brief required", 400);
+  }
+
+  const maxResultsPerAgent = Math.max(1, Math.min(20, body.max_results_per_agent ?? 5));
+  const includeSelf = body.include_self !== false;
+  const overrides = body.tool_overrides ?? {};
+
+  // Resolve target set.
+  let remoteTargets: RegisteredAgent[];
+  if (body.agent_ids && body.agent_ids.length > 0) {
+    remoteTargets = body.agent_ids
+      .map((id) => getAgent(id))
+      .filter((a): a is RegisteredAgent => Boolean(a && a.mcp_url && a.role !== "self"));
+  } else {
+    remoteTargets = listLiveAgents();
+  }
+  if (body.roles && body.roles.length > 0) {
+    const roleSet = new Set<AgentRole>(body.roles);
+    remoteTargets = remoteTargets.filter((a) => roleSet.has(a.role));
+  }
+
+  if (!includeSelf && remoteTargets.length === 0) {
+    return errorResponse(
+      "NO_ORCHESTRATE_TARGETS",
+      "No agents match the requested filters",
+      400,
+    );
+  }
+
+  const start = Date.now();
+  const tasks: Array<Promise<OrchestrateAgentResult>> = [];
+  if (includeSelf) {
+    tasks.push(orchestrateSelf(env, body.brief, maxResultsPerAgent));
+  }
+  for (const a of remoteTargets) {
+    tasks.push(orchestrateRemote(a, body.brief, maxResultsPerAgent, overrides[a.id]));
+  }
+
+  const results = await Promise.all(tasks);
+  const okIds = results.filter((r) => r.ok).map((r) => r.agent_id);
+  const failedIds = results.filter((r) => !r.ok).map((r) => r.agent_id);
+
+  // Grouped summary by role — useful for the UI rendering signals/products/creative
+  // side by side without having to re-partition client-side.
+  const byRole: Record<string, OrchestrateAgentResult[]> = {};
+  for (const r of results) {
+    (byRole[r.role] ??= []).push(r);
+  }
+
+  return jsonResponse({
+    brief: body.brief,
+    orchestrated_at: new Date().toISOString(),
+    agents_targeted: results.map((r) => r.agent_id),
+    agents_ok: okIds,
+    agents_failed: failedIds,
+    per_agent: results,
+    by_role: byRole,
+    total_time_ms: Date.now() - start,
+    tool_routing: {
+      defaults: ROLE_DEFAULT_TOOL,
+      overrides,
+    },
+  });
+}
+
+// ── /agents/capability-matrix ────────────────────────────────────────────────
+// Fan-out probe + transpose: rows = agents, columns = union of tool names,
+// cells = { present, description? }. Used by the UI to render a capability
+// grid and by evaluators comparing tool coverage across the directory.
+
+export async function handleAgentsCapabilityMatrix(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const onlyParam = url.searchParams.get("agents");
+  const requested = onlyParam
+    ? onlyParam.split(",").map((s) => s.trim()).filter(Boolean)
+    : null;
+
+  const targets: RegisteredAgent[] = requested
+    ? requested
+        .map((id) => getAgent(id))
+        .filter((a): a is RegisteredAgent => Boolean(a && a.mcp_url && a.role !== "self"))
+    : listLiveAgents();
+
+  if (targets.length === 0) {
+    return errorResponse(
+      "NO_MATRIX_TARGETS",
+      "No live agents in registry match the requested ids",
+      400,
+    );
+  }
+
+  const start = Date.now();
+  const probes = await Promise.all(
+    targets.map((a) =>
+      probeAgent({ url: a.mcp_url as string }).then((r): ProbeResult & { agent_id: string } => ({
+        ...r,
+        agent_id: a.id,
+      })),
+    ),
+  );
+
+  // Build sorted union of tool names across all successful probes.
+  const toolDescriptions = new Map<string, string | undefined>();
+  for (const p of probes) {
+    if (!p.ok) continue;
+    for (const t of p.tools) {
+      if (!toolDescriptions.has(t.name)) toolDescriptions.set(t.name, t.description);
+    }
+  }
+  const toolsUnion = Array.from(toolDescriptions.keys()).sort();
+
+  // matrix[agent_id][tool_name] = { present, description? }
+  const matrix: Record<string, Record<string, { present: boolean; description?: string }>> = {};
+  const byRole: Record<string, string[]> = {};
+  const agentMeta: Array<{
+    agent_id: string;
+    name: string;
+    vendor: string;
+    role: AgentRole;
+    stage: string;
+    ok: boolean;
+    error?: string;
+    protocol_version?: string;
+    tool_count: number;
+  }> = [];
+
+  for (const a of targets) {
+    const p = probes.find((x) => x.agent_id === a.id)!;
+    const row: Record<string, { present: boolean; description?: string }> = {};
+    for (const tool of toolsUnion) {
+      const has = p.tools.find((t) => t.name === tool);
+      row[tool] = has
+        ? { present: true, ...(has.description ? { description: has.description } : {}) }
+        : { present: false };
+    }
+    matrix[a.id] = row;
+    (byRole[a.role] ??= []).push(a.id);
+    agentMeta.push({
+      agent_id: a.id,
+      name: a.name,
+      vendor: a.vendor,
+      role: a.role,
+      stage: a.stage,
+      ok: p.ok,
+      ...(p.error ? { error: p.error } : {}),
+      ...(p.protocol_version ? { protocol_version: p.protocol_version } : {}),
+      tool_count: p.tools.length,
+    });
+  }
+
+  return jsonResponse({
+    generated_at: new Date().toISOString(),
+    agents: agentMeta,
+    tools_union: toolsUnion,
+    matrix,
+    by_role: byRole,
+    total_time_ms: Date.now() - start,
   });
 }
 

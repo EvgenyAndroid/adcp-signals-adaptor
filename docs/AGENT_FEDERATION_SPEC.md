@@ -357,7 +357,7 @@ All federation endpoints use KV (`SIGNALS_CACHE`) with stage-appropriate TTLs:
 
 ## 10. Security & compliance
 
-- All outbound federation calls use `User-Agent: samba-signals-federation/41.0`
+- All outbound federation calls use `User-Agent: evgeny-signals-federation/41.0`
 - No authentication forwarded (Dstillery is a public agent)
 - Per-IP rate limit on `/agents/federated-search`: 10 req/min (prevent abuse of free partner compute)
 - No caching of partner response bodies beyond in-memory TTL (respect partner's control over stale data)

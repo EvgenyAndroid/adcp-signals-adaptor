@@ -41,6 +41,7 @@ import {
   newWorkflowId,
   productId as productIdOf,
   signalId as signalIdOf,
+  extractArrayPayload,
   type SignalLite,
   type ProductLite,
   type MediaBuyPayload,
@@ -444,8 +445,8 @@ async function runSignalsStage(
       { signal_spec: brief, max_results: maxResults },
       { timeoutMs },
     );
-    const structured = res.structured_content as { signals?: SignalLite[] } | undefined;
-    const signals = (structured?.signals ?? []).map((s) => ({ source_agent: a.id, ...s }));
+    const signals = extractArrayPayload<SignalLite>(res.structured_content, ["signals"])
+      .map((s) => ({ source_agent: a.id, ...s }));
     const out: SignalsStageAgent = {
       id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
       ok: res.ok, latency_ms: res.latency_ms,
@@ -464,8 +465,7 @@ async function runCreativeStage(
     // list_creative_formats is a directory scan — no args required across
     // Advertible, Celtra, and the buying-agent implementations.
     const res = await callAgentTool(a.mcp_url!, "list_creative_formats", {}, { timeoutMs });
-    const structured = res.structured_content as { formats?: unknown[]; creative_formats?: unknown[] } | undefined;
-    const formats = structured?.formats ?? structured?.creative_formats ?? [];
+    const formats = extractArrayPayload(res.structured_content, ["formats", "creative_formats", "items"]);
     const out: CreativeStageAgent = {
       id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
       ok: res.ok, latency_ms: res.latency_ms,
@@ -487,8 +487,10 @@ async function runProductsStage(
     // accepted arg. Max_results is nonstandard on these endpoints so we
     // rely on server-side paging defaults.
     const res = await callAgentTool(a.mcp_url!, "get_products", { brief }, { timeoutMs });
-    const structured = res.structured_content as { products?: ProductLite[] } | undefined;
-    const products = (structured?.products ?? []).slice(0, maxResults);
+    const products = extractArrayPayload<ProductLite>(
+      res.structured_content,
+      ["products", "items", "product_list"],
+    ).slice(0, maxResults);
     const out: ProductsStageAgent = {
       id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
       ok: res.ok, latency_ms: res.latency_ms,
@@ -681,6 +683,279 @@ export async function handleWorkflowRun(request: Request, env: Env, logger: Logg
     warnings: activateWarnings,
     method: "sec48f_parallel_multi_role_fanout",
     note: "Stages 1+2 run in parallel. Products sequential after signals to give the UI a clean step. Stage 4 is payload-synth + optional create_media_buy firing per `activate_agents`. Dry-run default: preview only, zero side effects on buying agents.",
+  });
+}
+
+// ── POST /agents/workflow/run/stream ────────────────────────────────────────
+// Sec-48g: NDJSON-streaming variant of /agents/workflow/run. Same inputs +
+// semantics as the one-shot endpoint, but emits one JSON object per line
+// as each stage progresses so the UI can render a real-time timeline.
+//
+// Event shapes (one per newline):
+//   {type:"workflow_start",   workflow_id, brief, plan:{signals,creative,buying,activate_agents}}
+//   {type:"stage_start",      stage, agents_queried}
+//   {type:"agent_start",      stage, agent_id}
+//   {type:"agent_complete",   stage, agent_id, ok, error?, latency_ms, summary}
+//   {type:"stage_complete",   stage, summary}
+//   {type:"targeting_chosen", chosen_signal_ids}
+//   {type:"products_chosen",  chosen_product_per_agent}
+//   {type:"workflow_complete", mode, total_time_ms, warnings}
+//
+// Transport choice: NDJSON over a plain streaming fetch body. Chose this
+// over text/event-stream because EventSource mandates GET, and our body
+// carries a POST JSON. Clients parse with ReadableStream + TextDecoder.
+
+type StreamEvent =
+  | { type: "workflow_start"; workflow_id: string; brief: string; plan: Record<string, unknown> }
+  | { type: "stage_start"; stage: string; agents_queried: string[] }
+  | { type: "agent_start"; stage: string; agent_id: string }
+  | { type: "agent_complete"; stage: string; agent_id: string; ok: boolean; error?: string; latency_ms: number; summary: unknown }
+  | { type: "stage_complete"; stage: string; summary: unknown }
+  | { type: "targeting_chosen"; chosen_signal_ids: string[] }
+  | { type: "products_chosen"; chosen_product_per_agent: Record<string, string | null> }
+  | { type: "workflow_complete"; mode: string; total_time_ms: number; warnings: string[] };
+
+export async function handleWorkflowRunStream(request: Request, env: Env, logger: Logger): Promise<Response> {
+  ensureSelfHooksInstalled(env, logger);
+  const parsed = await readJsonBody<WorkflowRunBody>(request);
+  if (parsed.kind === "invalid") return errorResponse("INVALID_JSON", parsed.reason, 400);
+  const body: WorkflowRunBody = parsed.kind === "parsed" ? parsed.data : {};
+
+  if (!body.brief || body.brief.trim().length === 0) return errorResponse("INVALID_INPUT", "brief required", 400);
+  if (body.brief.length > 500) return errorResponse("INVALID_INPUT", "brief max 500 chars", 400);
+
+  const maxSignals = Math.max(1, Math.min(50, body.max_signals_per_agent ?? 5));
+  const maxProducts = Math.max(1, Math.min(20, body.max_products_per_agent ?? 3));
+  const timeoutMs = Math.max(1000, Math.min(30_000, body.timeout_ms ?? 15_000));
+
+  const signalsAgents = resolveAgents(
+    body.signal_agent_ids,
+    getAgentsByRole("signals").filter((a) => a.stage === "live" && a.mcp_url).map((a) => a.id),
+  );
+  const creativeAgents = resolveAgents(body.creative_agent_ids, DEFAULT_CREATIVE_PAIR);
+  const buyingAgents = resolveAgents(body.buying_agent_ids, DEFAULT_BUYING_TRIO);
+
+  if (signalsAgents.length === 0) return errorResponse("NO_TARGETS", "No live signals agents matched.", 400);
+  if (buyingAgents.length === 0) return errorResponse("NO_TARGETS", "No live buying agents matched.", 400);
+
+  const activateSet = new Set<string>();
+  const activateWarnings: string[] = [];
+  for (const id of body.activate_agents ?? []) {
+    if (buyingAgents.find((a) => a.id === id)) activateSet.add(id);
+    else activateWarnings.push(`ignored_non_buying_activate_target:${id}`);
+  }
+
+  const workflowId = newWorkflowId();
+  const encoder = new TextEncoder();
+  const t0 = Date.now();
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (ev: StreamEvent) => {
+        controller.enqueue(encoder.encode(JSON.stringify(ev) + "\n"));
+      };
+
+      try {
+        send({
+          type: "workflow_start",
+          workflow_id: workflowId,
+          brief: body.brief!,
+          plan: {
+            signals_agents: signalsAgents.map((a) => ({ id: a.id, name: a.name, vendor: a.vendor })),
+            creative_agents: creativeAgents.map((a) => ({ id: a.id, name: a.name, vendor: a.vendor })),
+            buying_agents: buyingAgents.map((a) => ({ id: a.id, name: a.name, vendor: a.vendor })),
+            activate_agents: Array.from(activateSet),
+          },
+        });
+
+        // Stages 1 + 2 run in parallel. We fan out agent calls per stage
+        // but emit stage_start for both up front so the UI can paint
+        // both stage cells as "active" simultaneously.
+        send({ type: "stage_start", stage: "signals", agents_queried: signalsAgents.map((a) => a.id) });
+        send({ type: "stage_start", stage: "creative", agents_queried: creativeAgents.map((a) => a.id) });
+        for (const a of signalsAgents) send({ type: "agent_start", stage: "signals", agent_id: a.id });
+        for (const a of creativeAgents) send({ type: "agent_start", stage: "creative", agent_id: a.id });
+
+        const signalsPromise = Promise.all(signalsAgents.map(async (a): Promise<SignalsStageAgent> => {
+          const res = await callAgentTool(
+            a.mcp_url!,
+            "get_signals",
+            { signal_spec: body.brief, max_results: maxSignals },
+            { timeoutMs },
+          );
+          const signals = extractArrayPayload<SignalLite>(res.structured_content, ["signals"])
+            .map((s) => ({ source_agent: a.id, ...s }));
+          const out: SignalsStageAgent = {
+            id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
+            ok: res.ok, latency_ms: res.latency_ms,
+            payload: { signals, count: signals.length },
+          };
+          if (res.error) out.error = res.error;
+          send({
+            type: "agent_complete",
+            stage: "signals",
+            agent_id: a.id,
+            ok: res.ok,
+            ...(res.error ? { error: res.error } : {}),
+            latency_ms: res.latency_ms,
+            summary: {
+              count: signals.length,
+              preview: signals.slice(0, 3).map((s) => ({
+                id: signalIdOf(s),
+                name: s.name ?? "(unnamed)",
+                coverage_percentage: s.coverage_percentage,
+                estimated_audience_size: s.estimated_audience_size,
+              })),
+            },
+          });
+          return out;
+        }));
+
+        const creativePromise = Promise.all(creativeAgents.map(async (a): Promise<CreativeStageAgent> => {
+          const res = await callAgentTool(a.mcp_url!, "list_creative_formats", {}, { timeoutMs });
+          const formats = extractArrayPayload(res.structured_content, ["formats", "creative_formats", "items"]);
+          const out: CreativeStageAgent = {
+            id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
+            ok: res.ok, latency_ms: res.latency_ms,
+            payload: { formats, count: formats.length },
+          };
+          if (res.error) out.error = res.error;
+          send({
+            type: "agent_complete",
+            stage: "creative",
+            agent_id: a.id,
+            ok: res.ok,
+            ...(res.error ? { error: res.error } : {}),
+            latency_ms: res.latency_ms,
+            summary: {
+              count: formats.length,
+              preview: formats.slice(0, 5).map((f) => {
+                const fo = f as { name?: string; format_id?: string; id?: string } | null;
+                return fo ? (fo.name ?? fo.format_id ?? fo.id ?? "(format)") : "(format)";
+              }),
+            },
+          });
+          return out;
+        }));
+
+        const [signalsResults, creativeResults] = await Promise.all([signalsPromise, creativePromise]);
+
+        send({ type: "stage_complete", stage: "signals", summary: { total: signalsResults.reduce((n, r) => n + r.payload.count, 0) } });
+        send({ type: "stage_complete", stage: "creative", summary: { total: creativeResults.reduce((n, r) => n + r.payload.count, 0) } });
+
+        const mergedSignals = signalsResults.flatMap((r) => r.payload.signals);
+        const chosenSignalIds = pickTopSignals(mergedSignals, 3);
+        send({ type: "targeting_chosen", chosen_signal_ids: chosenSignalIds });
+
+        send({ type: "stage_start", stage: "products", agents_queried: buyingAgents.map((a) => a.id) });
+        for (const a of buyingAgents) send({ type: "agent_start", stage: "products", agent_id: a.id });
+        const productsResults = await Promise.all(buyingAgents.map(async (a): Promise<ProductsStageAgent> => {
+          const res = await callAgentTool(a.mcp_url!, "get_products", { brief: body.brief }, { timeoutMs });
+          const products = extractArrayPayload<ProductLite>(
+            res.structured_content,
+            ["products", "items", "product_list"],
+          ).slice(0, maxProducts);
+          const out: ProductsStageAgent = {
+            id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
+            ok: res.ok, latency_ms: res.latency_ms,
+            payload: { products, count: products.length },
+          };
+          if (res.error) out.error = res.error;
+          send({
+            type: "agent_complete",
+            stage: "products",
+            agent_id: a.id,
+            ok: res.ok,
+            ...(res.error ? { error: res.error } : {}),
+            latency_ms: res.latency_ms,
+            summary: {
+              count: products.length,
+              preview: products.slice(0, 3).map((p) => ({
+                id: productIdOf(p),
+                name: p.name ?? "(unnamed product)",
+              })),
+            },
+          });
+          return out;
+        }));
+        send({ type: "stage_complete", stage: "products", summary: { total: productsResults.reduce((n, r) => n + r.payload.count, 0) } });
+
+        const chosenProductByAgent = pickProductPerAgent(productsResults.map((r) => ({ id: r.id, products: r.payload.products })));
+        send({ type: "products_chosen", chosen_product_per_agent: chosenProductByAgent });
+
+        send({ type: "stage_start", stage: "media_buy", agents_queried: buyingAgents.map((a) => a.id) });
+        for (const a of buyingAgents) send({ type: "agent_start", stage: "media_buy", agent_id: a.id });
+        await Promise.all(buyingAgents.map(async (a) => {
+          const chosenProductId = chosenProductByAgent[a.id] ?? null;
+          const payload = buildCreateMediaBuyPayload({
+            workflowId, agentId: a.id, brief: body.brief!,
+            chosenProductId, chosenSignalIds,
+          });
+          if (!activateSet.has(a.id)) {
+            send({
+              type: "agent_complete",
+              stage: "media_buy",
+              agent_id: a.id,
+              ok: true,
+              latency_ms: 0,
+              summary: { dry_run: true, fired: false, payload_preview: payload },
+            });
+            return;
+          }
+          const start = Date.now();
+          const res = await callAgentTool(
+            a.mcp_url!,
+            "create_media_buy",
+            payload as unknown as Record<string, unknown>,
+            { timeoutMs },
+          );
+          send({
+            type: "agent_complete",
+            stage: "media_buy",
+            agent_id: a.id,
+            ok: res.ok,
+            ...(res.error ? { error: res.error } : {}),
+            latency_ms: res.latency_ms ?? (Date.now() - start),
+            summary: {
+              dry_run: false,
+              fired: true,
+              payload_preview: payload,
+              result: res.structured_content ?? null,
+            },
+          });
+        }));
+        send({ type: "stage_complete", stage: "media_buy", summary: { activated: Array.from(activateSet) } });
+
+        const totalTimeMs = Date.now() - t0;
+        const mode = activateSet.size === 0 ? "dry_run" : activateSet.size === buyingAgents.length ? "all_live" : "partial_live";
+        send({ type: "workflow_complete", mode, total_time_ms: totalTimeMs, warnings: activateWarnings });
+
+        logger.info("agents_workflow_run_stream", {
+          workflow_id: workflowId,
+          brief_chars: body.brief!.length,
+          signals_agents: signalsAgents.length,
+          creative_agents: creativeAgents.length,
+          buying_agents: buyingAgents.length,
+          activated: activateSet.size,
+          total_time_ms: totalTimeMs,
+        });
+      } catch (e) {
+        const err = { type: "workflow_error" as const, error: String((e as Error).message || e) };
+        controller.enqueue(encoder.encode(JSON.stringify(err) + "\n"));
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/x-ndjson",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+      "Access-Control-Allow-Origin": "*",
+    },
   });
 }
 

@@ -183,3 +183,33 @@ export function newWorkflowId(): string {
   const rand = Math.random().toString(36).slice(2, 8);
   return `wf_${t}${rand}`;
 }
+
+/** Extract an array from an MCP tool's `structured_content` payload.
+ *
+ * Different vendors return their results under different top-level keys:
+ *   - Our get_signals:              { signals: [...] }
+ *   - Adzymic get_products:         { products: [...] }
+ *   - Swivel get_products:          { items: [...] }  (observed)
+ *   - Advertible list_formats:      { formats: [...] }
+ *   - Celtra list_formats:          { creative_formats: [...] }  (observed)
+ *
+ * We try the caller's preferred keys first, then fall back to the first
+ * array-valued top-level key. This keeps the workflow extractor tolerant
+ * of vendor drift without needing per-vendor code.
+ */
+export function extractArrayPayload<T = unknown>(
+  structured: unknown,
+  preferredKeys: readonly string[],
+): T[] {
+  if (!structured || typeof structured !== "object") return [];
+  const obj = structured as Record<string, unknown>;
+  for (const k of preferredKeys) {
+    const v = obj[k];
+    if (Array.isArray(v)) return v as T[];
+  }
+  for (const k of Object.keys(obj)) {
+    const v = obj[k];
+    if (Array.isArray(v)) return v as T[];
+  }
+  return [];
+}

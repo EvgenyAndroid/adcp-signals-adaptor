@@ -223,25 +223,32 @@ export function applyVendorAdapter(agentId: string, payload: MediaBuyPayload): M
   const isClaire = agentId.startsWith("claire_");
   const isContentIgnite = agentId === "content_ignite";
   const isSwivel = agentId === "swivel";
+  const isKnownBuying = isAdzymic || isClaire || isContentIgnite || isSwivel;
 
-  // brand_manifest.name — required by adzymic + swivel; for claire/ci we
-  // rebuild the object entirely below with only name + categories.
+  // ── brand_manifest ────────────────────────────────────────────────────
+  // Adzymic + Swivel: lenient, extra fields OK. Just need `name` present.
+  // Claire + Content Ignite: narrow — rejected {name, categories} live
+  // too (Sec-48r3 probe), so we OMIT brand_manifest entirely. The field
+  // is optional in their schema (only buyer_ref is required at top level).
   if (isAdzymic || isSwivel) {
     (p.brand_manifest as unknown as Record<string, unknown>).name = p.brand_manifest.brand;
+  } else if (isClaire || isContentIgnite) {
+    delete (p as unknown as Record<string, unknown>).brand_manifest;
   }
 
-  // packages[].buyer_ref — required by every known vendor except bare
-  // adzymic_apx (which tolerates its absence; harmless to add).
-  if (isAdzymic || isClaire || isContentIgnite || isSwivel) {
+  // ── packages[].buyer_ref ──────────────────────────────────────────────
+  // All known buying vendors require this at package level.
+  if (isKnownBuying) {
     for (const pkg of p.packages) {
       (pkg as unknown as Record<string, unknown>).buyer_ref = `${p.buyer_ref}_${pkg.package_ref}`;
     }
   }
 
-  // Budget + total_budget as scalar number — required by adzymic + claire
-  // + content_ignite. Swivel's pydantic is lenient here so we leave the
-  // object form in place for it.
-  if (isAdzymic || isClaire || isContentIgnite) {
+  // ── budget + total_budget as scalar number ────────────────────────────
+  // Sec-48r3 exempted swivel thinking it was lenient. Live fire-buy showed
+  // swivel ALSO rejects: "INVALID_FIELD_VALUE, Expected number, received
+  // object, field: packages.0.budget". So all four vendor families flatten.
+  if (isKnownBuying) {
     for (const pkg of p.packages) {
       const b = pkg.budget;
       if (b && typeof b === "object" && typeof b.amount === "number") {
@@ -253,16 +260,14 @@ export function applyVendorAdapter(agentId: string, payload: MediaBuyPayload): M
     }
   }
 
-  // claire_* + content_ignite: rebuild brand_manifest to their narrow
-  // contract (rejects `brand` and `advertiser` as unexpected keyword
-  // arguments), and add a placeholder pricing_option_id on each package.
-  if (isClaire || isContentIgnite) {
-    const origName = p.brand_manifest.brand ?? "Demo Brand";
-    const origCats = p.brand_manifest.categories ?? [];
-    (p as unknown as Record<string, unknown>).brand_manifest = {
-      name: origName,
-      categories: origCats,
-    };
+  // ── packages[].pricing_option_id ──────────────────────────────────────
+  // Claire needed this (known in Sec-48r3). Sec-48r4 probe revealed Adzymic
+  // also requires it ("1 validation error ... pricing_option_id missing").
+  // Safest to add to all known buying vendors; unknown agents still pass
+  // through identity. "default" is a placeholder — the real value sources
+  // from the product's pricing_options array (follow-up to thread that
+  // through fire-buy).
+  if (isKnownBuying) {
     for (const pkg of p.packages) {
       (pkg as unknown as Record<string, unknown>).pricing_option_id = "default";
     }

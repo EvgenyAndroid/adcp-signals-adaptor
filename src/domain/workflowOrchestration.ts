@@ -225,15 +225,29 @@ export function applyVendorAdapter(agentId: string, payload: MediaBuyPayload): M
   const isSwivel = agentId === "swivel";
   const isKnownBuying = isAdzymic || isClaire || isContentIgnite || isSwivel;
 
-  // ── brand_manifest ────────────────────────────────────────────────────
-  // Adzymic + Swivel: lenient, extra fields OK. Just need `name` present.
-  // Claire + Content Ignite: narrow — rejected {name, categories} live
-  // too (Sec-48r3 probe), so we OMIT brand_manifest entirely. The field
-  // is optional in their schema (only buyer_ref is required at top level).
+  // ── brand_manifest vs top-level brand ─────────────────────────────────
+  // Sec-48r4 dropped brand_manifest for Claire — revealed in Sec-48r5
+  // probe that Claire actually uses a DIFFERENT field name at the top
+  // level: `brand: BrandReference` (not `brand_manifest: BrandManifest`).
+  // Full error was:
+  //   VALIDATION_ERROR: brand: Input should be a valid dictionary or
+  //                     instance of BrandReference
+  // So for Claire/Content Ignite we swap brand_manifest → brand (with a
+  // minimal BrandReference-shaped dict). Adzymic + Swivel keep the
+  // original brand_manifest contract.
+  //
+  // BrandReference schema isn't public to us but {id, name} is the
+  // standard AdCP BrandReference surface. If rejected, the next probe
+  // will surface the required keys.
   if (isAdzymic || isSwivel) {
     (p.brand_manifest as unknown as Record<string, unknown>).name = p.brand_manifest.brand;
   } else if (isClaire || isContentIgnite) {
+    const name = p.brand_manifest?.brand ?? "Demo Brand";
     delete (p as unknown as Record<string, unknown>).brand_manifest;
+    (p as unknown as Record<string, unknown>).brand = {
+      id: "demo_brand",
+      name,
+    };
   }
 
   // ── packages[].buyer_ref ──────────────────────────────────────────────

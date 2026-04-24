@@ -4286,6 +4286,23 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 
 .wf-chosen-empty { opacity: 0.7; font-style: italic; }
 
+/* Sec-48r5: auth-gated callout on fire-buy cards. Used when the vendor
+   rejection text matches known auth idioms. Teaches the room that the
+   payload shape passed; the wall is auth. */
+.wf-auth-callout {
+  display: flex; gap: 8px; align-items: flex-start;
+  margin-top: 8px; padding: 8px 10px;
+  background: rgba(255, 183, 77, 0.08);
+  border: 1px solid rgba(255, 183, 77, 0.4);
+  border-left: 3px solid #ffb74d;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.wf-auth-icon { color: #ffb74d; font-size: 14px; flex-shrink: 0; line-height: 1.3; }
+.wf-auth-title { color: #ffb74d; font-weight: 600; font-size: 11.5px; margin-bottom: 2px; }
+.wf-auth-body { color: var(--text-dim); line-height: 1.45; }
+.wf-auth-body em { color: var(--text); font-style: italic; }
+
 /* Sec-48n: pickable product rows + fire-buy button. */
 .wf-product-pickable { cursor: pointer; border-radius: 3px; }
 .wf-product-pickable:hover {
@@ -12268,6 +12285,39 @@ function _wfPaintAgentComplete(ev) {
         responseBlock +=
           '<div class="orch-small" style="margin-top:6px;color:var(--text-mut);font-style:italic">' +
             'vendor returned no body or error message (isError:true, empty content)' +
+          '</div>';
+      }
+      // Sec-48r5: detect auth-gated rejections and surface a callout. The
+      // demo's story: payload shape passed; auth is the ceiling. We scan
+      // the serialized content for known auth-rejection idioms seen in
+      // the Sec-48r4 live probe across all three default-trio vendors.
+      var allText = "";
+      if (hasContent) {
+        for (var ti = 0; ti < sum.content.length; ti++) {
+          var tb = sum.content[ti];
+          if (tb && typeof tb === "object" && typeof tb.text === "string") allText += tb.text + " ";
+        }
+      }
+      if (hasResult) {
+        try { allText += JSON.stringify(sum.result); } catch (e2) { /* noop */ }
+      }
+      // Word-boundary in regex needs double-escape per SCRIPT_TAG rule
+      // (single-backslash-b would collapse to backspace char in the
+      // served JS). Using \\b so the emitted regex has \b.
+      var authPatterns = /principal id not found|authentication required|auth_token_invalid|unauthorized|\\b401\\b|tenant policy/i;
+      if (authPatterns.test(allText)) {
+        responseBlock +=
+          '<div class="wf-auth-callout">' +
+            '<span class="wf-auth-icon">\u26a0</span>' +
+            '<div>' +
+              '<div class="wf-auth-title">Auth-gated vendor</div>' +
+              '<div class="wf-auth-body">' +
+                'Payload shape passed vendor validation. The wall is auth \u2014 ' +
+                'this vendor requires credentials we don\'t have in this public demo. ' +
+                'Not a protocol bug, a protocol <em>gap</em>: AdCP has no shared ' +
+                'auth-posture contract across signals / creative / buying agents.' +
+              '</div>' +
+            '</div>' +
           '</div>';
       }
     }

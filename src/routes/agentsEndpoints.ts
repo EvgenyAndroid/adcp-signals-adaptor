@@ -20,9 +20,81 @@ import {
   getLiveAgents,
   getAgentsByRole,
   findAgent,
+  SELF_URL,
+  SELF_AGENT_ID,
   type RegisteredAgent,
 } from "../domain/agentRegistry";
-import { probeAgents, callAgentTool, type ProbeResult } from "../federation/genericMcpClient";
+import {
+  probeAgents,
+  callAgentTool,
+  installSelfProbeHook,
+  installSelfToolHook,
+  type ProbeResult,
+  type ToolCallResult,
+} from "../federation/genericMcpClient";
+import { searchSignalsService } from "../domain/signalService";
+import { getDb } from "../storage/db";
+
+// Sec-48b: hook the generic MCP client with a self-detector. When the orchestrator
+// probes or fans-out to our own URL, Cloudflare Workers refuse self-fetch; we
+// short-circuit and return our real tool list / dispatch the call in-process.
+let _envHookInstalled = false;
+function ensureSelfHooksInstalled(env: Env, logger: Logger): void {
+  if (_envHookInstalled) return;
+  _envHookInstalled = true;
+  installSelfProbeHook((url) => {
+    if (!isSelfUrl(url)) return null;
+    const self = AGENT_REGISTRY.find((a) => a.id === SELF_AGENT_ID);
+    return {
+      server_info: { name: self?.name ?? "evgeny-signals", version: "48.0" },
+      tools: (self?.tools_exposed ?? []).map((name) => ({ name })),
+    };
+  });
+  installSelfToolHook((url, name, args) => {
+    if (!isSelfUrl(url)) return null;
+    return selfToolDispatch(name, args, env, logger);
+  });
+}
+
+function isSelfUrl(url: string): boolean {
+  const a = url.replace(/\/+$/, "");
+  const b = (SELF_URL + "/mcp").replace(/\/+$/, "");
+  return a === b || a === SELF_URL.replace(/\/+$/, "");
+}
+
+/** Direct-dispatch our own signals tools without the HTTP roundtrip.
+ * Covers get_signals (the only tool orchestrate currently fans to); other
+ * tools fall through to "tool_not_self_dispatchable" so a bug can be caught
+ * rather than silently returning empty. */
+async function selfToolDispatch(name: string, args: Record<string, unknown>, env: Env, logger: Logger): Promise<ToolCallResult> {
+  const start = Date.now();
+  void logger;
+  try {
+    if (name === "get_signals") {
+      const brief = String(args.signal_spec ?? args.brief ?? "");
+      const maxResults = Math.max(1, Math.min(50, Number(args.max_results) || 10));
+      const db = getDb(env);
+      // searchSignalsService needs a KVNamespace; env.SIGNALS_CACHE is the
+      // operator-scoped KV used elsewhere in the codebase.
+      const result = await searchSignalsService(db, env.SIGNALS_CACHE, {
+        brief,
+        limit: maxResults,
+      });
+      return {
+        ok: true,
+        latency_ms: Date.now() - start,
+        structured_content: { signals: result.signals, count: result.count },
+      };
+    }
+    return {
+      ok: false,
+      error: `tool_not_self_dispatchable: ${name}`,
+      latency_ms: Date.now() - start,
+    };
+  } catch (e) {
+    return { ok: false, error: String((e as Error).message || e), latency_ms: Date.now() - start };
+  }
+}
 
 // ── GET /agents/directory ───────────────────────────────────────────────────
 
@@ -45,7 +117,8 @@ export function handleAgentsDirectory(): Response {
 
 // ── GET /agents/probe-all ───────────────────────────────────────────────────
 
-export async function handleAgentsProbeAll(request: Request, _env: Env, logger: Logger): Promise<Response> {
+export async function handleAgentsProbeAll(request: Request, env: Env, logger: Logger): Promise<Response> {
+  ensureSelfHooksInstalled(env, logger);
   const url = new URL(request.url);
   const roleFilter = url.searchParams.get("role");
   const timeoutMs = Math.max(1000, Math.min(30_000, Number(url.searchParams.get("timeout_ms")) || 8000));
@@ -123,7 +196,8 @@ interface OrchestratePerAgent {
   signals: unknown[];
 }
 
-export async function handleAgentsOrchestrate(request: Request, _env: Env, logger: Logger): Promise<Response> {
+export async function handleAgentsOrchestrate(request: Request, env: Env, logger: Logger): Promise<Response> {
+  ensureSelfHooksInstalled(env, logger);
   const parsed = await readJsonBody<OrchestrateBody>(request);
   if (parsed.kind === "invalid") return errorResponse("INVALID_JSON", parsed.reason, 400);
   const body: OrchestrateBody = parsed.kind === "parsed" ? parsed.data : {};
@@ -202,7 +276,8 @@ export async function handleAgentsOrchestrate(request: Request, _env: Env, logge
 // shows whether the agent declares it (from probe-all). Useful to see
 // which agents cluster on the same tool set.
 
-export async function handleAgentsCapabilityMatrix(request: Request, _env: Env, logger: Logger): Promise<Response> {
+export async function handleAgentsCapabilityMatrix(request: Request, env: Env, logger: Logger): Promise<Response> {
+  ensureSelfHooksInstalled(env, logger);
   const url = new URL(request.url);
   const timeoutMs = Math.max(1000, Math.min(30_000, Number(url.searchParams.get("timeout_ms")) || 8000));
   const roleFilter = url.searchParams.get("role");

@@ -1,166 +1,198 @@
 # AdCP Signals Workshop — Live Demo Script
 
-**For:** May 7, 2026 · iHeartMedia NYC · AdCP signals workshop
+**For:** "Mini Governance & Signals Workshop — AAO" · May 7, 2026 · 9–12 NYC · iHeartMedia (in-person + remote)
 **Live reference:** https://adcp-signals-adaptor.evgeny-193.workers.dev/ → **Orchestrator** tab
-**Fallback:** all endpoints reachable via `curl` + `application/x-ndjson` streaming — see section 5.
+**Companion:** [WORKSHOP_BLOCK1_EXHIBITS.md](./WORKSHOP_BLOCK1_EXHIBITS.md) — signal-definition card, boundary diagram, trust contract strawman.
 
 ---
 
-## 0. Before you start
+## 0. Pre-flight + room calibration
 
-- Open the Orchestrator tab. Top chrome: **19 agents** in directory · **12 alive** · **~2s avg latency** across the fleet.
-- Expand any live agent card to show tool + parameter surface — same shape our `/capabilities` page emits, now served per-peer.
-- The shipped default workflow fleet:
-  - **Signals** (2): `evgeny_signals` (us) + `dstillery`
-  - **Creative** (2): `advertible` + `celtra`
-  - **Buying** (3): `adzymic_apx` + `claire_scope3` + `swivel`
+Before opening the orchestrator:
 
-All overridable via request body if the room wants to substitute peers.
+- The audience is **measurement + verification + identity-heavy** (DV, IAS, Comscore, Nielsen, Human, Samba, LiveRamp, Triton, Mediaocean, Peer39) plus buy-side (Horizon Media) and agency (OMG, WPP). **Few will care about MCP transport detail.** Lead with substance, not plumbing.
+- **What we lead on:** signal definition + boundaries + DTS-labels-as-trust-strawman + 6-gap implementation data + the live multi-vendor pre-buy ceremony.
+- **What we listen on:** measurement / attribution / lift (DV/IAS/Comscore/Nielsen own the floor), identity resolution (LiveRamp), attention measurement (Triton), IVT/fraud (Human/DV).
+- **What we volunteer to own** in the working committee: response-shape convention (gap #5) + brand-context primitive harmonization (gap #2). Both are concrete, scoped, and we can lead on a draft spec.
 
----
-
-## 1. Block-1 opener — "what is a signal"
-
-**Purpose:** ground the abstract definition in concrete wire data.
-
-**Action:** expand the **Evgeny Signals** card on the Orchestrator tab. Walk the room through one tool at a time:
-
-- `get_signals` → 6 props, 2 required (`signal_spec`, `deliver_to`)
-- `activate_signal` → 5 props, 2 required
-- `query_signals_nl` → 2 props, 1 required
-- `search_concepts` → concept registry vocabulary (what behavior is being described)
-
-Call out:
-- Signal has **coverage_percentage**, **estimated_audience_size**, **pricing.cpm**
-- Signal has **`deployments[]`** — same signal carries activation metadata per platform (TTD segment id, GAM line id, etc.)
-- Signal has **`x_cross_taxonomy[]`** — same concept, nine vendor taxonomies (IAB, LiveRamp, TTD, AppNexus, ...)
-- Signal has **DTS v1.2 labels** — `data_provider`, `x_consent.category`, `x_freshness.window_days`, `x_dts_version`
-
-**One-liner for the room:** *"A trusted signal is five things: provenance, consent, freshness, coverage, and deployment metadata. All five are on-the-wire in the adaptor today."*
+Open the Orchestrator tab. Header chrome reads: **19 agents** in directory · **12 alive** · **~2s avg latency**. That's the credibility opener — we are speaking from interop reality, not slideware.
 
 ---
 
-## 2. Block-1 midpoint — "what's in the directory vs. what actually works"
+## 1. Block 1 opener — "what is a signal" (anchored on Exhibit A)
 
-**Purpose:** honest assessment, not marketing.
+**Action:** open the Orchestrator tab; expand the **Evgeny Signals** card. The 8 tools render with descriptions + parameter tables. Walk the room through one tool — `get_signals` is the canonical one — pulling out:
 
-**Action:** stay on the Orchestrator tab. Call attention to the header summary + agent grid:
+- The 5 trust fields from [Exhibit C](./WORKSHOP_BLOCK1_EXHIBITS.md#exhibit-c--trust-contract-strawman): `data_provider`, `x_consent.category`, `x_freshness.window_days`, `coverage_percentage` + `estimated_audience_size`, `deployments[]`.
+- The producer/consumer split via `x_cross_taxonomy[]`: same signal, 9 vendor namespaces (IAB, LiveRamp, TTD, AppNexus, ...).
+
+**One-liner for the room:** *"A trusted signal is five fields: provenance, consent, freshness, coverage, deployment metadata. They're on the wire today. Which of those five would YOU remove? Which would you add before putting budget behind it?"*
+
+That's the Block 1 trust-requirements provocation, anchored on something concrete instead of a blank whiteboard.
+
+---
+
+## 2. Block 1 boundary exercise — "what signals are NOT"
+
+**Action:** put up [Exhibit B](./WORKSHOP_BLOCK1_EXHIBITS.md#exhibit-b--what-signals-are-not-boundary-map) (boundary diagram). Open the floor.
+
+Likely live disagreements to surface:
+
+- **Brand suitability score** → call this a signal (it's a metadata attribute the buyer reads pre-buy)
+- **"Don't run next to alcohol"** → NOT a signal; it's a governance directive that travels alongside one
+- **Attention score** → probably a signal but real-time, different architecture from batch audience signals — sets up the Block 2 cross-cutting cut
+- **Brand lift result** → NOT a signal (it's measurement output); but the *hypothesis input* might be
+- **IVT-clean inventory** → NOT a signal; fraud filters operate on inventory before signals attach
+
+Use these to draw lines on the diagram live. Disagreements seed the gap list for Block 3.
+
+---
+
+## 3. Block 1 honest assessment — "what's good, what's missing"
+
+**Action:** stay on the Orchestrator tab; call attention to the directory header.
 
 | Metric | What it shows |
 |---|---|
-| 12 of 12 alive | Handshake works (Streamable-HTTP + SSE) across the directory |
-| 4 known-issue, 3 roadmap | Not every agent is production — directory documents status |
-| Tool-count diff | Directory baseline vs. live probe — shows which agents added/removed tools post-listing |
+| 12 of 12 alive | Streamable-HTTP + SSE handshake works across the directory |
+| 4 known-issue, 3 roadmap | Not every agent is production-ready — directory documents status |
+| Tool-count diff | Directory baseline vs. live probe — exposes which agents add/remove tools post-listing |
 
-**One-liner:** *"Alive doesn't mean interoperable. Directory presence means the handshake works — tool-surface compatibility is a separate story. That's what Block 2 traces."*
+**One-liner:** *"Alive doesn't mean interoperable. The directory says 12 agents up; the implementation reality is six different validators on `create_media_buy`, two different schema families on brand-context, no shared auth posture. That's the gap list."*
+
+Then surface the **6 implementation-observed gaps** (canonical, the workshop's gap-list seed):
+
+1. **Auth-posture standard missing.** Five buying agents reject `get_products` with `AUTH_TOKEN_INVALID: Authentication required by tenant policy`. The three "open" agents all reject `create_media_buy` with auth errors too (Adzymic: "Principal ID not found"; Swivel: 401 in result body). **No shared auth contract across signals / creative / buying agents.**
+2. **Two distinct schema families for brand context.** Adzymic + Swivel use `brand_manifest: BrandManifest`. Claire + Content Ignite use top-level `brand: BrandReference` with `{domain, name}` — Claire's rejection cited the AdCP spec by URL. Not field-name drift; entirely different object contracts.
+3. **`packages[].buyer_ref`, `pricing_option_id`, scalar `budget`** — required by every known buying vendor's validator, NOT in the spec's required list. Implementation drift hardened.
+4. **`filters.format_ids` shape.** Spec wants `FormatId{agent_url, id}`; only `adzymic_apx` tolerates `string[]`. Five other agents reject Sec-48q's strings.
+5. **MCP response-shape optionality.** Celtra wraps JSON inside text blocks; most use `structuredContent`; Swivel embeds errors in a structured result. All three are spec-compliant. Naive extractors miss data.
+6. **Creative-agent surfaces beyond `list_creative_formats` are bespoke.** Celtra builds, Advertible previews. No shared creative-tool contract.
+
+Each maps to a Block 2 / Block 3 thread.
 
 ---
 
-## 3. Block-2 scenarios — live walkthrough
+## 4. Block 1 lifecycle map
 
-### Scenario A — Pre-buy (buyer evaluates inventory + audience fit)
+| Phase | What we have live | Gap to flag |
+|---|---|---|
+| **Pre-buy** | `get_signals`, `query_signals_nl`, `/signals/estimate`, `/signals/overlap`, cross-taxonomy bridge, Audience Composer (set ops + AST), Journey (cumulative reach) | None major — this is the solved phase |
+| **In-flight** | `get_media_buy_delivery` exposed by buying agents (we can pull); pre-clamp reach warnings; privacy-gate holdout | **No real-time push/subscribe primitive in AdCP.** Optimization triggers can't fire from a signals provider. |
+| **Post-campaign** | Snapshots + Freshness + portfolio optimizer (client-side) | **No closed-loop spec for performance → next-cycle signals.** Biggest unclaimed gap. |
+| **Real-time vs batch** | All batch (`get_signals` is sync request-response) | Cuts across all three lifecycle phases. Architecture, privacy, vendor roles all different. |
+| **Buy-side perspective** | We're sell-side flavored (signals provider) | Horizon Media will fill this gap in the discussion. |
+
+---
+
+## 5. Block 2 — live walkthrough of pre-buy scenario
 
 **Brief to use:** `luxury travelers planning APAC trips`
 
 **Expected behavior:**
 
-| Stage | Agents | What the room sees |
+| Stage | Agents (parallel within stage) | What the room sees |
 |---|---|---|
-| 1. Signals | evgeny + dstillery (parallel) | ~10 merged signals; top-3 auto-picked for targeting |
-| 2. Creative | advertible + celtra (parallel) | 2 + 79 = 81 formats; one format auto-picked per vendor |
-| 3. Products | 3 buying agents | Adzymic 2 products, Claire-Scope3 1, Swivel 0 legit empty |
-| 4. Media buy | same 3 | Dry-run payload previews assembled with chosen signals in `targeting_overlay.required_axe_signals` + chosen formats in `packages[0].creatives` + chosen product in `packages[0].product_id` |
+| 1. Signals | evgeny + Dstillery | ~10 merged signals; top-3 auto-picked for `targeting_overlay.required_axe_signals` |
+| 2. Creative | Advertible + Celtra | 2 + ~33-79 = ~80 formats (filtered by brief intent if "video" is in brief) |
+| 3. Products | adzymic_apx + claire_scope3 + swivel | Adzymic 2, Claire-Scope3 1, Swivel 0 (legit empty) |
+| 4. Media buy | same 3 buying agents | Dry-run payload previews assembled; chosen signals + chosen formats + chosen product all visible inline |
 
-**Discussion pause points:**
-- **After stage 1 "Chosen for targeting":** *"We picked 3 signals. Is that a signal, governance (did consent allow it?), or identity (how did we know these audiences match)?"*
-- **After stage 2:** *"Celtra returned 79 format variants; Advertible 2. Is creative-catalog shape itself a signal? A measurement concern?"*
-- **After stage 3 products:** *"Same brief, three vendors, three different product shapes. Where's the protocol drawing lines?"*
+**Discussion pause points** (use to drive Block 2 #1 + the boundary conversation):
 
-**Try-this-live:** click a signal row to toggle; watch all 3 stage-4 payloads' `targeting_overlay` update in place. Then click "Simulate live fire" on one card — watch the vendor rejection reason surface verbatim.
+- **After stage 1's "Chosen for targeting":** *"We picked 3 signals. Looking at this set — is each one a signal, governance directive, identity primitive, or measurement output?"*
+- **After stage 2:** *"Celtra returned 79 format variants for one canonical 'creative format' concept. Is that catalog-shape itself a signal? Where does creative-format vocabulary live in the spec?"*
+- **After stage 3:** *"Same brief, three buying agents, three different product responses with three different validators on the next stage. Where's the protocol drawing lines?"*
 
-### Scenario B — Pre-buy with brief-narrowing
+**Try-this-live:** click a signal row to toggle; watch all 3 stage-4 payloads' `targeting_overlay` re-serialize. Click a format pill — `packages[0].creatives` updates. **Click "Simulate live fire"** — vendor rejection reason renders in-card; for auth-rejecting vendors, an amber **"Auth-gated vendor"** callout teaches the room: *"Payload shape passed; the wall is auth — AdCP has no shared auth-posture contract."*
 
-**Brief:** `luxury travel APAC video`
-
-**Expected behavior:**
-- Creative stage narrows Celtra from 79 → 33 formats (the video subset)
-- Chosen formats are video-only
-- `create_media_buy` payload carries video format IDs in `packages[0].creatives`
-
-**Discussion point:** *"The brief is interpreted client-side and pushed as filter args. Should signal selection itself inform this, or should it stay declarative?"*
-
-### Scenario C — In-flight (optimization trigger) — **GAP**
-
-**Status:** `get_media_buy_delivery` exists on the buying agents' tool lists; we can pull mid-flight data on demand. But **there's no push/subscribe signal primitive** in AdCP today.
-
-**Action:** expand the adzymic_apx or claire_scope3 card, show `get_media_buy_delivery` in the tool drawer. Talk through the hypothetical:
-
-*"Buyer sees pacing slip. Wants an optimization signal to fire to the signals agent. What's the API? A new `subscribe_signals` tool? An SSE channel on the signals agent? Batch poll? This is a gap worth scoping."*
-
-### Scenario D — Post-campaign (performance feeds next cycle) — **GAP**
-
-**Status:** We have **Snapshots** + **Freshness** tabs on our adaptor, plus portfolio optimizer. Nothing at the protocol layer defines how performance data flows back into the next-cycle signal handshake.
-
-**Action:** briefly show the Snapshots tab (Composer view). Then:
-
-*"Client-side we can diff snapshots and optimize within our adaptor. What's missing: a standard way for a buyer agent to publish 'these signals underperformed' back to the signals provider so the next brief gets better options. The closed loop."*
-
-### Cross-cutting — real-time vs. batch
-
-**Status:** `get_signals` is synchronous batch. Attention signals would need a stream. Brand lift is post-hoc batch.
-
-**Action:** frame as open questions for the committee to scope.
+That auth-callout IS the gap-#1 punchline visible.
 
 ---
 
-## 4. Gap list (prepared for the converge/ranking session)
+## 6. Block 2 — in-flight scenario (PARTIAL)
 
-Five gaps captured during Sec-48 interop work across 11 live peers. Good seed for the ranked gap list:
+**Status:** `get_media_buy_delivery` exists on buying agents' tool lists; we can pull mid-flight pacing data on demand. But **there's no push/subscribe primitive** for a signals provider to fire an optimization trigger.
 
-1. **No shared brand-manifest contract.** Adzymic requires `brand_manifest.name`; Claire accepts only top-level `buyer_ref`; Swivel silently rejects. Three live validators, no harmonization.
-2. **Signal → product compatibility is a void.** `filters.targeting_signals` on `get_products` honored, required, or ignored depending on vendor.
-3. **MCP response-shape optionality bites interop.** `structuredContent` vs. `content[].text` both spec-compliant. Signals-specific convention would help.
-4. **`list_creative_formats` is the only tool every creative + buying agent implements.** Beyond that the surface is bespoke.
-5. **Measurement → signals feedback loop is implicit.** No spec for how `get_media_buy_delivery` output feeds back into the next-cycle `get_signals` handshake.
+**Action:** expand the `adzymic_apx` or `claire_scope3` card; show `get_media_buy_delivery` in the tool drawer. Frame:
+
+*"Buyer sees pacing slip. Wants an optimization signal to fire to the signals agent — 'send me audiences responding to weather conditions in the next 30 minutes'. Today there's no API for that. Three open questions:*
+- *New `subscribe_signals` SSE channel on the signals agent? (push from signals)*
+- *Or does buying agent poll? (pull on a schedule)*
+- *Or is this a measurement-agent-fires-trigger pattern? (different agent type)"*
+
+Drives Block 2 cross-cutting real-time-vs-batch conversation. Triton's input critical here.
 
 ---
 
-## 5. Fallback — curl-only replay
+## 7. Block 2 — post-campaign scenario (GAP)
 
-If the UI is slow or the room prefers raw:
+**Status:** Client-side we have **Snapshots** + **Freshness** + portfolio optimizer. **Nothing at the protocol layer** defines how performance feeds back into the next-cycle signal handshake.
+
+**Action:** briefly show the Snapshots tab (Composer view). Frame:
+
+*"Within our adaptor we can diff snapshots and optimize the next brief. What's missing: a standard way for a buyer agent to publish 'these signals underperformed' BACK to the signals provider so the next brief gets better options. The closed loop is the spec gap."*
+
+Open question for the room (DV / IAS / Nielsen primary audience here): *"What measurement output, in what shape, would you push back into the next cycle's signals query?"* Their answer is a candidate spec.
+
+---
+
+## 8. Block 2 — cross-cutting real-time vs. batch
+
+**Action:** frame the synchronous-batch nature of `get_signals` explicitly:
+
+- `get_signals` today: synchronous, one-shot, batch.
+- Attention signals (Triton's territory): real-time, streaming.
+- Brand lift (Nielsen / DV territory): post-hoc, batch.
+- They flow through entirely different architectures, privacy regimes, vendor roles.
+
+Open question: *"Are these all 'signals' under one contract, or do attention-streaming and lift-post-hoc need their own agent types?"* Maps directly to Block 1's "adjacent areas" question.
+
+---
+
+## 9. Block 3 — committee + concrete deliverables I can commit to
+
+If the room wants a working committee with named deliverables, here's what I can own from this seat:
+
+| Deliverable | Scope | Target |
+|---|---|---|
+| **Signals tool-call response-shape convention** (gap #5) | Spec proposal: signals tools MUST emit results under a single canonical key in `structuredContent`; if using `content[].text`, must be parseable JSON without prefix wrapping. | Reviewable draft within 30 days of workshop |
+| **Brand-context primitive harmonization** (gap #2) | Spec proposal: choose `brand_manifest: BrandManifest` OR `brand: BrandReference` as the single contract. Reference Adzymic + Claire shapes as priors. | Reviewable draft within 30 days |
+| **Live reference adaptor stays public** | `adcp-signals-adaptor` continues to host the orchestrator + interactive workflow as a working-committee testbed. PRs welcome. | Indefinite |
+
+For everything else (auth posture, real-time primitive, post-campaign feedback) I'm a contributor, not the driver — those need the measurement + identity attendees in the lead.
+
+---
+
+## 10. Curl-only fallback (if UI is slow or room prefers raw)
 
 ```bash
-# Probe directory
-curl -s https://adcp-signals-adaptor.evgeny-193.workers.dev/agents/probe-all | jq '.alive_count, .results[] | {id, alive: .probe.alive, tools: (.probe.tools | length)}'
+# Probe directory + per-agent tool surface
+curl -s https://adcp-signals-adaptor.evgeny-193.workers.dev/agents/probe-all \
+  | jq '.alive_count, .results[] | {id, alive: .probe.alive, tools: (.probe.tools | length)}'
 
-# Run the workflow stream, one event per line
+# Run the workflow stream (one event per line)
 curl -s -N -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/agents/workflow/run/stream \
   -H "Content-Type: application/json" \
   -d '{"brief":"luxury travel APAC","timeout_ms":20000}'
 
-# Fire a specific buy (dry-run payload preview only unless activate_agents is set)
+# Inspect the assembled create_media_buy payload (per-agent vendor adapter applied)
 curl -s -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/agents/workflow/fire-buy \
   -H "Content-Type: application/json" \
-  -d '{"agent_id":"adzymic_apx","product_id":"prod_3d5ae13b","signal_ids":["sig_1"],"format_ids":["celtra_format_xyz"],"brief":"demo"}' | jq .
+  -d '{"agent_id":"adzymic_apx","product_id":"prod_X","signal_ids":["sig_X"],"format_ids":["fmt_X"],"brief":"demo"}' \
+  | jq .
 ```
 
-All endpoints are public (no auth). The fire-buy call only hits the vendor's real `create_media_buy` when invoked explicitly per-agent — safe to narrate.
+All endpoints public, no auth on our side. Fire-buy reaches the vendor's real `create_media_buy` — safe to narrate, you'll see auth rejections from the vendor side surface in the response.
 
 ---
 
-## 6. What I will NOT demo live (and why)
+## 11. What I will NOT demo
 
-- **Activation via TTD OAuth** — our activation service is LinkedIn-oriented in the current deploy; TTD handoff is documented but not the critical path for a signals-definition workshop.
-- **UCP embedding space visualizations** (Embedding Lab) — too deep in the tool chain for this audience. Happy to show afterwards if folks stay.
-
----
-
-## 7. Post-workshop artifacts I can commit to
-
-- Extend the adaptor with a dedicated `/workshop/scenarios` endpoint that packages the three live scenarios as a single reproducible call.
-- Draft spec proposal for **"signals tool-call response-shape convention"** (gap #3) within 30 days.
-- Join the standing committee as a named member with that deliverable.
+- **Activation via TTD OAuth** — out of scope for a signals-definition session.
+- **UCP embedding-space visualizations** (Embedding Lab) — too deep in the tool chain.
+- **Audience Composer's expression-AST tab** — interesting but distracts from the lifecycle conversation.
 
 ---
 
-**Questions or changes to this script → ping me before May 7 and I'll update + redeploy.**
+**Questions / changes / dry-run requests → ping me before May 7.**

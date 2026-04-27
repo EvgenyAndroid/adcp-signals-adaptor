@@ -1380,28 +1380,79 @@ ${STYLES}
           </div>
         </div>
 
-        <!-- Governance + media-buy + measurement. -->
+        <!-- Governance + brand rights — Phase 3: show the AdCP 3.0 GA
+             tool surface explicitly so the gap is visible by design.
+             Three stacked cards mirror the spec's three task families. -->
         <div id="canvas-bottom" class="canvas-bottom" style="display:none">
-          <div class="canvas-bottom-row canvas-row-governance">
-            <div class="canvas-bottom-label">Governance + brand rights</div>
-            <div class="canvas-bottom-body">
-              <span class="pill pill-warning mono" style="font-size:10px">AdCP 3.0 spec'd</span>
-              <span class="orch-small" style="margin-left:8px">no live agent implementations — phase 3</span>
+          <div class="canvas-spec-block">
+            <div class="canvas-spec-header">
+              <span class="canvas-spec-label">Governance + brand rights</span>
+              <span class="pill pill-warning mono" style="font-size:10px">AdCP 3.0 spec'd · no live impl</span>
+            </div>
+            <div class="canvas-spec-body">
+              <div class="canvas-spec-card">
+                <div class="canvas-spec-card-name mono">check_governance</div>
+                <div class="canvas-spec-card-shape orch-small">in: <code>{plan, brand: BrandRef}</code> · out: <code>{decision, audit_log_url, requires_human_review?}</code></div>
+                <div class="canvas-spec-card-note orch-small">would gate alcohol / pharma / lending / housing for regulated brands. Runs BEFORE create_media_buy.</div>
+              </div>
+              <div class="canvas-spec-card">
+                <div class="canvas-spec-card-name mono">get_rights · acquire_rights · update_rights</div>
+                <div class="canvas-spec-card-shape orch-small">brand-rights lifecycle: discover → negotiate → modify (extend / restrict / revoke)</div>
+                <div class="canvas-spec-card-note orch-small">e.g. asset usage rights for the chosen creatives. None of the live directory agents implement this family.</div>
+              </div>
+              <div class="canvas-spec-card">
+                <div class="canvas-spec-card-name mono">sync_plans · report_plan_outcome · get_plan_audit_logs</div>
+                <div class="canvas-spec-card-shape orch-small">signed <code>governance_context</code> JWS tokens for plan approval + auditability</div>
+                <div class="canvas-spec-card-note orch-small">RFC 9421 HTTP message signatures + idempotency keys per request.</div>
+              </div>
             </div>
           </div>
+
           <div class="canvas-bottom-row canvas-row-mediabuy" id="canvas-lane-mediabuy-row">
             <div class="canvas-bottom-label">Media buy</div>
             <div class="canvas-bottom-body" id="canvas-row-mediabuy-body">
-              <span class="orch-small">click Run above; payload assembled with this brand</span>
+              <span class="orch-small">click Run above; payload assembled with this brand's BrandRef</span>
             </div>
           </div>
-          <div class="canvas-bottom-row canvas-row-measurement">
-            <div class="canvas-bottom-label">In-flight + measurement</div>
-            <div class="canvas-bottom-body">
-              <span class="pill pill-warning mono" style="font-size:10px">closed-loop unspec'd</span>
-              <span class="orch-small" style="margin-left:8px">no measurement-as-role agent type — phase 4</span>
+
+          <!-- Closed-loop measurement: SVG arc back to Audiences + spec card -->
+          <div class="canvas-spec-block">
+            <div class="canvas-spec-header">
+              <span class="canvas-spec-label">In-flight + measurement</span>
+              <span class="pill pill-warning mono" style="font-size:10px">closed-loop unspec'd · no agent type</span>
+            </div>
+            <div class="canvas-spec-body">
+              <div class="canvas-spec-card">
+                <div class="canvas-spec-card-name mono">get_media_buy_delivery</div>
+                <div class="canvas-spec-card-shape orch-small">in-flight pacing, viewability, measurement_windows (Live, C3, C7)</div>
+                <div class="canvas-spec-card-note orch-small">implemented across all 7 buying agents — partial closed loop on the buy side.</div>
+              </div>
+              <div class="canvas-spec-card canvas-spec-card-gap">
+                <div class="canvas-spec-card-name mono">[no spec'd primitive]</div>
+                <div class="canvas-spec-card-shape orch-small">measurement → next-cycle signals query</div>
+                <div class="canvas-spec-card-note orch-small">"these signals underperformed; surface adjacent ones next time." DV / IAS / Comscore / Nielsen positioning. <strong>Whole role unspec'd.</strong></div>
+              </div>
             </div>
           </div>
+        </div>
+
+        <!-- Closed-loop arrow (Phase 4): SVG arc from media-buy back to audiences -->
+        <svg class="canvas-loop-arrow" id="canvas-loop-arrow" style="display:none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <defs>
+            <marker id="canvas-arrow-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+            </marker>
+          </defs>
+          <path d="M 95 92 C 110 50, 110 8, 5 8 L 5 12" stroke="var(--accent)" stroke-width="0.4" fill="none" stroke-dasharray="1.5,1.5" marker-end="url(#canvas-arrow-head)"/>
+          <text x="55" y="55" fill="var(--accent)" font-size="3" font-family="var(--font-mono)" text-anchor="middle">closed loop · phase 4</text>
+        </svg>
+
+        <!-- View-mode toggle (Phase 4): canvas / role-pivot / capability graph -->
+        <div class="canvas-viewmodes">
+          <span class="orch-small" style="color:var(--text-mut);margin-right:8px">view:</span>
+          <button class="canvas-viewmode active" data-mode="canvas" title="Brand-anchored canvas (current)">brand canvas</button>
+          <button class="canvas-viewmode disabled" data-mode="role" title="Pattern B from proposal #98 — coming soon" disabled>role-pivot</button>
+          <button class="canvas-viewmode disabled" data-mode="graph" title="Pattern A from proposal #98 — coming soon" disabled>capability graph</button>
         </div>
       </section>
 
@@ -4639,6 +4690,85 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   flex: 1; min-width: 200px;
   color: var(--text-dim);
   font-size: 11px;
+}
+
+/* Phase 3: governance + brand-rights + measurement spec cards.
+   Make the AdCP 3.0 unimplemented-tool surface visible by design. */
+.canvas-spec-block {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-left: 3px solid #ffb74d;
+  border-radius: 5px;
+}
+.canvas-spec-header {
+  display: flex; align-items: center; gap: 10px;
+  padding-bottom: 8px; margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.canvas-spec-label {
+  font-size: 12.5px; font-weight: 500; color: var(--text);
+}
+.canvas-spec-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px;
+}
+.canvas-spec-card {
+  padding: 8px 10px;
+  background: var(--bg-raised);
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+}
+.canvas-spec-card-gap {
+  border-color: var(--error);
+  background: rgba(239,83,80,0.05);
+}
+.canvas-spec-card-name {
+  font-size: 11.5px; font-weight: 500; color: var(--accent);
+  margin-bottom: 3px;
+}
+.canvas-spec-card-shape {
+  font-size: 10.5px; color: var(--text-dim); line-height: 1.45;
+  margin-bottom: 4px;
+}
+.canvas-spec-card-shape code {
+  font-size: 10px; background: var(--bg-input); padding: 1px 4px; border-radius: 3px;
+}
+.canvas-spec-card-note { color: var(--text-mut); line-height: 1.4; }
+.canvas-spec-card-note strong { color: var(--text); }
+
+/* Phase 4: view-mode toggle (Pattern C/B/A). */
+.canvas-viewmodes {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 10px; padding: 6px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+.canvas-viewmode {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: 4px; padding: 4px 10px; font-size: 11px;
+  cursor: pointer; color: var(--text-mut);
+  transition: color 0.15s, border-color 0.15s;
+}
+.canvas-viewmode:hover:not(.disabled) { color: var(--accent); border-color: var(--accent-border); }
+.canvas-viewmode.active {
+  color: var(--accent); border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.canvas-viewmode.disabled {
+  opacity: 0.5; cursor: not-allowed;
+}
+
+/* Phase 4: closed-loop arrow. SVG overlay drawn over the bottom region. */
+.canvas-loop-arrow {
+  position: relative;
+  width: 100%; height: 60px;
+  margin: -8px 0 -8px 0;
+  pointer-events: none;
+  opacity: 0.7;
 }
 
 .canvas-bottom { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
@@ -12814,6 +12944,8 @@ async function _canvasResolveBrand(domain) {
     if (lanes) lanes.style.display = "";
     var bottom = document.getElementById("canvas-bottom");
     if (bottom) bottom.style.display = "";
+    var loopArrow = document.getElementById("canvas-loop-arrow");
+    if (loopArrow) loopArrow.style.display = "";
   } catch (e) {
     card.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div></div>';
   }
@@ -12830,9 +12962,13 @@ function _canvasRenderBrandCard(data) {
   var lightLogo = logos.find(function (l) { return (l.tags || []).indexOf("light") >= 0 && (l.tags || []).indexOf("symbol") < 0; });
   var anyLogo = lightLogo || logos[0];
   // Resolve relative URLs to the registry origin.
-  var logoUrl = anyLogo && anyLogo.url
+  // Phase 3: route through /brands/logo proxy. Uniform render path,
+  // bypasses third-party CDN hotlink-detect (e.g. brandfetch.io
+  // silently failing IMG fetches in our origin context).
+  var rawLogoUrl = anyLogo && anyLogo.url
     ? (anyLogo.url.indexOf("http") === 0 ? anyLogo.url : "https://agenticadvertising.org" + anyLogo.url)
     : null;
+  var logoUrl = rawLogoUrl ? ("/brands/logo?u=" + encodeURIComponent(rawLogoUrl)) : null;
 
   var colors = bm.colors || {};
   var palette = ["primary", "accent", "secondary"]
@@ -12964,12 +13100,25 @@ async function _canvasRunWorkflow() {
   // Reset lanes to running state.
   _canvasResetLanes();
 
+  // Refinement: thread the brand BrandRef through to the workflow.
+  // Pulls domain + name + industries from the resolved brand_manifest;
+  // the backend's vendor adapter routes between BrandRef (Claire family)
+  // and brand_manifest.brand (Adzymic + Swivel) at call time.
+  var bm = (brand && brand.brand_manifest) || {};
+  var company = bm.company || {};
+  var brandPayload = {
+    domain: brand.canonical_domain || "",
+    name: brand.brand_name || bm.name || "",
+    description: bm.description || "",
+    industries: Array.isArray(company.industries) ? company.industries : [],
+  };
   try {
     var r = await fetch("/agents/workflow/run/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         brief: brief,
+        brand: brandPayload,
         timeout_ms: 25000,
       }),
     });

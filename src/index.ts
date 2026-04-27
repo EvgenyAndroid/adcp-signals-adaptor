@@ -49,6 +49,7 @@ import {
 import {
   handleBrandSearch,
   handleBrandResolve,
+  handleBrandLogo,
 } from "./routes/brandRegistry";
 import {
   handleAudienceCompose,
@@ -228,6 +229,7 @@ export default {
             // Public — same posture as the upstream registry itself.
             "/brands/search",
             "/brands/resolve",
+            "/brands/logo",
             "/taxonomy/reverse",
             // Sec-43: audience composer + activation-planning analytics.
             // Read-only — same posture as /portfolio/* and /analytics/*.
@@ -391,6 +393,8 @@ export default {
                 response = await handleBrandSearch(request, env, logger);
             } else if (method === "GET" && path === "/brands/resolve") {
                 response = await handleBrandResolve(request, env, logger);
+            } else if (method === "GET" && path === "/brands/logo") {
+                response = await handleBrandLogo(request, env, logger);
 
                 // ── Sec-43: Audience Composer + activation analytics ────────────────
             } else if (method === "POST" && path === "/audience/compose") {

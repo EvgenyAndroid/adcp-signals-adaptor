@@ -35,7 +35,7 @@
 // self-fetch short-circuit, URL corrections for content_ignite + claire_scope3).
 // The key version must be bumped any time the SHAPE of the capability response
 // changes, so clients that cache by key pick up the new fields.
-const CACHE_KEY = "adcp_capabilities_v22";
+const CACHE_KEY = "adcp_capabilities_v23";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
@@ -336,25 +336,28 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       // Updated manually after each `npm run compliance` against prod.
       compliance: {
         spec_version: "adcp_3.0",
-        client_runner: "@adcp/client@5.13.0",
-        last_run: "2026-04-23",
+        client_runner: "@adcp/client@5.21.1",
+        last_run: "2026-04-27",
+        // 5.21 runner restructured into 48 tool-gated scenarios. A
+        // signals-only agent has 4 applicable; the rest skip because they
+        // require get_products / create_media_buy / sync_creatives /
+        // build_creative / si_* / governance / brand-rights tools we do
+        // not (and should not) advertise.
         results: {
-          core: { pass: 25, total: 26 },
-          signals: { pass: 3, total: 3 },
-          error_handling: { pass: 5, total: 5 },
-          aggregate: { pass: 33, total: 34 },
+          applicable: 4,
+          passed: 4,
+          failed: 0,
+          skipped: 35,
+          scenarios_run: ["health_check", "discovery", "capability_discovery", "signals_flow"],
         },
         non_applicable_scenarios: [
           {
-            scenario: "schema_validation/past_start_enforcement",
-            track: "core",
-            reason: "Tests create_media_buy with a past start_time. Tool is in the media_buy protocol, which we do not implement (supported_protocols: ['signals'] only). The runner has no applies_to primitive to skip the scenario when media_buy isn't declared, so the aggregate fails despite both individual paths being structurally inapplicable.",
+            scenario: "error_handling / validation / schema_compliance",
+            reason: "5.21 runner gates these behind get_products, conflating 'media-buy agent' with 'any agent' in applicability logic. Signals-only agents lose error/schema track entirely — regression vs the 5.6-era track structure where these ran on every protocol.",
             upstream_issue: "https://github.com/adcontextprotocol/adcp/issues/2916",
-            upstream_status: "filed",
-            workaround: "stub-only-rejection of create_media_buy would yield a vanity 26/26 but pollutes the protocol surface with a tool we do not actually support — declined.",
+            upstream_status: "deferred → adcp 3.1.0 (capability-derived skip_if grammar lands runner-side first)",
           },
         ],
-        structural_ceiling_for_signals_only_agents: "25/26 core (pending adcp#2916)",
         report: "docs/SEC42_ADCP_30_GA_COMPLIANCE.md",
         reproduce: "API_KEY=$DEMO_API_KEY AGENT_URL=https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp npm run compliance",
       },

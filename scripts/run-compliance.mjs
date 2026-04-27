@@ -1,16 +1,23 @@
 // scripts/run-compliance.mjs
-// Drives @adcp/client `comply()` programmatically so we can pass a `test_kit`
-// — something the CLI (`npx @adcp/client storyboard run`) has no flag for.
-// Without the test_kit, security_baseline/oauth_discovery fires and needs RFC
-// 9728 protected-resource metadata we don't serve. With `auth.api_key` +
-// `probe_task: get_signals`, the runner takes the api-key path and verifies
-// our existing Bearer auth: valid key → 200 on get_signals; invalid key → 401.
+// Drives @adcp/client's compliance suite programmatically so we can pass a
+// `test_kit` — something the CLI (`npx @adcp/client storyboard run`) has no
+// flag for. Without the test_kit, security_baseline/oauth_discovery fires and
+// needs RFC 9728 protected-resource metadata we don't serve. With
+// `auth.api_key` + `probe_task: get_signals`, the runner takes the api-key
+// path and verifies our existing Bearer auth: valid key → 200 on get_signals;
+// invalid key → 401.
+//
+// API note: pre-5.13 used `comply()` + `formatComplianceResults*`; 5.13
+// renamed this to `testAllScenarios()` + `formatSuiteResults*` and split the
+// suite into 24 tool-gated scenarios. Default-export destructure is needed
+// because the published bundle is CJS without named ESM re-exports.
 //
 // Usage:
 //   API_KEY=demo-key-adcp-signals-v1 npm run compliance
 //   API_KEY=... AGENT_URL=https://... node scripts/run-compliance.mjs --json
 
-import { comply, formatComplianceResults, formatComplianceResultsJSON } from "@adcp/client/testing";
+import pkg from "@adcp/client/testing";
+const { testAllScenarios, formatSuiteResults, formatSuiteResultsJSON } = pkg;
 
 const AGENT_URL = process.env.AGENT_URL ?? "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp";
 const API_KEY = process.env.API_KEY ?? process.env.DEMO_API_KEY;
@@ -26,11 +33,10 @@ const testOptions = {
   auth: { type: "bearer", token: API_KEY },
   test_kit: {
     auth: {
-      // Drives security_baseline/api_key_path. Must be in PROBE_TASK_ALLOWLIST
-      // at dist/lib/testing/storyboard/test-kit.js — `get_signals` is listed
-      // because it's auth-gated, read-only, and accepts an empty request body
-      // (our callGetSignals at src/mcp/server.ts:332 defaults to limit=20,
-      //  offset=0 when no args are supplied).
+      // Drives security_baseline/api_key_path. `get_signals` is auth-gated,
+      // read-only, and accepts an empty request body (callGetSignals at
+      // src/mcp/server.ts defaults to limit=20, offset=0 when no args
+      // are supplied).
       probe_task: "get_signals",
       api_key: API_KEY,
     },
@@ -38,13 +44,13 @@ const testOptions = {
 };
 
 try {
-  const result = await comply(AGENT_URL, testOptions);
+  const result = await testAllScenarios(AGENT_URL, testOptions);
   if (jsonOutput) {
-    process.stdout.write(JSON.stringify(formatComplianceResultsJSON(result), null, 2) + "\n");
+    process.stdout.write(JSON.stringify(formatSuiteResultsJSON(result), null, 2) + "\n");
   } else {
-    console.log(formatComplianceResults(result));
+    console.log(formatSuiteResults(result));
   }
-  process.exit(result.summary.tracks_failed > 0 ? 3 : 0);
+  process.exit(result.failed_count > 0 ? 3 : 0);
 } catch (err) {
   console.error(`compliance run failed: ${err?.message ?? err}`);
   if (process.env.DEBUG) console.error(err?.stack ?? err);

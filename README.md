@@ -590,15 +590,16 @@ staleness under 1 hour.
 
 ### Upgrading `@adcp/client`
 
-`@adcp/client` is pinned to an exact version (`"5.6.0"`, not `^5.6.0`)
-so compliance-runner behavior can't drift under us silently. Before
-bumping:
+`@adcp/client` is pinned with a caret range (current: `^5.21.1`).
+Compliance-runner behavior can drift under us on `npm install`, so
+the discipline is to re-run compliance whenever the lockfile shifts.
+Before bumping the floor:
 
 1. Read the upstream release notes:
    `https://github.com/adcontextprotocol/adcp-client/releases`.
 2. Re-run `npm run compliance` before merging the bump — any storyboard
    regression on a version bump is usually new spec / new probe
-   behavior, not our code. Two historical examples:
+   behavior, not our code. Three historical examples:
    - 5.2.0 → 5.6.0 (adcp#2535): the `validateErrorCode` extractor
      tightened to read `data.errors[0].code` only when
      `taskResult.success === false`. That requires the agent's MCP
@@ -606,6 +607,20 @@ bumping:
      envelopes — which `callCreateMediaBuy` already does. An agent
      returning errors[] with the default `isError: false` would
      silently regress on this bump.
+   - 5.6.0 → 5.13.0: the `comply()` API was renamed to
+     `testAllScenarios()` (with `formatSuiteResults*` formatters)
+     and the suite restructured from track-based (core/signals/
+     error_handling) to 24 tool-gated scenarios. Any harness script
+     using the old import shape breaks silently with
+     `SyntaxError: Named export 'comply' not found`.
+   - 5.13.0 → 5.21.1: scenario count expanded 24 → 48 (governance,
+     brand-rights, SI, creative-lifecycle, error-codes split into
+     codes/structure/transport). The signals_flow scenario also
+     fixed two long-standing storyboard bugs: it used to send
+     `signal_id` (object) and `destination` (singular) to
+     `activate_signal`; 5.21 sends `signal_agent_segment_id`
+     (string) and `destinations` (array) per 3.0 GA. Agents pinned
+     on 5.13 will see signals_flow 3/5 from those bugs alone.
    - Any bump that adds a new storyboard track (e.g. 5.2.0 added
      security_baseline + signals_baseline) will surface new probes
      as either advisory items or real failures.

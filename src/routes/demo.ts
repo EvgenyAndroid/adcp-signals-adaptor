@@ -13006,11 +13006,14 @@ function _canvasRenderBrandCard(data) {
   card.innerHTML =
     '<div class="canvas-brand-card">' +
       '<div class="canvas-brand-head">' +
-        // Note: no inline onerror attribute. Inside SCRIPT_TAG, \\' in
-        // source collapses to a raw apostrophe which terminates the
-        // outer single-quoted JS string. See feedback_script_tag_template_trap.
-        // Native broken-image rendering is fine for the demo.
-        (logoUrl ? '<img class="canvas-brand-logo" src="' + escapeHtml(logoUrl) + '" alt="' + escapeHtml(data.brand_name) + '"/>' : '<div class="canvas-brand-logo canvas-brand-logo-placeholder">' + escapeHtml((data.brand_name || "?").slice(0, 1)) + '</div>') +
+        // Always emit BOTH — placeholder mounted under the IMG, hidden.
+        // JS attaches an error handler post-render that hides the broken
+        // IMG and reveals the placeholder. Avoids inline onerror (which
+        // hits the SCRIPT_TAG escape trap on the apostrophes).
+        (logoUrl
+          ? '<img class="canvas-brand-logo" id="canvas-brand-logo-img" src="' + escapeHtml(logoUrl) + '" alt="' + escapeHtml(data.brand_name) + '"/>' +
+            '<div class="canvas-brand-logo canvas-brand-logo-placeholder" id="canvas-brand-logo-fallback" style="display:none">' + escapeHtml((data.brand_name || "?").slice(0, 1)) + '</div>'
+          : '<div class="canvas-brand-logo canvas-brand-logo-placeholder">' + escapeHtml((data.brand_name || "?").slice(0, 1)) + '</div>') +
         '<div class="canvas-brand-head-text">' +
           '<div class="canvas-brand-name">' + escapeHtml(data.brand_name || "(no name)") + '</div>' +
           '<div class="canvas-brand-domain mono">' + escapeHtml(data.canonical_domain || "") + '</div>' +
@@ -13071,6 +13074,18 @@ function _canvasRenderBrandCard(data) {
   // Wire the run button after innerHTML is set.
   var runBtn = document.getElementById("canvas-run-btn");
   if (runBtn) runBtn.addEventListener("click", _canvasRunWorkflow);
+
+  // Attach JS-side error handler for the brand logo. If the proxy returns
+  // non-image (e.g. brandfetch CF-1010 banned), swap to the placeholder
+  // initial. Done in JS to dodge the SCRIPT_TAG inline-onerror trap.
+  var logoImg = document.getElementById("canvas-brand-logo-img");
+  var logoFallback = document.getElementById("canvas-brand-logo-fallback");
+  if (logoImg && logoFallback) {
+    logoImg.addEventListener("error", function () {
+      logoImg.style.display = "none";
+      logoFallback.style.display = "";
+    });
+  }
 }
 
 // Brief deriver: fold brand industries + description + name into a short

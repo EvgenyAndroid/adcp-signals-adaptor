@@ -420,6 +420,46 @@ interface WorkflowRunBody {
   max_products_per_agent?: number;
   activate_agents?: string[];
   timeout_ms?: number;
+  // Canvas v2 Refinement: when the caller is the brand-anchored canvas,
+  // it sends a real brand context lifted from agenticadvertising.org.
+  // Threaded into get_products + create_media_buy so vendors with
+  // BrandRef-shaped validators (Claire family) accept the buy. Kept
+  // optional — Sec-48 Orchestrator continues to send brief-only.
+  brand?: BrandContext;
+}
+
+interface BrandContext {
+  domain: string;          // canonical domain (BrandRef.domain)
+  name?: string;           // brand display name
+  brand_id?: string;       // optional: registry id
+  description?: string;
+  // industries[] is included so vendors that don't carry a brand object
+  // can still receive the implied verticals as filter hints.
+  industries?: string[];
+  // brand_manifest fields for Adzymic / Swivel (legacy 2.x BrandManifest).
+  // The vendor adapter routes between BrandRef vs BrandManifest at call time.
+  manifest?: {
+    fonts?: Array<{ name: string; role?: string }>;
+    logos?: Array<{ url: string; tags?: string[] }>;
+    colors?: { accent?: string; primary?: string; secondary?: string };
+  };
+}
+
+/** Compact a BrandContext into the payload-builder shape with optional
+ *  fields stripped when undefined (TS exactOptionalPropertyTypes wants
+ *  the keys absent, not present-with-undefined). */
+function compactBrandContext(b: BrandContext | undefined): {
+  domain: string;
+  name?: string;
+  brand_id?: string;
+  industries?: string[];
+} | undefined {
+  if (!b) return undefined;
+  const out: { domain: string; name?: string; brand_id?: string; industries?: string[] } = { domain: b.domain };
+  if (b.name !== undefined) out.name = b.name;
+  if (b.brand_id !== undefined) out.brand_id = b.brand_id;
+  if (b.industries !== undefined) out.industries = b.industries;
+  return out;
 }
 
 interface StageAgentResult<TPayload> {
@@ -548,6 +588,7 @@ async function runMediaBuyStage(
   chosenFormatIds: string[],
   activateSet: Set<string>,
   timeoutMs: number,
+  brandContext?: BrandContext,
 ): Promise<MediaBuyStageAgent[]> {
   return Promise.all(agents.map(async (a): Promise<MediaBuyStageAgent> => {
     const chosenProductId = chosenProductByAgent[a.id] ?? null;
@@ -558,6 +599,7 @@ async function runMediaBuyStage(
       chosenProductId,
       chosenSignalIds,
       chosenFormatIds,
+      brandContext: compactBrandContext(brandContext),
     });
     const base: MediaBuyStageAgent = {
       id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
@@ -569,7 +611,10 @@ async function runMediaBuyStage(
     // Sec-48r: apply per-vendor adapter just before firing. The preview
     // above stays in the pre-transform shape so the UI shows the common
     // synthesized payload; the wire call carries vendor-specific tweaks.
-    const wirePayload = applyVendorAdapter(a.id, payload);
+    // Canvas v2: pass brand domain so Claire's BrandRef gets the real domain.
+    const wirePayload = applyVendorAdapter(a.id, payload, {
+      brandDomain: brandContext?.domain,
+    });
     const res = await callAgentTool(
       a.mcp_url!,
       "create_media_buy",
@@ -641,7 +686,10 @@ export async function handleWorkflowRun(request: Request, env: Env, logger: Logg
 
   const chosenProductByAgent = pickProductPerAgent(productsResults.map((r) => ({ id: r.id, products: r.payload.products })));
 
-  // Stage 4 — payload synth + optional fire.
+  // Stage 4 — payload synth + optional fire. Canvas v2 threads brand
+  // context through so the synthesized create_media_buy carries real
+  // brand identity (BrandRef.domain, brand_manifest.brand) instead of
+  // the demo placeholder.
   const mediaBuyResults = await runMediaBuyStage(
     workflowId,
     buyingAgents,
@@ -651,6 +699,7 @@ export async function handleWorkflowRun(request: Request, env: Env, logger: Logg
     chosenFormatIds,
     activateSet,
     timeoutMs,
+    body.brand,
   );
 
   const totalTimeMs = Date.now() - t0;
@@ -981,6 +1030,7 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
           const payload = buildCreateMediaBuyPayload({
             workflowId, agentId: a.id, brief: body.brief!,
             chosenProductId, chosenSignalIds, chosenFormatIds,
+            brandContext: compactBrandContext(body.brand),
           });
           if (!activateSet.has(a.id)) {
             send({
@@ -994,7 +1044,9 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
             return;
           }
           const start = Date.now();
-          const wirePayload = applyVendorAdapter(a.id, payload);
+          const wirePayload = applyVendorAdapter(a.id, payload, {
+            brandDomain: body.brand?.domain,
+          });
           const res = await callAgentTool(
             a.mcp_url!,
             "create_media_buy",
@@ -1085,6 +1137,8 @@ interface FireBuyBody {
   brief?: string;
   workflow_id?: string;
   timeout_ms?: number;
+  /** Canvas v2 Refinement: real brand context. */
+  brand?: BrandContext;
 }
 
 export async function handleWorkflowFireBuy(request: Request, env: Env, logger: Logger): Promise<Response> {
@@ -1114,12 +1168,15 @@ export async function handleWorkflowFireBuy(request: Request, env: Env, logger: 
     chosenProductId: body.product_id ?? null,
     chosenSignalIds: Array.isArray(body.signal_ids) ? body.signal_ids.filter((s) => typeof s === "string") : [],
     chosenFormatIds: Array.isArray(body.format_ids) ? body.format_ids.filter((f) => typeof f === "string") : [],
+    brandContext: compactBrandContext(body.brand),
   });
 
   // Sec-48r: apply per-vendor adapter just before wire call. payload
   // above stays as the common synthesized shape returned in the
   // response's `payload_preview` — UI shows the base for comparison.
-  const wirePayload = applyVendorAdapter(agent.id, payload);
+  const wirePayload = applyVendorAdapter(agent.id, payload, {
+    brandDomain: body.brand?.domain,
+  });
   const start = Date.now();
   const res = await callAgentTool(
     agent.mcp_url,

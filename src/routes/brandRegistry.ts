@@ -158,3 +158,101 @@ export async function handleBrandResolve(
 
   return jsonResponse(out);
 }
+
+// ── /brands/logo ────────────────────────────────────────────────────────────
+//
+// Phase 2 follow-up: proxy brand-logo image bytes through our worker so the
+// UI doesn't depend on third-party CDN render reliability. Brandfetch.io
+// (the actual host for many registry entries — e.g. Coca-Cola) returns a
+// valid SVG over HTTPS, but browser <img> rendering of that origin can
+// fail silently in our context (suspected hotlink-detect / referrer
+// policy). Proxying through us makes logos render uniformly: we own the
+// response headers, the cache, and the failure-mode (404 fallback).
+//
+// SSRF guard: only allow URLs from a known set of brand-logo origins.
+
+const LOGO_TTL_SEC = 86400;       // 24h — logos rarely change
+const LOGO_KEY_PREFIX = "brand_logo:";
+const LOGO_ALLOWED_HOSTS = new Set<string>([
+  "agenticadvertising.org",
+  "cdn.brandfetch.io",
+  "asset.brandfetch.io",
+  "logos.brandfetch.io",
+]);
+
+export async function handleBrandLogo(
+  request: Request,
+  env: Env,
+  logger: Logger,
+): Promise<Response> {
+  const url = new URL(request.url);
+  const target = url.searchParams.get("u");
+  if (!target) return errorResponse("INVALID_INPUT", "u (target url) required", 400);
+
+  let parsed: URL;
+  try {
+    parsed = new URL(target);
+  } catch {
+    return errorResponse("INVALID_INPUT", "malformed url", 400);
+  }
+  if (parsed.protocol !== "https:") {
+    return errorResponse("INVALID_INPUT", "https only", 400);
+  }
+  if (!LOGO_ALLOWED_HOSTS.has(parsed.hostname)) {
+    return errorResponse("HOST_NOT_ALLOWED", `logo host ${parsed.hostname} not allowlisted`, 403);
+  }
+
+  const cacheKey = LOGO_KEY_PREFIX + target;
+  try {
+    const ctMeta = await env.SIGNALS_CACHE.getWithMetadata<{ ct?: string }>(cacheKey, "stream");
+    if (ctMeta.value) {
+      const contentType = (ctMeta.metadata && ctMeta.metadata.ct) || "image/svg+xml";
+      return new Response(ctMeta.value, {
+        status: 200,
+        headers: {
+          "Content-Type": contentType,
+          "Cache-Control": "public, max-age=" + LOGO_TTL_SEC,
+          "X-Cache": "hit",
+        },
+      });
+    }
+  } catch { /* fall through to fresh fetch */ }
+
+  let upstream: Response;
+  try {
+    upstream = await fetch(target, {
+      signal: AbortSignal.timeout(8000),
+      headers: { "Accept": "image/*" },
+    });
+  } catch (e) {
+    logger.warn("brand_logo_upstream_error", { url: target, error: String((e as Error).message || e) });
+    return errorResponse("UPSTREAM_ERROR", "logo unreachable", 502);
+  }
+  if (!upstream.ok) {
+    logger.warn("brand_logo_upstream_status", { url: target, status: upstream.status });
+    return errorResponse("UPSTREAM_ERROR", "logo upstream " + upstream.status, 502);
+  }
+
+  const contentType = upstream.headers.get("content-type") || "image/svg+xml";
+  const arrayBuf = await upstream.arrayBuffer();
+  if (arrayBuf.byteLength > 1_000_000) {
+    return errorResponse("UPSTREAM_TOO_LARGE", "logo > 1MB; not cached", 413);
+  }
+
+  try {
+    await env.SIGNALS_CACHE.put(cacheKey, arrayBuf, {
+      expirationTtl: LOGO_TTL_SEC,
+      metadata: { ct: contentType },
+    });
+  } catch { /* non-fatal */ }
+
+  return new Response(arrayBuf, {
+    status: 200,
+    headers: {
+      "Content-Type": contentType,
+      "Cache-Control": "public, max-age=" + LOGO_TTL_SEC,
+      "X-Cache": "miss",
+    },
+  });
+}
+

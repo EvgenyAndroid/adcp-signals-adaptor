@@ -107,6 +107,17 @@ export interface MediaBuyPayloadInputWithCreative extends MediaBuyPayloadInput {
    *  `packages[0].creatives` so the vendor sees a compatible
    *  format declaration alongside the product + targeting. */
   chosenFormatIds?: string[];
+  /** Canvas v2: real brand context lifted from the agentic-advertising
+   *  registry. When provided, the payload's brand fields use the real
+   *  brand domain + name + categories instead of the synthetic
+   *  "AdCP Workflow Demo" defaults. Vendor adapter still routes between
+   *  BrandRef and BrandManifest at call time. */
+  brandContext?: {
+    domain: string;
+    name?: string;
+    brand_id?: string;
+    industries?: string[];
+  } | undefined;
 }
 
 export interface MediaBuyPayload {
@@ -153,12 +164,20 @@ export function buildCreateMediaBuyPayload(input: MediaBuyPayloadInputWithCreati
     pkg.creatives = formats.map((fid) => ({ format_id: fid }));
   }
 
+  // Canvas v2: when brandContext is supplied, use the real brand from
+  // the agentic-advertising registry; otherwise fall back to the demo
+  // defaults. Vendor adapter handles BrandRef vs BrandManifest routing.
+  const brandName = input.brandContext?.name ?? input.brandContext?.domain ?? "AdCP Workflow Demo";
+  const brandCategories = (input.brandContext?.industries && input.brandContext.industries.length > 0)
+    ? input.brandContext.industries.slice(0, 5).map((c) => c.toLowerCase())
+    : extractCategories(input.brief);
+
   const payload: MediaBuyPayload = {
     buyer_ref: `wf_${input.workflowId}_${input.agentId}`,
     brand_manifest: {
-      brand: "AdCP Workflow Demo",
-      advertiser: "AdCP Workflow Demo",
-      categories: extractCategories(input.brief),
+      brand: brandName,
+      advertiser: brandName,
+      categories: brandCategories,
     },
     packages: [pkg],
     start_time: startIso,
@@ -215,7 +234,20 @@ export function extractCategories(brief: string): string[] {
  *  product result into fire-buy; tracked as follow-up. For now the
  *  placeholder surfaces as a different vendor error message, which is
  *  still better than the current outright rejection. */
-export function applyVendorAdapter(agentId: string, payload: MediaBuyPayload): MediaBuyPayload {
+/** Optional brand-domain hint for the BrandRef synthesis. Canvas v2
+ *  passes the canonical brand domain (e.g. cbrands.com) so Claire's
+ *  validator sees a real domain instead of "demo.example.com".
+ *  brandDomain accepts undefined explicitly so callers can pass through
+ *  optional chains directly. */
+export interface VendorAdapterContext {
+  brandDomain?: string | undefined;
+}
+
+export function applyVendorAdapter(
+  agentId: string,
+  payload: MediaBuyPayload,
+  ctx?: VendorAdapterContext,
+): MediaBuyPayload {
   // Deep-clone so callers can still inspect the pre-transform shape.
   const p: MediaBuyPayload = JSON.parse(JSON.stringify(payload));
 
@@ -250,9 +282,10 @@ export function applyVendorAdapter(agentId: string, payload: MediaBuyPayload): M
     // The error explicitly cited "AdCP spec", so this is canonical:
     //   https://adcontextprotocol.org/schemas/v1/
     const name = p.brand_manifest?.brand ?? "Demo Brand";
+    const domain = ctx?.brandDomain ?? "demo.example.com";
     delete (p as unknown as Record<string, unknown>).brand_manifest;
     (p as unknown as Record<string, unknown>).brand = {
-      domain: "demo.example.com",
+      domain,
       name,
     };
   }

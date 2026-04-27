@@ -12757,7 +12757,11 @@ function _canvasRenderBrandCard(data) {
   card.innerHTML =
     '<div class="canvas-brand-card">' +
       '<div class="canvas-brand-head">' +
-        (logoUrl ? '<img class="canvas-brand-logo" src="' + escapeHtml(logoUrl) + '" alt="' + escapeHtml(data.brand_name) + '" onerror="this.style.display=\'none\'"/>' : '<div class="canvas-brand-logo canvas-brand-logo-placeholder">' + escapeHtml((data.brand_name || "?").slice(0, 1)) + '</div>') +
+        // Note: no inline onerror attribute. Inside SCRIPT_TAG, \\' in
+        // source collapses to a raw apostrophe which terminates the
+        // outer single-quoted JS string. See feedback_script_tag_template_trap.
+        // Native broken-image rendering is fine for the demo.
+        (logoUrl ? '<img class="canvas-brand-logo" src="' + escapeHtml(logoUrl) + '" alt="' + escapeHtml(data.brand_name) + '"/>' : '<div class="canvas-brand-logo canvas-brand-logo-placeholder">' + escapeHtml((data.brand_name || "?").slice(0, 1)) + '</div>') +
         '<div class="canvas-brand-head-text">' +
           '<div class="canvas-brand-name">' + escapeHtml(data.brand_name || "(no name)") + '</div>' +
           '<div class="canvas-brand-domain mono">' + escapeHtml(data.canonical_domain || "") + '</div>' +

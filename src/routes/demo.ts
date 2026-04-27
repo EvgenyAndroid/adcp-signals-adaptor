@@ -1336,51 +1336,51 @@ ${STYLES}
           </div>
         </div>
 
-        <!-- Three-lane canvas (skeleton; phase 2 wires in fan-outs) -->
+        <!-- Three-lane canvas. Phase 2 routes /agents/workflow/run/stream
+             events to per-lane render. Bodies have stable IDs for the JS. -->
         <div id="canvas-lanes" class="canvas-lanes" style="display:none">
-          <div class="canvas-lane canvas-lane-audiences">
+          <div class="canvas-lane canvas-lane-audiences" id="canvas-lane-signals">
             <div class="canvas-lane-head">
               <span class="canvas-lane-num mono">1</span>
               <span class="canvas-lane-title">Audiences</span>
-              <span class="orch-small">signals · phase 2</span>
+              <span class="orch-small">signals fan-out</span>
             </div>
-            <div class="canvas-lane-body">
+            <div class="canvas-lane-body" id="canvas-lane-audiences-body">
               <div class="orch-small canvas-lane-placeholder">
-                Phase 2 will fan out <code>get_signals</code> across signals agents,
-                pre-filtered by this brand's <strong>industries[]</strong>.
+                Click <strong>Run workflow with this brand</strong> above.
+                Brief is auto-derived from this brand's industries.
               </div>
             </div>
           </div>
-          <div class="canvas-lane canvas-lane-inventory">
+          <div class="canvas-lane canvas-lane-inventory" id="canvas-lane-products">
             <div class="canvas-lane-head">
               <span class="canvas-lane-num mono">2</span>
               <span class="canvas-lane-title">Inventory</span>
-              <span class="orch-small">products · phase 2</span>
+              <span class="orch-small">products fan-out</span>
             </div>
-            <div class="canvas-lane-body">
+            <div class="canvas-lane-body" id="canvas-lane-inventory-body">
               <div class="orch-small canvas-lane-placeholder">
-                Phase 2 will fan out <code>get_products</code> with this brand as
-                <code>brand: BrandRef</code> per AdCP 3.0 GA.
+                <code>get_products</code> across the buying-agent default trio
+                (adzymic_apx, claire_scope3, swivel).
               </div>
             </div>
           </div>
-          <div class="canvas-lane canvas-lane-creative">
+          <div class="canvas-lane canvas-lane-creative" id="canvas-lane-creative">
             <div class="canvas-lane-head">
               <span class="canvas-lane-num mono">3</span>
               <span class="canvas-lane-title">Creative</span>
-              <span class="orch-small">build · phase 2</span>
+              <span class="orch-small">format catalog</span>
             </div>
-            <div class="canvas-lane-body">
+            <div class="canvas-lane-body" id="canvas-lane-creative-body">
               <div class="orch-small canvas-lane-placeholder">
-                Phase 2 will call <code>build_creative</code> on Celtra with this
-                brand's <strong>colors</strong>, <strong>fonts</strong>, and
-                <strong>logos</strong>.
+                <code>list_creative_formats</code> across Advertible + Celtra,
+                pre-filtered by brief intent.
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Governance + media-buy + measurement (phase 3+4 placeholders) -->
+        <!-- Governance + media-buy + measurement. -->
         <div id="canvas-bottom" class="canvas-bottom" style="display:none">
           <div class="canvas-bottom-row canvas-row-governance">
             <div class="canvas-bottom-label">Governance + brand rights</div>
@@ -1389,10 +1389,10 @@ ${STYLES}
               <span class="orch-small" style="margin-left:8px">no live agent implementations — phase 3</span>
             </div>
           </div>
-          <div class="canvas-bottom-row canvas-row-mediabuy">
+          <div class="canvas-bottom-row canvas-row-mediabuy" id="canvas-lane-mediabuy-row">
             <div class="canvas-bottom-label">Media buy</div>
-            <div class="canvas-bottom-body">
-              <span class="orch-small">phase 2 will assemble create_media_buy with this brand's BrandRef</span>
+            <div class="canvas-bottom-body" id="canvas-row-mediabuy-body">
+              <span class="orch-small">click Run above; payload assembled with this brand</span>
             </div>
           </div>
           <div class="canvas-bottom-row canvas-row-measurement">
@@ -4443,7 +4443,12 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 }
 .canvas-search-row:last-child { border-bottom: none; }
 .canvas-search-row:hover { background: var(--bg-hover); }
-.canvas-search-name { font-size: 12.5px; font-weight: 500; color: var(--text); }
+.canvas-search-name { font-size: 12.5px; font-weight: 500; color: var(--text); display: flex; align-items: center; gap: 6px; }
+.canvas-row-swatch {
+  display: inline-block; width: 10px; height: 10px;
+  border-radius: 2px; border: 1px solid rgba(255,255,255,0.15);
+  vertical-align: middle; flex-shrink: 0;
+}
 .canvas-search-meta {
   display: flex; align-items: center; gap: 8px;
   font-size: 10.5px; color: var(--text-mut); margin-top: 2px;
@@ -4546,6 +4551,95 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .canvas-lane-title { font-size: 13px; font-weight: 500; color: var(--text); }
 .canvas-lane-body { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
 .canvas-lane-placeholder { font-style: italic; }
+
+/* Phase 2: lane active/done states + populated lane content */
+.canvas-lane.canvas-lane-active {
+  box-shadow: 0 0 0 2px rgba(79,195,127,0.25);
+  background: linear-gradient(0deg, var(--bg-input), var(--bg-input)) padding-box;
+}
+.canvas-lane.canvas-lane-done .canvas-lane-num {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+.canvas-bottom-row.canvas-lane-active {
+  box-shadow: 0 0 0 2px rgba(79,195,127,0.25);
+}
+
+.canvas-lane-agent {
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.canvas-lane-agent-head {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10.5px; color: var(--text-mut);
+  margin-bottom: 4px;
+}
+.canvas-lane-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 2px 0; font-size: 11px;
+  border-top: 1px solid var(--border);
+}
+.canvas-lane-row:first-of-type { border-top: none; }
+.canvas-lane-row-id { color: var(--text-dim); font-size: 10px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.canvas-lane-row-name { flex: 1; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.canvas-lane-row-chosen {
+  background: var(--accent-dim);
+  border-radius: 3px; padding: 2px 4px; margin: 0 -4px;
+}
+.canvas-lane-row-chosen .canvas-lane-row-name { color: var(--accent); font-weight: 500; }
+
+.canvas-lane-format-list {
+  display: flex; flex-wrap: wrap; gap: 4px;
+}
+.canvas-format-chosen {
+  background: var(--accent-dim) !important;
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+  font-weight: 600;
+}
+
+.canvas-chosen-line {
+  margin-top: 8px; padding: 6px 8px;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  border-radius: 4px; font-size: 11px;
+  display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+}
+.canvas-chip {
+  display: inline-block; padding: 2px 6px;
+  background: var(--bg-input); color: var(--accent);
+  border-radius: 3px; font-size: 10px;
+}
+
+.canvas-mediabuy-cell {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 8px; margin-right: 6px;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: 4px; font-size: 11px;
+}
+
+.canvas-brand-actions {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 0; margin: 10px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.canvas-run-btn {
+  display: inline-flex; align-items: center; gap: 6px; justify-content: center;
+  background: var(--accent); color: #000; border: 1px solid var(--accent);
+  border-radius: 4px; padding: 8px 14px; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: filter 0.15s;
+}
+.canvas-run-btn:hover { filter: brightness(1.1); }
+.canvas-run-btn .ico { width: 12px; height: 12px; }
+.canvas-derived-brief {
+  flex: 1; min-width: 200px;
+  color: var(--text-dim);
+  font-size: 11px;
+}
 
 .canvas-bottom { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
 .canvas-bottom-row {
@@ -12662,9 +12756,28 @@ async function _canvasRunSearch() {
       var house = b.house_domain
         ? '<span class="orch-small" style="color:var(--text-mut)">house: ' + escapeHtml(b.house_domain) + '</span>'
         : '';
+      // Phase 2 polish: surface verified/manifest/employees/primary-color/sub-brand-count.
+      var verified = b.verified
+        ? '<span class="pill pill-success mono" style="font-size:9.5px">verified</span>'
+        : '';
+      var manifest = b.has_manifest
+        ? '<span class="pill pill-info mono" style="font-size:9.5px">brand.json</span>'
+        : '';
+      var subCount = (typeof b.sub_brand_count === "number" && b.sub_brand_count > 0)
+        ? '<span class="orch-small" style="color:var(--text-mut)">+' + b.sub_brand_count + ' sub-brands</span>'
+        : '';
+      var emp = (typeof b.employee_count === "number" && b.employee_count > 0)
+        ? '<span class="orch-small" style="color:var(--text-mut)">' + b.employee_count + ' emp</span>'
+        : '';
+      var primarySwatch = b.primary_color
+        ? '<span class="canvas-row-swatch" style="background:' + escapeHtml(b.primary_color) + '" title="primary: ' + escapeHtml(b.primary_color) + '"></span>'
+        : '';
+      var industries = Array.isArray(b.industries) && b.industries.length > 0
+        ? '<span class="orch-small" style="color:var(--text-mut)">' + escapeHtml(b.industries.slice(0, 2).join(" / ")) + '</span>'
+        : '';
       return '<div class="canvas-search-row" data-domain="' + escapeHtml(b.domain) + '">' +
-        '<div class="canvas-search-name">' + escapeHtml(b.brand_name) + '</div>' +
-        '<div class="canvas-search-meta mono">' + escapeHtml(b.domain) + '  ' + typeBadge + '  ' + house + '</div>' +
+        '<div class="canvas-search-name">' + primarySwatch + escapeHtml(b.brand_name) + '  ' + verified + manifest + '</div>' +
+        '<div class="canvas-search-meta mono">' + escapeHtml(b.domain) + '  ' + typeBadge + '  ' + house + '  ' + emp + '  ' + subCount + '  ' + industries + '</div>' +
       '</div>';
     }).join("");
     var cacheTag = data.cache === "hit"
@@ -12802,13 +12915,258 @@ function _canvasRenderBrandCard(data) {
         '</div>' +
       '</div>' +
       classNote +
+      // Phase 2: Run workflow button. Auto-derives a brief from the brand.
+      '<div class="canvas-brand-actions">' +
+        '<button class="btn-primary canvas-run-btn" id="canvas-run-btn">' +
+          '<svg class="ico"><use href="#icon-bolt"/></svg>' +
+          '<span>Run workflow with this brand</span>' +
+        '</button>' +
+        '<div class="canvas-derived-brief orch-small">' +
+          '<span style="color:var(--text-mut)">derived brief:</span> ' +
+          '<code class="mono">' + escapeHtml(_canvasDeriveBrief(data)) + '</code>' +
+        '</div>' +
+      '</div>' +
       '<div class="canvas-brand-rawdrop">' +
         '<details><summary class="orch-small">raw brand.json</summary>' +
           '<pre class="wf-json mono">' + escapeHtml(JSON.stringify(bm, null, 2)) + '</pre>' +
         '</details>' +
       '</div>' +
     '</div>';
+  // Wire the run button after innerHTML is set.
+  var runBtn = document.getElementById("canvas-run-btn");
+  if (runBtn) runBtn.addEventListener("click", _canvasRunWorkflow);
 }
+
+// Brief deriver: fold brand industries + description + name into a short
+// brief string. Vendor agents accept free-text briefs; we layer brand
+// context as the seed.
+function _canvasDeriveBrief(brandData) {
+  var bm = (brandData && brandData.brand_manifest) || {};
+  var company = bm.company || {};
+  var inds = Array.isArray(company.industries) ? company.industries : [];
+  // Dedupe + take the first 2 industries
+  var uniq = [];
+  inds.forEach(function (i) { if (uniq.indexOf(i) < 0 && uniq.length < 2) uniq.push(i); });
+  var indPart = uniq.length > 0 ? uniq.join(" + ").toLowerCase() : "general";
+  var brand = brandData.brand_name || bm.name || brandData.canonical_domain || "the brand";
+  return indPart + " buyers in " + brand + " core markets";
+}
+
+// Phase 2: stream the workflow keyed off this brand. Routes events to lanes.
+var _canvasRunning = false;
+async function _canvasRunWorkflow() {
+  if (_canvasRunning) return;
+  if (!_canvasState.brand) return;
+  var brand = _canvasState.brand;
+  var brief = _canvasDeriveBrief(brand);
+  _canvasRunning = true;
+
+  // Reset lanes to running state.
+  _canvasResetLanes();
+
+  try {
+    var r = await fetch("/agents/workflow/run/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        brief: brief,
+        timeout_ms: 25000,
+      }),
+    });
+    if (!r.ok || !r.body) throw new Error("HTTP " + r.status);
+    var reader = r.body.getReader();
+    var dec = new TextDecoder();
+    var buf = "";
+    while (true) {
+      var chunk = await reader.read();
+      if (chunk.done) break;
+      buf += dec.decode(chunk.value, { stream: true });
+      var nl;
+      while ((nl = buf.indexOf("\\n")) >= 0) {
+        var line = buf.slice(0, nl).trim();
+        buf = buf.slice(nl + 1);
+        if (!line) continue;
+        try {
+          var ev = JSON.parse(line);
+          _canvasApplyEvent(ev);
+        } catch (e) { /* malformed frame */ }
+      }
+    }
+  } catch (e) {
+    showToast("Workflow failed: " + (e && e.message ? e.message : e), true);
+  } finally {
+    _canvasRunning = false;
+  }
+}
+
+function _canvasResetLanes() {
+  var laneIds = ["canvas-lane-audiences-body", "canvas-lane-inventory-body", "canvas-lane-creative-body", "canvas-row-mediabuy-body"];
+  laneIds.forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.innerHTML = '<div class="canvas-loading orch-small"><span class="spinner"></span> waiting…</div>';
+  });
+  // Reset state
+  _canvasState.results = {
+    signals: { agents: {}, total: 0, chosen: [] },
+    creative: { agents: {}, total: 0, chosen: [] },
+    products: { agents: {}, total: 0, chosen: {} },
+    media_buy: { agents: {} },
+  };
+}
+
+function _canvasApplyEvent(ev) {
+  var type = ev && ev.type;
+  if (!_canvasState.results) _canvasState.results = { signals:{agents:{}}, creative:{agents:{}}, products:{agents:{}}, media_buy:{agents:{}} };
+  var r = _canvasState.results;
+
+  if (type === "stage_start") {
+    // Light up the lane border.
+    var stage = ev.stage;
+    var laneEl = document.getElementById("canvas-lane-" + (stage === "media_buy" ? "mediabuy-row" : stage));
+    if (laneEl) laneEl.classList.add("canvas-lane-active");
+    return;
+  }
+  if (type === "agent_complete") {
+    var stage = ev.stage;
+    if (!r[stage]) return;
+    r[stage].agents[ev.agent_id] = ev;
+    _canvasRenderLane(stage);
+    return;
+  }
+  if (type === "stage_complete") {
+    var stage = ev.stage;
+    var laneEl = document.getElementById("canvas-lane-" + (stage === "media_buy" ? "mediabuy-row" : stage));
+    if (laneEl) {
+      laneEl.classList.remove("canvas-lane-active");
+      laneEl.classList.add("canvas-lane-done");
+    }
+    if (r[stage]) r[stage].total = (ev.summary && ev.summary.total) || 0;
+    _canvasRenderLane(stage);
+    return;
+  }
+  if (type === "targeting_chosen") {
+    r.signals.chosen = ev.chosen_signal_ids || [];
+    _canvasRenderLane("signals");
+    return;
+  }
+  if (type === "formats_chosen") {
+    r.creative.chosen = ev.chosen_format_ids || [];
+    _canvasRenderLane("creative");
+    return;
+  }
+  if (type === "products_chosen") {
+    r.products.chosen = ev.chosen_product_per_agent || {};
+    _canvasRenderLane("products");
+    return;
+  }
+  if (type === "workflow_complete") {
+    var ts = document.getElementById("canvas-derived-brief");
+    void ts;
+    return;
+  }
+}
+
+function _canvasRenderLane(stage) {
+  var r = _canvasState.results[stage] || { agents: {} };
+  var bodyId =
+    stage === "signals"   ? "canvas-lane-audiences-body" :
+    stage === "creative"  ? "canvas-lane-creative-body" :
+    stage === "products"  ? "canvas-lane-inventory-body" :
+    stage === "media_buy" ? "canvas-row-mediabuy-body" : null;
+  if (!bodyId) return;
+  var el = document.getElementById(bodyId);
+  if (!el) return;
+  var agents = r.agents || {};
+  var ids = Object.keys(agents);
+  if (ids.length === 0) {
+    el.innerHTML = '<div class="canvas-loading orch-small"><span class="spinner"></span> running…</div>';
+    return;
+  }
+
+  if (stage === "signals") {
+    var parts = ids.map(function (aid) {
+      var a = agents[aid];
+      var sm = a.summary || {};
+      var preview = sm.preview || [];
+      var rows = preview.slice(0, 3).map(function (s) {
+        var chosen = (r.chosen || []).indexOf(s.id) >= 0;
+        return '<div class="canvas-lane-row' + (chosen ? ' canvas-lane-row-chosen' : '') + '">' +
+          '<span class="mono canvas-lane-row-id">' + escapeHtml(s.id || '-') + '</span>' +
+          '<span class="canvas-lane-row-name">' + escapeHtml(s.name || '') + '</span>' +
+        '</div>';
+      }).join("");
+      return '<div class="canvas-lane-agent">' +
+        '<div class="canvas-lane-agent-head"><span class="mono">' + escapeHtml(aid) + '</span> ' +
+          (a.ok ? '<span class="pill pill-success mono" style="font-size:9.5px">' + (sm.count || 0) + '</span>' : '<span class="pill pill-error mono" style="font-size:9.5px">err</span>') +
+        '</div>' + rows +
+      '</div>';
+    }).join("");
+    var chosenLine = (r.chosen && r.chosen.length > 0)
+      ? '<div class="canvas-chosen-line"><span class="orch-small" style="color:var(--text-mut)">→ targeting:</span> ' +
+          r.chosen.map(function (s) { return '<code class="mono canvas-chip">' + escapeHtml(s) + '</code>'; }).join(' ') +
+        '</div>'
+      : '';
+    el.innerHTML = parts + chosenLine;
+  } else if (stage === "creative") {
+    var parts = ids.map(function (aid) {
+      var a = agents[aid];
+      var sm = a.summary || {};
+      var preview = sm.preview || [];
+      var pills = preview.slice(0, 4).map(function (p) {
+        var pid = (p && p.id) || '';
+        var pname = (p && (p.name || pid)) || '?';
+        var chosen = (r.chosen || []).indexOf(pid) >= 0;
+        return '<span class="pill pill-muted mono ' + (chosen ? 'canvas-format-chosen' : '') + '" style="font-size:10px">' +
+          escapeHtml(String(pname).slice(0, 28)) + '</span>';
+      }).join(" ");
+      return '<div class="canvas-lane-agent">' +
+        '<div class="canvas-lane-agent-head"><span class="mono">' + escapeHtml(aid) + '</span> ' +
+          (a.ok ? '<span class="pill pill-success mono" style="font-size:9.5px">' + (sm.count || 0) + '</span>' : '<span class="pill pill-error mono" style="font-size:9.5px">err</span>') +
+        '</div>' +
+        '<div class="canvas-lane-format-list">' + pills + '</div>' +
+      '</div>';
+    }).join("");
+    var chosenLine = (r.chosen && r.chosen.length > 0)
+      ? '<div class="canvas-chosen-line"><span class="orch-small" style="color:var(--text-mut)">→ creative:</span> ' +
+          r.chosen.map(function (f) { return '<code class="mono canvas-chip">' + escapeHtml(f) + '</code>'; }).join(' ') +
+        '</div>'
+      : '';
+    el.innerHTML = parts + chosenLine;
+  } else if (stage === "products") {
+    var chosenMap = r.chosen || {};
+    var parts = ids.map(function (aid) {
+      var a = agents[aid];
+      var sm = a.summary || {};
+      var preview = sm.preview || [];
+      var picked = chosenMap[aid];
+      var rows = preview.slice(0, 3).map(function (p) {
+        var chosen = picked && (p.id === picked);
+        return '<div class="canvas-lane-row' + (chosen ? ' canvas-lane-row-chosen' : '') + '">' +
+          '<span class="mono canvas-lane-row-id">' + escapeHtml(p.id || '-') + '</span>' +
+          '<span class="canvas-lane-row-name">' + escapeHtml(p.name || '') + '</span>' +
+        '</div>';
+      }).join("");
+      return '<div class="canvas-lane-agent">' +
+        '<div class="canvas-lane-agent-head"><span class="mono">' + escapeHtml(aid) + '</span> ' +
+          (a.ok ? '<span class="pill pill-success mono" style="font-size:9.5px">' + (sm.count || 0) + '</span>' : '<span class="pill pill-error mono" style="font-size:9.5px">err</span>') +
+        '</div>' + rows +
+      '</div>';
+    }).join("");
+    el.innerHTML = parts;
+  } else if (stage === "media_buy") {
+    var parts = ids.map(function (aid) {
+      var a = agents[aid];
+      var sm = a.summary || {};
+      var fired = sm.fired ? (a.ok ? '<span class="pill pill-success mono" style="font-size:9.5px">fired ✓</span>' : '<span class="pill pill-error mono" style="font-size:9.5px">fired ✗</span>') : '<span class="pill pill-muted mono" style="font-size:9.5px">dry run</span>';
+      return '<div class="canvas-mediabuy-cell">' +
+        '<span class="mono">' + escapeHtml(aid) + '</span> ' + fired +
+      '</div>';
+    }).join("");
+    el.innerHTML = parts;
+  }
+}
+
+// ─── Federation (partial — more in Part 3) ───────────────────────────────
 
 // ─── Federation (partial — more in Part 3) ───────────────────────────────
 var _fedLoaded = false;

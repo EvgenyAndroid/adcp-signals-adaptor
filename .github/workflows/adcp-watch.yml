@@ -1,0 +1,44 @@
+name: AdCP Watcher
+
+on:
+  schedule:
+    # 13:00 UTC daily (~9am ET, after morning npm publishes settle).
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+    # Manual trigger for testing or post-incident catch-up.
+
+permissions:
+  # contents: read for checkout + npm ci.
+  # issues: write so the watcher can create/edit the tracking issue and
+  # post comments. Nothing else needs writing — state lives in the issue
+  # body, not in the repo.
+  contents: read
+  issues: write
+
+concurrency:
+  # If a run is already in progress (manual dispatch overlaps cron), wait
+  # rather than spawning a parallel run that would race on the issue body.
+  group: adcp-watcher
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run watcher
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API_KEY: ${{ secrets.DEMO_API_KEY }}
+          AGENT_URL: ${{ vars.AGENT_URL }}
+        run: node scripts/adcp-watch.mjs

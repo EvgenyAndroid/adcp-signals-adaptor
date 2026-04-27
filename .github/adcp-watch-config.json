@@ -1,0 +1,22 @@
+{
+  "client_sdk": {
+    "package_name": "@adcp/client",
+    "package_json_path": "package.json"
+  },
+  "spec_repo": "adcontextprotocol/adcp",
+  "tracking_issue_label": "adcp-watcher-tracker",
+  "tracked_issues": [
+    {
+      "repo": "adcontextprotocol/adcp",
+      "number": 2916,
+      "kind": "issue",
+      "context": "Q3 systemic FAIL→SKIP applicability bug — runner conflates 'media-buy agent' with 'any agent'. Deferred to adcp 3.1.0; resurfaces when capability-derived skip_if grammar lands runner-side in @adcp/client. Until then, error_handling / validation / schema_compliance stay skipped on signals-only agents."
+    },
+    {
+      "repo": "adcontextprotocol/adcp-client",
+      "number": 1036,
+      "kind": "pr",
+      "context": "Governance advisory JSON-parse fix surfaced during triage of our Q1/Q2 issues. Informational; does not affect our compliance numbers."
+    }
+  ]
+}

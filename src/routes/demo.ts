@@ -4667,10 +4667,31 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 }
 
 .canvas-mediabuy-cell {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 8px; margin-right: 6px;
+  display: inline-flex; flex-direction: column; align-items: stretch;
+  gap: 4px; padding: 4px 8px; margin: 0 6px 6px 0;
   background: var(--bg-raised); border: 1px solid var(--border);
-  border-radius: 4px; font-size: 11px;
+  border-radius: 4px; font-size: 11px; vertical-align: top;
+}
+.canvas-mediabuy-cell-row {
+  display: flex; align-items: center; gap: 6px;
+}
+.canvas-fire-btn {
+  background: transparent; color: var(--accent);
+  border: 1px solid var(--accent); border-radius: 3px;
+  padding: 1px 6px; font-size: 9.5px; font-weight: 500;
+  cursor: pointer; transition: background-color 0.15s, opacity 0.15s;
+  font-family: inherit;
+}
+.canvas-fire-btn:hover:not(:disabled) { background: var(--accent); color: #000; }
+.canvas-fire-btn:disabled { opacity: 0.6; cursor: wait; }
+.canvas-mediabuy-rejection {
+  font-size: 10px; line-height: 1.35; color: var(--error);
+  max-width: 360px; word-break: break-word;
+  padding-top: 2px; border-top: 1px dashed var(--border);
+}
+.canvas-mediabuy-rejection.canvas-mediabuy-auth {
+  color: var(--warning, #d4a017); border-top-color: var(--warning, #d4a017);
+  display: flex; align-items: flex-start; gap: 5px;
 }
 
 .canvas-brand-actions {
@@ -13336,12 +13357,120 @@ function _canvasRenderLane(stage) {
     var parts = ids.map(function (aid) {
       var a = agents[aid];
       var sm = a.summary || {};
-      var fired = sm.fired ? (a.ok ? '<span class="pill pill-success mono" style="font-size:9.5px">fired ✓</span>' : '<span class="pill pill-error mono" style="font-size:9.5px">fired ✗</span>') : '<span class="pill pill-muted mono" style="font-size:9.5px">dry run</span>';
+      var fired = sm.fired
+        ? (a.ok
+          ? '<span class="pill pill-success mono" style="font-size:9.5px">fired ✓</span>'
+          : '<span class="pill pill-error mono" style="font-size:9.5px">fired ✗</span>')
+        : '<span class="pill pill-muted mono" style="font-size:9.5px">dry run</span>';
+      // Phase 4 follow-up: fire button per vendor, only on dry-run cards.
+      // Click → /agents/workflow/fire-buy with the brand context attached.
+      // Re-renders the row with fired + auth-gated callout (matching the
+      // Orchestrator tab UX).
+      var fireBtn = !sm.fired
+        ? '<button class="canvas-fire-btn" data-canvas-fire-agent="' + escapeHtml(aid) + '" title="Live-fire create_media_buy on this vendor with the current brand context">simulate fire</button>'
+        : '';
+      // Surface vendor rejection reason inline if fired and not ok.
+      var rejection = "";
+      if (sm.fired && !a.ok) {
+        var content = sm.content;
+        var resultText = "";
+        if (Array.isArray(content)) {
+          for (var ci = 0; ci < content.length; ci++) {
+            var blk = content[ci];
+            if (blk && typeof blk === "object" && blk.type === "text" && typeof blk.text === "string") {
+              resultText = blk.text; break;
+            }
+          }
+        }
+        if (!resultText && sm.result) {
+          try { resultText = JSON.stringify(sm.result); } catch (e) { /* noop */ }
+        }
+        // Same auth-pattern detector as the Orchestrator tab.
+        var authRegex = /principal id not found|authentication required|auth_token_invalid|unauthorized|\\b401\\b|tenant policy/i;
+        var isAuthGated = authRegex.test(resultText);
+        rejection = isAuthGated
+          ? '<div class="canvas-mediabuy-rejection canvas-mediabuy-auth"><span class="canvas-loop-arrow-glyph" style="font-size:13px">⚠</span> auth-gated — payload shape passed; vendor requires credentials we do not have</div>'
+          : (resultText ? '<div class="canvas-mediabuy-rejection mono">' + escapeHtml(resultText.slice(0, 220)) + '</div>' : '');
+      }
       return '<div class="canvas-mediabuy-cell">' +
-        '<span class="mono">' + escapeHtml(aid) + '</span> ' + fired +
+        '<div class="canvas-mediabuy-cell-row"><span class="mono">' + escapeHtml(aid) + '</span> ' + fired + fireBtn + '</div>' +
+        rejection +
       '</div>';
     }).join("");
     el.innerHTML = parts;
+    // Wire fire buttons (post-innerHTML — addEventListener avoids the
+    // SCRIPT_TAG inline-attr escape trap).
+    el.querySelectorAll(".canvas-fire-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var aid = btn.getAttribute("data-canvas-fire-agent");
+        if (aid) _canvasFireBuy(aid, btn);
+      });
+    });
+  }
+}
+
+// Fire-buy from the Canvas Media-buy row. Calls /agents/workflow/fire-buy
+// with the brand context, then synthesizes an agent_complete event so the
+// existing render path picks up the result (fired ✓/✗ + auth callout).
+async function _canvasFireBuy(agentId, btn) {
+  if (!_canvasState || !_canvasState.brand) return;
+  if (btn.disabled) return;
+  var origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "firing…";
+  var brand = _canvasState.brand;
+  var bm = (brand && brand.brand_manifest) || {};
+  var company = bm.company || {};
+  var brandPayload = {
+    domain: brand.canonical_domain || "",
+    name: brand.brand_name || bm.name || "",
+    industries: Array.isArray(company.industries) ? company.industries : [],
+  };
+  var brief = _canvasDeriveBrief(brand);
+  var chosenSignals = (_canvasState.results && _canvasState.results.signals && _canvasState.results.signals.chosen) || [];
+  var chosenFormats = (_canvasState.results && _canvasState.results.creative && _canvasState.results.creative.chosen) || [];
+  var chosenProducts = (_canvasState.results && _canvasState.results.products && _canvasState.results.products.chosen_per_agent) || {};
+  var productId = chosenProducts[agentId] || null;
+  try {
+    var r = await fetch("/agents/workflow/fire-buy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        agent_id: agentId,
+        product_id: productId,
+        signal_ids: chosenSignals,
+        format_ids: chosenFormats,
+        brief: brief,
+        brand: brandPayload,
+        timeout_ms: 20000,
+      }),
+    });
+    var data = await r.json();
+    if (!r.ok) {
+      btn.textContent = origText;
+      btn.disabled = false;
+      showToast((data && (data.error || data.message)) || ("HTTP " + r.status), true);
+      return;
+    }
+    _canvasApplyEvent({
+      type: "agent_complete",
+      stage: "media_buy",
+      agent_id: agentId,
+      ok: !!data.ok,
+      error: data.error,
+      latency_ms: data.latency_ms || 0,
+      summary: {
+        dry_run: false,
+        fired: true,
+        payload_preview: data.payload_preview,
+        result: data.result,
+        content: data.content,
+      },
+    });
+  } catch (e) {
+    btn.textContent = origText;
+    btn.disabled = false;
+    showToast(String((e && e.message) || e), true);
   }
 }
 

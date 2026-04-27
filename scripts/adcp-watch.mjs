@@ -59,11 +59,13 @@ function ghJson(args) {
 }
 function ghBodyFile(cmdPrefix, body) {
   // gh accepts large bodies via --body-file but not via --body on Windows
-  // because of arg-length limits — write to tmp and clean up.
+  // because of arg-length limits — write to tmp and clean up. Returns the
+  // command's stdout so callers can parse, e.g., the URL gh issue create
+  // prints on success.
   const tmp = join(tmpdir(), `adcp-watcher-${Date.now()}-${Math.random().toString(36).slice(2)}.md`);
   writeFileSync(tmp, body);
   try {
-    gh(`${cmdPrefix} --body-file ${JSON.stringify(tmp)}`);
+    return gh(`${cmdPrefix} --body-file ${JSON.stringify(tmp)}`);
   } finally {
     unlinkSync(tmp);
   }
@@ -82,11 +84,14 @@ function findOrCreateTrackingIssue() {
     return { number: 0, body: "", title: "AdCP Ecosystem Watcher" };
   }
 
-  // Create the label first if it doesn't exist (idempotent).
+  // Create the label first if it doesn't exist. gh exits non-zero with
+  // "already exists" in stderr when the label is already there — swallow
+  // only that specific case so real failures (auth, validation) surface.
   try {
     gh(`label create ${label} --repo ${repo} --color BFD4F2 --description "Auto-created by adcp-watch"`);
-  } catch {
-    /* already exists */
+  } catch (e) {
+    const msg = String(e?.stderr ?? e?.message ?? e);
+    if (!/already exists/i.test(msg)) throw e;
   }
 
   const seedBody = [
@@ -107,15 +112,23 @@ function findOrCreateTrackingIssue() {
     "",
   ].join("\n");
 
-  ghBodyFile(
+  // gh issue create prints the new issue's URL on stdout. Parse the issue
+  // number from there rather than re-querying by label — GitHub's
+  // label-filtered list index lags issue creation by a few seconds and
+  // the immediate re-query came back empty in the wild.
+  const createOutput = ghBodyFile(
     `issue create --repo ${repo} --title "AdCP Ecosystem Watcher" --label ${label}`,
     seedBody
   );
-  // Re-fetch to get the issue number + body the API stamped on it.
-  const created = ghJson(
-    `issue list --repo ${repo} --label ${label} --state open --limit 1 --json number,body,title`
+  const numMatch = createOutput.match(/\/issues\/(\d+)/);
+  if (!numMatch) {
+    throw new Error(
+      `could not parse issue number from gh issue create output: ${JSON.stringify(createOutput)}`
+    );
+  }
+  return ghJson(
+    `issue view ${numMatch[1]} --repo ${repo} --json number,body,title`
   );
-  return created[0];
 }
 
 // ─── 2. Extract state JSON from issue body ────────────────────────────────────

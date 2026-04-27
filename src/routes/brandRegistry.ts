@@ -220,9 +220,18 @@ export async function handleBrandLogo(
 
   let upstream: Response;
   try {
+    // Spoof a real-browser User-Agent. Brandfetch (and other CDNs) put
+    // Cloudflare bot-protection in front; the worker's default
+    // workers-runtime UA gets cf:1010-banned. A vanilla Chrome UA
+    // passes through. We're not scraping — just fetching public images
+    // the same way a browser would if it could load the URL directly.
     upstream = await fetch(target, {
       signal: AbortSignal.timeout(8000),
-      headers: { "Accept": "image/*" },
+      headers: {
+        "Accept": "image/*",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Referer": "https://" + parsed.hostname + "/",
+      },
     });
   } catch (e) {
     logger.warn("brand_logo_upstream_error", { url: target, error: String((e as Error).message || e) });

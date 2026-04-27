@@ -47,6 +47,10 @@ import {
   handleWorkflowFireBuy,
 } from "./routes/agentsEndpoints";
 import {
+  handleBrandSearch,
+  handleBrandResolve,
+} from "./routes/brandRegistry";
+import {
   handleAudienceCompose,
   handleAudienceSaturation,
   handleAffinityAudit,
@@ -220,6 +224,10 @@ export default {
             "/agents/workflow/run",
             "/agents/workflow/run/stream",
             "/agents/workflow/fire-buy",
+            // Canvas v2 Phase 1: brand registry passthrough endpoints.
+            // Public — same posture as the upstream registry itself.
+            "/brands/search",
+            "/brands/resolve",
             "/taxonomy/reverse",
             // Sec-43: audience composer + activation-planning analytics.
             // Read-only — same posture as /portfolio/* and /analytics/*.
@@ -377,6 +385,12 @@ export default {
                 response = await handleWorkflowRunStream(request, env, logger);
             } else if (method === "POST" && path === "/agents/workflow/fire-buy") {
                 response = await handleWorkflowFireBuy(request, env, logger);
+
+                // ── Canvas v2 Phase 1: brand registry passthrough ───────────────────
+            } else if (method === "GET" && path === "/brands/search") {
+                response = await handleBrandSearch(request, env, logger);
+            } else if (method === "GET" && path === "/brands/resolve") {
+                response = await handleBrandResolve(request, env, logger);
 
                 // ── Sec-43: Audience Composer + activation analytics ────────────────
             } else if (method === "POST" && path === "/audience/compose") {

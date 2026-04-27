@@ -48,8 +48,11 @@ const config = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
 const repo =
   process.env.GITHUB_REPOSITORY ??
   execSync("gh repo view --json nameWithOwner -q .nameWithOwner").toString().trim();
+// `||` not `??` because GHA passes unset workflow envs as empty strings,
+// not undefined — `??` would keep "" and discovery would silently fail
+// against an empty URL, producing scenarios_run: [] with no error to grep.
 const agentUrl =
-  process.env.AGENT_URL ?? "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp";
+  process.env.AGENT_URL || "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp";
 
 function gh(args) {
   return execSync(`gh ${args}`, { encoding: "utf8" });

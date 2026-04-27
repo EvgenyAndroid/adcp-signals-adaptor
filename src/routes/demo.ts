@@ -149,6 +149,10 @@ ${STYLES}
         <svg class="ico"><use href="#icon-network"/></svg><span>Orchestrator</span>
         <span class="nav-tag">new</span>
       </button>
+      <button class="nav-item" data-tab="canvas">
+        <svg class="ico"><use href="#icon-bolt"/></svg><span>Canvas</span>
+        <span class="nav-tag">new</span>
+      </button>
       <button class="nav-item" data-tab="activations">
         <svg class="ico"><use href="#icon-activations"/></svg><span>Activations</span>
         <span class="nav-count" id="nav-activations-count">—</span>
@@ -1292,6 +1296,112 @@ ${STYLES}
         <div class="lab-panel lab-panel-full" style="margin-top:14px">
           <div class="lab-panel-title">Capability matrix <button class="btn-secondary" id="orch-matrix-run" style="margin-left:8px;font-size:11px;padding:4px 10px">Build matrix</button></div>
           <div id="orch-matrix"><div class="empty-state"><div class="empty-desc">Click <strong>Build matrix</strong> to compare every live agent's tool surface side-by-side. Each row is a tool name; columns are agents; cells mark which agents declare that tool.</div></div></div>
+        </div>
+      </section>
+
+      <!-- ── TAB: Canvas (Orchestration v2 Phase 1) ────────────────────── -->
+      <section class="tab-pane" data-tab="canvas">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Brand-Anchored Canvas <span class="pill pill-accent" style="margin-left:8px;font-size:10px">v2 phase 1</span></h1>
+            <p class="pane-subtitle">Pick a real brand from the AdCP agentic-advertising registry. The brand's <code>brand.json</code> drives the orchestration: industries fan out to signals, colors+fonts+logos feed creative builds, governance category triggers human review for regulated industries.</p>
+          </div>
+        </div>
+
+        <!-- Brand picker -->
+        <div class="lab-panel lab-panel-full canvas-picker-panel">
+          <div class="lab-panel-title">Brand picker</div>
+          <div class="canvas-picker-row">
+            <input id="canvas-search" class="lab-input" type="text"
+              placeholder="Search by domain or name (cbrands.com, scott, rembrand, ...)"
+              autocomplete="off"/>
+            <button class="btn-secondary" id="canvas-search-btn">
+              <svg class="ico"><use href="#icon-network"/></svg><span>Search</span>
+            </button>
+          </div>
+          <div id="canvas-search-results"></div>
+          <div class="canvas-quickpicks">
+            <span class="orch-small" style="margin-right:6px">try:</span>
+            <button class="canvas-quickpick" data-domain="cbrands.com">cbrands.com</button>
+            <button class="canvas-quickpick" data-domain="scottbrand.com">scottbrand.com</button>
+            <button class="canvas-quickpick" data-domain="rembrand.com">rembrand.com</button>
+            <button class="canvas-quickpick" data-domain="brandvelocity.ai">brandvelocity.ai</button>
+          </div>
+        </div>
+
+        <!-- Brand card -->
+        <div id="canvas-brand-card" class="canvas-brand-card-host">
+          <div class="empty-state">
+            <div class="empty-desc">Search or pick a brand to render its canonical <code>brand.json</code>. Real registry data — no synthesized values.</div>
+          </div>
+        </div>
+
+        <!-- Three-lane canvas (skeleton; phase 2 wires in fan-outs) -->
+        <div id="canvas-lanes" class="canvas-lanes" style="display:none">
+          <div class="canvas-lane canvas-lane-audiences">
+            <div class="canvas-lane-head">
+              <span class="canvas-lane-num mono">1</span>
+              <span class="canvas-lane-title">Audiences</span>
+              <span class="orch-small">signals · phase 2</span>
+            </div>
+            <div class="canvas-lane-body">
+              <div class="orch-small canvas-lane-placeholder">
+                Phase 2 will fan out <code>get_signals</code> across signals agents,
+                pre-filtered by this brand's <strong>industries[]</strong>.
+              </div>
+            </div>
+          </div>
+          <div class="canvas-lane canvas-lane-inventory">
+            <div class="canvas-lane-head">
+              <span class="canvas-lane-num mono">2</span>
+              <span class="canvas-lane-title">Inventory</span>
+              <span class="orch-small">products · phase 2</span>
+            </div>
+            <div class="canvas-lane-body">
+              <div class="orch-small canvas-lane-placeholder">
+                Phase 2 will fan out <code>get_products</code> with this brand as
+                <code>brand: BrandRef</code> per AdCP 3.0 GA.
+              </div>
+            </div>
+          </div>
+          <div class="canvas-lane canvas-lane-creative">
+            <div class="canvas-lane-head">
+              <span class="canvas-lane-num mono">3</span>
+              <span class="canvas-lane-title">Creative</span>
+              <span class="orch-small">build · phase 2</span>
+            </div>
+            <div class="canvas-lane-body">
+              <div class="orch-small canvas-lane-placeholder">
+                Phase 2 will call <code>build_creative</code> on Celtra with this
+                brand's <strong>colors</strong>, <strong>fonts</strong>, and
+                <strong>logos</strong>.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Governance + media-buy + measurement (phase 3+4 placeholders) -->
+        <div id="canvas-bottom" class="canvas-bottom" style="display:none">
+          <div class="canvas-bottom-row canvas-row-governance">
+            <div class="canvas-bottom-label">Governance + brand rights</div>
+            <div class="canvas-bottom-body">
+              <span class="pill pill-warning mono" style="font-size:10px">AdCP 3.0 spec'd</span>
+              <span class="orch-small" style="margin-left:8px">no live agent implementations — phase 3</span>
+            </div>
+          </div>
+          <div class="canvas-bottom-row canvas-row-mediabuy">
+            <div class="canvas-bottom-label">Media buy</div>
+            <div class="canvas-bottom-body">
+              <span class="orch-small">phase 2 will assemble create_media_buy with this brand's BrandRef</span>
+            </div>
+          </div>
+          <div class="canvas-bottom-row canvas-row-measurement">
+            <div class="canvas-bottom-label">In-flight + measurement</div>
+            <div class="canvas-bottom-body">
+              <span class="pill pill-warning mono" style="font-size:10px">closed-loop unspec'd</span>
+              <span class="orch-small" style="margin-left:8px">no measurement-as-role agent type — phase 4</span>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -4303,6 +4413,156 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .wf-auth-body { color: var(--text-dim); line-height: 1.45; }
 .wf-auth-body em { color: var(--text); font-style: italic; }
 
+/* Canvas v2 Phase 1 — brand-anchored canvas. Brand picker + brand card
+   sourced live from the agentic-advertising registry. Three empty lanes
+   (audiences/inventory/creative) wait for Phase 2 to wire fan-outs. */
+.canvas-picker-panel { padding: 12px; }
+.canvas-picker-row { display: flex; gap: 8px; }
+.canvas-picker-row .lab-input { flex: 1; }
+.canvas-picker-row .btn-secondary { white-space: nowrap; }
+.canvas-quickpicks {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  margin-top: 8px;
+}
+.canvas-quickpick {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: 4px; padding: 3px 8px; font-size: 11px;
+  font-family: var(--font-mono); color: var(--text-mut); cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+.canvas-quickpick:hover { color: var(--accent); border-color: var(--accent-border); }
+
+.canvas-search-list {
+  margin-top: 10px;
+  border: 1px solid var(--border); border-radius: 5px;
+  background: var(--bg-input); overflow: hidden;
+}
+.canvas-search-row {
+  padding: 8px 10px; border-bottom: 1px solid var(--border); cursor: pointer;
+  transition: background-color 0.12s;
+}
+.canvas-search-row:last-child { border-bottom: none; }
+.canvas-search-row:hover { background: var(--bg-hover); }
+.canvas-search-name { font-size: 12.5px; font-weight: 500; color: var(--text); }
+.canvas-search-meta {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 10.5px; color: var(--text-mut); margin-top: 2px;
+}
+.canvas-loading { display: flex; align-items: center; gap: 6px; color: var(--text-mut); padding: 8px 0; }
+
+.canvas-brand-card-host { margin-top: 14px; }
+.canvas-brand-loading {
+  padding: 16px; background: var(--bg-input);
+  border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text-mut); display: flex; align-items: center; gap: 8px;
+}
+
+.canvas-brand-card {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-left: 3px solid var(--accent); border-radius: 6px;
+  padding: 14px 16px;
+}
+.canvas-brand-head {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+.canvas-brand-logo {
+  width: 64px; height: 64px;
+  object-fit: contain; background: #fff; padding: 6px;
+  border-radius: 6px; border: 1px solid var(--border); flex-shrink: 0;
+}
+.canvas-brand-logo-placeholder {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-raised); color: var(--accent);
+  font-size: 28px; font-weight: 700;
+}
+.canvas-brand-head-text { flex: 1; min-width: 0; }
+.canvas-brand-name { font-size: 18px; font-weight: 600; color: var(--text); }
+.canvas-brand-domain { font-size: 11.5px; color: var(--text-mut); margin-top: 2px; }
+.canvas-brand-desc {
+  font-size: 12px; color: var(--text-dim); margin-top: 6px;
+  line-height: 1.45; max-width: 70ch;
+}
+.canvas-quality {
+  flex-shrink: 0; padding: 4px 8px; font-size: 11px;
+  background: var(--accent-dim); color: var(--accent); border-radius: 4px;
+  font-family: var(--font-mono); font-weight: 600;
+}
+
+.canvas-brand-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px; margin-bottom: 12px;
+}
+.canvas-brand-col-wide { grid-column: span 2; }
+.canvas-brand-label {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-mut); margin-bottom: 4px;
+}
+.canvas-brand-fact { font-size: 12.5px; color: var(--text); }
+.canvas-palette { display: flex; gap: 6px; }
+.canvas-color-swatch {
+  width: 24px; height: 24px; border-radius: 4px;
+  border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+.canvas-font-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 6px; font-size: 11px;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.canvas-industries { display: flex; flex-wrap: wrap; gap: 4px; }
+.canvas-classification {
+  font-size: 11.5px; color: var(--text-dim); line-height: 1.5;
+  margin-bottom: 10px; padding: 8px 10px;
+  background: var(--bg-raised); border-radius: 4px;
+}
+.canvas-brand-rawdrop summary { font-size: 10.5px; color: var(--text-mut); cursor: pointer; }
+.canvas-brand-rawdrop summary:hover { color: var(--accent); }
+
+.canvas-lanes {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  margin-top: 14px;
+}
+.canvas-lane {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-top: 3px solid var(--border); border-radius: 6px;
+  padding: 12px; min-height: 140px;
+}
+.canvas-lane-audiences { border-top-color: #64b5f6; }
+.canvas-lane-inventory { border-top-color: #ffb74d; }
+.canvas-lane-creative  { border-top-color: #ba68c8; }
+.canvas-lane-head {
+  display: flex; align-items: center; gap: 8px;
+  padding-bottom: 8px; margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.canvas-lane-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  font-size: 11px; color: var(--text);
+}
+.canvas-lane-title { font-size: 13px; font-weight: 500; color: var(--text); }
+.canvas-lane-body { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+.canvas-lane-placeholder { font-style: italic; }
+
+.canvas-bottom { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.canvas-bottom-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-left: 3px solid var(--text-mut); border-radius: 5px;
+}
+.canvas-row-governance  { border-left-color: #ffb74d; }
+.canvas-row-mediabuy    { border-left-color: var(--accent); }
+.canvas-row-measurement { border-left-color: #ba68c8; }
+.canvas-bottom-label {
+  font-size: 12.5px; font-weight: 500; color: var(--text);
+  min-width: 200px;
+}
+.canvas-bottom-body { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
 /* Sec-48n: pickable product rows + fire-buy button. */
 .wf-product-pickable { cursor: pointer; border-radius: 3px; }
 .wf-product-pickable:hover {
@@ -4951,7 +5211,7 @@ function switchTab(name) {
     journey: "Journey", planner: "Scenario", snapshots: "Snapshots",
     freshness: "Freshness",
     seasonality: "Seasonality", federation: "Federation",
-    orchestrator: "Orchestrator",
+    orchestrator: "Orchestrator", canvas: "Canvas",
   };
   document.getElementById("crumb-current").textContent = crumbMap[name] || name;
 
@@ -4976,6 +5236,7 @@ function switchTab(name) {
   if (name === "seasonality") ensureSeasonality();
   if (name === "federation") ensureFederation();
   if (name === "orchestrator") ensureOrchestrator();
+  if (name === "canvas") ensureCanvas();
 
   // Activations tab: start polling when visible, stop when hidden
   if (name === "activations") startActivationsPolling();
@@ -12341,6 +12602,209 @@ function _wfPaintAgentComplete(ev) {
 
 // (Sec-48g removed the one-shot _wfRender* helpers — workflow UI is now
 // entirely event-driven via the NDJSON stream in runWorkflow + _wfApplyEvent.)
+
+// ─── Canvas v2 Phase 1: brand-anchored canvas ───────────────────────────
+// Brand picker → /brands/search + /brands/resolve. Renders the live
+// brand.json as a card. Three empty lanes are placeholder for Phase 2
+// (signals + products + creative fan-outs). Phase 3 fills governance;
+// Phase 4 fills measurement. Sec-48 Orchestrator stays as the raw
+// transport reference; this is the higher-level operator view.
+
+var _canvasLoaded = false;
+var _canvasState = { brand: null, searching: false };
+
+async function ensureCanvas() {
+  if (_canvasLoaded) return;
+  _canvasLoaded = true;
+  var btn = document.getElementById("canvas-search-btn");
+  var input = document.getElementById("canvas-search");
+  if (btn) btn.addEventListener("click", _canvasRunSearch);
+  if (input) input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") _canvasRunSearch();
+  });
+  // Quick-pick chips fire resolve directly.
+  document.querySelectorAll(".canvas-quickpick").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var d = b.getAttribute("data-domain");
+      if (d) _canvasResolveBrand(d);
+    });
+  });
+}
+
+async function _canvasRunSearch() {
+  if (_canvasState.searching) return;
+  var input = document.getElementById("canvas-search");
+  var host = document.getElementById("canvas-search-results");
+  if (!input || !host) return;
+  var q = (input.value || "").trim();
+  if (!q) {
+    host.innerHTML = '';
+    return;
+  }
+  _canvasState.searching = true;
+  host.innerHTML = '<div class="orch-small canvas-loading"><span class="spinner"></span> searching registry…</div>';
+  try {
+    var r = await fetch("/brands/search?q=" + encodeURIComponent(q));
+    var data = await r.json();
+    if (!r.ok) {
+      host.innerHTML = '<div class="orch-small" style="color:var(--error)">' + escapeHtml(data.message || data.error || ("HTTP " + r.status)) + '</div>';
+      return;
+    }
+    var brands = data.brands || [];
+    if (brands.length === 0) {
+      host.innerHTML = '<div class="orch-small" style="color:var(--text-mut)">no matches</div>';
+      return;
+    }
+    var rows = brands.slice(0, 10).map(function (b) {
+      var typeBadge = b.keller_type
+        ? '<span class="pill pill-muted mono" style="font-size:10px">' + escapeHtml(b.keller_type) + '</span>'
+        : '';
+      var house = b.house_domain
+        ? '<span class="orch-small" style="color:var(--text-mut)">house: ' + escapeHtml(b.house_domain) + '</span>'
+        : '';
+      return '<div class="canvas-search-row" data-domain="' + escapeHtml(b.domain) + '">' +
+        '<div class="canvas-search-name">' + escapeHtml(b.brand_name) + '</div>' +
+        '<div class="canvas-search-meta mono">' + escapeHtml(b.domain) + '  ' + typeBadge + '  ' + house + '</div>' +
+      '</div>';
+    }).join("");
+    var cacheTag = data.cache === "hit"
+      ? '<span class="orch-small" style="color:var(--text-mut)">cache hit</span>'
+      : '<span class="orch-small" style="color:var(--text-mut)">' + (data.count || 0) + ' results</span>';
+    host.innerHTML = '<div class="canvas-search-list">' + rows + '</div><div style="margin-top:6px">' + cacheTag + '</div>';
+    host.querySelectorAll(".canvas-search-row").forEach(function (row) {
+      row.addEventListener("click", function () {
+        var d = row.getAttribute("data-domain");
+        if (d) _canvasResolveBrand(d);
+      });
+    });
+  } catch (e) {
+    host.innerHTML = '<div class="orch-small" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div>';
+  } finally {
+    _canvasState.searching = false;
+  }
+}
+
+async function _canvasResolveBrand(domain) {
+  var card = document.getElementById("canvas-brand-card");
+  if (!card) return;
+  card.innerHTML = '<div class="canvas-brand-loading"><span class="spinner"></span> resolving ' + escapeHtml(domain) + ' from registry…</div>';
+  try {
+    var r = await fetch("/brands/resolve?domain=" + encodeURIComponent(domain));
+    var data = await r.json();
+    if (!r.ok) {
+      card.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(data.message || data.error || ("HTTP " + r.status)) + '</div></div>';
+      return;
+    }
+    _canvasState.brand = data;
+    _canvasRenderBrandCard(data);
+    var lanes = document.getElementById("canvas-lanes");
+    if (lanes) lanes.style.display = "";
+    var bottom = document.getElementById("canvas-bottom");
+    if (bottom) bottom.style.display = "";
+  } catch (e) {
+    card.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div></div>';
+  }
+}
+
+function _canvasRenderBrandCard(data) {
+  var card = document.getElementById("canvas-brand-card");
+  if (!card) return;
+  var bm = data.brand_manifest || {};
+  var company = bm.company || {};
+  var classification = bm.classification || {};
+  // Logos: pick a light-bg variant first, fall back to first.
+  var logos = Array.isArray(bm.logos) ? bm.logos : [];
+  var lightLogo = logos.find(function (l) { return (l.tags || []).indexOf("light") >= 0 && (l.tags || []).indexOf("symbol") < 0; });
+  var anyLogo = lightLogo || logos[0];
+  // Resolve relative URLs to the registry origin.
+  var logoUrl = anyLogo && anyLogo.url
+    ? (anyLogo.url.indexOf("http") === 0 ? anyLogo.url : "https://agenticadvertising.org" + anyLogo.url)
+    : null;
+
+  var colors = bm.colors || {};
+  var palette = ["primary", "accent", "secondary"]
+    .filter(function (k) { return colors[k]; })
+    .map(function (k) {
+      return '<div class="canvas-color-swatch" style="background:' + escapeHtml(colors[k]) + '" title="' + k + ': ' + escapeHtml(colors[k]) + '"></div>';
+    }).join("");
+
+  var fonts = Array.isArray(bm.fonts) ? bm.fonts : [];
+  var fontList = fonts.slice(0, 3).map(function (f) {
+    var role = f.role ? '<span class="orch-small mono" style="color:var(--text-mut)">' + escapeHtml(f.role) + '</span>' : '';
+    return '<span class="canvas-font-chip mono">' + escapeHtml(f.name || "?") + ' ' + role + '</span>';
+  }).join(" ");
+
+  var industries = Array.isArray(company.industries) ? company.industries : [];
+  // Dedupe (the data sometimes repeats)
+  var uniqInd = [];
+  industries.forEach(function (i) { if (uniqInd.indexOf(i) < 0) uniqInd.push(i); });
+  var industryChips = uniqInd.map(function (i) {
+    return '<span class="pill pill-muted mono" style="font-size:10.5px">' + escapeHtml(i) + '</span>';
+  }).join(" ");
+
+  var qualityScore = typeof bm.quality_score === "number"
+    ? '<span class="canvas-quality" title="registry quality score">q ' + (bm.quality_score * 100).toFixed(0) + '%</span>'
+    : '';
+
+  var classNote = classification.reasoning
+    ? '<div class="canvas-classification">' +
+        '<span class="orch-small" style="color:var(--text-mut)">classification:</span> ' +
+        escapeHtml(classification.reasoning) +
+        (classification.confidence ? ' <span class="pill pill-muted mono" style="font-size:9.5px">' + escapeHtml(classification.confidence) + '</span>' : '') +
+      '</div>'
+    : '';
+
+  card.innerHTML =
+    '<div class="canvas-brand-card">' +
+      '<div class="canvas-brand-head">' +
+        (logoUrl ? '<img class="canvas-brand-logo" src="' + escapeHtml(logoUrl) + '" alt="' + escapeHtml(data.brand_name) + '" onerror="this.style.display=\'none\'"/>' : '<div class="canvas-brand-logo canvas-brand-logo-placeholder">' + escapeHtml((data.brand_name || "?").slice(0, 1)) + '</div>') +
+        '<div class="canvas-brand-head-text">' +
+          '<div class="canvas-brand-name">' + escapeHtml(data.brand_name || "(no name)") + '</div>' +
+          '<div class="canvas-brand-domain mono">' + escapeHtml(data.canonical_domain || "") + '</div>' +
+          '<div class="canvas-brand-desc">' + escapeHtml(bm.description || "") + '</div>' +
+        '</div>' +
+        qualityScore +
+      '</div>' +
+      '<div class="canvas-brand-grid">' +
+        '<div class="canvas-brand-col">' +
+          '<div class="canvas-brand-label">Palette</div>' +
+          '<div class="canvas-palette">' + (palette || '<span class="orch-small">no colors</span>') + '</div>' +
+        '</div>' +
+        '<div class="canvas-brand-col">' +
+          '<div class="canvas-brand-label">Typography</div>' +
+          '<div>' + (fontList || '<span class="orch-small">no fonts</span>') + '</div>' +
+        '</div>' +
+        '<div class="canvas-brand-col canvas-brand-col-wide">' +
+          '<div class="canvas-brand-label">Industries</div>' +
+          '<div class="canvas-industries">' + (industryChips || '<span class="orch-small">unclassified</span>') + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="canvas-brand-grid">' +
+        '<div class="canvas-brand-col">' +
+          '<div class="canvas-brand-label">Founded</div>' +
+          '<div class="canvas-brand-fact mono">' + escapeHtml(String(company.founded || "—")) + '</div>' +
+        '</div>' +
+        '<div class="canvas-brand-col">' +
+          '<div class="canvas-brand-label">Location</div>' +
+          '<div class="canvas-brand-fact">' + escapeHtml(company.location || "—") + '</div>' +
+        '</div>' +
+        '<div class="canvas-brand-col">' +
+          '<div class="canvas-brand-label">Employees</div>' +
+          '<div class="canvas-brand-fact mono">' + escapeHtml(String(company.employees || "—")) + '</div>' +
+        '</div>' +
+        '<div class="canvas-brand-col">' +
+          '<div class="canvas-brand-label">Source</div>' +
+          '<div class="canvas-brand-fact mono">' + escapeHtml(data.source || "—") + '</div>' +
+        '</div>' +
+      '</div>' +
+      classNote +
+      '<div class="canvas-brand-rawdrop">' +
+        '<details><summary class="orch-small">raw brand.json</summary>' +
+          '<pre class="wf-json mono">' + escapeHtml(JSON.stringify(bm, null, 2)) + '</pre>' +
+        '</details>' +
+      '</div>' +
+    '</div>';
+}
 
 // ─── Federation (partial — more in Part 3) ───────────────────────────────
 var _fedLoaded = false;

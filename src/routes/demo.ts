@@ -1436,16 +1436,17 @@ ${STYLES}
           </div>
         </div>
 
-        <!-- Closed-loop arrow (Phase 4): SVG arc from media-buy back to audiences -->
-        <svg class="canvas-loop-arrow" id="canvas-loop-arrow" style="display:none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <defs>
-            <marker id="canvas-arrow-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-              <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
-            </marker>
-          </defs>
-          <path d="M 95 92 C 110 50, 110 8, 5 8 L 5 12" stroke="var(--accent)" stroke-width="0.4" fill="none" stroke-dasharray="1.5,1.5" marker-end="url(#canvas-arrow-head)"/>
-          <text x="55" y="55" fill="var(--accent)" font-size="3" font-family="var(--font-mono)" text-anchor="middle">closed loop · phase 4</text>
-        </svg>
+        <!-- Closed-loop indicator (Phase 4): plain text+icon. The earlier
+             SVG arc rendered as broken fragments because preserveAspectRatio
+             stretched a 100x100 path across a wide-aspect container.
+             Information is the same; visual is now reliable. -->
+        <div class="canvas-loop-indicator" id="canvas-loop-arrow" style="display:none">
+          <span class="canvas-loop-arrow-glyph">↻</span>
+          <span class="canvas-loop-text">
+            closed loop — measurement output should feed the next-cycle signals query
+          </span>
+          <span class="pill pill-warning mono" style="font-size:9.5px">phase 4</span>
+        </div>
 
         <!-- View-mode toggle (Phase 4): canvas / role-pivot / capability graph -->
         <div class="canvas-viewmodes">
@@ -4762,14 +4763,28 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   opacity: 0.5; cursor: not-allowed;
 }
 
-/* Phase 4: closed-loop arrow. SVG overlay drawn over the bottom region. */
-.canvas-loop-arrow {
-  position: relative;
-  width: 100%; height: 60px;
-  margin: -8px 0 -8px 0;
-  pointer-events: none;
-  opacity: 0.7;
+/* Phase 4: closed-loop indicator. Plain row, no SVG aspect-ratio
+   surprises. Sits between the In-flight + measurement spec card
+   and the view-mode toggle. */
+.canvas-loop-indicator {
+  display: flex; align-items: center; gap: 10px;
+  margin: 12px 0;
+  padding: 8px 12px;
+  background: linear-gradient(90deg,
+    rgba(79,195,127,0.05) 0%,
+    rgba(255,183,77,0.06) 50%,
+    rgba(79,195,127,0.05) 100%);
+  border: 1px dashed var(--accent);
+  border-radius: 5px;
+  font-size: 11px;
+  color: var(--text-dim);
 }
+.canvas-loop-arrow-glyph {
+  font-size: 18px; color: var(--accent);
+  /* gentle rotation hint to suggest the loop without animating */
+  display: inline-block; transform: rotate(0deg);
+}
+.canvas-loop-text { flex: 1; }
 
 .canvas-bottom { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
 .canvas-bottom-row {

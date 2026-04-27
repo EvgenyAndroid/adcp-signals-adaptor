@@ -183,7 +183,7 @@ ${STYLES}
 
     <div class="sidebar-footer">
       <div class="kv"><span class="k">Version</span><span class="v mono">3.0 GA</span></div>
-      <div class="kv"><span class="k">Client</span><span class="v mono">@adcp/5.13</span></div>
+      <div class="kv"><span class="k">Client</span><span class="v mono">@adcp/5.21</span></div>
       <div class="kv"><span class="k">Status</span><span class="v"><span class="status-dot ok"></span>live</span></div>
       <div class="kv"><span class="k">Conformance</span><span class="v"><span class="pill pill-success">3 / 3</span></span></div>
     </div>

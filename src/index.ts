@@ -58,6 +58,7 @@ import {
   handleRegistryAgents,
   handleRegistryPolicies,
   handleGovernancePreview,
+  handleBrandRightsPreview,
 } from "./routes/registryRoutes";
 import {
   handleAudienceCompose,
@@ -248,6 +249,8 @@ export default {
             "/registry/policies",
             // MVP #2: predictive check_governance overlay.
             "/registry/governance-preview",
+            // Refinement C: predictive brand-rights overlay.
+            "/registry/brand-rights-preview",
             "/taxonomy/reverse",
             // Sec-43: audience composer + activation-planning analytics.
             // Read-only — same posture as /portfolio/* and /analytics/*.
@@ -427,6 +430,8 @@ export default {
                 response = await handleRegistryPolicies(request, env, logger);
             } else if ((method === "GET" || method === "POST") && path === "/registry/governance-preview") {
                 response = await handleGovernancePreview(request, env, logger);
+            } else if ((method === "GET" || method === "POST") && path === "/registry/brand-rights-preview") {
+                response = await handleBrandRightsPreview(request, env, logger);
 
                 // ── Sec-43: Audience Composer + activation analytics ────────────────
             } else if (method === "POST" && path === "/audience/compose") {

@@ -11,6 +11,18 @@
       "number": 2916,
       "kind": "issue",
       "context": "Q3 systemic FAIL→SKIP applicability bug — runner conflates 'media-buy agent' with 'any agent'. Deferred to adcp 3.1.0; resurfaces when capability-derived skip_if grammar lands runner-side in @adcp/client. Until then, error_handling / validation / schema_compliance stay skipped on signals-only agents."
+    },
+    {
+      "repo": "adcontextprotocol/adcp-client",
+      "number": 1060,
+      "kind": "issue",
+      "context": "Filed 2026-04-29: SCENARIO_REQUIREMENTS gates error_handling / validation / schema_compliance behind get_products, so signals-only agents skip all three even though they should run universally. Companion to #2916 systemic class. Workshop cite-able."
+    },
+    {
+      "repo": "adcontextprotocol/adcp-client",
+      "number": 1062,
+      "kind": "issue",
+      "context": "Filed 2026-04-29: past_start_enforcement runs unconditionally on signals-only agents instead of SKIP. Same systemic class as #2916; SCENARIO_REQUIREMENTS row needs media_buy_lifecycle dependency. Workshop cite-able."
     }
   ]
 }

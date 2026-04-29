@@ -52,6 +52,10 @@ import {
   handleBrandLogo,
 } from "./routes/brandRegistry";
 import {
+  handleRegistryAgents,
+  handleRegistryPolicies,
+} from "./routes/registryRoutes";
+import {
   handleAudienceCompose,
   handleAudienceSaturation,
   handleAffinityAudit,
@@ -230,6 +234,10 @@ export default {
             "/brands/search",
             "/brands/resolve",
             "/brands/logo",
+            // Phase B + C: agents-registry passthrough + policies snapshot.
+            // Public — informational views over the agentic-advertising registry.
+            "/registry/agents",
+            "/registry/policies",
             "/taxonomy/reverse",
             // Sec-43: audience composer + activation-planning analytics.
             // Read-only — same posture as /portfolio/* and /analytics/*.
@@ -395,6 +403,12 @@ export default {
                 response = await handleBrandResolve(request, env, logger);
             } else if (method === "GET" && path === "/brands/logo") {
                 response = await handleBrandLogo(request, env, logger);
+
+                // ── Phase B + C: agents-registry passthrough + policies snapshot ────
+            } else if (method === "GET" && path === "/registry/agents") {
+                response = await handleRegistryAgents(request, env, logger);
+            } else if (method === "GET" && path === "/registry/policies") {
+                response = await handleRegistryPolicies(request, env, logger);
 
                 // ── Sec-43: Audience Composer + activation analytics ────────────────
             } else if (method === "POST" && path === "/audience/compose") {

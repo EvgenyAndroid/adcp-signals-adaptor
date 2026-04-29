@@ -21,8 +21,9 @@ import type { Logger } from "../utils/logger";
 import { jsonResponse, errorResponse } from "./shared";
 
 const REGISTRY_BASE = "https://agenticadvertising.org/api";
-const SEARCH_TTL_SEC = 600;     // 10 min — search results change with new brand additions
-const RESOLVE_TTL_SEC = 3600;   // 1 hr — resolved brand manifests change less often
+const SEARCH_TTL_SEC = 600;       // 10 min — search results change with new brand additions
+const RESOLVE_TTL_SEC = 86400;    // 24h hard KV TTL (Phase A: extended for stale-while-revalidate)
+const RESOLVE_FRESH_SEC = 3600;   // 1h soft "fresh" window — past this we revalidate via etag
 const SEARCH_KEY_PREFIX = "brand_search:";
 const RESOLVE_KEY_PREFIX = "brand_resolve:";
 
@@ -46,6 +47,21 @@ async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Respons
   return fetch(url, {
     signal: AbortSignal.timeout(timeoutMs),
     headers: { "Accept": "application/json" },
+  });
+}
+
+// Phase A: conditional fetch with If-None-Match. Returns the upstream
+// Response (which may be 304) so callers can branch on status.
+async function fetchWithEtag(
+  url: string,
+  etag: string | undefined,
+  timeoutMs: number,
+): Promise<Response> {
+  const headers: Record<string, string> = { "Accept": "application/json" };
+  if (etag) headers["If-None-Match"] = etag;
+  return fetch(url, {
+    signal: AbortSignal.timeout(timeoutMs),
+    headers,
   });
 }
 
@@ -118,19 +134,79 @@ export async function handleBrandResolve(
   }
 
   const cacheKey = RESOLVE_KEY_PREFIX + domain;
-  try {
-    const cached = await env.SIGNALS_CACHE.get(cacheKey, "json");
-    if (cached) {
-      return jsonResponse({ ...(cached as object), cache: "hit" });
-    }
-  } catch { /* fall through to fresh fetch */ }
-
+  // Phase A: stale-while-revalidate. The KV entry now lives 24h (was 1h)
+  // and we keep `fetched_at` + `etag` in the metadata. On read:
+  //   - age < 1h        → return as-is (cache: "hit")
+  //   - 1h ≤ age < 24h  → conditional GET upstream with If-None-Match.
+  //                       304 → bump fetched_at, return body (cache: "swr-validated")
+  //                       200 → write fresh, return (cache: "swr-refresh")
+  //                       error → return stale body (cache: "swr-stale-fallback")
+  //   - age ≥ 24h       → KV entry is gone; full fetch (cache: "miss")
   const upstream = REGISTRY_BASE + "/brands/resolve?domain=" + encodeURIComponent(domain);
+  let cached: { value: string | null; metadata: { fetched_at?: string; etag?: string } | null } = { value: null, metadata: null };
+  try {
+    cached = await env.SIGNALS_CACHE.getWithMetadata<{ fetched_at?: string; etag?: string }>(cacheKey, "text");
+  } catch { /* treat as full miss */ }
+
+  if (cached.value) {
+    const cachedBody = JSON.parse(cached.value) as Record<string, unknown>;
+    const fetchedAt = cached.metadata?.fetched_at;
+    const ageSec = fetchedAt
+      ? (Date.now() - Date.parse(fetchedAt)) / 1000
+      : Number.POSITIVE_INFINITY;
+
+    if (ageSec < RESOLVE_FRESH_SEC) {
+      return jsonResponse({ ...cachedBody, cache: "hit" });
+    }
+
+    // Soft-stale: revalidate via etag.
+    try {
+      const res = await fetchWithEtag(upstream, cached.metadata?.etag, 8000);
+      if (res.status === 304) {
+        // Body unchanged. Re-write KV with same body but bumped fetched_at
+        // so we don't keep re-validating on every request inside the
+        // 24h window.
+        const refreshedAt = new Date().toISOString();
+        try {
+          await env.SIGNALS_CACHE.put(cacheKey, cached.value, {
+            expirationTtl: RESOLVE_TTL_SEC,
+            metadata: { fetched_at: refreshedAt, etag: cached.metadata?.etag },
+          });
+        } catch { /* non-fatal */ }
+        return jsonResponse({ ...cachedBody, fetched_at: refreshedAt, cache: "swr-validated" });
+      }
+      if (res.status === 404) {
+        // Brand was removed upstream — fast-fail and let the KV expire naturally.
+        return errorResponse("BRAND_NOT_FOUND", `No brand found for domain '${domain}'`, 404);
+      }
+      if (res.ok) {
+        const body = (await res.json()) as BrandResolved;
+        const out = { ...body, fetched_at: new Date().toISOString(), cache: "swr-refresh" };
+        try {
+          const { cache: _c, ...store } = out;
+          void _c;
+          await env.SIGNALS_CACHE.put(cacheKey, JSON.stringify(store), {
+            expirationTtl: RESOLVE_TTL_SEC,
+            metadata: { fetched_at: out.fetched_at, etag: res.headers.get("etag") || undefined },
+          });
+        } catch { /* non-fatal */ }
+        return jsonResponse(out);
+      }
+      // Upstream non-ok during revalidation → fall through to stale fallback.
+      logger.warn("brand_resolve_revalidate_status", { status: res.status });
+    } catch (e) {
+      logger.warn("brand_resolve_revalidate_error", { error: String((e as Error).message || e) });
+    }
+    // Stale fallback — upstream had a problem, we still have a body.
+    return jsonResponse({ ...cachedBody, cache: "swr-stale-fallback" });
+  }
+
+  // Full miss path.
   let body: BrandResolved | null = null;
+  let etag: string | undefined;
   try {
     const res = await fetchWithTimeout(upstream, 8000);
     if (res.status === 404) {
-      // Don't cache 404s — brand might be added later. Fast-fail.
       return errorResponse("BRAND_NOT_FOUND", `No brand found for domain '${domain}'`, 404);
     }
     if (!res.ok) {
@@ -138,21 +214,19 @@ export async function handleBrandResolve(
       return errorResponse("UPSTREAM_ERROR", "Registry resolve failed: " + res.status, 502);
     }
     body = (await res.json()) as BrandResolved;
+    etag = res.headers.get("etag") || undefined;
   } catch (e) {
     logger.warn("brand_resolve_upstream_error", { error: String((e as Error).message || e) });
     return errorResponse("UPSTREAM_ERROR", "Registry unreachable", 502);
   }
 
-  const out = {
-    ...body,
-    fetched_at: new Date().toISOString(),
-    cache: "miss",
-  };
+  const out = { ...body, fetched_at: new Date().toISOString(), cache: "miss" };
   try {
     const { cache: _c, ...store } = out;
     void _c;
     await env.SIGNALS_CACHE.put(cacheKey, JSON.stringify(store), {
       expirationTtl: RESOLVE_TTL_SEC,
+      metadata: { fetched_at: out.fetched_at, etag },
     });
   } catch { /* non-fatal */ }
 

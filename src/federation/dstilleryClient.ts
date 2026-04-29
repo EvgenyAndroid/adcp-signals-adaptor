@@ -123,7 +123,9 @@ async function callGetSignalsOnce(
       method: "tools/call",
       params: {
         name: "get_signals",
-        arguments: { signal_spec: brief, max_results: maxResults },
+        // AdCP 3.0.1: paginated form preferred; top-level kept for back-compat
+        // with 3.0.0-era agents (drop top-level on 4.0 cutover).
+        arguments: { signal_spec: brief, max_results: maxResults, pagination: { max_results: maxResults } },
       },
     }),
     signal: AbortSignal.timeout(15_000),

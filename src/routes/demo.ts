@@ -1387,13 +1387,19 @@ ${STYLES}
           <div class="canvas-spec-block">
             <div class="canvas-spec-header">
               <span class="canvas-spec-label">Governance + brand rights</span>
-              <span class="pill pill-warning mono" style="font-size:10px">AdCP 3.0 spec'd · no live impl</span>
+              <span class="pill pill-warning mono" style="font-size:10px">AdCP 3.0.1 spec'd · no live impl</span>
             </div>
             <div class="canvas-spec-body">
               <div class="canvas-spec-card">
                 <div class="canvas-spec-card-name mono">check_governance</div>
-                <div class="canvas-spec-card-shape orch-small">in: <code>{plan, brand: BrandRef}</code> · out: <code>{decision, audit_log_url, requires_human_review?}</code></div>
+                <div class="canvas-spec-card-shape orch-small">in: <code>{plan, brand: BrandRef}</code> · out: <code>{decision, mode, audit_log_url, requires_human_review?}</code></div>
                 <div class="canvas-spec-card-note orch-small">would gate alcohol / pharma / lending / housing for regulated brands. Runs BEFORE create_media_buy.</div>
+                <div class="canvas-gov-mode-row" title="enforcement posture surfaced via the mode field on check-governance-response (added in AdCP 3.0.1)">
+                  <span class="canvas-gov-mode-label orch-small">mode:</span>
+                  <span class="canvas-gov-mode-pill canvas-gov-mode-enforce mono" title="check is active and BLOCKS non-compliant plans">enforce</span>
+                  <span class="canvas-gov-mode-pill canvas-gov-mode-advisory mono" title="check returns a recommendation but does NOT block">advisory</span>
+                  <span class="canvas-gov-mode-pill canvas-gov-mode-audit mono" title="check is logged for audit only — no decision returned">audit</span>
+                </div>
               </div>
               <div class="canvas-spec-card">
                 <div class="canvas-spec-card-name mono">get_rights · acquire_rights · update_rights</div>
@@ -4760,6 +4766,26 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 }
 .canvas-spec-card-note { color: var(--text-mut); line-height: 1.4; }
 .canvas-spec-card-note strong { color: var(--text); }
+
+/* AdCP 3.0.1: mode swatch on check_governance card.
+   Visual strawman of the enforcement-posture options surfaced by the
+   new mode response field. Workshop trust-contract teaching moment:
+   is your governance call actually gating, or just telemetry? */
+.canvas-gov-mode-row {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin-top: 6px; padding-top: 6px;
+  border-top: 1px dashed var(--border);
+}
+.canvas-gov-mode-label {
+  color: var(--text-mut); font-size: 10px;
+}
+.canvas-gov-mode-pill {
+  font-size: 9.5px; padding: 1px 6px; border-radius: 3px;
+  border: 1px solid currentColor; cursor: help;
+}
+.canvas-gov-mode-enforce  { color: var(--error); background: rgba(239,83,80,0.08); }
+.canvas-gov-mode-advisory { color: var(--warning, #d4a017); background: rgba(212,160,23,0.08); }
+.canvas-gov-mode-audit    { color: var(--text-dim); background: var(--bg-input); }
 
 /* Phase 4: view-mode toggle (Pattern C/B/A). */
 .canvas-viewmodes {

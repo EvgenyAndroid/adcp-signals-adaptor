@@ -72,25 +72,40 @@ export async function handleRegistryAgents(
     return errorResponse("UPSTREAM_ERROR", "Registry unreachable", 502);
   }
 
+  // Normalize URLs so trailing-slash drift doesn't show as a diff.
+  // Registry sometimes lists "/mcp" and "/mcp/" as separate entries
+  // (e.g. Claire scope3 appears under BOTH variants); we don't want
+  // to flag them as 2 missing agents when we already have one entry.
+  const normalize = (u: string | undefined): string => {
+    if (!u) return "";
+    let v = u.trim().replace(/\/+$/, "");           // drop trailing slash(es)
+    v = v.replace(/\/mcp$/, "");                     // drop /mcp suffix for canonical compare
+    return v.toLowerCase();
+  };
+
   const remote = payload.agents ?? [];
   const remoteByMcp = new Map<string, RegistryAgentEntry>();
   for (const a of remote) {
-    const key = (a.mcp_endpoint || a.url || "").trim();
-    if (key) remoteByMcp.set(key, a);
+    const key = normalize(a.mcp_endpoint || a.url);
+    if (key && !remoteByMcp.has(key)) remoteByMcp.set(key, a);
   }
 
   // Diff: agents in registry that we don't have, agents we have that the
   // registry doesn't list. Used by the Canvas to render a freshness badge.
   const localMcpSet = new Set(
-    AGENT_REGISTRY.map((a) => a.mcp_url).filter((u): u is string => !!u),
+    AGENT_REGISTRY.map((a) => normalize(a.mcp_url ?? undefined)).filter((u) => !!u),
   );
-  const onlyInRegistry = remote.filter((a) => {
-    const key = (a.mcp_endpoint || a.url || "").trim();
-    return key && !localMcpSet.has(key);
-  }).map((a) => ({ name: a.name, mcp_url: a.mcp_endpoint || a.url, added_date: a.added_date }));
+  const seenInRegistry = new Set<string>();
+  const onlyInRegistry: Array<{ name: string; mcp_url: string | undefined; added_date: string | undefined }> = [];
+  for (const a of remote) {
+    const key = normalize(a.mcp_endpoint || a.url);
+    if (!key || localMcpSet.has(key) || seenInRegistry.has(key)) continue;
+    seenInRegistry.add(key);
+    onlyInRegistry.push({ name: a.name, mcp_url: a.mcp_endpoint || a.url, added_date: a.added_date });
+  }
 
   const onlyInLocal = AGENT_REGISTRY
-    .filter((a) => a.mcp_url && !remoteByMcp.has(a.mcp_url))
+    .filter((a) => a.mcp_url && !remoteByMcp.has(normalize(a.mcp_url)))
     .map((a) => ({ id: a.id, name: a.name, mcp_url: a.mcp_url, role: a.role, stage: a.stage }));
 
   const out = {

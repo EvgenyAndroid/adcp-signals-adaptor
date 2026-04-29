@@ -1384,6 +1384,24 @@ ${STYLES}
              tool surface explicitly so the gap is visible by design.
              Three stacked cards mirror the spec's three task families. -->
         <div id="canvas-bottom" class="canvas-bottom" style="display:none">
+          <!-- Phase B: registry health strip. Live counts of registry
+               agents vs our hardcoded directory; flags new agents the
+               registry has that we don't yet have entries for. -->
+          <div class="canvas-registry-bar" id="canvas-registry-bar">
+            <span class="canvas-registry-label">Registry sync</span>
+            <span class="canvas-registry-stat" id="canvas-registry-agents">
+              <span class="orch-small">…</span>
+            </span>
+            <span class="canvas-registry-stat" id="canvas-registry-policies">
+              <span class="orch-small">…</span>
+            </span>
+            <span class="canvas-registry-stat" id="canvas-registry-brands">
+              <span class="orch-small">brands: passthrough</span>
+            </span>
+            <span class="canvas-registry-stat canvas-registry-stat-href">
+              <a class="orch-small" href="https://agenticadvertising.org/registry/" target="_blank" rel="noopener">agenticadvertising.org/registry ↗</a>
+            </span>
+          </div>
           <div class="canvas-spec-block">
             <div class="canvas-spec-header">
               <span class="canvas-spec-label">Governance + brand rights</span>
@@ -3117,6 +3135,31 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 .dts-v { color: var(--text-dim); font-family: var(--font-mono); font-size: 11.5px; word-break: break-word; }
 .dts-v a { color: var(--accent); }
 
+/* Phase D: policy_attestations chips inside the DTS panel.
+   Visual layer below the IAB DTS v1.2 fields, surfacing the
+   provider's compliance claims against agentic-advertising
+   registry policies. Color-codes by claim type. */
+.dts-attest-group { border-color: var(--accent); }
+.dts-attest-list { display: flex; flex-direction: column; gap: 6px; }
+.dts-attest-row {
+  display: grid; grid-template-columns: 220px 90px 1fr;
+  gap: 10px; padding: 4px 0; align-items: center;
+  border-bottom: 1px dashed var(--border); font-size: 11.5px;
+}
+.dts-attest-row:last-child { border-bottom: none; }
+.dts-attest-id { color: var(--text-dim); }
+.dts-attest-claim {
+  font-size: 9.5px; padding: 1px 6px; border-radius: 3px;
+  border: 1px solid currentColor; text-align: center;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.dts-attest-compliant      { color: var(--success); background: rgba(102,187,106,0.10); }
+.dts-attest-exempt         { color: var(--text-dim); background: var(--bg-input); }
+.dts-attest-out-of-scope   { color: var(--text-mut); background: var(--bg-input); }
+.dts-attest-not-applicable { color: var(--text-mut); background: var(--bg-input); }
+.dts-attest-unknown        { color: var(--warning, #d4a017); background: rgba(212,160,23,0.08); }
+.dts-attest-note { color: var(--text-mut); font-size: 11px; line-height: 1.35; }
+
 /* ── Activations ─────────────────────────────────────────────────────── */
 .activations-controls { display: flex; gap: 8px; align-items: center; }
 .status-dot.submitted { background: var(--text-mut); }
@@ -4699,6 +4742,64 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   color: var(--warning, #d4a017); border-top-color: var(--warning, #d4a017);
   display: flex; align-items: flex-start; gap: 5px;
 }
+
+/* Phase C: policy hits row on the brand card. Each chip = one
+   applicable policy from the agentic-advertising registry,
+   matched on brand industries. Color codes: red = must
+   regulation, amber = must standard, muted = should. */
+.canvas-policy-row {
+  margin-top: 10px; padding: 8px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.canvas-policy-chips {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;
+}
+.canvas-policy-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 7px; border-radius: 4px; font-size: 11px;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  cursor: help;
+}
+.canvas-policy-chip.canvas-policy-must  { border-color: var(--error); }
+.canvas-policy-chip.canvas-policy-should { border-color: var(--warning, #d4a017); }
+.canvas-policy-cat {
+  font-size: 8.5px; padding: 1px 4px; border-radius: 2px;
+  font-weight: 600; letter-spacing: 0.04em;
+}
+.canvas-policy-cat.canvas-policy-reg { background: var(--error); color: #000; }
+.canvas-policy-cat.canvas-policy-std { background: var(--accent); color: #000; }
+.canvas-policy-name { color: var(--text); }
+.canvas-policy-enf {
+  font-size: 9px; color: var(--text-mut);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+
+/* Phase B: registry health bar. Strip across canvas-bottom showing
+   how stale our local view of the registry is (agents + policies
+   + brands). Click-through to upstream registry. */
+.canvas-registry-bar {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 8px 12px; margin-bottom: 8px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 5px; font-size: 11px;
+}
+.canvas-registry-label {
+  font-size: 10px; color: var(--text-mut);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.canvas-registry-stat { color: var(--text-dim); }
+.canvas-registry-stat .registry-pill {
+  display: inline-block; padding: 1px 6px; border-radius: 3px;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: 10.5px;
+  margin-left: 4px;
+}
+.canvas-registry-stat .registry-pill-new {
+  border-color: var(--accent); color: var(--accent);
+}
+.canvas-registry-stat-href { margin-left: auto; }
+.canvas-registry-stat-href a { color: var(--accent); }
 
 .canvas-brand-actions {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -8516,6 +8617,28 @@ function renderDtsLabel(dts) {
     },
   ];
 
+  // Phase D: optional policy_attestations row, rendered as a chip block
+  // BELOW the standard DTS groups. Each chip = one policy claim. Color
+  // codes by claim type so a buyer can read trust posture at a glance.
+  var attestations = Array.isArray(dts.policy_attestations) ? dts.policy_attestations : [];
+  var attestBlock = "";
+  if (attestations.length > 0) {
+    attestBlock = '<div class="dts-group dts-attest-group">' +
+      '<div class="dts-group-title">Policy attestations <span class="pill pill-muted mono" style="font-size:9px;margin-left:6px">DTS v1.3 proposal</span></div>' +
+      '<div class="dts-attest-list">' +
+        attestations.map(function (a) {
+          var cls = "dts-attest-" + (a.claim || "unknown").replace(/_/g, "-");
+          var notes = a.notes ? '<span class="dts-attest-note">' + escapeHtml(a.notes) + '</span>' : '';
+          return '<div class="dts-attest-row">' +
+            '<span class="mono dts-attest-id">' + escapeHtml(a.policy_id || "?") + '</span>' +
+            '<span class="dts-attest-claim ' + escapeHtml(cls) + ' mono">' + escapeHtml(a.claim || "unknown") + '</span>' +
+            notes +
+          '</div>';
+        }).join("") +
+      '</div>' +
+    '</div>';
+  }
+
   return '<div class="dts-groups">' +
     groups.map((g) => {
       const rows = g.rows.filter(([, v]) => v != null && v !== "");
@@ -8531,6 +8654,7 @@ function renderDtsLabel(dts) {
           '</div>' +
         '</div>';
     }).join("") +
+    attestBlock +
     '</div>';
 }
 
@@ -13008,6 +13132,8 @@ async function _canvasResolveBrand(domain) {
     if (bottom) bottom.style.display = "";
     var loopArrow = document.getElementById("canvas-loop-arrow");
     if (loopArrow) loopArrow.style.display = "";
+    // Phase B: hydrate registry-status bar (lazy, only on first canvas open).
+    _canvasFillRegistryBar();
   } catch (e) {
     card.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div></div>';
   }
@@ -13116,6 +13242,17 @@ function _canvasRenderBrandCard(data) {
         '</div>' +
       '</div>' +
       classNote +
+      // Phase C: applicable policies, matched on brand industries.
+      // Slot is filled async after /registry/policies resolves —
+      // until then it shows a "loading" placeholder.
+      '<div class="canvas-policy-row" id="canvas-policy-row" data-industries="' +
+        escapeHtml(uniqInd.join(",")) +
+      '">' +
+        '<div class="canvas-brand-label">Policy hits</div>' +
+        '<div class="canvas-policy-chips" id="canvas-policy-chips">' +
+          '<span class="orch-small">checking applicable policies…</span>' +
+        '</div>' +
+      '</div>' +
       // Phase 2: Run workflow button. Auto-derives a brief from the brand.
       '<div class="canvas-brand-actions">' +
         '<button class="btn-primary canvas-run-btn" id="canvas-run-btn">' +
@@ -13146,6 +13283,89 @@ function _canvasRenderBrandCard(data) {
     logoImg.addEventListener("error", function () {
       logoImg.style.display = "none";
       logoFallback.style.display = "";
+    });
+  }
+
+  // Phase C: hydrate the policy-hits row. Fetch /registry/policies once
+  // (snapshot is small, ~14 entries) and match on brand industries.
+  _canvasFillPolicyHits(uniqInd);
+}
+
+// Phase C: in-page policy cache + hits resolver.
+var _canvasPoliciesCache = null;
+
+async function _canvasFillPolicyHits(industries) {
+  var chips = document.getElementById("canvas-policy-chips");
+  if (!chips) return;
+  try {
+    if (!_canvasPoliciesCache) {
+      var r = await fetch("/registry/policies");
+      var data = await r.json();
+      _canvasPoliciesCache = Array.isArray(data.policies) ? data.policies : [];
+    }
+  } catch (e) {
+    chips.innerHTML = '<span class="orch-small" style="color:var(--text-mut)">policy registry unreachable</span>';
+    return;
+  }
+  // Match: brand industry overlaps policy.industries_inferred,
+  // OR policy is industries_inferred=["all"] (catch-alls like GDPR, CSBS).
+  var indNorm = (industries || []).map(function (i) { return String(i || "").toLowerCase(); });
+  var hits = _canvasPoliciesCache.filter(function (p) {
+    var inf = (p.industries_inferred || []).map(function (s) { return String(s).toLowerCase(); });
+    if (inf.indexOf("all") >= 0) return true;
+    return inf.some(function (i) { return indNorm.indexOf(i) >= 0; });
+  });
+  if (hits.length === 0) {
+    chips.innerHTML = '<span class="orch-small" style="color:var(--text-mut)">no specific industry policies; CSBS + GDPR baseline still applies</span>';
+    return;
+  }
+  // Sort: must regulations > must standards > should
+  hits.sort(function (a, b) {
+    var sa = (a.enforcement === "must" ? 0 : a.enforcement === "should" ? 1 : 2)
+           + (a.category === "regulation" ? 0 : 0.5);
+    var sb = (b.enforcement === "must" ? 0 : b.enforcement === "should" ? 1 : 2)
+           + (b.category === "regulation" ? 0 : 0.5);
+    return sa - sb;
+  });
+  chips.innerHTML = hits.map(function (p) {
+    var enfClass = "canvas-policy-" + p.enforcement;
+    var catBadge = p.category === "regulation"
+      ? '<span class="canvas-policy-cat canvas-policy-reg mono">REG</span>'
+      : '<span class="canvas-policy-cat canvas-policy-std mono">STD</span>';
+    return '<span class="canvas-policy-chip ' + enfClass + '" title="' + escapeHtml(p.description) + ' (' + escapeHtml(p.region) + ')">' +
+      catBadge +
+      '<span class="canvas-policy-name">' + escapeHtml(p.name) + '</span>' +
+      '<span class="canvas-policy-enf mono">' + escapeHtml(p.enforcement) + '</span>' +
+    '</span>';
+  }).join("");
+}
+
+// Phase B: hydrate registry-status bar. One-shot, idempotent — silently
+// no-ops if the bar element isn't on the page (Orchestrator tab, etc.).
+var _canvasRegistryBarFilled = false;
+async function _canvasFillRegistryBar() {
+  if (_canvasRegistryBarFilled) return;
+  _canvasRegistryBarFilled = true;
+  var agentsEl = document.getElementById("canvas-registry-agents");
+  var policiesEl = document.getElementById("canvas-registry-policies");
+  if (agentsEl) {
+    fetch("/registry/agents").then(function (r) { return r.json(); }).then(function (d) {
+      var c = d.counts || {};
+      var newCount = c.only_in_registry || 0;
+      agentsEl.innerHTML =
+        'agents: <span class="registry-pill">' + (c.registry || 0) + ' upstream</span>' +
+        ' <span class="registry-pill">' + (c.local || 0) + ' local</span>' +
+        (newCount > 0 ? ' <span class="registry-pill registry-pill-new">+' + newCount + ' new</span>' : '');
+    }).catch(function () {
+      agentsEl.innerHTML = '<span class="orch-small">agents: registry unreachable</span>';
+    });
+  }
+  if (policiesEl) {
+    fetch("/registry/policies").then(function (r) { return r.json(); }).then(function (d) {
+      policiesEl.innerHTML =
+        'policies: <span class="registry-pill">' + (d.count || 0) + ' (local snapshot)</span>';
+    }).catch(function () {
+      policiesEl.innerHTML = '<span class="orch-small">policies: snapshot read failed</span>';
     });
   }
 }

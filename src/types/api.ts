@@ -323,6 +323,41 @@ export interface DtsV12Label {
   onboarder_audience_expansion: "Yes" | "No" | "N/A";
   onboarder_device_expansion: "Yes" | "No" | "N/A";
   onboarder_audience_precision_level: string; // "N/A" for non-offline sources
+
+  // ── Phase D extension: policy attestations ─────────────────────────────
+  // NOT in IAB DTS v1.2; proposed for v1.3 (or out-of-band sidecar).
+  // Bridges the IAB content-trust layer (provenance / consent / freshness /
+  // coverage) into the AdCP governance layer by letting a signal declare
+  // WHICH agentic-advertising registry policies it claims compliance with.
+  // Policy ids match the slugs in src/domain/policyRegistry.ts.
+  policy_attestations?: PolicyAttestation[];
+}
+
+/**
+ * One policy claim by the signal provider. Phase D extension.
+ *
+ * Layering:
+ *   - IAB DTS = "what is this audience, where did it come from"
+ *     (provenance/consent/freshness/coverage)
+ *   - AdCP `check_governance` = "is using this audience for THIS plan
+ *     allowed under THIS brand's policy stack" (3.0.1 added the
+ *     `mode` field for enforcement posture)
+ *   - `PolicyAttestation` = the SIGNAL's own claim about which policies
+ *     it adheres to, regardless of plan/brand. Lets `check_governance`
+ *     short-circuit when the signal pre-attests to relevant policies,
+ *     and lets a buyer reject a signal that's silent on a `must` policy.
+ *
+ * `evidence_url` should point to a stable doc — runbook, audit log,
+ * compliance attestation page. We don't validate the URL contents
+ * here; consumers do.
+ */
+export interface PolicyAttestation {
+  policy_id: string;                        // matches RegistryPolicy.policy_id
+  claim: "compliant" | "exempt" | "out_of_scope" | "not_applicable" | "unknown";
+  attested_at: string;                      // ISO-8601 timestamp
+  attestor: string;                         // who attested (org name)
+  evidence_url?: string;                    // link to attestation evidence
+  notes?: string;                           // free text, ≤ 280 chars
 }
 
 // ── Errors ────────────────────────────────────────────────────────────────────

@@ -20,6 +20,7 @@ import type {
   DtsDataSource,
   DtsInclusionMethodology,
   DtsRefreshCadence,
+  PolicyAttestation,
 } from "../types/api";
 
 const DATA_PROVIDER = "AdCP Signals Adaptor - Demo Provider (Evgeny)";
@@ -180,6 +181,53 @@ function buildAudienceCriteria(signal: CanonicalSignal): string {
 }
 
 /**
+ * Build the Phase D `policy_attestations` set for our demo provider.
+ *
+ * The provider attests against the agentic-advertising registry's
+ * `must`-enforcement regulations + the Common Sense Brand Standards
+ * (csbs). Our signals are first-party / partner-derived US household
+ * audiences; the attestations declare:
+ *   - GDPR / GDPR-advertising — out_of_scope (no EU processing)
+ *   - COPPA — compliant (we filter children's data per attestor process)
+ *   - Cannabis / Tobacco / Political / AI-Transparency — out_of_scope
+ *     (we don't source from those category surfaces)
+ *   - HFSS — not_applicable (UK; we're US-only)
+ *   - CSBS — compliant (Common Sense Brand Standards adherence)
+ *
+ * Workshop angle: this is the SIGNAL's claim, separate from
+ * `check_governance` (plan-level) and IAB DTS (audience attributes).
+ * A buyer who needs `gambling_advertising` compliance can see we're
+ * silent on it (no attestation present) and route to a different
+ * signal provider, OR call `check_governance` for the authoritative
+ * answer at plan-time. The attestation is a low-cost pre-filter.
+ *
+ * Static for the demo; in production this would be assembled per-
+ * signal based on data lineage + active compliance program.
+ */
+function buildPolicyAttestations(): PolicyAttestation[] {
+  const now = new Date().toISOString();
+  const evidence = `https://${PROVIDER_DOMAIN}/compliance`;
+  return [
+    { policy_id: "us_coppa", claim: "compliant", attested_at: now, attestor: DATA_PROVIDER, evidence_url: evidence,
+      notes: "Children's data filtered at ingestion per documented process." },
+    { policy_id: "csbs", claim: "compliant", attested_at: now, attestor: DATA_PROVIDER, evidence_url: evidence,
+      notes: "Common Sense Brand Standards adherence." },
+    { policy_id: "eu_gdpr_advertising", claim: "out_of_scope", attested_at: now, attestor: DATA_PROVIDER,
+      notes: "Provider does not process EU resident data." },
+    { policy_id: "uk_hfss", claim: "not_applicable", attested_at: now, attestor: DATA_PROVIDER,
+      notes: "US-only addressable; no UK ad surface." },
+    { policy_id: "ca_sb_942", claim: "out_of_scope", attested_at: now, attestor: DATA_PROVIDER,
+      notes: "No AI-generated content in signal payloads." },
+    { policy_id: "tobacco_nicotine", claim: "out_of_scope", attested_at: now, attestor: DATA_PROVIDER,
+      notes: "Tobacco / nicotine excluded at source." },
+    { policy_id: "us_cannabis", claim: "out_of_scope", attested_at: now, attestor: DATA_PROVIDER,
+      notes: "Cannabis excluded at source." },
+    { policy_id: "political_advertising", claim: "out_of_scope", attested_at: now, attestor: DATA_PROVIDER,
+      notes: "Political segments not sourced." },
+  ];
+}
+
+/**
  * Build full DTS v1.2 label from CanonicalSignal.
  */
 export function buildDtsLabel(signal: CanonicalSignal): DtsV12Label {
@@ -225,6 +273,10 @@ export function buildDtsLabel(signal: CanonicalSignal): DtsV12Label {
     onboarder_audience_expansion: hasOfflineSource ? "No" : "N/A",
     onboarder_device_expansion: hasOfflineSource ? "No" : "N/A",
     onboarder_audience_precision_level: hasOfflineSource ? "Geography" : "N/A",
+
+    // Phase D: agentic-advertising registry policy attestations.
+    // Static for the demo; production would key off signal lineage.
+    policy_attestations: buildPolicyAttestations(),
   };
 }
 

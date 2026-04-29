@@ -175,6 +175,45 @@ export const AGENT_REGISTRY: RegisteredAgent[] = [
     protocols: ["adcp_3.0", "mcp_streamable_http"],
     directory_tool_count: 8,
   },
+  // ── Backfilled from /api/registry/agents diff (2026-04-29) ──────────
+  // Three vendors that appeared upstream after our hardcoded snapshot
+  // froze. Marked stage="live" because registry-side metadata says so;
+  // not yet probed live by us — first orchestrator run will discover
+  // their actual tool surface. Specialties are best-guess from vendor
+  // domain reputation; refine when a probe response comes back.
+  {
+    id: "setupad_gatavocom",
+    name: "Setupad — Gatavo.com deployment",
+    vendor: "Setupad",
+    mcp_url: "https://gatavocom.sales-agent.setupad.ai",
+    stage: "live",
+    role: "buying",
+    protocols: ["adcp_3.0", "mcp_streamable_http"],
+    specialties: ["programmatic_yield_management", "header_bidding"],
+    notes: "Backfilled from registry diff 2026-04-29 (added_date 2026-04-28). Tool count TBD — discovery on first orchestrator run.",
+  },
+  {
+    id: "setupad_wheelrandom",
+    name: "Setupad — WheelRandom deployment",
+    vendor: "Setupad",
+    mcp_url: "https://wheelrandom.sales-agent.setupad.ai",
+    stage: "live",
+    role: "buying",
+    protocols: ["adcp_3.0", "mcp_streamable_http"],
+    specialties: ["programmatic_yield_management", "header_bidding"],
+    notes: "Backfilled from registry diff 2026-04-29 (added_date 2026-04-28). Same Setupad platform as gatavocom; second tenant.",
+  },
+  {
+    id: "mamamia",
+    name: "Mamamia",
+    vendor: "Mamamia",
+    mcp_url: "https://agent.mamamia.com.au",
+    stage: "live",
+    role: "buying",
+    protocols: ["adcp_3.0", "mcp_streamable_http"],
+    specialties: ["womens_media", "publisher_direct", "au_market"],
+    notes: "Backfilled from registry diff 2026-04-29 (added_date 2026-04-28). Australian publisher direct sales agent.",
+  },
   // ── Known-issue agents (skipped on probe-all) ─────────────────────────
   {
     id: "bidcliq",

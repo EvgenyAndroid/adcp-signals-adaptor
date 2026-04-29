@@ -4764,6 +4764,54 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   display: flex; align-items: flex-start; gap: 5px;
 }
 
+/* Refinement A: governance enforcement banners + fire-button states. */
+.canvas-gov-enforce-banner {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  width: 100%; box-sizing: border-box;
+  padding: 8px 12px; margin: 0 0 10px 0;
+  border: 1px solid; border-radius: 5px; font-size: 11.5px;
+}
+.canvas-gov-enforce-block {
+  border-color: var(--error); color: var(--error);
+  background: rgba(239,68,68,0.08);
+}
+.canvas-gov-enforce-warn {
+  border-color: var(--warning, #d4a017); color: var(--warning, #d4a017);
+  background: rgba(212,160,23,0.08);
+}
+.canvas-gov-enforce-icon { font-size: 16px; }
+.canvas-gov-enforce-text { color: var(--text-dim); }
+.canvas-gov-enforce-text strong { color: currentColor; }
+.canvas-gov-enforce-text .mono { color: var(--text); }
+.canvas-gov-override-btn {
+  margin-left: auto;
+  background: transparent; color: var(--error);
+  border: 1px solid var(--error); border-radius: 3px;
+  padding: 2px 8px; font-size: 10.5px; font-weight: 500;
+  cursor: pointer; font-family: inherit;
+}
+.canvas-gov-override-btn:hover { background: var(--error); color: #000; }
+.canvas-fire-btn-warn {
+  border-color: var(--warning, #d4a017); color: var(--warning, #d4a017);
+}
+.canvas-fire-btn-warn:hover:not(:disabled) {
+  background: var(--warning, #d4a017); color: #000;
+}
+.canvas-fire-btn-blocked {
+  border-color: var(--error); color: var(--error);
+  cursor: not-allowed;
+}
+.canvas-fire-btn-blocked:hover { background: transparent; color: var(--error); }
+
+/* Refinement B: per-cell cost/impression prediction. */
+.canvas-mediabuy-pred {
+  font-size: 10px; color: var(--text-mut);
+  padding-top: 3px; padding-bottom: 1px;
+  border-top: 1px dashed var(--border);
+  cursor: help;
+}
+.canvas-mediabuy-pred-icon { color: var(--accent); }
+
 /* MVP #6: portfolio-rebalance banner. Shows above the media-buy cells
    when N agents auth-gate and at least 1 succeeds. Communicates that
    the workflow is robust to partial failure and the deployable budget
@@ -5007,6 +5055,51 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.04em;
   color: var(--text-mut);
 }
+
+/* Refinement C: brand-rights row — symmetric with governance preview. */
+.canvas-rights-row {
+  margin-top: 8px; padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.canvas-rights-body {
+  display: flex; flex-direction: column; gap: 6px; margin-top: 4px;
+}
+.canvas-rights-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 10px; border-radius: 4px;
+  border: 1px solid currentColor; font-size: 12px;
+}
+.canvas-rights-banner .canvas-rights-icon { font-size: 14px; }
+.canvas-rights-banner .canvas-rights-banner-text strong { font-family: var(--font-mono); }
+.canvas-rights-banner .canvas-rights-banner-meta { margin-left: auto; }
+.canvas-rights-ok    { color: var(--success); background: rgba(102,187,106,0.10); }
+.canvas-rights-warn  { color: var(--warning, #d4a017); background: rgba(212,160,23,0.10); }
+.canvas-rights-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.canvas-rights-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 5px; border-radius: 3px; font-size: 10px;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  cursor: help;
+}
+.canvas-rights-chip-owned       { border-color: var(--success); }
+.canvas-rights-chip-self_owned  { border-color: var(--success); }
+.canvas-rights-chip-delegated   { border-color: var(--accent); }
+.canvas-rights-chip-needs_clearance { border-color: var(--warning, #d4a017); }
+.canvas-rights-chip-unknown     { border-color: var(--text-mut); }
+.canvas-rights-chip-id  { color: var(--text-dim); }
+.canvas-rights-chip-out {
+  font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-mut);
+}
+.canvas-rights-flag {
+  font-size: 8px; padding: 0 3px; border-radius: 2px;
+  background: var(--bg-input); color: var(--text-mut); font-weight: 600;
+}
+.canvas-rights-advisories {
+  margin: 4px 0 0 14px; padding: 0; font-size: 10.5px;
+  color: var(--text-mut);
+}
+.canvas-rights-advisories li { margin-bottom: 2px; }
 
 /* Phase B: registry health bar. Strip across canvas-bottom showing
    how stale our local view of the registry is (agents + policies
@@ -13521,6 +13614,18 @@ function _canvasRenderBrandCard(data) {
           '<span class="orch-small">computing predictive advisory…</span>' +
         '</div>' +
       '</div>' +
+      // Refinement C: predictive brand-rights overlay. Filled async after
+      // creative-stage chosen formats land — populates from brand.classification
+      // × chosen_formats. Closes the AdCP 3.0.1 governance + brand-rights
+      // domain pair on Canvas.
+      '<div class="canvas-rights-row" id="canvas-rights-row">' +
+        '<div class="canvas-brand-label">Brand-rights preview ' +
+          '<span class="pill pill-muted mono" style="font-size:9px;margin-left:6px">predictive · get_rights mock</span>' +
+        '</div>' +
+        '<div class="canvas-rights-body" id="canvas-rights-body">' +
+          '<span class="orch-small">awaiting creative-stage formats…</span>' +
+        '</div>' +
+      '</div>' +
       // Phase 2 + Multi-brand A/B: Run workflow + Compare buttons.
       '<div class="canvas-brand-actions">' +
         '<button class="btn-primary canvas-run-btn" id="canvas-run-btn">' +
@@ -13568,6 +13673,10 @@ function _canvasRenderBrandCard(data) {
   // /registry/governance-preview with the same industries; renders
   // the worst-outcome banner + per-policy chips with hover reasoning.
   _canvasFillGovernancePreview(uniqInd);
+  // Refinement C: hydrate brand-rights row. Pre-creative-stage it
+  // shows "awaiting creative-stage formats"; the creative-stage
+  // event handler calls it again with real format ids.
+  _canvasFillBrandRights();
 }
 
 // Phase C: in-page policy cache + hits resolver.
@@ -13617,6 +13726,83 @@ async function _canvasFillPolicyHits(industries) {
       '<span class="canvas-policy-enf mono">' + escapeHtml(p.enforcement) + '</span>' +
     '</span>';
   }).join("");
+}
+
+// Workshop refinement C: brand-rights hydrator. Reads brand classification
+// + chosen creative formats from _canvasState; renders an outcome banner
+// + per-format chips. Symmetric layout with the governance preview.
+async function _canvasFillBrandRights() {
+  var body = document.getElementById("canvas-rights-body");
+  if (!body || !_canvasState || !_canvasState.brand) return;
+  var bm = _canvasState.brand.brand_manifest || {};
+  var classification = bm.classification || {};
+  // Format ids: prefer the chosen-creative set; otherwise pull a sample
+  // from the union of available formats so the row isn't empty pre-stage-2.
+  var chosen = (_canvasState.results && _canvasState.results.creative && _canvasState.results.creative.chosen) || [];
+  var samplePool = chosen;
+  if (samplePool.length === 0 && _canvasState.results && _canvasState.results.creative) {
+    var byAgent = _canvasState.results.creative.agents || {};
+    Object.keys(byAgent).forEach(function (aid) {
+      var sm = byAgent[aid].summary || {};
+      var formats = sm.formats || [];
+      formats.slice(0, 2).forEach(function (f) {
+        if (samplePool.indexOf(f.format_id || f.id) < 0) samplePool.push(f.format_id || f.id);
+      });
+    });
+    samplePool = samplePool.slice(0, 5);
+  }
+  if (samplePool.length === 0) {
+    body.innerHTML = '<span class="orch-small" style="color:var(--text-mut)">awaiting creative-stage formats…</span>';
+    return;
+  }
+  try {
+    var payload = {
+      brand_classification: {
+        kind: classification.kind || classification.classification || "",
+        house_domain: bm.house_domain || classification.house_domain || null,
+      },
+      chosen_formats: samplePool.map(function (id) {
+        return { format_id: String(id), subtype: String(id).toLowerCase() };
+      }),
+    };
+    var r = await fetch("/registry/brand-rights-preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    var d = await r.json();
+    var adv = d.advisory;
+    if (!adv || !adv.rights || adv.rights.length === 0) {
+      body.innerHTML = '<span class="orch-small">no rights to evaluate</span>';
+      return;
+    }
+    var outcomeClass = "canvas-rights-" + (adv.outcome === "needs_clearance" ? "warn" : adv.outcome === "unknown" ? "warn" : "ok");
+    var iconChar = adv.outcome === "needs_clearance" ? "⚠" : adv.outcome === "unknown" ? "?" : "✓";
+    var banner = '<div class="canvas-rights-banner ' + outcomeClass + '">' +
+      '<span class="canvas-rights-icon">' + iconChar + '</span>' +
+      '<span class="canvas-rights-banner-text">overall <strong>' + escapeHtml(String(adv.outcome).toUpperCase().replace(/_/g, " ")) + '</strong></span>' +
+      '<span class="canvas-rights-banner-meta orch-small">' + adv.rights.length + ' formats checked</span>' +
+    '</div>';
+    var chips = adv.rights.map(function (r) {
+      var clsR = "canvas-rights-chip-" + r.rights;
+      var flags = '';
+      if (r.needs_physical_clearance) flags += '<span class="canvas-rights-flag" title="DOOH placement">DOOH</span>';
+      if (r.needs_disclosure) flags += '<span class="canvas-rights-flag" title="Native/sponsored">DISC</span>';
+      return '<span class="canvas-rights-chip ' + clsR + '" title="' + escapeHtml(r.reason) + '">' +
+        '<span class="canvas-rights-chip-id mono">' + escapeHtml(r.format_id) + '</span>' +
+        '<span class="canvas-rights-chip-out mono">' + escapeHtml(String(r.rights).replace(/_/g, " ")) + '</span>' +
+        flags +
+      '</span>';
+    }).join("");
+    var advisoryRows = (adv.advisories || []).slice(0, 3).map(function (s) {
+      return '<li>' + escapeHtml(s) + '</li>';
+    }).join("");
+    body.innerHTML = banner +
+      '<div class="canvas-rights-chips">' + chips + '</div>' +
+      (advisoryRows ? '<ul class="canvas-rights-advisories">' + advisoryRows + '</ul>' : '');
+  } catch (e) {
+    body.innerHTML = '<span class="orch-small" style="color:var(--text-mut)">brand-rights preview failed</span>';
+  }
 }
 
 // MVP #7: measurement lane renderer. Shows one "Sample delivery" button
@@ -13697,6 +13883,11 @@ async function _canvasFetchMeasurement(wfId, agentId, btn) {
 // MVP #2: governance-preview hydrator. Calls /registry/governance-preview
 // with the brand's industries; renders an outcome banner + per-policy
 // chips. Catches the trust-loop visualization in one row.
+//
+// Workshop refinement A: caches the advisory on _canvasState so the
+// media-buy lane render can ENFORCE the prediction (block fire button
+// when outcome=block, soft-warn outline when outcome=warn). Turns the
+// trust loop from informational into actionable.
 async function _canvasFillGovernancePreview(industries) {
   var body = document.getElementById("canvas-governance-body");
   if (!body) return;
@@ -13705,6 +13896,8 @@ async function _canvasFillGovernancePreview(industries) {
     var r = await fetch("/registry/governance-preview?" + qs.toString());
     var data = await r.json();
     var adv = data.advisory;
+    // Cache for media-buy lane enforcement.
+    if (_canvasState) _canvasState.governance_advisory = adv || null;
     if (!adv || !adv.advisories || adv.advisories.length === 0) {
       body.innerHTML = '<span class="orch-small">no applicable policies — governance allow by default</span>';
       return;
@@ -13899,6 +14092,8 @@ function _canvasApplyEvent(ev) {
   if (type === "formats_chosen") {
     r.creative.chosen = ev.chosen_format_ids || [];
     _canvasRenderLane("creative");
+    // Refinement C: re-evaluate brand-rights with real chosen formats.
+    _canvasFillBrandRights();
     return;
   }
   if (type === "products_chosen") {
@@ -14238,6 +14433,35 @@ function _canvasRenderLane(stage) {
     }).join("");
     el.innerHTML = parts;
   } else if (stage === "media_buy") {
+    // Workshop refinement A: governance enforcement. If the cached
+    // advisory says "block", fire buttons render disabled with an
+    // override link; "warn" gets an amber outline + tooltip. allow
+    // is the no-op default.
+    var govAdv = (_canvasState && _canvasState.governance_advisory) || null;
+    var govOutcome = govAdv ? govAdv.outcome : "allow";
+    var govBlockedPolicies = govAdv ? (govAdv.restricted_attributes || []) : [];
+    // Block-banner (only when outcome=block) — surfaces the why-blocked
+    // reason inline ABOVE the cells, separate from the rebalance banner.
+    var govBlockBanner = "";
+    if (govOutcome === "block" && govBlockedPolicies.length > 0) {
+      govBlockBanner = '<div class="canvas-gov-enforce-banner canvas-gov-enforce-block">' +
+        '<span class="canvas-gov-enforce-icon">⛔</span>' +
+        '<span class="canvas-gov-enforce-text">' +
+          'governance preview <strong>BLOCKS</strong> this fire — unmet must on ' +
+          govBlockedPolicies.map(function (pid) { return '<span class="mono">' + escapeHtml(pid) + '</span>'; }).join(", ") +
+        '</span>' +
+        '<button class="canvas-gov-override-btn" id="canvas-gov-override-btn" title="Override block-prediction; the fire still proceeds in the demo.">override</button>' +
+      '</div>';
+    } else if (govOutcome === "warn") {
+      govBlockBanner = '<div class="canvas-gov-enforce-banner canvas-gov-enforce-warn">' +
+        '<span class="canvas-gov-enforce-icon">⚠</span>' +
+        '<span class="canvas-gov-enforce-text">' +
+          'governance preview <strong>WARNS</strong> — silent on ' +
+          govAdv.advisories.filter(function (a) { return a.outcome === "warn"; }).slice(0, 3).map(function (a) { return '<span class="mono">' + escapeHtml(a.policy_id) + '</span>'; }).join(", ") +
+          '. Fire allowed but flagged for review.' +
+        '</span>' +
+      '</div>';
+    }
     // MVP #6: partial-result optimization. Count fired agents that
     // hit the auth-gate pattern; if N>0 and at least 1 succeeded,
     // show a portfolio-rebalance banner above the cells. Workshop
@@ -14296,11 +14520,26 @@ function _canvasRenderLane(stage) {
           : '<span class="pill pill-error mono" style="font-size:9.5px">fired ✗</span>')
         : '<span class="pill pill-muted mono" style="font-size:9.5px">dry run</span>';
       // Phase 4 follow-up: fire button per vendor, only on dry-run cards.
-      // Click → /agents/workflow/fire-buy with the brand context attached.
-      // Re-renders the row with fired + auth-gated callout (matching the
-      // Orchestrator tab UX).
+      // Workshop refinement A: governance-aware enforcement. When the
+      // cached advisory says block (and no override active), the button
+      // renders disabled with the block reason in the title; warn gets
+      // a class hook for amber styling.
+      var govOverridden = (_canvasState && _canvasState.gov_override) === true;
+      var fireDisabled = govOutcome === "block" && !govOverridden;
+      var fireClass = "canvas-fire-btn"
+        + (govOutcome === "warn" ? " canvas-fire-btn-warn" : "")
+        + (fireDisabled ? " canvas-fire-btn-blocked" : "");
+      var fireTitle = fireDisabled
+        ? "governance BLOCK — click override above to enable"
+        : govOutcome === "warn"
+          ? "governance WARN — fire allowed, flagged for review"
+          : "Live-fire create_media_buy on this vendor with the current brand context";
       var fireBtn = !sm.fired
-        ? '<button class="canvas-fire-btn" data-canvas-fire-agent="' + escapeHtml(aid) + '" title="Live-fire create_media_buy on this vendor with the current brand context">simulate fire</button>'
+        ? '<button class="' + fireClass + '" data-canvas-fire-agent="' + escapeHtml(aid) + '"' +
+            (fireDisabled ? ' disabled' : '') +
+            ' title="' + escapeHtml(fireTitle) + '">' +
+            (fireDisabled ? "⛔ blocked" : govOutcome === "warn" ? "⚠ fire (warn)" : "simulate fire") +
+          '</button>'
         : '';
       // Surface vendor rejection reason inline if fired and not ok.
       var rejection = "";
@@ -14325,12 +14564,45 @@ function _canvasRenderLane(stage) {
           ? '<div class="canvas-mediabuy-rejection canvas-mediabuy-auth"><span class="canvas-loop-arrow-glyph" style="font-size:13px">⚠</span> auth-gated — payload shape passed; vendor requires credentials we do not have</div>'
           : (resultText ? '<div class="canvas-mediabuy-rejection mono">' + escapeHtml(resultText.slice(0, 220)) + '</div>' : '');
       }
+      // Workshop refinement B: cost/impression estimation in dry-run.
+      // Same deterministic algorithm as /agents/workflow/measurement-stub
+      // so the pre-fire prediction matches what a "Sample delivery" call
+      // would return after fire. Hashes (workflow × agent) → seed → CPM
+      // 1.5–2.5 → impressions ~ budget * (550–750). Anchors the dry-run
+      // in numbers instead of payload-shape only.
+      var pred = "";
+      if (!sm.fired) {
+        var budget = (sm.payload_preview && sm.payload_preview.total_budget && sm.payload_preview.total_budget.amount) || 1000;
+        var seedSrc = (sm.payload_preview && sm.payload_preview.po_number) || aid;
+        var seedH = 0;
+        for (var si = 0; si < seedSrc.length; si++) seedH = (seedH * 31 + seedSrc.charCodeAt(si)) >>> 0;
+        // Stable pseudo-random in [0,1) from the seed.
+        var pseudo = ((seedH * 1664525 + 1013904223) >>> 0) / 0xffffffff;
+        var cpm = Math.round((1.5 + pseudo * 1.0) * 100) / 100;
+        var imps = Math.round(budget / cpm * 1000);
+        pred = '<div class="canvas-mediabuy-pred mono" title="Predicted from same algo as measurement-stub. Replaced with live numbers when get_media_buy_delivery returns.">' +
+          '<span class="canvas-mediabuy-pred-icon">≈</span> ' +
+          '$' + budget.toLocaleString() + ' → ' +
+          imps.toLocaleString() + ' impr · ' +
+          'CPM $' + cpm +
+        '</div>';
+      }
       return '<div class="canvas-mediabuy-cell">' +
         '<div class="canvas-mediabuy-cell-row"><span class="mono">' + escapeHtml(aid) + '</span> ' + fired + fireBtn + '</div>' +
+        pred +
         rejection +
       '</div>';
     }).join("");
-    el.innerHTML = rebalanceBanner + parts;
+    el.innerHTML = govBlockBanner + rebalanceBanner + parts;
+    // Wire override button (only present when outcome=block).
+    var overrideBtn = document.getElementById("canvas-gov-override-btn");
+    if (overrideBtn) {
+      overrideBtn.addEventListener("click", function () {
+        if (_canvasState) _canvasState.gov_override = true;
+        // Re-render the lane to reflect the override.
+        _canvasRenderLane("media_buy");
+      });
+    }
     // MVP #7: as soon as ANY agent has fired (success OR fail), show the
     // measurement lane. Stub-only — surface intent + close 4-stage loop.
     var anyFired = ids.some(function (aid) { return (agents[aid].summary || {}).fired; });

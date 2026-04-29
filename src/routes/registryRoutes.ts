@@ -25,6 +25,7 @@ import { POLICIES, policiesForIndustries } from "../domain/policyRegistry";
 import { AGENT_REGISTRY } from "../domain/agentRegistry";
 import { getDemoProviderAttestations } from "../domain/workflowOrchestration";
 import { predictGovernance } from "../domain/governanceMock";
+import { predictBrandRights } from "../domain/brandRightsMock";
 import { getLastDiffReport } from "../domain/registrySync";
 
 const REGISTRY_AGENTS_URL = "https://agenticadvertising.org/api/registry/agents";
@@ -195,6 +196,61 @@ export async function handleGovernancePreview(
       brand_industries: industries,
       applicable_policy_count: applicable.length,
       attestation_count: attestations.length,
+    },
+    advisory,
+  });
+}
+
+// ── /registry/brand-rights-preview ──────────────────────────────────────────
+// Workshop refinement C: predictive brand-rights — local mock that
+// mirrors the governance overlay pattern. Closes the AdCP 3.0.1
+// governance + brand-rights domain pair on Canvas.
+//
+// POST: { brand_classification: {kind, house_domain?}, chosen_formats: [{format_id, subtype?}] }
+// GET:  ?kind=master|sub_brand|independent&house_domain=...&format_ids=a,b,c&subtypes=x,y,z
+
+interface BrandRightsPreviewBody {
+  brand_classification?: { kind?: string; house_domain?: string | null };
+  chosen_formats?: Array<{ format_id: string; subtype?: string; label?: string }>;
+}
+
+export async function handleBrandRightsPreview(
+  request: Request,
+  _env: Env,
+  _logger: Logger,
+): Promise<Response> {
+  let classification: BrandRightsPreviewBody["brand_classification"] = undefined;
+  let formats: NonNullable<BrandRightsPreviewBody["chosen_formats"]> = [];
+
+  if (request.method === "GET") {
+    const url = new URL(request.url);
+    const kind = url.searchParams.get("kind") || undefined;
+    const houseDomain = url.searchParams.get("house_domain") || undefined;
+    if (kind) classification = { kind, ...(houseDomain ? { house_domain: houseDomain } : {}) };
+    const ids = (url.searchParams.get("format_ids") || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const subs = (url.searchParams.get("subtypes") || "").split(",").map((s) => s.trim());
+    formats = ids.map((id, i) => {
+      const f: { format_id: string; subtype?: string } = { format_id: id };
+      if (subs[i]) f.subtype = subs[i]!;
+      return f;
+    });
+  } else {
+    try {
+      const body: BrandRightsPreviewBody = await request.json();
+      classification = body.brand_classification;
+      formats = Array.isArray(body.chosen_formats) ? body.chosen_formats : [];
+    } catch {
+      return errorResponse("INVALID_INPUT", "body must be JSON", 400);
+    }
+  }
+
+  const advisory = predictBrandRights(classification, formats);
+  return jsonResponse({
+    mode: "predictive_local",
+    note: "Mock brand-rights — derived from brand.classification × chosen_formats. No vendor in the AdCP directory currently advertises get_rights / acquire_rights / update_rights live.",
+    inputs: {
+      brand_classification: classification ?? null,
+      chosen_format_count: formats.length,
     },
     advisory,
   });

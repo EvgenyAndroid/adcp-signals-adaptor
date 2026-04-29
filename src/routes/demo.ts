@@ -3135,12 +3135,19 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 .dts-v { color: var(--text-dim); font-family: var(--font-mono); font-size: 11.5px; word-break: break-word; }
 .dts-v a { color: var(--accent); }
 
-/* Phase D: policy_attestations chips inside the DTS panel.
-   Visual layer below the IAB DTS v1.2 fields, surfacing the
-   provider's compliance claims against agentic-advertising
-   registry policies. Color-codes by claim type. */
-.dts-attest-group { border-color: var(--accent); }
-.dts-attest-list { display: flex; flex-direction: column; gap: 6px; }
+/* Phase D: policy_attestations sub-section nested INSIDE the
+   Privacy & compliance group. Separated from the IAB kv-list above
+   by a faint divider + subhead, so the two layers (IAB DTS v1.2
+   fields + agentic-advertising registry attestations) read as one
+   coherent compliance block instead of two redundant siblings. */
+.dts-attest-subhead {
+  margin-top: 12px; padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  font-size: 10.5px; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.dts-attest-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .dts-attest-row {
   display: grid; grid-template-columns: 220px 90px 1fr;
   gap: 10px; padding: 4px 0; align-items: center;
@@ -8599,14 +8606,6 @@ function renderDtsLabel(dts) {
       ],
     },
     {
-      title: "Privacy & compliance",
-      rows: [
-        ["Privacy mechanisms", Array.isArray(dts.privacy_compliance_mechanisms) ? dts.privacy_compliance_mechanisms.join(", ") : null],
-        ["Privacy policy", dts.privacy_policy_url ? '<a href="' + escapeHtml(dts.privacy_policy_url) + '" target="_blank" rel="noopener">' + escapeHtml(dts.privacy_policy_url) + "</a>" : null],
-        ["IAB Tech Lab compliant", dts.iab_techlab_compliant],
-      ],
-    },
-    {
       title: "Onboarder (offline sources)",
       rows: [
         ["Match keys", dts.onboarder_match_keys],
@@ -8617,14 +8616,22 @@ function renderDtsLabel(dts) {
     },
   ];
 
-  // Phase D: optional policy_attestations row, rendered as a chip block
-  // BELOW the standard DTS groups. Each chip = one policy claim. Color
-  // codes by claim type so a buyer can read trust posture at a glance.
+  // Phase D refinement: the IAB DTS "Privacy & compliance" group AND the
+  // policy_attestations are the same conceptual layer (provider's
+  // compliance posture) — just at different granularities. The IAB
+  // fields describe HOW consent is honored (TCF / GPP / MSPA channels);
+  // attestations describe WHICH agentic-advertising registry policies
+  // the signal claims compliance with. Rendered as one group with the
+  // attestations as a sub-section, instead of two sibling blocks
+  // (which read as redundant).
   var attestations = Array.isArray(dts.policy_attestations) ? dts.policy_attestations : [];
-  var attestBlock = "";
+  var attestSubBlock = "";
   if (attestations.length > 0) {
-    attestBlock = '<div class="dts-group dts-attest-group">' +
-      '<div class="dts-group-title">Policy attestations <span class="pill pill-muted mono" style="font-size:9px;margin-left:6px">DTS v1.3 proposal</span></div>' +
+    attestSubBlock =
+      '<div class="dts-attest-subhead">' +
+        'Policy attestations ' +
+        '<span class="pill pill-muted mono" style="font-size:9px;margin-left:6px">DTS v1.3 proposal · agentic-advertising registry</span>' +
+      '</div>' +
       '<div class="dts-attest-list">' +
         attestations.map(function (a) {
           var cls = "dts-attest-" + (a.claim || "unknown").replace(/_/g, "-");
@@ -8635,9 +8642,32 @@ function renderDtsLabel(dts) {
             notes +
           '</div>';
         }).join("") +
-      '</div>' +
-    '</div>';
+      '</div>';
   }
+
+  // Privacy + compliance group is rendered manually so we can interleave
+  // the IAB kv-list with the attestation sub-block underneath it.
+  var privacyKv = [
+    ["Privacy mechanisms", Array.isArray(dts.privacy_compliance_mechanisms) ? dts.privacy_compliance_mechanisms.join(", ") : null],
+    ["Privacy policy", dts.privacy_policy_url ? '<a href="' + escapeHtml(dts.privacy_policy_url) + '" target="_blank" rel="noopener">' + escapeHtml(dts.privacy_policy_url) + "</a>" : null],
+    ["IAB Tech Lab compliant", dts.iab_techlab_compliant],
+  ].filter(function (r) { return r[1] != null && r[1] !== ""; });
+
+  var privacyBlock = (privacyKv.length || attestSubBlock)
+    ? '<div class="dts-group">' +
+        '<div class="dts-group-title">Privacy &amp; compliance</div>' +
+        (privacyKv.length
+          ? '<div class="dts-kv-list">' +
+              privacyKv.map(function (r) {
+                var k = r[0], v = r[1];
+                var val = typeof v === "string" && v.indexOf("<a ") === 0 ? v : escapeHtml(String(v));
+                return '<div class="dts-kv"><span class="dts-k">' + escapeHtml(k) + '</span><span class="dts-v">' + val + '</span></div>';
+              }).join("") +
+            '</div>'
+          : '') +
+        attestSubBlock +
+      '</div>'
+    : '';
 
   return '<div class="dts-groups">' +
     groups.map((g) => {
@@ -8654,7 +8684,7 @@ function renderDtsLabel(dts) {
           '</div>' +
         '</div>';
     }).join("") +
-    attestBlock +
+    privacyBlock +
     '</div>';
 }
 

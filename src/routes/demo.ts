@@ -1439,6 +1439,20 @@ ${STYLES}
             </div>
           </div>
 
+          <!-- MVP #7: measurement lane stub. 5th Canvas stage that closes
+               the AdCP 4-domain loop. After media-buy fires, this lane
+               surfaces a "Sample delivery" button per vendor that hits
+               /agents/workflow/measurement-stub and returns synthetic
+               pacing + viewability data. Demonstrates the next-cycle
+               feedback shape without requiring a live get_media_buy_delivery
+               implementation in any vendor agent. -->
+          <div class="canvas-bottom-row canvas-row-measurement" id="canvas-lane-measurement-row" style="display:none">
+            <div class="canvas-bottom-label">Measurement <span class="pill pill-muted mono" style="font-size:9px;margin-left:6px">stub · closes 4-stage loop</span></div>
+            <div class="canvas-bottom-body" id="canvas-row-measurement-body">
+              <span class="orch-small">awaiting media-buy fire…</span>
+            </div>
+          </div>
+
           <!-- Closed-loop measurement: SVG arc back to Audiences + spec card -->
           <div class="canvas-spec-block">
             <div class="canvas-spec-header">
@@ -4750,6 +4764,175 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   display: flex; align-items: flex-start; gap: 5px;
 }
 
+/* MVP #6: portfolio-rebalance banner. Shows above the media-buy cells
+   when N agents auth-gate and at least 1 succeeds. Communicates that
+   the workflow is robust to partial failure and the deployable budget
+   is preserved — workshop's "the auth-gate is a feature, not a flaw"
+   talking point. */
+.canvas-rebalance-banner {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 12px; margin: 0 0 10px 0;
+  background: linear-gradient(90deg, rgba(102,187,106,0.10), rgba(102,187,106,0.02));
+  border: 1px solid var(--success);
+  border-radius: 5px; font-size: 11.5px;
+  width: 100%; box-sizing: border-box;
+}
+.canvas-rebalance-icon { font-size: 16px; color: var(--success); }
+.canvas-rebalance-text { color: var(--text-dim); }
+.canvas-rebalance-text strong { color: var(--text); }
+.canvas-rebalance-delta { color: var(--success); font-weight: 600; font-family: var(--font-mono); }
+.canvas-rebalance-meta { margin-left: auto; }
+
+/* MVP #1: workflow permalink chip — appended below run button after save. */
+.canvas-permalink-chip {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  width: 100%; padding-top: 6px; margin-top: 4px;
+  border-top: 1px dashed var(--border);
+  color: var(--text-mut); font-size: 11px;
+}
+.canvas-permalink-chip a { color: var(--accent); }
+.canvas-permalink-copy {
+  background: transparent; color: var(--text-mut);
+  border: 1px solid var(--border); border-radius: 3px;
+  padding: 0 6px; font-size: 9.5px; cursor: pointer;
+  font-family: inherit;
+}
+.canvas-permalink-copy:hover { color: var(--accent); border-color: var(--accent); }
+
+/* Multi-brand A/B (light) — comparison panel + side-by-side cards. */
+.canvas-compare-btn {
+  background: transparent; color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 8px 14px; font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: border-color 0.15s, color 0.15s;
+  font-family: inherit;
+}
+.canvas-compare-btn:hover { border-color: var(--accent); color: var(--accent); }
+.canvas-compare-panel {
+  margin-top: 12px; padding: 12px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 5px;
+}
+.canvas-compare-head {
+  display: flex; align-items: center; gap: 12px;
+  padding-bottom: 8px; margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.canvas-compare-close {
+  margin-left: auto; background: transparent;
+  border: 1px solid var(--border); border-radius: 3px;
+  width: 22px; height: 22px; cursor: pointer; color: var(--text-mut);
+  font-size: 16px; line-height: 1;
+}
+.canvas-compare-close:hover { color: var(--error); border-color: var(--error); }
+.canvas-compare-search { display: flex; flex-direction: column; gap: 6px; }
+.canvas-compare-input {
+  width: 100%; padding: 8px 10px; font-size: 12.5px;
+  background: var(--bg-raised); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px;
+  font-family: inherit;
+}
+.canvas-compare-input:focus { outline: none; border-color: var(--accent); }
+.canvas-compare-suggestions {
+  display: flex; flex-direction: column; gap: 2px; max-height: 200px;
+  overflow-y: auto;
+}
+.canvas-compare-suggestion {
+  padding: 5px 10px; cursor: pointer; font-size: 11.5px;
+  border-radius: 3px; color: var(--text-dim);
+}
+.canvas-compare-suggestion:hover { background: var(--bg-raised); color: var(--accent); }
+.canvas-compare-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.canvas-compare-side {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: 5px; padding: 10px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.canvas-compare-side-head {
+  display: flex; align-items: baseline; gap: 8px;
+  padding-bottom: 6px; border-bottom: 1px dashed var(--border);
+}
+.canvas-compare-side-name {
+  font-size: 13px; font-weight: 600; color: var(--text);
+}
+.canvas-compare-side-domain {
+  font-size: 10.5px; color: var(--text-mut);
+}
+.canvas-compare-section { display: flex; flex-direction: column; gap: 4px; }
+.canvas-compare-delta-section {
+  margin-top: 12px; padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+.canvas-compare-delta {
+  width: 100%; border-collapse: collapse; font-size: 11px;
+  margin-top: 6px;
+}
+.canvas-compare-delta th {
+  text-align: left; padding: 4px 6px; color: var(--text-mut);
+  font-weight: 500; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.05em; border-bottom: 1px solid var(--border);
+}
+.canvas-compare-delta td {
+  padding: 4px 6px; border-bottom: 1px dashed var(--border);
+  color: var(--text-dim); vertical-align: top;
+}
+.canvas-compare-kind {
+  font-size: 9px; padding: 1px 5px; border-radius: 2px;
+  text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;
+}
+.canvas-compare-kind-A-only { background: rgba(212,160,23,0.15); color: var(--warning, #d4a017); }
+.canvas-compare-kind-B-only { background: rgba(102,187,106,0.15); color: var(--success); }
+.canvas-compare-kind-diff   { background: rgba(239,68,68,0.15); color: var(--error); }
+
+/* MVP #7: measurement lane (5th Canvas stage). */
+.canvas-row-measurement { border-left-color: var(--warning, #d4a017); }
+.canvas-measurement-cell {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 6px 10px; margin: 0 6px 6px 0;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: 4px; font-size: 11px; min-width: 240px;
+}
+.canvas-measurement-cell .mono { color: var(--text-dim); }
+.canvas-measure-btn {
+  background: transparent; color: var(--accent);
+  border: 1px solid var(--accent); border-radius: 3px;
+  padding: 1px 8px; font-size: 10px; font-weight: 500;
+  cursor: pointer; align-self: flex-start;
+  font-family: inherit; transition: background-color 0.15s;
+}
+.canvas-measure-btn:hover:not(:disabled) { background: var(--accent); color: #000; }
+.canvas-measure-btn:disabled { opacity: 0.6; cursor: wait; }
+.canvas-measure-result { display: contents; }
+.canvas-measure-totals {
+  display: flex; flex-wrap: wrap; gap: 6px; padding-top: 4px;
+  border-top: 1px dashed var(--border);
+}
+.canvas-measure-total {
+  font-size: 10.5px; color: var(--text-dim);
+  background: var(--bg-input); padding: 1px 5px; border-radius: 2px;
+}
+.canvas-measure-pacing {
+  display: flex; flex-direction: column; gap: 2px;
+  margin-top: 4px;
+}
+.canvas-measure-pacing-bar {
+  display: grid; grid-template-columns: 1fr 30px 50px;
+  gap: 6px; align-items: center; font-size: 10px;
+  color: var(--text-mut); position: relative;
+}
+.canvas-measure-bar-fill {
+  display: block; height: 4px; background: var(--accent); border-radius: 2px;
+}
+.canvas-measure-bar-day { color: var(--text-mut); }
+.canvas-measure-bar-spend { text-align: right; color: var(--text-dim); }
+.canvas-measure-recs {
+  margin: 4px 0 0 14px; padding: 0; font-size: 10.5px;
+  color: var(--text-mut);
+}
+.canvas-measure-recs li { margin-bottom: 2px; }
+
 /* Phase C: policy hits row on the brand card. Each chip = one
    applicable policy from the agentic-advertising registry,
    matched on brand industries. Color codes: red = must
@@ -4780,6 +4963,49 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .canvas-policy-enf {
   font-size: 9px; color: var(--text-mut);
   text-transform: uppercase; letter-spacing: 0.05em;
+}
+
+/* MVP #2: predictive check_governance overlay row. Sits between
+   policy-hits and the run button. Shows worst-outcome banner +
+   per-policy chips with hover reasoning. */
+.canvas-governance-row {
+  margin-top: 8px; padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.canvas-governance-body {
+  display: flex; flex-direction: column; gap: 6px; margin-top: 4px;
+}
+.canvas-gov-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 10px; border-radius: 4px;
+  border: 1px solid currentColor; font-size: 12px;
+}
+.canvas-gov-banner .canvas-gov-icon { font-size: 14px; }
+.canvas-gov-banner .canvas-gov-banner-meta {
+  margin-left: auto; font-family: var(--font-mono);
+  font-size: 10.5px; color: var(--text-mut);
+}
+.canvas-gov-allow { color: var(--success); background: rgba(102,187,106,0.10); }
+.canvas-gov-warn  { color: var(--warning, #d4a017); background: rgba(212,160,23,0.10); }
+.canvas-gov-block { color: var(--error); background: rgba(239,68,68,0.10); }
+.canvas-gov-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.canvas-gov-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 5px; border-radius: 3px; font-size: 10px;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  cursor: help;
+}
+.canvas-gov-chip-allow { border-color: var(--success); }
+.canvas-gov-chip-warn  { border-color: var(--warning, #d4a017); }
+.canvas-gov-chip-block { border-color: var(--error); }
+.canvas-gov-chip-enf {
+  font-size: 8.5px; padding: 0 3px; border-radius: 2px;
+  background: var(--bg-input); color: var(--text-mut);
+}
+.canvas-gov-chip-id { color: var(--text-dim); }
+.canvas-gov-chip-out {
+  font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-mut);
 }
 
 /* Phase B: registry health bar. Strip across canvas-bottom showing
@@ -5619,6 +5845,7 @@ function switchTab(name) {
   if (name === "embedding") ensureEmbedding();
   if (name === "devkit") ensureDevkit();
   if (name === "destinations") ensureDestinations();
+  if (name === "canvas") _canvasReplayFromQuery();
   if (name === "lab") ensureLab();
   if (name === "portfolio") ensurePortfolio();
   if (name === "composer") ensureComposer();
@@ -13283,17 +13510,33 @@ function _canvasRenderBrandCard(data) {
           '<span class="orch-small">checking applicable policies…</span>' +
         '</div>' +
       '</div>' +
-      // Phase 2: Run workflow button. Auto-derives a brief from the brand.
+      // MVP #2: predictive check_governance overlay. Filled async by
+      // /registry/governance-preview. Shows "would allow / warn / block"
+      // with per-policy reasoning on hover. Trust-loop made visible.
+      '<div class="canvas-governance-row" id="canvas-governance-row">' +
+        '<div class="canvas-brand-label">Governance preview ' +
+          '<span class="pill pill-muted mono" style="font-size:9px;margin-left:6px">predictive · check_governance mock</span>' +
+        '</div>' +
+        '<div class="canvas-governance-body" id="canvas-governance-body">' +
+          '<span class="orch-small">computing predictive advisory…</span>' +
+        '</div>' +
+      '</div>' +
+      // Phase 2 + Multi-brand A/B: Run workflow + Compare buttons.
       '<div class="canvas-brand-actions">' +
         '<button class="btn-primary canvas-run-btn" id="canvas-run-btn">' +
           '<svg class="ico"><use href="#icon-bolt"/></svg>' +
           '<span>Run workflow with this brand</span>' +
+        '</button>' +
+        '<button class="canvas-compare-btn" id="canvas-compare-btn" title="A/B with another brand — side-by-side industries + policy hits + governance preview">' +
+          '<span>vs another brand</span>' +
         '</button>' +
         '<div class="canvas-derived-brief orch-small">' +
           '<span style="color:var(--text-mut)">derived brief:</span> ' +
           '<code class="mono">' + escapeHtml(_canvasDeriveBrief(data)) + '</code>' +
         '</div>' +
       '</div>' +
+      // Multi-brand A/B (light): comparison panel slot, hidden until invoked.
+      '<div class="canvas-compare-panel" id="canvas-compare-panel" style="display:none"></div>' +
       '<div class="canvas-brand-rawdrop">' +
         '<details><summary class="orch-small">raw brand.json</summary>' +
           '<pre class="wf-json mono">' + escapeHtml(JSON.stringify(bm, null, 2)) + '</pre>' +
@@ -13303,6 +13546,8 @@ function _canvasRenderBrandCard(data) {
   // Wire the run button after innerHTML is set.
   var runBtn = document.getElementById("canvas-run-btn");
   if (runBtn) runBtn.addEventListener("click", _canvasRunWorkflow);
+  var compareBtn = document.getElementById("canvas-compare-btn");
+  if (compareBtn) compareBtn.addEventListener("click", _canvasOpenCompare);
 
   // Attach JS-side error handler for the brand logo. If the proxy returns
   // non-image (e.g. brandfetch CF-1010 banned), swap to the placeholder
@@ -13319,6 +13564,10 @@ function _canvasRenderBrandCard(data) {
   // Phase C: hydrate the policy-hits row. Fetch /registry/policies once
   // (snapshot is small, ~14 entries) and match on brand industries.
   _canvasFillPolicyHits(uniqInd);
+  // MVP #2: hydrate the governance-preview row. Calls
+  // /registry/governance-preview with the same industries; renders
+  // the worst-outcome banner + per-policy chips with hover reasoning.
+  _canvasFillGovernancePreview(uniqInd);
 }
 
 // Phase C: in-page policy cache + hits resolver.
@@ -13370,6 +13619,120 @@ async function _canvasFillPolicyHits(industries) {
   }).join("");
 }
 
+// MVP #7: measurement lane renderer. Shows one "Sample delivery" button
+// per agent that fired (success or fail). Click → /agents/workflow/measurement-stub
+// → render pacing data inline. Closes the AdCP 4-stage loop visually.
+function _canvasShowMeasurementLane(ids, agents) {
+  var row = document.getElementById("canvas-lane-measurement-row");
+  var body = document.getElementById("canvas-row-measurement-body");
+  if (!row || !body) return;
+  row.style.display = "";
+  // Successful fires get the live "Sample delivery" button. Failed fires
+  // (auth-gated) get a muted placeholder — measurement is moot when buy
+  // didn't go through.
+  var firedAgents = ids.filter(function (aid) {
+    var sm = agents[aid].summary || {};
+    return sm.fired;
+  });
+  if (firedAgents.length === 0) {
+    body.innerHTML = '<span class="orch-small">awaiting media-buy fire…</span>';
+    return;
+  }
+  var wfId = (_canvasState && _canvasState.workflow_id) || "wf_unknown";
+  var html = firedAgents.map(function (aid) {
+    var sm = agents[aid].summary || {};
+    var ok = agents[aid].ok;
+    var label = ok ? "Sample delivery" : "—";
+    return '<div class="canvas-measurement-cell">' +
+      '<span class="mono">' + escapeHtml(aid) + '</span>' +
+      (ok
+        ? '<button class="canvas-measure-btn" data-canvas-measure="' + escapeHtml(aid) + '">' + label + '</button>'
+        : '<span class="orch-small" style="color:var(--text-mut)">no buy → no delivery</span>') +
+      '<div class="canvas-measure-result" id="canvas-measure-result-' + escapeHtml(aid) + '"></div>' +
+    '</div>';
+  }).join("");
+  body.innerHTML = html;
+  body.querySelectorAll(".canvas-measure-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var aid = btn.getAttribute("data-canvas-measure");
+      if (aid) _canvasFetchMeasurement(wfId, aid, btn);
+    });
+  });
+}
+
+async function _canvasFetchMeasurement(wfId, agentId, btn) {
+  var resultEl = document.getElementById("canvas-measure-result-" + agentId);
+  if (!resultEl) return;
+  btn.disabled = true; btn.textContent = "fetching…";
+  try {
+    var qs = new URLSearchParams({ workflow_id: wfId, agent_id: agentId, days: "7" });
+    var r = await fetch("/agents/workflow/measurement-stub?" + qs.toString());
+    var d = await r.json();
+    var t = d.totals || {};
+    var pacing = (d.pacing || []).map(function (p) {
+      var bar = Math.round((p.spend_usd / Math.max.apply(null, d.pacing.map(function (q) { return q.spend_usd; }))) * 100);
+      return '<div class="canvas-measure-pacing-bar"><span class="canvas-measure-bar-fill" style="width:' + bar + '%"></span><span class="canvas-measure-bar-day mono">d' + p.day + '</span><span class="canvas-measure-bar-spend mono">$' + Math.round(p.spend_usd) + '</span></div>';
+    }).join("");
+    var recs = (d.next_cycle_recommendations || []).map(function (s) {
+      return '<li>' + escapeHtml(s) + '</li>';
+    }).join("");
+    resultEl.innerHTML =
+      '<div class="canvas-measure-totals">' +
+        '<span class="canvas-measure-total mono">$' + (t.spend_usd || 0).toLocaleString() + ' spent</span>' +
+        '<span class="canvas-measure-total mono">' + (t.impressions || 0).toLocaleString() + ' impr</span>' +
+        '<span class="canvas-measure-total mono">CPM $' + (t.cpm_usd || 0) + '</span>' +
+        '<span class="canvas-measure-total mono">' + (t.avg_viewable_pct || 0) + '% viewable</span>' +
+      '</div>' +
+      '<div class="canvas-measure-pacing">' + pacing + '</div>' +
+      (recs ? '<ul class="canvas-measure-recs">' + recs + '</ul>' : '');
+    btn.textContent = "refresh";
+    btn.disabled = false;
+  } catch (e) {
+    btn.textContent = "retry";
+    btn.disabled = false;
+    resultEl.innerHTML = '<span class="orch-small" style="color:var(--error)">measurement fetch failed</span>';
+  }
+}
+
+// MVP #2: governance-preview hydrator. Calls /registry/governance-preview
+// with the brand's industries; renders an outcome banner + per-policy
+// chips. Catches the trust-loop visualization in one row.
+async function _canvasFillGovernancePreview(industries) {
+  var body = document.getElementById("canvas-governance-body");
+  if (!body) return;
+  try {
+    var qs = new URLSearchParams({ industries: (industries || []).join(",") });
+    var r = await fetch("/registry/governance-preview?" + qs.toString());
+    var data = await r.json();
+    var adv = data.advisory;
+    if (!adv || !adv.advisories || adv.advisories.length === 0) {
+      body.innerHTML = '<span class="orch-small">no applicable policies — governance allow by default</span>';
+      return;
+    }
+    var outcomeBanner = '<div class="canvas-gov-banner canvas-gov-' + escapeHtml(adv.outcome) + '">' +
+      '<span class="canvas-gov-icon">' + (adv.outcome === "block" ? "⛔" : adv.outcome === "warn" ? "⚠" : "✓") + '</span>' +
+      '<span class="canvas-gov-banner-text">would <strong>' + escapeHtml(adv.outcome.toUpperCase()) + '</strong></span>' +
+      '<span class="canvas-gov-banner-meta">' +
+        adv.restricted_attributes.length + ' block · ' +
+        adv.advisories.filter(function (a) { return a.outcome === "warn"; }).length + ' warn · ' +
+        adv.advisories.filter(function (a) { return a.outcome === "allow"; }).length + ' allow' +
+      '</span>' +
+    '</div>';
+    var chips = adv.advisories.map(function (a) {
+      var enfTag = a.enforcement === "must" ? "M" : a.enforcement === "should" ? "S" : "?";
+      return '<span class="canvas-gov-chip canvas-gov-chip-' + escapeHtml(a.outcome) + '" title="' +
+        escapeHtml(a.reason) + ' (signal_claim: ' + (a.signal_claim || "silent") + ')">' +
+        '<span class="canvas-gov-chip-enf mono">' + enfTag + '</span>' +
+        '<span class="canvas-gov-chip-id mono">' + escapeHtml(a.policy_id) + '</span>' +
+        '<span class="canvas-gov-chip-out mono">' + escapeHtml(a.outcome) + '</span>' +
+      '</span>';
+    }).join("");
+    body.innerHTML = outcomeBanner + '<div class="canvas-gov-chips">' + chips + '</div>';
+  } catch (e) {
+    body.innerHTML = '<span class="orch-small" style="color:var(--text-mut)">governance preview failed</span>';
+  }
+}
+
 // Phase B: hydrate registry-status bar. One-shot, idempotent — silently
 // no-ops if the bar element isn't on the page (Orchestrator tab, etc.).
 var _canvasRegistryBarFilled = false;
@@ -13382,10 +13745,18 @@ async function _canvasFillRegistryBar() {
     fetch("/registry/agents").then(function (r) { return r.json(); }).then(function (d) {
       var c = d.counts || {};
       var newCount = c.only_in_registry || 0;
+      // MVP #4: append the daily-cron freshness signal when available.
+      var freshness = '';
+      if (d.last_cron_diff && d.last_cron_diff.ran_at) {
+        var hrs = Math.round((Date.now() - Date.parse(d.last_cron_diff.ran_at)) / 36e5);
+        var label = hrs < 1 ? '<1h' : hrs < 24 ? hrs + 'h' : Math.round(hrs / 24) + 'd';
+        freshness = ' <span class="registry-pill" title="last daily cron diff at ' + escapeHtml(d.last_cron_diff.ran_at) + '">cron ' + label + ' ago</span>';
+      }
       agentsEl.innerHTML =
         'agents: <span class="registry-pill">' + (c.registry || 0) + ' upstream</span>' +
         ' <span class="registry-pill">' + (c.local || 0) + ' local</span>' +
-        (newCount > 0 ? ' <span class="registry-pill registry-pill-new">+' + newCount + ' new</span>' : '');
+        (newCount > 0 ? ' <span class="registry-pill registry-pill-new">+' + newCount + ' new</span>' : '') +
+        freshness;
     }).catch(function () {
       agentsEl.innerHTML = '<span class="orch-small">agents: registry unreachable</span>';
     });
@@ -13536,10 +13907,247 @@ function _canvasApplyEvent(ev) {
     return;
   }
   if (type === "workflow_complete") {
-    var ts = document.getElementById("canvas-derived-brief");
-    void ts;
+    // MVP #1: save the run state to KV after completion. Permalink shown
+    // as a small link below the run button. Stays valid for 30 days.
+    _canvasSaveRun();
     return;
   }
+}
+
+// Multi-brand A/B (light): open the comparison panel with an inline
+// brand search; on pick, render side-by-side industries + policy hits
+// + governance outcome. Reuses /brands/search and the existing
+// policy + governance endpoints — no new server work.
+function _canvasOpenCompare() {
+  var panel = document.getElementById("canvas-compare-panel");
+  if (!panel) return;
+  panel.style.display = "";
+  panel.innerHTML =
+    '<div class="canvas-compare-head">' +
+      '<span class="canvas-brand-label">A/B comparison</span>' +
+      '<span class="orch-small" style="color:var(--text-mut)">side-by-side: industries · policy hits · governance preview</span>' +
+      '<button class="canvas-compare-close" id="canvas-compare-close" title="close">×</button>' +
+    '</div>' +
+    '<div class="canvas-compare-search">' +
+      '<input type="text" class="canvas-compare-input" id="canvas-compare-input" placeholder="search a 2nd brand domain (e.g. pepsi, anheuser-busch, lego)…" autofocus />' +
+      '<div class="canvas-compare-suggestions" id="canvas-compare-suggestions"></div>' +
+    '</div>';
+  document.getElementById("canvas-compare-close").addEventListener("click", function () {
+    panel.style.display = "none";
+    panel.innerHTML = "";
+  });
+  var input = document.getElementById("canvas-compare-input");
+  var sug = document.getElementById("canvas-compare-suggestions");
+  var debounceId = null;
+  input.addEventListener("input", function () {
+    var q = input.value.trim();
+    if (debounceId) clearTimeout(debounceId);
+    if (q.length < 2) { sug.innerHTML = ""; return; }
+    debounceId = setTimeout(function () {
+      fetch("/brands/search?q=" + encodeURIComponent(q)).then(function (r) { return r.json(); }).then(function (d) {
+        var results = (d.brands || []).slice(0, 6);
+        if (results.length === 0) { sug.innerHTML = '<div class="orch-small" style="color:var(--text-mut)">no matches</div>'; return; }
+        sug.innerHTML = results.map(function (b) {
+          return '<div class="canvas-compare-suggestion mono" data-domain="' + escapeHtml(b.domain) + '">' +
+            escapeHtml(b.brand_name) + ' <span style="color:var(--text-mut)">' + escapeHtml(b.domain) + '</span>' +
+          '</div>';
+        }).join("");
+        sug.querySelectorAll(".canvas-compare-suggestion").forEach(function (el) {
+          el.addEventListener("click", function () {
+            var d = el.getAttribute("data-domain");
+            if (d) _canvasRenderCompare(d);
+          });
+        });
+      });
+    }, 200);
+  });
+}
+
+async function _canvasRenderCompare(domainB) {
+  var panel = document.getElementById("canvas-compare-panel");
+  if (!panel || !_canvasState || !_canvasState.brand) return;
+  var brandA = _canvasState.brand;
+  panel.innerHTML = '<div class="canvas-compare-head">' +
+    '<span class="canvas-brand-label">A/B comparison</span>' +
+    '<span class="orch-small">loading ' + escapeHtml(domainB) + '…</span>' +
+    '<button class="canvas-compare-close" id="canvas-compare-close" title="close">×</button>' +
+  '</div>';
+  document.getElementById("canvas-compare-close").addEventListener("click", function () {
+    panel.style.display = "none";
+    panel.innerHTML = "";
+  });
+  try {
+    var rB = await fetch("/brands/resolve?domain=" + encodeURIComponent(domainB));
+    var brandB = await rB.json();
+    if (!brandB || brandB.error) {
+      panel.innerHTML = '<div class="orch-small" style="color:var(--error)">brand not found: ' + escapeHtml(domainB) + '</div>';
+      return;
+    }
+    // Industries
+    var indA = ((brandA.brand_manifest && brandA.brand_manifest.company && brandA.brand_manifest.company.industries) || []);
+    var indB = ((brandB.brand_manifest && brandB.brand_manifest.company && brandB.brand_manifest.company.industries) || []);
+    // Dedupe
+    var uniqA = []; indA.forEach(function (i) { if (uniqA.indexOf(i) < 0) uniqA.push(i); });
+    var uniqB = []; indB.forEach(function (i) { if (uniqB.indexOf(i) < 0) uniqB.push(i); });
+    // Fetch governance + policies for both
+    var qA = new URLSearchParams({ industries: uniqA.join(",") });
+    var qB = new URLSearchParams({ industries: uniqB.join(",") });
+    var [govA, govB] = await Promise.all([
+      fetch("/registry/governance-preview?" + qA.toString()).then(function (r) { return r.json(); }),
+      fetch("/registry/governance-preview?" + qB.toString()).then(function (r) { return r.json(); }),
+    ]);
+    var advA = govA.advisory || { advisories: [], outcome: "allow", restricted_attributes: [] };
+    var advB = govB.advisory || { advisories: [], outcome: "allow", restricted_attributes: [] };
+
+    function side(name, domain, industries, adv) {
+      var indChips = industries.map(function (i) { return '<span class="pill pill-muted mono" style="font-size:10px">' + escapeHtml(i) + '</span>'; }).join(" ");
+      var policyChips = adv.advisories.map(function (a) {
+        return '<span class="canvas-gov-chip canvas-gov-chip-' + escapeHtml(a.outcome) + '" title="' + escapeHtml(a.reason) + '">' +
+          '<span class="canvas-gov-chip-id mono">' + escapeHtml(a.policy_id) + '</span>' +
+          '<span class="canvas-gov-chip-out mono">' + escapeHtml(a.outcome) + '</span>' +
+        '</span>';
+      }).join("");
+      var banner = '<div class="canvas-gov-banner canvas-gov-' + escapeHtml(adv.outcome) + '" style="font-size:11px">' +
+        '<span class="canvas-gov-icon">' + (adv.outcome === "block" ? "⛔" : adv.outcome === "warn" ? "⚠" : "✓") + '</span>' +
+        '<strong>' + escapeHtml(adv.outcome.toUpperCase()) + '</strong>' +
+        '<span class="canvas-gov-banner-meta">' +
+          adv.restricted_attributes.length + ' block · ' +
+          adv.advisories.filter(function (a) { return a.outcome === "warn"; }).length + ' warn' +
+        '</span>' +
+      '</div>';
+      return '<div class="canvas-compare-side">' +
+        '<div class="canvas-compare-side-head">' +
+          '<span class="canvas-compare-side-name">' + escapeHtml(name) + '</span>' +
+          '<span class="canvas-compare-side-domain mono">' + escapeHtml(domain) + '</span>' +
+        '</div>' +
+        '<div class="canvas-compare-section"><div class="orch-small" style="color:var(--text-mut)">industries</div>' + (indChips || '<span class="orch-small">unclassified</span>') + '</div>' +
+        '<div class="canvas-compare-section"><div class="orch-small" style="color:var(--text-mut)">governance</div>' + banner + '</div>' +
+        '<div class="canvas-compare-section"><div class="orch-small" style="color:var(--text-mut)">policy outcomes</div><div class="canvas-gov-chips">' + policyChips + '</div></div>' +
+      '</div>';
+    }
+
+    // Highlight delta — policies in only one side or differing outcome.
+    var deltaSet = new Map();
+    advA.advisories.forEach(function (a) { deltaSet.set(a.policy_id, { a: a, b: null }); });
+    advB.advisories.forEach(function (a) {
+      if (deltaSet.has(a.policy_id)) deltaSet.get(a.policy_id).b = a;
+      else deltaSet.set(a.policy_id, { a: null, b: a });
+    });
+    var deltaRows = [];
+    deltaSet.forEach(function (v, pid) {
+      if (!v.a) deltaRows.push({ pid: pid, kind: "B-only", outcome: v.b.outcome, name: v.b.policy_name });
+      else if (!v.b) deltaRows.push({ pid: pid, kind: "A-only", outcome: v.a.outcome, name: v.a.policy_name });
+      else if (v.a.outcome !== v.b.outcome) deltaRows.push({ pid: pid, kind: "diff", outcome: v.a.outcome + " vs " + v.b.outcome, name: v.a.policy_name });
+    });
+    var deltaHtml = deltaRows.length === 0
+      ? '<div class="orch-small" style="color:var(--text-mut)">no policy delta — both brands carry the same governance posture</div>'
+      : '<table class="canvas-compare-delta"><thead><tr><th>policy</th><th>only on</th><th>outcome</th></tr></thead><tbody>' +
+        deltaRows.map(function (r) {
+          return '<tr>' +
+            '<td><span class="mono">' + escapeHtml(r.pid) + '</span> <span class="orch-small" style="color:var(--text-mut)">' + escapeHtml(r.name) + '</span></td>' +
+            '<td><span class="canvas-compare-kind canvas-compare-kind-' + escapeHtml(r.kind) + '">' + escapeHtml(r.kind) + '</span></td>' +
+            '<td class="mono">' + escapeHtml(r.outcome) + '</td>' +
+          '</tr>';
+        }).join("") + '</tbody></table>';
+
+    panel.innerHTML =
+      '<div class="canvas-compare-head">' +
+        '<span class="canvas-brand-label">A/B comparison</span>' +
+        '<span class="orch-small" style="color:var(--text-mut)">' + uniqA.length + ' vs ' + uniqB.length + ' industries · ' + advA.advisories.length + ' vs ' + advB.advisories.length + ' applicable policies</span>' +
+        '<button class="canvas-compare-close" id="canvas-compare-close" title="close">×</button>' +
+      '</div>' +
+      '<div class="canvas-compare-grid">' +
+        side(brandA.brand_name || "(A)", brandA.canonical_domain || "", uniqA, advA) +
+        side(brandB.brand_name || "(B)", brandB.canonical_domain || "", uniqB, advB) +
+      '</div>' +
+      '<div class="canvas-compare-delta-section">' +
+        '<div class="canvas-brand-label">Delta — what is different</div>' +
+        deltaHtml +
+      '</div>';
+    document.getElementById("canvas-compare-close").addEventListener("click", function () {
+      panel.style.display = "none";
+      panel.innerHTML = "";
+    });
+  } catch (e) {
+    panel.innerHTML = '<div class="orch-small" style="color:var(--error)">compare failed: ' + escapeHtml(String((e && e.message) || e)) + '</div>';
+  }
+}
+
+// MVP #1: persist a snapshot of the current canvas run + show permalink.
+async function _canvasSaveRun() {
+  if (!_canvasState || !_canvasState.brand) return;
+  var brand = _canvasState.brand;
+  try {
+    var r = await fetch("/agents/workflow/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workflow_id: _canvasState.workflow_id,
+        brand_domain: brand.canonical_domain || "",
+        brand_name: brand.brand_name || "",
+        brief: _canvasDeriveBrief(brand),
+        state: _canvasState,
+      }),
+    });
+    var d = await r.json();
+    if (!d.ok) return;
+    // Surface the permalink in a small footer chip beneath the run button.
+    var actions = document.querySelector(".canvas-brand-actions");
+    if (!actions) return;
+    var existing = document.getElementById("canvas-permalink-chip");
+    if (existing) existing.remove();
+    var chip = document.createElement("div");
+    chip.id = "canvas-permalink-chip";
+    chip.className = "canvas-permalink-chip orch-small";
+    var permalink = location.origin + d.permalink;
+    chip.innerHTML =
+      '<svg class="ico" style="width:10px;height:10px"><use href="#icon-link"/></svg> ' +
+      'permalink: <a href="' + escapeHtml(permalink) + '" class="mono">' + escapeHtml(d.permalink) + '</a> ' +
+      '<button class="canvas-permalink-copy" title="copy">copy</button>';
+    actions.appendChild(chip);
+    var copyBtn = chip.querySelector(".canvas-permalink-copy");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", function () {
+        navigator.clipboard.writeText(permalink).then(function () {
+          copyBtn.textContent = "copied!";
+          setTimeout(function () { copyBtn.textContent = "copy"; }, 1500);
+        });
+      });
+    }
+  } catch (e) { /* non-fatal */ }
+}
+
+// MVP #1: replay support — if the page loads with ?wf=<id>, fetch the
+// saved snapshot and re-render the Canvas as if the user just ran it.
+async function _canvasReplayFromQuery() {
+  var url = new URL(location.href);
+  var wfId = url.searchParams.get("wf");
+  if (!wfId || !/^wf_[a-z0-9]+$/i.test(wfId)) return;
+  try {
+    var r = await fetch("/agents/workflow/runs/" + encodeURIComponent(wfId));
+    if (!r.ok) return;
+    var snap = await r.json();
+    if (!snap || !snap.state) return;
+    // Hydrate _canvasState directly. This skips the brand-search flow and
+    // jumps straight to the post-workflow rendered view.
+    _canvasState = snap.state;
+    if (snap.state.brand) {
+      var card = document.getElementById("canvas-brand-card");
+      if (card) {
+        _canvasRenderBrandCard(snap.state.brand);
+        var lanes = document.getElementById("canvas-lanes");
+        if (lanes) lanes.style.display = "";
+        var bottom = document.getElementById("canvas-bottom");
+        if (bottom) bottom.style.display = "";
+        var loop = document.getElementById("canvas-loop-arrow");
+        if (loop) loop.style.display = "";
+      }
+      ["signals", "creative", "products", "media_buy"].forEach(function (s) {
+        if (_canvasState.results && _canvasState.results[s]) _canvasRenderLane(s);
+      });
+      _canvasFillRegistryBar();
+    }
+  } catch (e) { /* non-fatal */ }
 }
 
 function _canvasRenderLane(stage) {
@@ -13630,6 +14238,55 @@ function _canvasRenderLane(stage) {
     }).join("");
     el.innerHTML = parts;
   } else if (stage === "media_buy") {
+    // MVP #6: partial-result optimization. Count fired agents that
+    // hit the auth-gate pattern; if N>0 and at least 1 succeeded,
+    // show a portfolio-rebalance banner above the cells. Workshop
+    // punchline made actionable.
+    var authGatedCount = 0;
+    var firedSuccessCount = 0;
+    var firedFailCount = 0;
+    var totalBudget = 0;
+    var authRegexShared = /principal id not found|authentication required|auth_token_invalid|unauthorized|\\b401\\b|tenant policy/i;
+    ids.forEach(function (aid) {
+      var ag = agents[aid];
+      var smm = ag.summary || {};
+      if (smm.payload_preview && smm.payload_preview.total_budget) {
+        totalBudget += (smm.payload_preview.total_budget.amount || 0);
+      }
+      if (!smm.fired) return;
+      if (ag.ok) { firedSuccessCount++; return; }
+      firedFailCount++;
+      var resTxt = "";
+      var c2 = smm.content;
+      if (Array.isArray(c2)) {
+        for (var k = 0; k < c2.length; k++) {
+          if (c2[k] && c2[k].type === "text" && typeof c2[k].text === "string") {
+            resTxt = c2[k].text; break;
+          }
+        }
+      }
+      if (!resTxt && smm.result) try { resTxt = JSON.stringify(smm.result); } catch (e) { /* noop */ }
+      if (authRegexShared.test(resTxt)) authGatedCount++;
+    });
+    var rebalanceBanner = "";
+    if (authGatedCount > 0 && firedSuccessCount > 0 && totalBudget > 0) {
+      // Rebalance: redirect the auth-gated agents' share of the budget
+      // proportionally to the successful ones. Shown as a chip not a
+      // mutation — UX says "here's what we'd do", not "we did it".
+      var perAgent = Math.round(totalBudget / ids.length);
+      var rebalancedPerSuccess = Math.round(totalBudget / firedSuccessCount);
+      var bonus = rebalancedPerSuccess - perAgent;
+      rebalanceBanner = '<div class="canvas-rebalance-banner">' +
+        '<span class="canvas-rebalance-icon">⚖</span>' +
+        '<span class="canvas-rebalance-text">' +
+          '<strong>' + authGatedCount + '</strong> auth-gated · ' +
+          '<strong>' + firedSuccessCount + '</strong> live. ' +
+          'Portfolio rebalance: $' + perAgent.toLocaleString() + ' → $' + rebalancedPerSuccess.toLocaleString() + ' / live agent ' +
+          '<span class="canvas-rebalance-delta">(+$' + bonus.toLocaleString() + ' each)</span>' +
+        '</span>' +
+        '<span class="canvas-rebalance-meta orch-small">no rerun needed — total deployable budget preserved</span>' +
+      '</div>';
+    }
     var parts = ids.map(function (aid) {
       var a = agents[aid];
       var sm = a.summary || {};
@@ -13673,7 +14330,11 @@ function _canvasRenderLane(stage) {
         rejection +
       '</div>';
     }).join("");
-    el.innerHTML = parts;
+    el.innerHTML = rebalanceBanner + parts;
+    // MVP #7: as soon as ANY agent has fired (success OR fail), show the
+    // measurement lane. Stub-only — surface intent + close 4-stage loop.
+    var anyFired = ids.some(function (aid) { return (agents[aid].summary || {}).fired; });
+    if (anyFired) _canvasShowMeasurementLane(ids, agents);
     // Wire fire buttons (post-innerHTML — addEventListener avoids the
     // SCRIPT_TAG inline-attr escape trap).
     el.querySelectorAll(".canvas-fire-btn").forEach(function (btn) {
@@ -14209,6 +14870,17 @@ document.getElementById("toollog-export").addEventListener("click", () => {
       document.getElementById("nav-activations-count").textContent = String(data.count || 0);
     }
   } catch {}
+})();
+
+// MVP #1: deep-link from a workflow permalink. If page loaded with ?wf=,
+// auto-jump to Canvas tab + replay the snapshot.
+(function () {
+  try {
+    var u = new URL(location.href);
+    if (u.searchParams.get("wf") && /^wf_[a-z0-9]+$/i.test(u.searchParams.get("wf"))) {
+      switchTab("canvas");
+    }
+  } catch (e) { /* noop */ }
 })();
 </script>`;
 }

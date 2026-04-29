@@ -102,11 +102,25 @@ export interface MediaBuyPayloadInput {
   nowMs?: number;
 }
 
+export interface SignalAttestation {
+  policy_id: string;
+  claim: string;
+  attestor: string;
+  attested_at: string;
+  /** Optional human-readable note. Surfaces in governance preview reasoning
+   *  and in DTS attestation chips. ≤ 280 chars. */
+  notes?: string;
+}
+
 export interface MediaBuyPayloadInputWithCreative extends MediaBuyPayloadInput {
   /** Optional format IDs chosen in the creative stage. Populate
    *  `packages[0].creatives` so the vendor sees a compatible
    *  format declaration alongside the product + targeting. */
   chosenFormatIds?: string[];
+  /** Phase D propagation: attestations harvested from chosen-signal
+   *  DTS labels. Bubbled into create_media_buy.signal_attestations[].
+   *  Empty list ⇒ omit field entirely (vendors validate strict). */
+  attestations?: SignalAttestation[];
   /** Canvas v2: real brand context lifted from the agentic-advertising
    *  registry. When provided, the payload's brand fields use the real
    *  brand domain + name + categories instead of the synthetic
@@ -140,6 +154,23 @@ export interface MediaBuyPayload {
     required_axe_signals?: string[];
   };
   po_number: string;
+  /** AdCP HEAD spec — buyer-side idempotency key. Mutating tools accept
+   *  this and return the cached canonical response on retry within the
+   *  vendor's `replay_ttl_seconds` (capabilities.adcp.idempotency).
+   *  rc.3 doesn't enforce; HEAD does. We send unconditionally — vendors
+   *  that don't recognize ignore. Stable per workflow × agent × brand. */
+  idempotency_key: string;
+  /** Phase D propagation — signal-level policy attestations bubble up
+   *  into the create_media_buy payload so vendor-side enforcers see
+   *  what the signal claims compliance with at fire-time. Each entry
+   *  matches DTS v1.3-proposal PolicyAttestation shape. Strawman v1
+   *  (workshop): pass through unchanged; v2 will sign + verify. */
+  signal_attestations?: Array<{
+    policy_id: string;
+    claim: string;
+    attestor: string;
+    attested_at: string;
+  }>;
 }
 
 /** Synthesize a create_media_buy payload that satisfies the union of
@@ -172,6 +203,20 @@ export function buildCreateMediaBuyPayload(input: MediaBuyPayloadInputWithCreati
     ? input.brandContext.industries.slice(0, 5).map((c) => c.toLowerCase())
     : extractCategories(input.brief);
 
+  // #5 idempotency: stable key per workflow × agent × product × brand.
+  // Vendors with replay_ttl_seconds support return the cached canonical
+  // response on retry within the window. Vendors that don't support it
+  // ignore the field. Format = wf_<workflowId>_<agentId>_<shortHash>
+  // where the hash captures product+brand+formats so re-fires with
+  // different picks generate fresh keys.
+  const idempotencyKey = buildIdempotencyKey(
+    input.workflowId,
+    input.agentId,
+    input.chosenProductId ?? "",
+    input.brandContext?.domain ?? "",
+    (input.chosenFormatIds ?? []).slice().sort().join(","),
+  );
+
   const payload: MediaBuyPayload = {
     buyer_ref: `wf_${input.workflowId}_${input.agentId}`,
     brand_manifest: {
@@ -184,13 +229,68 @@ export function buildCreateMediaBuyPayload(input: MediaBuyPayloadInputWithCreati
     end_time: endIso,
     total_budget: { amount: totalBudget, currency: "USD" },
     po_number: `demo_${input.workflowId}`,
+    idempotency_key: idempotencyKey,
   };
 
   if (input.chosenSignalIds.length > 0) {
     payload.targeting_overlay = { required_axe_signals: input.chosenSignalIds };
   }
 
+  // Phase D propagation — attestations attached when present.
+  if (input.attestations && input.attestations.length > 0) {
+    payload.signal_attestations = input.attestations.map((a) => ({
+      policy_id: a.policy_id,
+      claim: a.claim,
+      attestor: a.attestor,
+      attested_at: a.attested_at,
+    }));
+  }
+
   return payload;
+}
+
+/** Phase D propagation — return our provider's signal-level
+ *  policy_attestations strawman. In production this would be looked
+ *  up per signal_id from the signal's DTS label cache; for the
+ *  workshop demo we return our static provider set so any chosen
+ *  signal-from-our-agent triggers the same downstream effect. */
+export function getDemoProviderAttestations(): SignalAttestation[] {
+  const now = new Date().toISOString();
+  const attestor = "AdCP Signals Adaptor - Demo Provider (Evgeny)";
+  // Subset of buildPolicyAttestations() in signalMapper.ts — kept
+  // local here to avoid circular imports. Update both if the demo
+  // attestation set changes.
+  return [
+    { policy_id: "us_coppa", claim: "compliant", attestor, attested_at: now },
+    { policy_id: "csbs", claim: "compliant", attestor, attested_at: now },
+    { policy_id: "eu_gdpr_advertising", claim: "out_of_scope", attestor, attested_at: now },
+    { policy_id: "tobacco_nicotine", claim: "out_of_scope", attestor, attested_at: now },
+    { policy_id: "us_cannabis", claim: "out_of_scope", attestor, attested_at: now },
+    { policy_id: "political_advertising", claim: "out_of_scope", attestor, attested_at: now },
+    { policy_id: "ca_sb_942", claim: "out_of_scope", attestor, attested_at: now },
+    { policy_id: "uk_hfss", claim: "not_applicable", attestor, attested_at: now },
+  ];
+}
+
+/** Stable idempotency key. FNV-1a hash of the inputs (no crypto needed —
+ *  this is a routing key, not a security primitive). Same inputs ⇒ same
+ *  key, so a re-fire of identical workflow returns the cached response
+ *  from any vendor that supports the AdCP HEAD `idempotency_key` field. */
+export function buildIdempotencyKey(
+  workflowId: string,
+  agentId: string,
+  productId: string,
+  brandDomain: string,
+  formatsJoined: string,
+): string {
+  const seed = `${workflowId}|${agentId}|${productId}|${brandDomain}|${formatsJoined}`;
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const hex = (h >>> 0).toString(16).padStart(8, "0");
+  return `idem_${workflowId}_${agentId}_${hex}`;
 }
 
 /** Shallow category extraction for the brand_manifest. Just tokenizes

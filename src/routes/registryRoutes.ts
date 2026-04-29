@@ -21,8 +21,11 @@
 import type { Env } from "../types/env";
 import type { Logger } from "../utils/logger";
 import { jsonResponse, errorResponse } from "./shared";
-import { POLICIES } from "../domain/policyRegistry";
+import { POLICIES, policiesForIndustries } from "../domain/policyRegistry";
 import { AGENT_REGISTRY } from "../domain/agentRegistry";
+import { getDemoProviderAttestations } from "../domain/workflowOrchestration";
+import { predictGovernance } from "../domain/governanceMock";
+import { getLastDiffReport } from "../domain/registrySync";
 
 const REGISTRY_AGENTS_URL = "https://agenticadvertising.org/api/registry/agents";
 const AGENTS_TTL_SEC = 3600;          // 1 hour — registry doesn't change fast
@@ -108,6 +111,10 @@ export async function handleRegistryAgents(
     .filter((a) => a.mcp_url && !remoteByMcp.has(normalize(a.mcp_url)))
     .map((a) => ({ id: a.id, name: a.name, mcp_url: a.mcp_url, role: a.role, stage: a.stage }));
 
+  // MVP #4: piggyback the daily-cron report timestamp so the UI bar
+  // can show "synced X hours ago" without a second round-trip.
+  const lastDiff = await getLastDiffReport(env);
+
   const out = {
     fetched_at: new Date().toISOString(),
     cache: "miss",
@@ -120,6 +127,7 @@ export async function handleRegistryAgents(
     only_in_registry: onlyInRegistry,
     only_in_local: onlyInLocal,
     agents: remote,
+    last_cron_diff: lastDiff ? { ran_at: lastDiff.ran_at, only_in_registry: lastDiff.only_in_registry_count } : null,
   };
 
   try {
@@ -131,6 +139,65 @@ export async function handleRegistryAgents(
   } catch { /* non-fatal */ }
 
   return jsonResponse(out);
+}
+
+// ── /registry/governance-preview ────────────────────────────────────────────
+// MVP #2: predictive check_governance — local mock that derives a
+// governance advisory from brand industries (Phase C) + signal
+// attestations (Phase D). POST takes brand industries; GET takes
+// the same via query string for easy curl + permalink.
+
+interface GovernancePreviewBody {
+  brand_industries?: string[];
+  brand_domain?: string;
+  signal_attestations?: Array<{ policy_id: string; claim: string; attestor?: string; attested_at?: string }>;
+}
+
+export async function handleGovernancePreview(
+  request: Request,
+  _env: Env,
+  _logger: Logger,
+): Promise<Response> {
+  let industries: string[] = [];
+  let attestations: ReturnType<typeof getDemoProviderAttestations> = [];
+
+  if (request.method === "GET") {
+    const url = new URL(request.url);
+    const ind = url.searchParams.get("industries") || "";
+    industries = ind.split(",").map((s) => s.trim()).filter(Boolean);
+    // GET path uses the demo provider's static attestations — keeps
+    // the URL short and shareable for Canvas permalinks.
+    attestations = getDemoProviderAttestations();
+  } else {
+    try {
+      const body: GovernancePreviewBody = await request.json();
+      industries = Array.isArray(body.brand_industries) ? body.brand_industries : [];
+      attestations = Array.isArray(body.signal_attestations) && body.signal_attestations.length > 0
+        ? body.signal_attestations.map((a) => ({
+            policy_id: a.policy_id,
+            claim: a.claim,
+            attestor: a.attestor || "unknown",
+            attested_at: a.attested_at || new Date().toISOString(),
+          }))
+        : getDemoProviderAttestations();
+    } catch {
+      return errorResponse("INVALID_INPUT", "body must be JSON", 400);
+    }
+  }
+
+  const applicable = policiesForIndustries(industries);
+  const advisory = predictGovernance(applicable, attestations);
+
+  return jsonResponse({
+    mode: "predictive_local",
+    note: "Mock check_governance — derived locally from policyRegistry × signal_attestations. No vendor in the AdCP directory currently advertises check_governance live.",
+    inputs: {
+      brand_industries: industries,
+      applicable_policy_count: applicable.length,
+      attestation_count: attestations.length,
+    },
+    advisory,
+  });
 }
 
 // ── /registry/policies ──────────────────────────────────────────────────────

@@ -39,6 +39,7 @@ import {
   pickTopFormatIds,
   pickProductPerAgent,
   buildCreateMediaBuyPayload,
+  getDemoProviderAttestations,
   applyVendorAdapter,
   newWorkflowId,
   productId as productIdOf,
@@ -607,6 +608,7 @@ async function runMediaBuyStage(
       chosenSignalIds,
       chosenFormatIds,
       brandContext: compactBrandContext(brandContext),
+      attestations: chosenSignalIds.length > 0 ? getDemoProviderAttestations() : [],
     });
     const base: MediaBuyStageAgent = {
       id: a.id, name: a.name, vendor: a.vendor, url: a.mcp_url!,
@@ -1039,6 +1041,7 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
             workflowId, agentId: a.id, brief: body.brief!,
             chosenProductId, chosenSignalIds, chosenFormatIds,
             brandContext: compactBrandContext(body.brand),
+            attestations: chosenSignalIds.length > 0 ? getDemoProviderAttestations() : [],
           });
           if (!activateSet.has(a.id)) {
             send({
@@ -1169,14 +1172,20 @@ export async function handleWorkflowFireBuy(request: Request, env: Env, logger: 
     ? body.workflow_id
     : newWorkflowId();
 
+  const chosenSignalIds = Array.isArray(body.signal_ids) ? body.signal_ids.filter((s) => typeof s === "string") : [];
   const payload = buildCreateMediaBuyPayload({
     workflowId,
     agentId: agent.id,
     brief: body.brief,
     chosenProductId: body.product_id ?? null,
-    chosenSignalIds: Array.isArray(body.signal_ids) ? body.signal_ids.filter((s) => typeof s === "string") : [],
+    chosenSignalIds,
     chosenFormatIds: Array.isArray(body.format_ids) ? body.format_ids.filter((f) => typeof f === "string") : [],
     brandContext: compactBrandContext(body.brand),
+    // #3 propagation — when at least one signal is chosen, attach our
+    // provider's policy_attestations to the payload so the buying agent
+    // sees the trust posture at fire-time. Only relevant when the
+    // chosen signals came from us (which is the demo case).
+    attestations: chosenSignalIds.length > 0 ? getDemoProviderAttestations() : [],
   });
 
   // Sec-48r: apply per-vendor adapter just before wire call. payload
@@ -1216,5 +1225,161 @@ export async function handleWorkflowFireBuy(request: Request, env: Env, logger: 
   });
 }
 
+// MVP #7: measurement lane stub. Returns synthetic delivery + pacing
+// + viewability data for a (workflow_id, agent_id) pair. Closes the
+// AdCP 4-stage loop visually without requiring a live
+// get_media_buy_delivery from any vendor.
+//
+// Request: ?workflow_id=...&agent_id=...&days=7
+// Response: synthetic pacing data + delivery metrics in AdCP-shaped form.
+//
+// Replace with real `get_media_buy_delivery` calls when vendors
+// advertise the tool.
+export async function handleWorkflowMeasurementStub(request: Request, _env: Env, _logger: Logger): Promise<Response> {
+  const url = new URL(request.url);
+  const wfId = url.searchParams.get("workflow_id") || "wf_unknown";
+  const agentId = url.searchParams.get("agent_id") || "unknown";
+  const days = Math.max(1, Math.min(30, parseInt(url.searchParams.get("days") || "7", 10)));
+  // Deterministic seed so reload returns same numbers.
+  let seed = 0;
+  const seedSrc = wfId + agentId;
+  for (let i = 0; i < seedSrc.length; i++) seed = (seed * 31 + seedSrc.charCodeAt(i)) >>> 0;
+  const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return (seed >>> 0) / 0xffffffff; };
+  const totalSpend = 1000;  // matches the demo budget
+  const pacingDays: Array<{ day: number; spend_usd: number; impressions: number; viewable_pct: number }> = [];
+  let cumSpend = 0;
+  for (let d = 1; d <= days; d++) {
+    const fraction = (1 / days) * (0.85 + rand() * 0.30);
+    const daySpend = Math.round(totalSpend * fraction * 100) / 100;
+    cumSpend += daySpend;
+    pacingDays.push({
+      day: d,
+      spend_usd: daySpend,
+      impressions: Math.round(daySpend * (550 + rand() * 200)),  // CPM ~$2 ish
+      viewable_pct: Math.round((68 + rand() * 18) * 10) / 10,
+    });
+  }
+  const totalImpressions = pacingDays.reduce((s, p) => s + p.impressions, 0);
+  return jsonResponse({
+    mode: "stub",
+    note: "Synthetic delivery — would call get_media_buy_delivery on the vendor when implemented.",
+    workflow_id: wfId,
+    agent_id: agentId,
+    measurement_window: { start_day: 1, end_day: days, type: "Live" },
+    totals: {
+      spend_usd: Math.round(cumSpend * 100) / 100,
+      impressions: totalImpressions,
+      avg_viewable_pct: Math.round(
+        (pacingDays.reduce((s, p) => s + p.viewable_pct, 0) / pacingDays.length) * 10,
+      ) / 10,
+      cpm_usd: Math.round((cumSpend / totalImpressions * 1000) * 100) / 100,
+    },
+    pacing: pacingDays,
+    next_cycle_recommendations: [
+      // The "whole role unspec'd" gap from the canvas spec card surfaces
+      // here as a deliberate strawman: this is what feedback-loop signal
+      // adjustment WOULD look like if AdCP defined the role.
+      "Cluster low-viewability impressions by signal_id — surface alternates in next cycle's get_signals query",
+      "Boost rebalance to top-quartile-pacing agents in next-cycle plan (predicted +" + Math.round(rand() * 12 + 8) + "% impression delivery)",
+    ],
+  });
+}
+
 // Kept for reference — utility not used directly by endpoints.
 export { findAgent };
+
+// ── MVP #1: workflow history (save / list / load) ─────────────────────────────
+//
+// KV-backed for MVP speed (D1 schema in v2). Storage:
+//   wf_history:<workflow_id>      → JSON snapshot of the run
+//   wf_history_index              → JSON array of recent {id, brand, created_at}
+//
+// Endpoints:
+//   POST /agents/workflow/save        — save a run snapshot
+//   GET  /agents/workflow/runs        — list recent (last 50)
+//   GET  /agents/workflow/runs/:id    — load a specific run
+//
+// Canvas v2 reads `?wf=<id>` query param on page load and auto-replays.
+
+const WF_HISTORY_PREFIX = "wf_history:";
+const WF_HISTORY_INDEX = "wf_history_index";
+const WF_HISTORY_TTL_SEC = 60 * 60 * 24 * 30;  // 30 days
+const WF_HISTORY_MAX_INDEX = 50;
+
+interface WorkflowSaveBody {
+  workflow_id?: string;
+  brand_domain?: string;
+  brand_name?: string;
+  brief?: string;
+  state?: unknown;     // opaque blob from the client; we don't validate shape
+}
+
+interface WorkflowIndexEntry {
+  id: string;
+  brand_domain: string;
+  brand_name: string;
+  brief: string;
+  created_at: string;
+}
+
+export async function handleWorkflowSave(request: Request, env: Env, logger: Logger): Promise<Response> {
+  const parsed = await readJsonBody<WorkflowSaveBody>(request);
+  if (parsed.kind === "invalid") return errorResponse("INVALID_JSON", parsed.reason, 400);
+  const body: WorkflowSaveBody = parsed.kind === "parsed" ? parsed.data : {};
+  const id = (body.workflow_id && /^wf_[a-z0-9]+$/i.test(body.workflow_id))
+    ? body.workflow_id
+    : newWorkflowId();
+  const entry: WorkflowIndexEntry = {
+    id,
+    brand_domain: (body.brand_domain || "").slice(0, 200),
+    brand_name: (body.brand_name || "").slice(0, 100),
+    brief: (body.brief || "").slice(0, 200),
+    created_at: new Date().toISOString(),
+  };
+  const snapshot = {
+    ...entry,
+    state: body.state ?? null,
+  };
+  try {
+    await env.SIGNALS_CACHE.put(WF_HISTORY_PREFIX + id, JSON.stringify(snapshot), {
+      expirationTtl: WF_HISTORY_TTL_SEC,
+    });
+    // Update the index — read, prepend, trim, write back.
+    let idx: WorkflowIndexEntry[] = [];
+    try {
+      const raw = await env.SIGNALS_CACHE.get(WF_HISTORY_INDEX, "json");
+      if (Array.isArray(raw)) idx = raw as WorkflowIndexEntry[];
+    } catch { /* fresh */ }
+    idx = [entry, ...idx.filter((e) => e.id !== id)].slice(0, WF_HISTORY_MAX_INDEX);
+    await env.SIGNALS_CACHE.put(WF_HISTORY_INDEX, JSON.stringify(idx), {
+      expirationTtl: WF_HISTORY_TTL_SEC,
+    });
+  } catch (e) {
+    logger.warn("wf_history_save_failed", { id, error: String((e as Error).message || e) });
+    return errorResponse("STORAGE_ERROR", "save failed", 500);
+  }
+  return jsonResponse({ ok: true, id, permalink: "/?wf=" + id });
+}
+
+export async function handleWorkflowRuns(request: Request, env: Env, _logger: Logger): Promise<Response> {
+  const url = new URL(request.url);
+  // GET /agents/workflow/runs/:id  → load specific
+  const m = url.pathname.match(/\/agents\/workflow\/runs\/(wf_[a-z0-9]+)$/i);
+  if (m) {
+    const id = m[1]!;
+    try {
+      const snap = await env.SIGNALS_CACHE.get(WF_HISTORY_PREFIX + id, "json");
+      if (!snap) return errorResponse("NOT_FOUND", "no run with id " + id, 404);
+      return jsonResponse(snap as object);
+    } catch {
+      return errorResponse("STORAGE_ERROR", "read failed", 500);
+    }
+  }
+  // GET /agents/workflow/runs      → list recent
+  try {
+    const idx = (await env.SIGNALS_CACHE.get(WF_HISTORY_INDEX, "json")) as WorkflowIndexEntry[] | null;
+    return jsonResponse({ count: idx?.length ?? 0, runs: idx ?? [] });
+  } catch {
+    return jsonResponse({ count: 0, runs: [] });
+  }
+}

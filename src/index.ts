@@ -45,6 +45,9 @@ import {
   handleWorkflowRun,
   handleWorkflowRunStream,
   handleWorkflowFireBuy,
+  handleWorkflowSave,
+  handleWorkflowRuns,
+  handleWorkflowMeasurementStub,
 } from "./routes/agentsEndpoints";
 import {
   handleBrandSearch,
@@ -54,6 +57,7 @@ import {
 import {
   handleRegistryAgents,
   handleRegistryPolicies,
+  handleGovernancePreview,
 } from "./routes/registryRoutes";
 import {
   handleAudienceCompose,
@@ -95,6 +99,7 @@ import {
 import { handleAdminReseed } from "./routes/adminReseed";
 import { handleAdminPurge } from "./routes/adminPurge";
 import { runScheduledPurge } from "./storage/scheduledPurge";
+import { runRegistrySyncDiff, getLastDiffReport } from "./domain/registrySync";
 import { handleDemo } from "./routes/demo";
 import { handleEstimate } from "./routes/estimate";
 import { handleListOperations } from "./routes/listOperations";
@@ -229,6 +234,9 @@ export default {
             "/agents/workflow/run",
             "/agents/workflow/run/stream",
             "/agents/workflow/fire-buy",
+            "/agents/workflow/save",
+            "/agents/workflow/runs",
+            "/agents/workflow/measurement-stub",
             // Canvas v2 Phase 1: brand registry passthrough endpoints.
             // Public — same posture as the upstream registry itself.
             "/brands/search",
@@ -238,6 +246,8 @@ export default {
             // Public — informational views over the agentic-advertising registry.
             "/registry/agents",
             "/registry/policies",
+            // MVP #2: predictive check_governance overlay.
+            "/registry/governance-preview",
             "/taxonomy/reverse",
             // Sec-43: audience composer + activation-planning analytics.
             // Read-only — same posture as /portfolio/* and /analytics/*.
@@ -395,6 +405,12 @@ export default {
                 response = await handleWorkflowRunStream(request, env, logger);
             } else if (method === "POST" && path === "/agents/workflow/fire-buy") {
                 response = await handleWorkflowFireBuy(request, env, logger);
+            } else if (method === "POST" && path === "/agents/workflow/save") {
+                response = await handleWorkflowSave(request, env, logger);
+            } else if (method === "GET" && path.startsWith("/agents/workflow/runs")) {
+                response = await handleWorkflowRuns(request, env, logger);
+            } else if (method === "GET" && path === "/agents/workflow/measurement-stub") {
+                response = await handleWorkflowMeasurementStub(request, env, logger);
 
                 // ── Canvas v2 Phase 1: brand registry passthrough ───────────────────
             } else if (method === "GET" && path === "/brands/search") {
@@ -409,6 +425,8 @@ export default {
                 response = await handleRegistryAgents(request, env, logger);
             } else if (method === "GET" && path === "/registry/policies") {
                 response = await handleRegistryPolicies(request, env, logger);
+            } else if ((method === "GET" || method === "POST") && path === "/registry/governance-preview") {
+                response = await handleGovernancePreview(request, env, logger);
 
                 // ── Sec-43: Audience Composer + activation analytics ────────────────
             } else if (method === "POST" && path === "/audience/compose") {
@@ -655,11 +673,25 @@ export default {
         const reqId = requestId();
         const logger = createLogger(reqId);
         logger.info("cron_fired", { cron: event.cron, scheduled: new Date(event.scheduledTime).toISOString() });
-        ctx.waitUntil(
-            runScheduledPurge(env, logger)
-                .then((r) => logger.info("cron_purge_done", { deleted: r.deleted, duration_ms: r.duration_ms, errors: r.errors.length }))
-                .catch((err) => logger.error("cron_purge_failed", { error: String(err) }))
-        );
+        // Two crons configured in wrangler.toml. Branch on the cron expression
+        // to dispatch — Sundays 06:00 = weekly D1 purge; daily 04:00 = registry sync.
+        if (event.cron === "0 4 * * *") {
+            ctx.waitUntil(
+                runRegistrySyncDiff(env, logger)
+                    .then((r) => logger.info("cron_registry_sync_done", {
+                        upstream_status: r.upstream_status,
+                        only_in_registry: r.only_in_registry_count,
+                        only_in_local: r.only_in_local_count,
+                    }))
+                    .catch((err) => logger.error("cron_registry_sync_failed", { error: String(err) }))
+            );
+        } else {
+            ctx.waitUntil(
+                runScheduledPurge(env, logger)
+                    .then((r) => logger.info("cron_purge_done", { deleted: r.deleted, duration_ms: r.duration_ms, errors: r.errors.length }))
+                    .catch((err) => logger.error("cron_purge_failed", { error: String(err) }))
+            );
+        }
     },
 };
 

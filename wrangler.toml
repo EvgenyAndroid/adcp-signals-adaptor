@@ -34,4 +34,10 @@ local_protocol = "http"
 # and expired OAuth state. Canonical seeded/derived signals are preserved.
 # Manual trigger available via POST /admin/purge (DEMO_API_KEY gated).
 [triggers]
-crons = ["0 6 * * SUN"]
+# Two cron schedules:
+#   "0 6 * * SUN" — weekly D1 purge (existing).
+#   "0 4 * * *"   — daily registry-sync (MVP #4): diffs /api/registry/agents
+#                   against AGENT_REGISTRY and writes the report to KV under
+#                   `registry_diff_report`. UI surfaces the latest report on
+#                   the Canvas registry-sync bar.
+crons = ["0 6 * * SUN", "0 4 * * *"]

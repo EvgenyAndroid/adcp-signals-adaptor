@@ -60,7 +60,12 @@ import {
   handleGovernancePreview,
   handleBrandRightsPreview,
 } from "./routes/registryRoutes";
-import { handleDspCampaigns } from "./routes/dspRoutes";
+import {
+  handleDspCampaigns,
+  handleDspCoverage,
+  handleDspMediaBuysLive,
+  handleDspDeliveryLive,
+} from "./routes/dspRoutes";
 import {
   handleAudienceCompose,
   handleAudienceSaturation,
@@ -252,8 +257,10 @@ export default {
             "/registry/governance-preview",
             // Refinement C: predictive brand-rights overlay.
             "/registry/brand-rights-preview",
-            // Campaign Canvas (DSP buy-side mock).
+            // Campaign Canvas (DSP buy-side mock + live hybrid).
             "/dsp/campaigns",
+            "/dsp/agents",
+            "/dsp/media-buys",
             "/taxonomy/reverse",
             // Sec-43: audience composer + activation-planning analytics.
             // Read-only — same posture as /portfolio/* and /analytics/*.
@@ -436,9 +443,15 @@ export default {
             } else if ((method === "GET" || method === "POST") && path === "/registry/brand-rights-preview") {
                 response = await handleBrandRightsPreview(request, env, logger);
 
-                // ── Buy-side / DSP Canvas (mock) ────────────────────────────────────
+                // ── Buy-side / DSP Canvas (mock + live hybrid) ───────────────────────
             } else if (method === "GET" && path.startsWith("/dsp/campaigns")) {
                 response = await handleDspCampaigns(request, env, logger);
+            } else if (method === "GET" && path === "/dsp/agents/coverage") {
+                response = await handleDspCoverage(request, env, logger);
+            } else if (method === "GET" && path === "/dsp/media-buys/live") {
+                response = await handleDspMediaBuysLive(request, env, logger);
+            } else if (method === "GET" && path.startsWith("/dsp/media-buys/") && path.endsWith("/delivery-live")) {
+                response = await handleDspDeliveryLive(request, env, logger);
 
                 // ── Sec-43: Audience Composer + activation analytics ────────────────
             } else if (method === "POST" && path === "/audience/compose") {

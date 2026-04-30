@@ -59,6 +59,7 @@ import {
   handleRegistryPolicies,
   handleGovernancePreview,
   handleBrandRightsPreview,
+  handleSiPreview,
 } from "./routes/registryRoutes";
 import {
   handleDspCampaigns,
@@ -272,6 +273,8 @@ export default {
             "/registry/governance-preview",
             // Refinement C: predictive brand-rights overlay.
             "/registry/brand-rights-preview",
+            // Wave 1: predictive Sponsored-Intelligence overlay.
+            "/registry/si-preview",
             // Campaign Canvas (DSP buy-side mock + live hybrid).
             "/dsp/campaigns",
             "/dsp/agents",
@@ -466,6 +469,8 @@ export default {
                 response = await handleGovernancePreview(request, env, logger);
             } else if ((method === "GET" || method === "POST") && path === "/registry/brand-rights-preview") {
                 response = await handleBrandRightsPreview(request, env, logger);
+            } else if ((method === "GET" || method === "POST") && path === "/registry/si-preview") {
+                response = await handleSiPreview(request, env, logger);
 
                 // ── Buy-side / DSP Canvas (mock + live hybrid) ───────────────────────
                 // SPECIFIC routes BEFORE the campaigns catch-all — otherwise

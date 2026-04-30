@@ -5349,6 +5349,122 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   background: var(--success); color: #000;
 }
 
+/* Feature B: campaign-card live fire button row */
+.campaign-card-actions {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 10px; padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+.campaign-fire-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent); color: #000;
+  border: 1px solid var(--accent); border-radius: 4px;
+  padding: 6px 12px; font-size: 12px; font-weight: 500;
+  cursor: pointer; font-family: inherit; transition: filter 0.15s;
+}
+.campaign-fire-btn:hover:not(:disabled) { filter: brightness(1.1); }
+.campaign-fire-btn:disabled { opacity: 0.6; cursor: wait; }
+.campaign-fire-btn .ico { width: 12px; height: 12px; }
+.campaign-fire-agent {
+  background: var(--bg-input); color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 5px 8px; font-size: 11.5px;
+  font-family: var(--font-mono);
+}
+.campaign-fire-result { width: 100%; }
+.campaign-fire-row {
+  display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 4px 8px; border-radius: 3px; font-size: 11px;
+}
+.campaign-fire-row.campaign-fire-ok   { background: rgba(102,187,106,0.10); border: 1px solid var(--success); }
+.campaign-fire-row.campaign-fire-auth { background: rgba(212,160,23,0.10); border: 1px solid var(--warning, #d4a017); }
+.campaign-fire-row.campaign-fire-err  { background: rgba(239,68,68,0.10); border: 1px solid var(--error); }
+.campaign-fire-label {
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 700;
+  letter-spacing: 0.06em; padding: 1px 5px; border-radius: 2px;
+  background: var(--bg-raised); color: var(--text);
+}
+
+/* Feature A: apply-diff button row */
+.campaign-apply-diff-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+.campaign-apply-diff-btn {
+  background: transparent; color: var(--accent);
+  border: 1px solid var(--accent); border-radius: 4px;
+  padding: 4px 10px; font-size: 11px; cursor: pointer;
+  font-family: inherit; transition: background-color 0.15s;
+}
+.campaign-apply-diff-btn:hover:not(:disabled) { background: var(--accent); color: #000; }
+.campaign-apply-diff-btn:disabled { opacity: 0.6; cursor: wait; }
+.campaign-apply-diff-result { width: 100%; }
+
+/* Feature C: live audience signals on Lane 1 */
+.campaign-live-signals {
+  display: flex; flex-wrap: wrap; gap: 4px;
+}
+.campaign-live-signal-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px; background: var(--bg-raised);
+  border: 1px solid var(--success); border-radius: 4px;
+  font-size: 10.5px; cursor: help;
+}
+.campaign-live-signal-name { color: var(--text); }
+.campaign-live-signal-meta { color: var(--text-mut); font-size: 9.5px; }
+.campaign-live-signal-source { font-size: 8.5px; color: var(--accent); }
+
+/* Feature D: live products on Lane 3 */
+.campaign-live-product-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 3px 6px; border-bottom: 1px dashed var(--border);
+  font-size: 11px;
+}
+.campaign-live-product-row:last-child { border-bottom: none; }
+.campaign-live-product-name { color: var(--text-mut); font-size: 10.5px; }
+
+/* Feature E: capabilities modal */
+.campaign-cap-link {
+  background: transparent; color: var(--accent);
+  border: 1px solid transparent; border-radius: 3px;
+  padding: 1px 5px; font-size: 9.5px; cursor: pointer;
+  font-family: var(--font-mono);
+  text-decoration: underline; text-decoration-style: dotted;
+}
+.campaign-cap-link:hover { border-color: var(--accent); background: rgba(56,182,255,0.08); text-decoration: none; }
+.campaign-cap-modal {
+  position: fixed; inset: 0; z-index: 9000;
+  background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.campaign-cap-modal-inner {
+  background: var(--bg-surface); border: 1px solid var(--accent);
+  border-radius: 6px; padding: 14px; min-width: 400px; max-width: 700px;
+  max-height: 80vh; overflow-y: auto;
+}
+.campaign-cap-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 8px; margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px; color: var(--text);
+}
+.campaign-cap-modal-close {
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 3px; width: 24px; height: 24px;
+  cursor: pointer; color: var(--text-mut); font-size: 16px;
+}
+.campaign-cap-summary {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.campaign-cap-row {
+  display: grid; grid-template-columns: 240px 1fr;
+  gap: 8px; padding: 4px 0;
+  border-bottom: 1px dashed var(--border); font-size: 11.5px;
+}
+.campaign-cap-row:last-child { border-bottom: none; }
+.campaign-cap-key { color: var(--text-mut); font-size: 11px; }
+
 /* MVP #6: portfolio-rebalance banner. Shows above the media-buy cells
    when N agents auth-gate and at least 1 succeeds. Communicates that
    the workflow is robust to partial failure and the deployable budget
@@ -15761,7 +15877,19 @@ async function _campaignFillCoverage() {
       spec.map(function (t) { return pill(t, false); }).join("") +
       '<span class="campaign-coverage-divider">|</span>' +
       '<span class="campaign-coverage-group-label">unspec&apos;d primitives:</span>' +
-      unspec.map(function (t) { return pill(t, true); }).join("");
+      unspec.map(function (t) { return pill(t, true); }).join("") +
+      // Feature E: per-agent capabilities deep-probe links.
+      '<span class="campaign-coverage-divider">|</span>' +
+      '<span class="campaign-coverage-group-label">caps:</span>' +
+      (_campaignCoverage.agents || []).map(function (a) {
+        return '<button class="campaign-cap-link" data-agent-id="' + escapeHtml(a.agent_id) + '" title="get_adcp_capabilities on ' + escapeHtml(a.agent_id) + '">' + escapeHtml(a.agent_id) + '</button>';
+      }).join(" ");
+    pills.querySelectorAll(".campaign-cap-link").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var aid = btn.getAttribute("data-agent-id");
+        if (aid) _campaignShowAgentCaps(aid);
+      });
+    });
   } catch (e) {
     pills.innerHTML = '<span class="orch-small" style="color:var(--text-mut)">coverage probe failed</span>';
   }
@@ -15961,7 +16089,65 @@ function _campaignRenderCard() {
         '<div class="campaign-card-progress-label orch-small"><span style="color:var(--text-mut)">flight progress</span> <span class="mono">' + pctElapsed + '%</span></div>' +
         '<div class="campaign-card-progress-bar"><div class="campaign-card-progress-fill" style="width:' + pctElapsed + '%"></div></div>' +
       '</div>' +
+      // Feature B: live fire button. Calls /dsp/campaigns/:id/fire-live →
+      // create_media_buy on a real buying agent. Auth-gated response is
+      // expected for the default trio; surfaces inline with the boundary.
+      '<div class="campaign-card-actions">' +
+        '<button class="campaign-fire-btn" id="campaign-fire-btn" data-campaign-id="' + escapeHtml(c.campaign_id) + '">' +
+          '<svg class="ico"><use href="#icon-bolt"/></svg>' +
+          '<span>Simulate live fire</span>' +
+        '</button>' +
+        '<select class="campaign-fire-agent" id="campaign-fire-agent">' +
+          '<option value="adzymic_apx">adzymic_apx</option>' +
+          '<option value="claire_scope3">claire_scope3</option>' +
+          '<option value="swivel">swivel</option>' +
+          '<option value="content_ignite">content_ignite</option>' +
+        '</select>' +
+        '<span class="orch-small" style="color:var(--text-mut)">→ create_media_buy on the chosen agent with the campaign brief + brand + signals</span>' +
+        '<div class="campaign-fire-result orch-small" id="campaign-fire-result"></div>' +
+      '</div>' +
     '</div>';
+  // Wire fire button.
+  var fireBtn = document.getElementById("campaign-fire-btn");
+  if (fireBtn) fireBtn.addEventListener("click", _campaignFireLive);
+}
+
+// Feature B: live fire from Campaign card.
+async function _campaignFireLive() {
+  if (!_campaignCurrent) return;
+  var btn = document.getElementById("campaign-fire-btn");
+  var sel = document.getElementById("campaign-fire-agent");
+  var out = document.getElementById("campaign-fire-result");
+  if (!btn || !sel || !out) return;
+  var agentId = sel.value;
+  btn.disabled = true; btn.textContent = "firing…";
+  try {
+    var r = await fetch("/dsp/campaigns/" + encodeURIComponent(_campaignCurrent.campaign_id) + "/fire-live", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agent_id: agentId, signal_ids: [] }),
+    });
+    var d = await r.json();
+    var statusCls = d.ok ? "campaign-fire-ok" : (d.auth_gated ? "campaign-fire-auth" : "campaign-fire-err");
+    var label = d.ok ? "OK" : (d.auth_gated ? "AUTH-GATED" : "ERROR");
+    var msg = d.ok ? "media-buy created · " + d.latency_ms + "ms" : (d.error || "no response body");
+    out.innerHTML =
+      '<div class="campaign-fire-row ' + statusCls + '">' +
+        '<span class="campaign-fire-label">' + label + '</span>' +
+        '<span class="mono">' + escapeHtml(d.agent_id) + '</span>' +
+        '<span>' + escapeHtml(String(msg).slice(0, 200)) + '</span>' +
+      '</div>';
+    if (d.ok) {
+      // Refresh the live media-buys panel since a new buy now exists.
+      _campaignSource = "live";
+      var liveToggle = document.querySelector('.campaign-source-btn[data-source="live"]');
+      if (liveToggle) liveToggle.click();
+    }
+    btn.textContent = "Re-fire"; btn.disabled = false;
+  } catch (e) {
+    out.innerHTML = '<span class="orch-small" style="color:var(--error)">' + escapeHtml(String((e && e.message) || e)) + '</span>';
+    btn.textContent = "Retry"; btn.disabled = false;
+  }
 }
 
 // ── Provenance pill helper ───────────────────────────────────────────
@@ -16026,8 +16212,93 @@ async function _campaignFillStrategy() {
       '<div class="campaign-strategy-block">' +
         '<div class="campaign-strategy-label">Dayparting (hour-of-day multipliers)</div>' +
         '<div class="campaign-strategy-dayparting">' + dayparting + '</div>' +
+      '</div>' +
+      // Feature C: live audience signals from get_signals against the brief.
+      '<div class="campaign-strategy-block" id="campaign-live-signals-block">' +
+        '<div class="campaign-strategy-label">' +
+          '<span>Live audience signals</span>' +
+          '<span class="campaign-provenance-pill campaign-provenance-live" style="margin-left:6px" title="real call to get_signals on every live signals agent">LIVE · get_signals</span>' +
+        '</div>' +
+        '<div id="campaign-live-signals-list"><span class="orch-small">querying signals agents…</span></div>' +
       '</div>';
+    _campaignFillLiveSignals();
   } catch (e) { body.innerHTML = '<span class="orch-small" style="color:var(--error)">strategy load failed</span>'; }
+}
+
+// Feature E: capabilities deep-probe modal.
+async function _campaignShowAgentCaps(agentId) {
+  var existing = document.getElementById("campaign-cap-modal");
+  if (existing) existing.remove();
+  var modal = document.createElement("div");
+  modal.id = "campaign-cap-modal";
+  modal.className = "campaign-cap-modal";
+  modal.innerHTML =
+    '<div class="campaign-cap-modal-inner">' +
+      '<div class="campaign-cap-modal-head">' +
+        '<span class="mono">' + escapeHtml(agentId) + ' · get_adcp_capabilities</span>' +
+        '<button class="campaign-cap-modal-close" id="campaign-cap-modal-close">×</button>' +
+      '</div>' +
+      '<div class="campaign-cap-modal-body" id="campaign-cap-modal-body"><span class="orch-small">probing…</span></div>' +
+    '</div>';
+  document.body.appendChild(modal);
+  document.getElementById("campaign-cap-modal-close").addEventListener("click", function () { modal.remove(); });
+  modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
+  try {
+    var r = await fetch("/dsp/agents/" + encodeURIComponent(agentId) + "/capabilities-live");
+    var d = await r.json();
+    var body = document.getElementById("campaign-cap-modal-body");
+    if (!d.ok || !d.capabilities) {
+      body.innerHTML = '<span class="orch-small" style="color:var(--error)">no capabilities returned · ' + escapeHtml(d.error || "") + '</span>';
+      return;
+    }
+    var caps = d.capabilities;
+    var adcp = caps.adcp || {};
+    var idem = adcp.idempotency || {};
+    var summary =
+      '<div class="campaign-cap-summary">' +
+        '<div class="campaign-cap-row"><span class="campaign-cap-key">supported_protocols</span><span class="mono">' + escapeHtml(JSON.stringify(caps.supported_protocols || [])) + '</span></div>' +
+        '<div class="campaign-cap-row"><span class="campaign-cap-key">supports_governance</span><span class="mono">' + escapeHtml(String(caps.supports_governance ?? false)) + '</span></div>' +
+        '<div class="campaign-cap-row"><span class="campaign-cap-key">supports_si</span><span class="mono">' + escapeHtml(String(caps.supports_si ?? false)) + '</span></div>' +
+        '<div class="campaign-cap-row"><span class="campaign-cap-key">adcp.major_versions</span><span class="mono">' + escapeHtml(JSON.stringify(adcp.major_versions || [])) + '</span></div>' +
+        '<div class="campaign-cap-row"><span class="campaign-cap-key">adcp.idempotency.supported</span><span class="mono">' + escapeHtml(String(idem.supported ?? false)) + '</span></div>' +
+        '<div class="campaign-cap-row"><span class="campaign-cap-key">adcp.idempotency.replay_ttl_seconds</span><span class="mono">' + escapeHtml(String(idem.replay_ttl_seconds ?? "—")) + '</span></div>' +
+        '<div class="campaign-cap-row"><span class="campaign-cap-key">latency_ms</span><span class="mono">' + d.latency_ms + '</span></div>' +
+      '</div>';
+    body.innerHTML =
+      summary +
+      '<details style="margin-top:8px"><summary class="orch-small" style="cursor:pointer">raw capabilities JSON</summary><pre class="wf-json mono" style="max-height:240px;overflow:auto">' + escapeHtml(JSON.stringify(caps, null, 2).slice(0, 4000)) + '</pre></details>';
+  } catch (e) {
+    var b = document.getElementById("campaign-cap-modal-body");
+    if (b) b.innerHTML = '<span class="orch-small" style="color:var(--error)">' + escapeHtml(String((e && e.message) || e)) + '</span>';
+  }
+}
+
+// Feature C: live signals on Lane 1.
+async function _campaignFillLiveSignals() {
+  var el = document.getElementById("campaign-live-signals-list");
+  if (!el || !_campaignCurrent) return;
+  try {
+    var r = await fetch("/dsp/campaigns/" + encodeURIComponent(_campaignCurrent.campaign_id) + "/signals-live");
+    var d = await r.json();
+    var top = d.top_signals || [];
+    if (top.length === 0) {
+      el.innerHTML = '<span class="orch-small" style="color:var(--text-mut)">no signals returned for brief: ' + escapeHtml(d.audience_brief || "") + '</span>';
+      return;
+    }
+    el.innerHTML =
+      '<div class="campaign-live-signals-meta orch-small" style="margin-bottom:4px">brief: <code class="mono">' + escapeHtml(d.audience_brief || "") + '</code> · returned ' + top.length + ' top from ' + (d.per_agent || []).length + ' agents</div>' +
+      '<div class="campaign-live-signals">' + top.map(function (s) {
+        var cov = s.coverage_percentage != null ? s.coverage_percentage + "%" : "?";
+        var size = s.estimated_audience_size != null ? Math.round(s.estimated_audience_size / 1000000) + "M" : "?";
+        return '<div class="campaign-live-signal-chip" title="' + escapeHtml(s.signal_agent_segment_id) + ' · from ' + escapeHtml(s.source_agent_id) + '">' +
+          '<span class="campaign-live-signal-name">' + escapeHtml(s.name || s.signal_agent_segment_id) + '</span>' +
+          '<span class="campaign-live-signal-meta mono">cov ' + cov + ' · ~' + size + '</span>' +
+          '<span class="campaign-live-signal-source orch-small mono">' + escapeHtml(s.source_agent_id) + '</span>' +
+        '</div>';
+      }).join("") + '</div>';
+  } catch (e) {
+    el.innerHTML = '<span class="orch-small" style="color:var(--error)">signals fetch failed</span>';
+  }
 }
 
 // ── Lane 2: Bid stream ───────────────────────────────────────────────
@@ -16123,7 +16394,55 @@ async function _campaignFillInventory() {
         '<div class="campaign-safety-total"><div class="campaign-stream-stat-label">filter latency</div><div class="mono">' + (bs.filter_latency_p50_ms || 0) + 'ms</div></div>' +
       '</div>' +
       '<div class="campaign-safety-reasons">' + reasons + '</div>';
+    // Feature D: live products list under the SSP table.
+    sspEl.insertAdjacentHTML("beforeend",
+      '<div class="campaign-strategy-block" style="margin-top:10px" id="campaign-live-products-block">' +
+        '<div class="campaign-strategy-label">' +
+          '<span>Live targetable inventory (real get_products)</span>' +
+          '<span class="campaign-provenance-pill campaign-provenance-live" style="margin-left:6px" title="real call to get_products on every capable buying agent">LIVE · get_products</span>' +
+        '</div>' +
+        '<div id="campaign-live-products-list"><span class="orch-small">querying buying agents…</span></div>' +
+      '</div>');
+    _campaignFillLiveProducts();
   } catch (e) { sspEl.innerHTML = '<span class="orch-small" style="color:var(--error)">inventory load failed</span>'; }
+}
+
+// Feature D: live get_products on Lane 3.
+async function _campaignFillLiveProducts() {
+  var el = document.getElementById("campaign-live-products-list");
+  if (!el || !_campaignCurrent) return;
+  try {
+    var r = await fetch("/dsp/campaigns/" + encodeURIComponent(_campaignCurrent.campaign_id) + "/products-live");
+    var d = await r.json();
+    var meta =
+      d.capable_agent_count + ' capable · ' +
+      d.ok_count + ' returned · ' +
+      d.auth_gated_count + ' auth-gated · ' +
+      d.total_products + ' products';
+    var top = d.top_products || [];
+    if (top.length === 0) {
+      el.innerHTML =
+        '<div class="orch-small" style="color:var(--text-mut);margin-bottom:4px">' + escapeHtml(meta) + '</div>' +
+        '<div class="campaign-live-empty">' + (d.per_agent || []).map(function (a) {
+          var stateCls = a.ok ? "cov-full" : a.auth_gated ? "cov-auth" : "cov-zero";
+          var stateLabel = a.ok ? "ok (0 products)" : a.auth_gated ? "auth-gated" : "error";
+          return '<div class="campaign-live-agent-row ' + stateCls + '"><span class="mono">' + escapeHtml(a.agent_id) + '</span><span class="campaign-coverage-pill-frac">' + escapeHtml(stateLabel) + '</span></div>';
+        }).join("") + '</div>';
+      return;
+    }
+    el.innerHTML =
+      '<div class="orch-small" style="color:var(--text-mut);margin-bottom:4px">' + escapeHtml(meta) + '</div>' +
+      top.map(function (p) {
+        return '<div class="campaign-live-product-row">' +
+          '<span class="mono">' + escapeHtml(p.product_id) + '</span>' +
+          '<span class="pill pill-muted mono" style="font-size:9px">' + escapeHtml(p.source_agent_id) + '</span>' +
+          (p.cpm_floor != null ? '<span class="orch-small mono">CPM floor $' + p.cpm_floor + '</span>' : '') +
+          (p.name ? '<span class="campaign-live-product-name">' + escapeHtml(p.name) + '</span>' : '') +
+        '</div>';
+      }).join("");
+  } catch (e) {
+    el.innerHTML = '<span class="orch-small" style="color:var(--error)">products fetch failed</span>';
+  }
 }
 
 // ── Lane 4: Delivery + pacing ────────────────────────────────────────
@@ -16220,8 +16539,58 @@ async function _campaignFillAttribution() {
       '<div class="campaign-strategy-label">Optimization signals · feedback into bid strategy</div>' +
       '<div class="campaign-opt-signals">' + signals + '</div>' +
       '<div class="campaign-strategy-label" style="margin-top:8px">Strategy diff (next cycle)</div>' +
-      '<div class="campaign-feedback-list">' + feedback + '</div>';
+      '<div class="campaign-feedback-list">' + feedback + '</div>' +
+      // Feature A: apply diff via update_media_buy on a real media-buy.
+      // Picks the first live media-buy from the live panel; if none yet,
+      // shows hint about firing first.
+      '<div class="campaign-apply-diff-row">' +
+        '<button class="campaign-apply-diff-btn" id="campaign-apply-diff-btn">' +
+          '<span>Apply diff via update_media_buy</span>' +
+        '</button>' +
+        '<span class="orch-small" style="color:var(--text-mut)">→ calls update_media_buy on the first live media-buy from the live panel; tries each agent that fired one</span>' +
+        '<div class="campaign-apply-diff-result" id="campaign-apply-diff-result"></div>' +
+      '</div>';
+    var diffBtn = document.getElementById("campaign-apply-diff-btn");
+    if (diffBtn) diffBtn.addEventListener("click", _campaignApplyDiffLive);
   } catch (e) { body.innerHTML = '<span class="orch-small" style="color:var(--error)">attribution load failed</span>'; }
+}
+
+// Feature A: apply strategy diff via update_media_buy on a real buy.
+async function _campaignApplyDiffLive() {
+  var btn = document.getElementById("campaign-apply-diff-btn");
+  var out = document.getElementById("campaign-apply-diff-result");
+  if (!btn || !out) return;
+  btn.disabled = true; btn.textContent = "querying live media-buys…";
+  try {
+    var listResp = await fetch("/dsp/media-buys/live");
+    var listData = await listResp.json();
+    var buy = (listData.media_buys || [])[0];
+    if (!buy) {
+      out.innerHTML = '<span class="orch-small" style="color:var(--text-mut)">no live media-buys exist yet — fire one from the campaign card first.</span>';
+      btn.textContent = "Apply diff via update_media_buy"; btn.disabled = false;
+      return;
+    }
+    btn.textContent = "calling update_media_buy…";
+    var r = await fetch("/dsp/media-buys/" + encodeURIComponent(buy.media_buy_id || buy.buyer_ref) + "/update-live", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agent_id: buy.source_agent_id }),
+    });
+    var d = await r.json();
+    var statusCls = d.ok ? "campaign-fire-ok" : (d.auth_gated ? "campaign-fire-auth" : "campaign-fire-err");
+    var label = d.ok ? "OK" : (d.auth_gated ? "AUTH-GATED" : "ERROR");
+    out.innerHTML =
+      '<div class="campaign-fire-row ' + statusCls + '">' +
+        '<span class="campaign-fire-label">' + label + '</span>' +
+        '<span class="mono">' + escapeHtml(d.agent_id) + '</span>' +
+        '<span>update_media_buy → ' + d.latency_ms + 'ms</span>' +
+        (d.error ? '<span class="orch-small">' + escapeHtml(String(d.error).slice(0, 200)) + '</span>' : '') +
+      '</div>';
+    btn.textContent = "Re-apply"; btn.disabled = false;
+  } catch (e) {
+    out.innerHTML = '<span class="orch-small" style="color:var(--error)">' + escapeHtml(String((e && e.message) || e)) + '</span>';
+    btn.textContent = "Retry"; btn.disabled = false;
+  }
 }
 </script>`;
 }

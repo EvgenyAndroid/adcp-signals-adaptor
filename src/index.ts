@@ -65,6 +65,11 @@ import {
   handleDspCoverage,
   handleDspMediaBuysLive,
   handleDspDeliveryLive,
+  handleDspCampaignFireLive,
+  handleDspMediaBuyUpdateLive,
+  handleDspCampaignSignalsLive,
+  handleDspCampaignProductsLive,
+  handleDspAgentCapabilities,
 } from "./routes/dspRoutes";
 import {
   handleAudienceCompose,
@@ -452,6 +457,16 @@ export default {
                 response = await handleDspMediaBuysLive(request, env, logger);
             } else if (method === "GET" && path.startsWith("/dsp/media-buys/") && path.endsWith("/delivery-live")) {
                 response = await handleDspDeliveryLive(request, env, logger);
+            } else if (method === "POST" && path.startsWith("/dsp/media-buys/") && path.endsWith("/update-live")) {
+                response = await handleDspMediaBuyUpdateLive(request, env, logger);
+            } else if (method === "POST" && path.startsWith("/dsp/campaigns/") && path.endsWith("/fire-live")) {
+                response = await handleDspCampaignFireLive(request, env, logger);
+            } else if (method === "GET" && path.startsWith("/dsp/campaigns/") && path.endsWith("/signals-live")) {
+                response = await handleDspCampaignSignalsLive(request, env, logger);
+            } else if (method === "GET" && path.startsWith("/dsp/campaigns/") && path.endsWith("/products-live")) {
+                response = await handleDspCampaignProductsLive(request, env, logger);
+            } else if (method === "GET" && path.startsWith("/dsp/agents/") && path.endsWith("/capabilities-live")) {
+                response = await handleDspAgentCapabilities(request, env, logger);
 
                 // ── Sec-43: Audience Composer + activation analytics ────────────────
             } else if (method === "POST" && path === "/audience/compose") {

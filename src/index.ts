@@ -60,6 +60,7 @@ import {
   handleGovernancePreview,
   handleBrandRightsPreview,
 } from "./routes/registryRoutes";
+import { handleDspCampaigns } from "./routes/dspRoutes";
 import {
   handleAudienceCompose,
   handleAudienceSaturation,
@@ -251,6 +252,8 @@ export default {
             "/registry/governance-preview",
             // Refinement C: predictive brand-rights overlay.
             "/registry/brand-rights-preview",
+            // Campaign Canvas (DSP buy-side mock).
+            "/dsp/campaigns",
             "/taxonomy/reverse",
             // Sec-43: audience composer + activation-planning analytics.
             // Read-only — same posture as /portfolio/* and /analytics/*.
@@ -432,6 +435,10 @@ export default {
                 response = await handleGovernancePreview(request, env, logger);
             } else if ((method === "GET" || method === "POST") && path === "/registry/brand-rights-preview") {
                 response = await handleBrandRightsPreview(request, env, logger);
+
+                // ── Buy-side / DSP Canvas (mock) ────────────────────────────────────
+            } else if (method === "GET" && path.startsWith("/dsp/campaigns")) {
+                response = await handleDspCampaigns(request, env, logger);
 
                 // ── Sec-43: Audience Composer + activation analytics ────────────────
             } else if (method === "POST" && path === "/audience/compose") {

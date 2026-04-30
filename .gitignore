@@ -370,3 +370,6 @@ FodyWeavers.xsd
 
 # Local probe / evaluator output dumps
 /JSON Results.txt
+
+# Local exploration artifacts (probe dumps, audit scripts)
+tmp-mining/

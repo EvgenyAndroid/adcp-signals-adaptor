@@ -292,6 +292,8 @@ export default {
             "/agentic/recover",
             "/agentic/remediate",
             "/agentic/memory",
+            "/agentic/refine",
+            "/agentic/critique",
             "/taxonomy/reverse",
             // Sec-43: audience composer + activation-planning analytics.
             // Read-only — same posture as /portfolio/* and /analytics/*.

@@ -35,7 +35,7 @@ import {
   generateAttribution,
 } from "../domain/dspMock";
 import { AGENT_REGISTRY } from "../domain/agentRegistry";
-import { callAgentTool, probeAgent } from "../federation/genericMcpClient";
+import { callAgentTool, callAgentToolWithCircuit, probeAgent, getCircuitSnapshot } from "../federation/genericMcpClient";
 import { buildCreateMediaBuyPayload, applyVendorAdapter, getDemoProviderAttestations } from "../domain/workflowOrchestration";
 import { ensureSelfHooksInstalled } from "./agentsEndpoints";
 
@@ -202,7 +202,8 @@ export async function handleDspMediaBuysLive(
 
   const results = await Promise.all(capable.map(async (a) => {
     const start = Date.now();
-    const r = await callAgentTool(a.mcp_url, "get_media_buys", {}, { timeoutMs: 12_000 });
+    // Wave 2: circuit-breaker wrapped for fan-out resilience.
+    const r = await callAgentToolWithCircuit(a.mcp_url, "get_media_buys", {}, { timeoutMs: 12_000 });
     const latency = Date.now() - start;
     let buys: MediaBuyOwned[] = [];
     let authGated = false;
@@ -571,7 +572,8 @@ export async function handleDspCampaignSignalsLive(
 
   const results = await Promise.all(signalsAgents.map(async (a) => {
     const start = Date.now();
-    const r = await callAgentTool(a.mcp_url!, "get_signals", {
+    // Wave 2: circuit-breaker wrapped — closes briefly on flapping vendors.
+    const r = await callAgentToolWithCircuit(a.mcp_url!, "get_signals", {
       signal_spec: c.audience_brief,
       max_results: 10,
       pagination: { max_results: 10 },
@@ -630,7 +632,8 @@ export async function handleDspCampaignProductsLive(
 
   const results = await Promise.all(capable.map(async (a) => {
     const start = Date.now();
-    const r = await callAgentTool(a.mcp_url, "get_products", {
+    // Wave 2: circuit-breaker wrapped.
+    const r = await callAgentToolWithCircuit(a.mcp_url, "get_products", {
       brief: c.audience_brief,
       brand: { domain: c.brand_domain, name: c.brand_name },
     }, { timeoutMs: 12_000 });
@@ -706,5 +709,37 @@ export async function handleDspAgentCapabilities(
     latency_ms: latency,
     error: r.error ?? null,
     capabilities: r.structured_content ?? null,
+  });
+}
+
+// ── Wave 2: GET /dsp/circuits — diagnostic snapshot of circuit-breaker state
+//
+// Read-only view of which agent URLs have open / half-open / closed
+// circuits. Useful in the workshop to demonstrate the resilience
+// layer in action ("see, when adzymic times out 3 times, the circuit
+// trips and we stop hitting it for 60s").
+
+export async function handleDspCircuits(
+  _request: Request,
+  _env: Env,
+  _logger: Logger,
+): Promise<Response> {
+  const snap = getCircuitSnapshot();
+  // Annotate with agent_id where we recognize the URL.
+  const annotated = snap.map((s) => {
+    const agent = AGENT_REGISTRY.find((a) => a.mcp_url === s.url);
+    return {
+      ...s,
+      agent_id: agent?.id ?? null,
+      agent_name: agent?.name ?? null,
+      vendor: agent?.vendor ?? null,
+    };
+  });
+  return jsonResponse({
+    threshold: 3,
+    open_duration_ms: 60_000,
+    retry_max: 1,
+    retry_backoff_base_ms: 250,
+    circuits: annotated,
   });
 }

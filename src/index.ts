@@ -449,8 +449,8 @@ export default {
                 response = await handleBrandRightsPreview(request, env, logger);
 
                 // ── Buy-side / DSP Canvas (mock + live hybrid) ───────────────────────
-            } else if (method === "GET" && path.startsWith("/dsp/campaigns")) {
-                response = await handleDspCampaigns(request, env, logger);
+                // SPECIFIC routes BEFORE the campaigns catch-all — otherwise
+                // the catch-all eats /dsp/campaigns/<id>/signals-live etc.
             } else if (method === "GET" && path === "/dsp/agents/coverage") {
                 response = await handleDspCoverage(request, env, logger);
             } else if (method === "GET" && path === "/dsp/media-buys/live") {
@@ -467,6 +467,9 @@ export default {
                 response = await handleDspCampaignProductsLive(request, env, logger);
             } else if (method === "GET" && path.startsWith("/dsp/agents/") && path.endsWith("/capabilities-live")) {
                 response = await handleDspAgentCapabilities(request, env, logger);
+                // Catch-all comes LAST.
+            } else if (method === "GET" && path.startsWith("/dsp/campaigns")) {
+                response = await handleDspCampaigns(request, env, logger);
 
                 // ── Sec-43: Audience Composer + activation analytics ────────────────
             } else if (method === "POST" && path === "/audience/compose") {

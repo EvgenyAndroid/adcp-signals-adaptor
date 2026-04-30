@@ -153,6 +153,10 @@ ${STYLES}
         <svg class="ico"><use href="#icon-bolt"/></svg><span>Canvas</span>
         <span class="nav-tag">new</span>
       </button>
+      <button class="nav-item" data-tab="campaign">
+        <svg class="ico"><use href="#icon-network"/></svg><span>Campaign</span>
+        <span class="nav-tag">DSP</span>
+      </button>
       <button class="nav-item" data-tab="activations">
         <svg class="ico"><use href="#icon-activations"/></svg><span>Activations</span>
         <span class="nav-count" id="nav-activations-count">—</span>
@@ -1492,6 +1496,100 @@ ${STYLES}
           <button class="canvas-viewmode active" data-mode="canvas" title="Brand-anchored canvas (current)">brand canvas</button>
           <button class="canvas-viewmode disabled" data-mode="role" title="Pattern B from proposal #98 — coming soon" disabled>role-pivot</button>
           <button class="canvas-viewmode disabled" data-mode="graph" title="Pattern A from proposal #98 — coming soon" disabled>capability graph</button>
+        </div>
+      </section>
+
+      <!-- ── TAB: Campaign Canvas (DSP buy-side control loop) ─────────── -->
+      <section class="tab-pane" data-tab="campaign">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Campaign Canvas <span class="pill pill-warning mono" style="font-size:9.5px;margin-left:8px;letter-spacing:0.04em">DSP buy-side · all primitives mocked</span></h1>
+            <p class="pane-subtitle">
+              Real-time control loop: bid strategy → bid stream → inventory match → brand-safety filter → delivery + attribution → optimization signals fed BACK into strategy.
+              <br/>
+              <span style="color:var(--text-mut)">All four buy-side AdCP primitives are unspec'd as of 3.0 GA: <code>submit_bid_strategy</code>, <code>get_bid_opportunities</code>, <code>get_pacing_status</code>, <code>optimize_strategy</code>. Every lane below mocks one of them.</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Campaign selector -->
+        <div class="campaign-selector" id="campaign-selector">
+          <span class="orch-small" style="color:var(--text-mut);margin-right:8px">campaign:</span>
+          <div class="campaign-selector-buttons" id="campaign-selector-buttons">
+            <span class="orch-small">loading…</span>
+          </div>
+        </div>
+
+        <!-- Top: Campaign card with KPI / flighting / budget rate -->
+        <div class="campaign-card-host" id="campaign-card-host">
+          <div class="empty-state"><div class="empty-title">Select a campaign above</div></div>
+        </div>
+
+        <!-- Control-loop grid: 5 lanes + feedback arrow back to top -->
+        <div class="campaign-loop" id="campaign-loop" style="display:none">
+
+          <!-- LANE 1: Bid strategy -->
+          <div class="campaign-lane campaign-lane-strategy" id="campaign-lane-strategy">
+            <div class="campaign-lane-head">
+              <span class="campaign-lane-label">1 · Bid strategy</span>
+              <span class="pill pill-muted mono" style="font-size:9px">submit_bid_strategy mock</span>
+            </div>
+            <div class="campaign-lane-body" id="campaign-strategy-body">
+              <span class="orch-small">…</span>
+            </div>
+          </div>
+
+          <!-- LANE 2: Bid stream -->
+          <div class="campaign-lane campaign-lane-stream" id="campaign-lane-stream">
+            <div class="campaign-lane-head">
+              <span class="campaign-lane-label">2 · Bid stream (last 60 min)</span>
+              <span class="pill pill-muted mono" style="font-size:9px">get_bid_opportunities mock</span>
+            </div>
+            <div class="campaign-lane-body" id="campaign-stream-body">
+              <span class="orch-small">…</span>
+            </div>
+          </div>
+
+          <!-- LANE 3: Inventory match (per-SSP) + Brand safety -->
+          <div class="campaign-lane campaign-lane-inventory" id="campaign-lane-inventory">
+            <div class="campaign-lane-head">
+              <span class="campaign-lane-label">3 · Inventory match · Brand safety</span>
+              <span class="pill pill-muted mono" style="font-size:9px">per-SSP performance · pre-bid filter</span>
+            </div>
+            <div class="campaign-lane-body campaign-lane-2col" id="campaign-inventory-body">
+              <div id="campaign-inventory-ssp"><span class="orch-small">…</span></div>
+              <div id="campaign-inventory-safety"><span class="orch-small">…</span></div>
+            </div>
+          </div>
+
+          <!-- LANE 4: Delivery (pacing curve) -->
+          <div class="campaign-lane campaign-lane-delivery" id="campaign-lane-delivery">
+            <div class="campaign-lane-head">
+              <span class="campaign-lane-label">4 · Delivery · Pacing</span>
+              <span class="pill pill-muted mono" style="font-size:9px">get_pacing_status mock</span>
+            </div>
+            <div class="campaign-lane-body" id="campaign-delivery-body">
+              <span class="orch-small">…</span>
+            </div>
+          </div>
+
+          <!-- LANE 5: Attribution + optimization (the feedback loop) -->
+          <div class="campaign-lane campaign-lane-attribution" id="campaign-lane-attribution">
+            <div class="campaign-lane-head">
+              <span class="campaign-lane-label">5 · Attribution · Optimization signals</span>
+              <span class="pill pill-muted mono" style="font-size:9px">optimize_strategy mock</span>
+            </div>
+            <div class="campaign-lane-body" id="campaign-attribution-body">
+              <span class="orch-small">…</span>
+            </div>
+          </div>
+
+          <!-- Closed-loop feedback arrow: signals feed BACK into strategy -->
+          <div class="campaign-feedback-arrow" id="campaign-feedback-arrow">
+            <svg class="ico" style="width:14px;height:14px"><use href="#icon-loop"/></svg>
+            <span>feedback loop — optimization signals re-tune the bid strategy each cycle</span>
+            <span class="campaign-feedback-arrow-tag mono">↻ continuous</span>
+          </div>
         </div>
       </section>
 
@@ -4824,6 +4922,303 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   font-weight: 700; opacity: 0.75; margin-right: 1px;
 }
 
+/* ────────────────────────────────────────────────────────────────
+   Campaign Canvas (DSP buy-side control loop)
+   ──────────────────────────────────────────────────────────────── */
+
+.campaign-selector {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 12px;
+  padding: 8px 12px; background: var(--bg-input);
+  border: 1px solid var(--border); border-radius: 5px;
+}
+.campaign-selector-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+.campaign-selector-btn {
+  display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  background: var(--bg-raised); color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 6px 12px; font-size: 11.5px; cursor: pointer;
+  font-family: inherit; transition: all 0.15s;
+}
+.campaign-selector-btn:hover { border-color: var(--accent); }
+.campaign-selector-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(56,182,255,0.08); }
+.campaign-selector-name { font-weight: 600; }
+.campaign-selector-kpi { font-size: 9.5px; color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Campaign card */
+.campaign-card-host { margin-bottom: 14px; }
+.campaign-card {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 14px;
+}
+.campaign-card-head {
+  display: flex; align-items: baseline; gap: 12px;
+  padding-bottom: 8px; margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.campaign-card-name { font-size: 16px; font-weight: 600; color: var(--text); }
+.campaign-card-brand { font-size: 12px; color: var(--text-mut); }
+.campaign-card-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;
+  margin-bottom: 10px;
+}
+.campaign-card-cell-wide { grid-column: span 2; }
+.campaign-card-cell {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.campaign-card-label {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-mut); font-weight: 500;
+}
+.campaign-card-value { font-size: 13px; color: var(--text); font-weight: 500; }
+.campaign-card-sub { color: var(--text-mut); font-size: 10.5px; }
+.campaign-kpi-roas        { color: var(--success); }
+.campaign-kpi-cpm         { color: var(--accent); }
+.campaign-kpi-cpa         { color: var(--warning, #d4a017); }
+.campaign-kpi-brand_lift  { color: #c084fc; }
+.campaign-card-progress { display: flex; flex-direction: column; gap: 4px; }
+.campaign-card-progress-label { display: flex; justify-content: space-between; }
+.campaign-card-progress-bar {
+  height: 4px; background: var(--bg-input); border-radius: 2px; overflow: hidden;
+}
+.campaign-card-progress-fill {
+  height: 100%; background: var(--accent); transition: width 0.3s;
+}
+
+/* Lane shell */
+.campaign-loop { display: flex; flex-direction: column; gap: 10px; }
+.campaign-lane {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-left-width: 3px; border-radius: 5px; padding: 10px 12px;
+}
+.campaign-lane-strategy    { border-left-color: var(--accent); }
+.campaign-lane-stream      { border-left-color: var(--success); }
+.campaign-lane-inventory   { border-left-color: var(--warning, #d4a017); }
+.campaign-lane-delivery    { border-left-color: #c084fc; }
+.campaign-lane-attribution { border-left-color: #f97316; }
+.campaign-lane-head {
+  display: flex; align-items: center; gap: 10px;
+  padding-bottom: 6px; margin-bottom: 8px;
+  border-bottom: 1px dashed var(--border);
+}
+.campaign-lane-label {
+  font-size: 12px; font-weight: 600; color: var(--text);
+}
+.campaign-lane-body { display: flex; flex-direction: column; gap: 8px; }
+.campaign-lane-2col { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; }
+
+/* Strategy lane */
+.campaign-strategy-row {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;
+}
+.campaign-strategy-cell { display: flex; flex-direction: column; gap: 2px; }
+.campaign-strategy-label {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-mut); font-weight: 500; margin-bottom: 4px;
+}
+.campaign-strategy-block { display: flex; flex-direction: column; gap: 4px; }
+.campaign-strategy-mods {
+  display: flex; flex-wrap: wrap; gap: 4px;
+}
+.campaign-strategy-mod {
+  display: inline-flex; gap: 6px; align-items: center;
+  padding: 3px 8px; background: var(--bg-raised);
+  border: 1px solid var(--border); border-radius: 3px;
+  font-size: 11px; cursor: help;
+}
+.campaign-strategy-mod.mod-up { border-color: var(--success); }
+.campaign-strategy-mod.mod-down { border-color: var(--error); }
+.campaign-strategy-mod-val { color: var(--text-dim); font-size: 10.5px; }
+.campaign-strategy-dayparting {
+  display: grid; grid-template-columns: repeat(24, 1fr);
+  gap: 1px; height: 32px; align-items: end;
+  padding: 4px 0;
+}
+.campaign-strategy-daypart {
+  display: flex; flex-direction: column; align-items: center;
+  height: 100%; justify-content: flex-end; cursor: help;
+}
+.campaign-strategy-daypart-bar {
+  width: 70%; background: var(--accent); opacity: 0.5;
+  border-radius: 1px;
+}
+.campaign-strategy-daypart.dp-peak .campaign-strategy-daypart-bar { opacity: 1; }
+.campaign-strategy-daypart.dp-low .campaign-strategy-daypart-bar { background: var(--text-mut); opacity: 0.3; }
+.campaign-strategy-daypart-h {
+  font-size: 7.5px; color: var(--text-mut); margin-top: 1px;
+}
+
+/* Bid stream lane */
+.campaign-stream-stats {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;
+  padding-bottom: 8px; border-bottom: 1px dashed var(--border);
+}
+.campaign-stream-stat { display: flex; flex-direction: column; gap: 2px; }
+.campaign-stream-stat-label {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-mut); font-weight: 500;
+}
+.campaign-stream-spark { display: flex; flex-direction: column; gap: 4px; padding-top: 4px; }
+.campaign-spark-label { color: var(--text-mut); }
+.campaign-spark-bars {
+  display: grid; grid-template-columns: repeat(60, 1fr); gap: 1px;
+  height: 36px; align-items: end; padding: 2px 0;
+  background: var(--bg-input); border-radius: 3px;
+}
+.campaign-spark-bar {
+  background: var(--success); opacity: 0.85; border-radius: 1px 1px 0 0;
+  cursor: help;
+}
+
+/* Inventory + brand-safety */
+.campaign-ssp-table {
+  width: 100%; border-collapse: collapse; font-size: 11.5px;
+}
+.campaign-ssp-table th {
+  text-align: left; padding: 4px 8px; color: var(--text-mut);
+  font-weight: 500; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.05em; border-bottom: 1px solid var(--border);
+}
+.campaign-ssp-table td {
+  padding: 5px 8px; color: var(--text-dim); vertical-align: middle;
+  border-bottom: 1px dashed var(--border);
+}
+.campaign-ssp-table tr:last-child td { border-bottom: none; }
+.campaign-ssp-table tr.trend-up    .trend-up-icon    { color: var(--success); font-weight: 700; }
+.campaign-ssp-table tr.trend-down  .trend-down-icon  { color: var(--error); font-weight: 700; }
+.campaign-ssp-table tr.trend-flat  .trend-flat-icon  { color: var(--text-mut); }
+.campaign-share-bar {
+  position: relative; height: 14px; background: var(--bg-input);
+  border-radius: 2px; min-width: 60px; overflow: hidden;
+}
+.campaign-share-fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: var(--accent); opacity: 0.55;
+}
+.campaign-share-num {
+  position: relative; padding: 0 5px; font-size: 10px;
+  line-height: 14px; color: var(--text);
+}
+.campaign-safety-totals {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+  padding-bottom: 8px; border-bottom: 1px dashed var(--border);
+}
+.campaign-safety-reasons {
+  display: flex; flex-direction: column; gap: 2px; padding-top: 4px;
+}
+.campaign-safety-reason {
+  display: flex; justify-content: space-between; gap: 8px;
+  font-size: 11px; color: var(--text-dim);
+  padding: 2px 0;
+}
+
+/* Delivery + pacing */
+.campaign-pacing-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 10px; border-radius: 4px;
+  border: 1px solid currentColor; font-size: 12px;
+}
+.campaign-pacing-banner-label {
+  font-family: var(--font-mono); font-weight: 700;
+  letter-spacing: 0.06em; font-size: 11px;
+}
+.campaign-pacing-banner-meta { margin-left: auto; }
+.campaign-pacing-on_track { color: var(--success); background: rgba(102,187,106,0.10); }
+.campaign-pacing-over     { color: var(--warning, #d4a017); background: rgba(212,160,23,0.10); }
+.campaign-pacing-under    { color: var(--error); background: rgba(239,68,68,0.10); }
+.campaign-pacing-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  padding: 6px 0;
+}
+.campaign-pacing-progress {
+  display: flex; align-items: center; gap: 8px;
+}
+.campaign-pacing-progress-bar {
+  flex: 1; height: 8px; background: var(--bg-input);
+  border-radius: 4px; overflow: hidden;
+}
+.campaign-pacing-progress-fill {
+  height: 100%; background: var(--accent);
+  transition: width 0.4s;
+}
+.campaign-pacing-bars {
+  display: flex; gap: 2px; align-items: end;
+  height: 64px; padding: 4px 2px;
+  background: var(--bg-input); border-radius: 3px;
+  overflow-x: auto;
+}
+.campaign-pacing-bar {
+  flex: 0 0 14px; height: 100%; display: flex;
+  flex-direction: column; justify-content: flex-end;
+  cursor: help;
+}
+.campaign-pacing-bar-fill { width: 100%; border-radius: 1px 1px 0 0; }
+.campaign-pacing-bar.var-on    .campaign-pacing-bar-fill { background: var(--success); opacity: 0.75; }
+.campaign-pacing-bar.var-over  .campaign-pacing-bar-fill { background: var(--warning, #d4a017); opacity: 0.85; }
+.campaign-pacing-bar.var-under .campaign-pacing-bar-fill { background: var(--error); opacity: 0.7; }
+
+/* Attribution + optimization */
+.campaign-attr-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  padding-bottom: 8px; border-bottom: 1px dashed var(--border);
+}
+.kpi-status-above { color: var(--success); margin-left: 4px; font-size: 9.5px; padding: 1px 5px; border-radius: 2px; background: rgba(102,187,106,0.10); border: 1px solid var(--success); }
+.kpi-status-on    { color: var(--text); margin-left: 4px; font-size: 9.5px; padding: 1px 5px; border-radius: 2px; background: var(--bg-input); border: 1px solid var(--border); }
+.kpi-status-below { color: var(--error); margin-left: 4px; font-size: 9.5px; padding: 1px 5px; border-radius: 2px; background: rgba(239,68,68,0.10); border: 1px solid var(--error); }
+.campaign-opt-signals {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.campaign-opt-signal {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-left-width: 3px; border-radius: 4px;
+  padding: 6px 10px; font-size: 11px;
+}
+.campaign-opt-boost { border-left-color: var(--success); }
+.campaign-opt-decay { border-left-color: var(--error); }
+.campaign-opt-shift { border-left-color: var(--accent); }
+.campaign-opt-alert { border-left-color: var(--warning, #d4a017); }
+.campaign-opt-signal-head {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+.campaign-opt-signal-kind {
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 700;
+  letter-spacing: 0.06em; padding: 1px 5px; border-radius: 2px;
+  background: var(--bg-input); color: var(--text);
+}
+.campaign-opt-signal-metric { color: var(--text); font-weight: 600; }
+.campaign-opt-signal-conf { margin-left: auto; }
+.campaign-opt-signal-rec { color: var(--text-dim); font-size: 11px; line-height: 1.4; }
+.campaign-feedback-list {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 6px 8px; background: var(--bg-raised);
+  border: 1px dashed var(--accent); border-radius: 4px;
+  font-size: 10.5px;
+}
+.campaign-feedback-item { color: var(--accent); }
+
+/* Closed-loop arrow */
+.campaign-feedback-arrow {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; margin-top: 4px;
+  background: linear-gradient(90deg, rgba(249,115,22,0.06), rgba(56,182,255,0.06));
+  border: 1px dashed var(--accent); border-radius: 5px;
+  font-size: 11px; color: var(--text-mut);
+}
+.campaign-feedback-arrow .ico { color: var(--accent); }
+.campaign-feedback-arrow-tag {
+  margin-left: auto; color: var(--accent); font-size: 10px;
+}
+
+@media (max-width: 1100px) {
+  .campaign-card-grid { grid-template-columns: repeat(3, 1fr); }
+  .campaign-card-cell-wide { grid-column: span 3; }
+  .campaign-strategy-row { grid-template-columns: repeat(3, 1fr); }
+  .campaign-stream-stats { grid-template-columns: repeat(2, 1fr); }
+  .campaign-safety-totals { grid-template-columns: repeat(3, 1fr); }
+  .campaign-attr-row { grid-template-columns: repeat(2, 1fr); }
+  .campaign-lane-2col { grid-template-columns: 1fr; }
+}
+
 /* MVP #6: portfolio-rebalance banner. Shows above the media-buy cells
    when N agents auth-gate and at least 1 succeeds. Communicates that
    the workflow is robust to partial failure and the deployable budget
@@ -5936,7 +6331,7 @@ function switchTab(name) {
     journey: "Journey", planner: "Scenario", snapshots: "Snapshots",
     freshness: "Freshness",
     seasonality: "Seasonality", federation: "Federation",
-    orchestrator: "Orchestrator", canvas: "Canvas",
+    orchestrator: "Orchestrator", canvas: "Canvas", campaign: "Campaign Canvas",
   };
   document.getElementById("crumb-current").textContent = crumbMap[name] || name;
 
@@ -5951,6 +6346,7 @@ function switchTab(name) {
   if (name === "devkit") ensureDevkit();
   if (name === "destinations") ensureDestinations();
   if (name === "canvas") _canvasReplayFromQuery();
+  if (name === "campaign") _campaignInit();
   if (name === "lab") ensureLab();
   if (name === "portfolio") ensurePortfolio();
   if (name === "composer") ensureComposer();
@@ -15180,5 +15576,320 @@ document.getElementById("toollog-export").addEventListener("click", () => {
     }
   } catch (e) { /* noop */ }
 })();
+
+// ─────────────────────────────────────────────────────────────────
+// Campaign Canvas (DSP buy-side control loop)
+// ─────────────────────────────────────────────────────────────────
+
+var _campaignCurrent = null;
+var _campaignList = [];
+var _campaignLoaded = false;
+
+async function _campaignInit() {
+  if (_campaignLoaded) return;
+  _campaignLoaded = true;
+  try {
+    var r = await fetch("/dsp/campaigns");
+    var d = await r.json();
+    _campaignList = d.campaigns || [];
+    _campaignRenderSelector();
+    if (_campaignList.length > 0) _campaignSelect(_campaignList[0].campaign_id);
+  } catch (e) {
+    var host = document.getElementById("campaign-card-host");
+    if (host) host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">Failed to load campaigns</div></div>';
+  }
+}
+
+function _campaignRenderSelector() {
+  var el = document.getElementById("campaign-selector-buttons");
+  if (!el) return;
+  el.innerHTML = _campaignList.map(function (c) {
+    var active = (_campaignCurrent && _campaignCurrent.campaign_id === c.campaign_id) ? "active" : "";
+    return '<button class="campaign-selector-btn ' + active + '" data-campaign-id="' + escapeHtml(c.campaign_id) + '">' +
+      '<span class="campaign-selector-name">' + escapeHtml(c.brand_name) + '</span>' +
+      '<span class="campaign-selector-kpi mono">' + escapeHtml(c.kpi) + ' ' + (c.kpi === "CPM" || c.kpi === "CPA" ? "$" : "") + escapeHtml(String(c.kpi_target)) + (c.kpi === "ROAS" ? "x" : c.kpi === "BRAND_LIFT" ? "%" : "") + '</span>' +
+    '</button>';
+  }).join("");
+  el.querySelectorAll(".campaign-selector-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var id = btn.getAttribute("data-campaign-id");
+      if (id) _campaignSelect(id);
+    });
+  });
+}
+
+async function _campaignSelect(campaignId) {
+  try {
+    var r = await fetch("/dsp/campaigns/" + encodeURIComponent(campaignId));
+    _campaignCurrent = await r.json();
+    _campaignRenderSelector();
+    _campaignRenderCard();
+    var loop = document.getElementById("campaign-loop");
+    if (loop) loop.style.display = "";
+    // Hydrate all 5 lanes in parallel.
+    _campaignFillStrategy();
+    _campaignFillStream();
+    _campaignFillInventory();
+    _campaignFillDelivery();
+    _campaignFillAttribution();
+  } catch (e) { /* noop */ }
+}
+
+function _campaignRenderCard() {
+  var c = _campaignCurrent;
+  var host = document.getElementById("campaign-card-host");
+  if (!host || !c) return;
+  var startMs = Date.parse(c.flight_start);
+  var endMs = Date.parse(c.flight_end);
+  var totalDays = Math.max(1, Math.round((endMs - startMs) / 86400000));
+  var daysElapsed = Math.min(totalDays, c.start_day_offset || 0);
+  var daysRemaining = totalDays - daysElapsed;
+  var pctElapsed = Math.round((daysElapsed / totalDays) * 100);
+  var kpiLabel = c.kpi + " target: " + (c.kpi === "CPM" || c.kpi === "CPA" ? "$" : "") + c.kpi_target + (c.kpi === "ROAS" ? "x" : c.kpi === "BRAND_LIFT" ? "%" : "");
+  var geoChips = (c.geo || []).map(function (g) {
+    return '<span class="pill pill-muted mono" style="font-size:10px">' + escapeHtml(g) + '</span>';
+  }).join(" ");
+  host.innerHTML =
+    '<div class="campaign-card">' +
+      '<div class="campaign-card-head">' +
+        '<div class="campaign-card-name">' + escapeHtml(c.name) + '</div>' +
+        '<div class="campaign-card-brand mono">' + escapeHtml(c.brand_domain || "") + '</div>' +
+      '</div>' +
+      '<div class="campaign-card-grid">' +
+        '<div class="campaign-card-cell">' +
+          '<div class="campaign-card-label">KPI target</div>' +
+          '<div class="campaign-card-value campaign-kpi-' + escapeHtml(String(c.kpi).toLowerCase()) + '">' + escapeHtml(kpiLabel) + '</div>' +
+        '</div>' +
+        '<div class="campaign-card-cell">' +
+          '<div class="campaign-card-label">Budget</div>' +
+          '<div class="campaign-card-value mono">$' + c.budget_total_usd.toLocaleString() + '</div>' +
+          '<div class="campaign-card-sub orch-small">cap $' + c.budget_daily_cap_usd.toLocaleString() + '/day</div>' +
+        '</div>' +
+        '<div class="campaign-card-cell">' +
+          '<div class="campaign-card-label">Flight</div>' +
+          '<div class="campaign-card-value mono">' + escapeHtml(c.flight_start) + ' → ' + escapeHtml(c.flight_end) + '</div>' +
+          '<div class="campaign-card-sub orch-small">day ' + daysElapsed + ' of ' + totalDays + ' · ' + daysRemaining + ' left</div>' +
+        '</div>' +
+        '<div class="campaign-card-cell">' +
+          '<div class="campaign-card-label">Frequency cap</div>' +
+          '<div class="campaign-card-value mono">' + c.freq_cap_per_user + '/user</div>' +
+        '</div>' +
+        '<div class="campaign-card-cell campaign-card-cell-wide">' +
+          '<div class="campaign-card-label">Geo + audience brief</div>' +
+          '<div class="campaign-card-value">' + geoChips + '</div>' +
+          '<div class="campaign-card-sub orch-small mono">' + escapeHtml(c.audience_brief || "") + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="campaign-card-progress">' +
+        '<div class="campaign-card-progress-label orch-small"><span style="color:var(--text-mut)">flight progress</span> <span class="mono">' + pctElapsed + '%</span></div>' +
+        '<div class="campaign-card-progress-bar"><div class="campaign-card-progress-fill" style="width:' + pctElapsed + '%"></div></div>' +
+      '</div>' +
+    '</div>';
+}
+
+// ── Lane 1: Bid strategy ─────────────────────────────────────────────
+async function _campaignFillStrategy() {
+  var body = document.getElementById("campaign-strategy-body");
+  if (!body || !_campaignCurrent) return;
+  try {
+    var r = await fetch("/dsp/campaigns/" + encodeURIComponent(_campaignCurrent.campaign_id) + "/strategy");
+    var d = await r.json();
+    var s = d.strategy;
+    var modifiers = s.bid_modifiers.map(function (m) {
+      var cls = m.multiplier > 1 ? "mod-up" : "mod-down";
+      return '<div class="campaign-strategy-mod ' + cls + '" title="' + escapeHtml(m.reason) + '">' +
+        '<span class="mono">' + escapeHtml(m.name) + '</span>' +
+        '<span class="campaign-strategy-mod-val mono">×' + m.multiplier + '</span>' +
+      '</div>';
+    }).join("");
+    var dayparting = s.dayparting.map(function (h) {
+      var hh = (h.hour < 10 ? "0" : "") + h.hour;
+      var height = Math.round((h.multiplier / 1.2) * 24);
+      var cls = h.multiplier > 1.05 ? "dp-peak" : h.multiplier < 0.7 ? "dp-low" : "";
+      return '<div class="campaign-strategy-daypart ' + cls + '" title="' + hh + ':00 ×' + h.multiplier + '"><div class="campaign-strategy-daypart-bar" style="height:' + height + 'px"></div><span class="campaign-strategy-daypart-h mono">' + hh + '</span></div>';
+    }).join("");
+    body.innerHTML =
+      '<div class="campaign-strategy-row">' +
+        '<div class="campaign-strategy-cell"><div class="campaign-strategy-label">Algorithm</div><div class="mono"><span class="pill pill-muted">' + escapeHtml(s.algorithm) + '</span></div></div>' +
+        '<div class="campaign-strategy-cell"><div class="campaign-strategy-label">Base bid</div><div class="mono">$' + s.base_bid_usd + ' CPM</div></div>' +
+        '<div class="campaign-strategy-cell"><div class="campaign-strategy-label">Pacing</div><div class="mono">' + escapeHtml(s.pacing_strategy) + '</div></div>' +
+        '<div class="campaign-strategy-cell"><div class="campaign-strategy-label">Floor</div><div class="mono">' + escapeHtml(s.floor_strategy) + '</div></div>' +
+        '<div class="campaign-strategy-cell"><div class="campaign-strategy-label">Brand safety floor</div><div class="mono">≥' + s.brand_safety_floor + '/100</div></div>' +
+        '<div class="campaign-strategy-cell"><div class="campaign-strategy-label">Viewability floor</div><div class="mono">≥' + Math.round(s.viewability_floor * 100) + '%</div></div>' +
+      '</div>' +
+      '<div class="campaign-strategy-block">' +
+        '<div class="campaign-strategy-label">Bid modifiers</div>' +
+        '<div class="campaign-strategy-mods">' + modifiers + '</div>' +
+      '</div>' +
+      '<div class="campaign-strategy-block">' +
+        '<div class="campaign-strategy-label">Dayparting (hour-of-day multipliers)</div>' +
+        '<div class="campaign-strategy-dayparting">' + dayparting + '</div>' +
+      '</div>';
+  } catch (e) { body.innerHTML = '<span class="orch-small" style="color:var(--error)">strategy load failed</span>'; }
+}
+
+// ── Lane 2: Bid stream ───────────────────────────────────────────────
+async function _campaignFillStream() {
+  var body = document.getElementById("campaign-stream-body");
+  if (!body || !_campaignCurrent) return;
+  try {
+    var r = await fetch("/dsp/campaigns/" + encodeURIComponent(_campaignCurrent.campaign_id) + "/bid-stream");
+    var d = await r.json();
+    var samples = d.samples || [];
+    if (samples.length === 0) { body.innerHTML = '<span class="orch-small">no samples</span>'; return; }
+    // Aggregate totals across the window
+    var totalReqs = samples.reduce(function (s, x) { return s + x.bid_requests_per_sec; }, 0) * 60;
+    var totalBids = samples.reduce(function (s, x) { return s + x.bids_per_sec; }, 0) * 60;
+    var totalWins = samples.reduce(function (s, x) { return s + x.wins_per_sec; }, 0) * 60;
+    var winRate = totalBids > 0 ? Math.round((totalWins / totalBids) * 1000) / 10 : 0;
+    var bidRate = totalReqs > 0 ? Math.round((totalBids / totalReqs) * 1000) / 10 : 0;
+    var avgCpm = samples.reduce(function (s, x) { return s + x.avg_winning_cpm_usd; }, 0) / samples.length;
+    var p95avg = Math.round(samples.reduce(function (s, x) { return s + x.latency_p95_ms; }, 0) / samples.length);
+    // Sparkline: 60 bars showing wins-per-sec over time
+    var maxW = Math.max.apply(null, samples.map(function (x) { return x.wins_per_sec; })) || 1;
+    var spark = samples.map(function (x) {
+      var h = Math.max(1, Math.round((x.wins_per_sec / maxW) * 32));
+      return '<div class="campaign-spark-bar" style="height:' + h + 'px" title="t-' + x.t_offset_sec + 's: ' + Math.round(x.wins_per_sec) + ' wins/s, CPM $' + x.avg_winning_cpm_usd + '"></div>';
+    }).join("");
+    body.innerHTML =
+      '<div class="campaign-stream-stats">' +
+        '<div class="campaign-stream-stat"><div class="campaign-stream-stat-label">bid requests</div><div class="mono">' + Math.round(totalReqs).toLocaleString() + '</div></div>' +
+        '<div class="campaign-stream-stat"><div class="campaign-stream-stat-label">bids submitted</div><div class="mono">' + Math.round(totalBids).toLocaleString() + ' <span class="orch-small">(' + bidRate + '%)</span></div></div>' +
+        '<div class="campaign-stream-stat"><div class="campaign-stream-stat-label">wins</div><div class="mono">' + Math.round(totalWins).toLocaleString() + ' <span class="orch-small">(' + winRate + '%)</span></div></div>' +
+        '<div class="campaign-stream-stat"><div class="campaign-stream-stat-label">avg winning CPM</div><div class="mono">$' + (Math.round(avgCpm * 100) / 100) + '</div></div>' +
+        '<div class="campaign-stream-stat"><div class="campaign-stream-stat-label">latency p95</div><div class="mono">' + p95avg + ' ms</div></div>' +
+      '</div>' +
+      '<div class="campaign-stream-spark"><div class="campaign-spark-label orch-small">wins/sec — last 60 minutes</div><div class="campaign-spark-bars">' + spark + '</div></div>';
+  } catch (e) { body.innerHTML = '<span class="orch-small" style="color:var(--error)">bid-stream load failed</span>'; }
+}
+
+// ── Lane 3: Inventory match (per-SSP) + Brand safety ──────────────────
+async function _campaignFillInventory() {
+  var sspEl = document.getElementById("campaign-inventory-ssp");
+  var safetyEl = document.getElementById("campaign-inventory-safety");
+  if (!sspEl || !safetyEl || !_campaignCurrent) return;
+  try {
+    var [invR, safR] = await Promise.all([
+      fetch("/dsp/campaigns/" + encodeURIComponent(_campaignCurrent.campaign_id) + "/inventory").then(function (r) { return r.json(); }),
+      fetch("/dsp/campaigns/" + encodeURIComponent(_campaignCurrent.campaign_id) + "/brand-safety").then(function (r) { return r.json(); }),
+    ]);
+    // SSP table
+    var ssps = invR.ssps || [];
+    var rows = ssps.map(function (s) {
+      var trendIcon = s.trend_24h === "up" ? "↑" : s.trend_24h === "down" ? "↓" : "→";
+      var trendCls = "trend-" + s.trend_24h;
+      return '<tr class="' + trendCls + '">' +
+        '<td class="mono"><span class="' + trendCls + '-icon">' + trendIcon + '</span> ' + escapeHtml(s.ssp_name) + '</td>' +
+        '<td class="mono">' + s.win_rate_pct + '%</td>' +
+        '<td class="mono">$' + s.avg_winning_cpm_usd + '</td>' +
+        '<td class="mono">' + s.audience_match_rate_pct + '%</td>' +
+        '<td class="mono">' + s.bid_qps + '</td>' +
+        '<td class="mono">' + s.latency_p95_ms + 'ms</td>' +
+        '<td class="mono"><div class="campaign-share-bar"><div class="campaign-share-fill" style="width:' + (s.share_of_spend_pct * 2.5) + '%"></div><span class="campaign-share-num">' + s.share_of_spend_pct + '%</span></div></td>' +
+      '</tr>';
+    }).join("");
+    sspEl.innerHTML =
+      '<div class="campaign-strategy-label">Per-SSP performance · sorted by composite (win × match)</div>' +
+      '<table class="campaign-ssp-table">' +
+        '<thead><tr><th>SSP</th><th>win</th><th>CPM</th><th>match</th><th>QPS</th><th>p95</th><th>share</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+      '</table>';
+    // Brand safety
+    var bs = safR.brand_safety || {};
+    var reasons = (bs.reasons || []).map(function (r) {
+      return '<div class="campaign-safety-reason"><span>' + escapeHtml(r.reason) + '</span><span class="mono">' + r.count.toLocaleString() + ' <span class="orch-small">(' + r.pct + '%)</span></span></div>';
+    }).join("");
+    safetyEl.innerHTML =
+      '<div class="campaign-strategy-label">Brand-safety pre-bid filter</div>' +
+      '<div class="campaign-safety-totals">' +
+        '<div class="campaign-safety-total"><div class="campaign-stream-stat-label">evaluated</div><div class="mono">' + (bs.total_impressions_evaluated || 0).toLocaleString() + '</div></div>' +
+        '<div class="campaign-safety-total"><div class="campaign-stream-stat-label">blocked</div><div class="mono">' + (bs.total_blocked || 0).toLocaleString() + ' <span class="orch-small">(' + bs.block_rate_pct + '%)</span></div></div>' +
+        '<div class="campaign-safety-total"><div class="campaign-stream-stat-label">avg DV/IAS</div><div class="mono">' + (bs.avg_brand_safety_score || 0) + '/100</div></div>' +
+        '<div class="campaign-safety-total"><div class="campaign-stream-stat-label">avg viewable</div><div class="mono">' + Math.round((bs.avg_predicted_viewability || 0) * 100) + '%</div></div>' +
+        '<div class="campaign-safety-total"><div class="campaign-stream-stat-label">filter latency</div><div class="mono">' + (bs.filter_latency_p50_ms || 0) + 'ms</div></div>' +
+      '</div>' +
+      '<div class="campaign-safety-reasons">' + reasons + '</div>';
+  } catch (e) { sspEl.innerHTML = '<span class="orch-small" style="color:var(--error)">inventory load failed</span>'; }
+}
+
+// ── Lane 4: Delivery + pacing ────────────────────────────────────────
+async function _campaignFillDelivery() {
+  var body = document.getElementById("campaign-delivery-body");
+  if (!body || !_campaignCurrent) return;
+  try {
+    var r = await fetch("/dsp/campaigns/" + encodeURIComponent(_campaignCurrent.campaign_id) + "/pacing");
+    var d = await r.json();
+    var p = d.pacing;
+    var spent = p.spent_to_date_usd;
+    var total = p.budget_total_usd;
+    var pctSpent = total > 0 ? Math.round((spent / total) * 100) : 0;
+    var healthCls = "campaign-pacing-" + p.pacing_health;
+    var healthLabel = p.pacing_health === "on_track" ? "ON TRACK" : p.pacing_health === "over" ? "OVER" : "UNDER";
+    var maxDayspend = Math.max.apply(null, (p.per_day || []).map(function (x) { return x.spend_usd; })) || 1;
+    var bars = (p.per_day || []).map(function (pt) {
+      var h = Math.max(2, Math.round((pt.spend_usd / maxDayspend) * 60));
+      var varCls = Math.abs(pt.variance_pct) < 5 ? "var-on" : pt.variance_pct > 0 ? "var-over" : "var-under";
+      return '<div class="campaign-pacing-bar ' + varCls + '" title="day ' + pt.day + ': $' + pt.spend_usd + ' (var ' + pt.variance_pct + '%)"><div class="campaign-pacing-bar-fill" style="height:' + h + 'px"></div></div>';
+    }).join("");
+    body.innerHTML =
+      '<div class="campaign-pacing-banner ' + healthCls + '">' +
+        '<span class="campaign-pacing-banner-label">' + healthLabel + '</span>' +
+        '<span class="campaign-pacing-banner-meta orch-small">variance ' + (p.pacing_variance_pct > 0 ? "+" : "") + p.pacing_variance_pct + '% vs target</span>' +
+      '</div>' +
+      '<div class="campaign-pacing-stats">' +
+        '<div class="campaign-stream-stat"><div class="campaign-stream-stat-label">spent / total</div><div class="mono">$' + spent.toLocaleString() + ' / $' + total.toLocaleString() + '</div></div>' +
+        '<div class="campaign-stream-stat"><div class="campaign-stream-stat-label">remaining</div><div class="mono">$' + p.remaining_usd.toLocaleString() + '</div></div>' +
+        '<div class="campaign-stream-stat"><div class="campaign-stream-stat-label">days elapsed</div><div class="mono">' + p.days_elapsed + ' / ' + p.days_total + '</div></div>' +
+        '<div class="campaign-stream-stat"><div class="campaign-stream-stat-label">total impressions</div><div class="mono">' + (p.total_impressions || 0).toLocaleString() + '</div></div>' +
+      '</div>' +
+      '<div class="campaign-pacing-progress">' +
+        '<div class="campaign-pacing-progress-bar"><div class="campaign-pacing-progress-fill" style="width:' + pctSpent + '%"></div></div>' +
+        '<span class="campaign-pacing-progress-label orch-small mono">' + pctSpent + '% of budget</span>' +
+      '</div>' +
+      '<div class="campaign-strategy-label">Daily spend (variance vs target)</div>' +
+      '<div class="campaign-pacing-bars">' + bars + '</div>';
+  } catch (e) { body.innerHTML = '<span class="orch-small" style="color:var(--error)">pacing load failed</span>'; }
+}
+
+// ── Lane 5: Attribution + optimization signals ───────────────────────
+async function _campaignFillAttribution() {
+  var body = document.getElementById("campaign-attribution-body");
+  if (!body || !_campaignCurrent) return;
+  try {
+    var r = await fetch("/dsp/campaigns/" + encodeURIComponent(_campaignCurrent.campaign_id) + "/attribution");
+    var d = await r.json();
+    var a = d.attribution;
+    var statusCls = "kpi-status-" + a.kpi_status;
+    var prefix = (_campaignCurrent.kpi === "CPM" || _campaignCurrent.kpi === "CPA") ? "$" : "";
+    var suffix = _campaignCurrent.kpi === "ROAS" ? "x" : _campaignCurrent.kpi === "BRAND_LIFT" ? "%" : "";
+    var statusLabel = a.kpi_status === "above" ? "ABOVE TARGET" : a.kpi_status === "below" ? "BELOW TARGET" : "ON TARGET";
+    var signals = a.optimization_signals.map(function (s) {
+      var kindCls = "campaign-opt-" + s.kind;
+      return '<div class="campaign-opt-signal ' + kindCls + '">' +
+        '<div class="campaign-opt-signal-head">' +
+          '<span class="campaign-opt-signal-kind">' + escapeHtml(s.kind.toUpperCase()) + '</span>' +
+          '<span class="mono">' + escapeHtml(s.target) + '</span>' +
+          '<span class="campaign-opt-signal-metric mono">' + escapeHtml(s.metric) + '</span>' +
+          '<span class="campaign-opt-signal-conf orch-small mono">conf ' + Math.round(s.confidence * 100) + '%</span>' +
+        '</div>' +
+        '<div class="campaign-opt-signal-rec">' + escapeHtml(s.recommendation) + '</div>' +
+      '</div>';
+    }).join("");
+    var feedback = (a.feedback_into_strategy || []).map(function (f) {
+      return '<div class="campaign-feedback-item mono">' + escapeHtml(f) + '</div>';
+    }).join("");
+    body.innerHTML =
+      '<div class="campaign-attr-row">' +
+        '<div class="campaign-stream-stat"><div class="campaign-stream-stat-label">conversions</div><div class="mono">' + a.conversions.toLocaleString() + '</div></div>' +
+        '<div class="campaign-stream-stat"><div class="campaign-stream-stat-label">conversion value</div><div class="mono">$' + a.conversion_value_usd.toLocaleString() + '</div></div>' +
+        '<div class="campaign-stream-stat campaign-kpi-realized"><div class="campaign-stream-stat-label">realized ' + escapeHtml(_campaignCurrent.kpi) + '</div><div class="mono">' + prefix + a.realized_kpi + suffix + ' <span class="' + statusCls + '">' + statusLabel + '</span></div></div>' +
+        '<div class="campaign-stream-stat"><div class="campaign-stream-stat-label">target</div><div class="mono">' + prefix + a.kpi_target + suffix + '</div></div>' +
+      '</div>' +
+      '<div class="campaign-strategy-label">Optimization signals · feedback into bid strategy</div>' +
+      '<div class="campaign-opt-signals">' + signals + '</div>' +
+      '<div class="campaign-strategy-label" style="margin-top:8px">Strategy diff (next cycle)</div>' +
+      '<div class="campaign-feedback-list">' + feedback + '</div>';
+  } catch (e) { body.innerHTML = '<span class="orch-small" style="color:var(--error)">attribution load failed</span>'; }
+}
 </script>`;
 }

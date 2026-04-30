@@ -375,32 +375,76 @@ export async function handleAgenticChat(request: Request, env: Env, _logger: Log
   if (!body.input || body.input.trim().length === 0) {
     return errorResponse("INVALID_INPUT", "input required", 400);
   }
+  const input = body.input.trim();
   const ctx = makeAgenticContext(env);
-  const expanded = await expandBrief(ctx, body.input.trim());
-  const coverage = await buildCoverage(env);
-  const plan = await planExecution(ctx, expanded, coverage);
-  const memory = await recallSimilar(env, expanded);
-  const compliance = checkAndRemediate(expanded);
 
-  // Compose a short prose summary for the chat surface.
-  const summaryParts: string[] = [];
-  summaryParts.push(`Brief expanded: brand="${expanded.brand_name ?? "(unknown)"}", industries=[${expanded.industries.slice(0, 3).join(", ")}], KPI=${expanded.kpi}@${expanded.kpi_target ?? "?"}.`);
-  summaryParts.push(`Plan: ${plan.steps.length} step(s) — ${plan.steps.map((s) => s.tool).join(" → ")}.`);
-  summaryParts.push(`Governance preview: ${compliance.advisory.outcome.toUpperCase()}${compliance.advisory.restricted_attributes.length > 0 ? ` (block on ${compliance.advisory.restricted_attributes.join(", ")})` : ""}.`);
-  if (memory.matches.length > 0) summaryParts.push(`Memory: ${memory.hint}`);
-  summaryParts.push(`Mode: ${ctx.mode}.`);
-  const summary = summaryParts.join(" ");
+  // Streaming NDJSON. Each stage emits a `stage_start` with a label so
+  // the client can skeleton/pulse, then reasoning steps + the final
+  // payload for that stage. This is what makes the Agentic Canvas FEEL
+  // agentic: the user sees the agent walk through the plan instead of
+  // a single "loading…" → fully-rendered jump.
+  const stream = new ReadableStream({
+    async start(controller) {
+      const enc = new TextEncoder();
+      const emit = (obj: unknown) => controller.enqueue(enc.encode(JSON.stringify(obj) + "\n"));
 
-  // Combine traces for client.
-  const trace: ReasoningStep[] = [...expanded.trace, ...plan.trace, ...compliance.trace];
+      try {
+        emit({ event: "session_start", input, mode: ctx.mode, ts: new Date().toISOString() });
 
-  return jsonResponse({
-    mode: ctx.mode,
-    summary,
-    expanded,
-    plan,
-    memory,
-    compliance,
-    trace,
+        // ── Stage 1: brief expansion ─────────────────────────────────────
+        emit({ event: "stage_start", stage: "brief", label: ctx.mode === "live" ? "Asking Claude to decompose the brief…" : "Running rule-based brief extractor…" });
+        const expanded = await expandBrief(ctx, input);
+        for (const t of expanded.trace) emit({ event: "reasoning", step: t });
+        emit({ event: "stage_complete", stage: "brief", payload: expanded });
+
+        // ── Stage 2: live MCP coverage probe (parallel discovery) ───────
+        emit({ event: "stage_start", stage: "coverage", label: "Probing live MCP agents to learn what tools are advertised…" });
+        const coverage = await buildCoverage(env);
+        emit({ event: "reasoning", step: newReasoningStep("observe", `Probed ${coverage.length} live agent(s) — ${coverage.reduce((s, a) => s + a.tools_supported.length, 0)} tool(s) total in coverage.`) });
+        emit({ event: "stage_complete", stage: "coverage", payload: { count: coverage.length, agents: coverage } });
+
+        // ── Stage 3: plan execution ─────────────────────────────────────
+        emit({ event: "stage_start", stage: "plan", label: ctx.mode === "live" ? "Asking Claude to choose the call sequence…" : "Building 5-stage default plan filtered by coverage…" });
+        const plan = await planExecution(ctx, expanded, coverage);
+        for (const t of plan.trace) emit({ event: "reasoning", step: t });
+        emit({ event: "stage_complete", stage: "plan", payload: plan });
+
+        // ── Stage 4: governance preview ─────────────────────────────────
+        emit({ event: "stage_start", stage: "governance", label: "Predictive check_governance against brand industries × signal attestations…" });
+        const compliance = checkAndRemediate(expanded);
+        for (const t of compliance.trace) emit({ event: "reasoning", step: t });
+        emit({ event: "stage_complete", stage: "governance", payload: { advisory: compliance.advisory, remediations: compliance.remediations } });
+
+        // ── Stage 5: memory recall ──────────────────────────────────────
+        emit({ event: "stage_start", stage: "memory", label: "Recalling similar past workflows from KV…" });
+        const memory = await recallSimilar(env, expanded);
+        emit({ event: "reasoning", step: newReasoningStep("observe", memory.matches.length > 0 ? `${memory.matches.length} prior similar workflow(s) found.` : "No prior similar workflows in memory.") });
+        emit({ event: "stage_complete", stage: "memory", payload: memory });
+
+        // ── Final summary ──────────────────────────────────────────────
+        const summaryParts: string[] = [];
+        summaryParts.push(`Brief: brand="${expanded.brand_name ?? "(unknown)"}", industries=[${expanded.industries.slice(0, 3).join(", ")}], KPI=${expanded.kpi}@${expanded.kpi_target ?? "?"}.`);
+        summaryParts.push(`Plan: ${plan.steps.length} step(s) — ${plan.steps.map((s) => s.tool).join(" → ")}.`);
+        summaryParts.push(`Governance: ${compliance.advisory.outcome.toUpperCase()}${compliance.advisory.restricted_attributes.length > 0 ? ` (block on ${compliance.advisory.restricted_attributes.join(", ")})` : ""}.`);
+        if (memory.matches.length > 0) summaryParts.push(`Memory: ${memory.hint}`);
+
+        emit({ event: "reasoning", step: newReasoningStep("complete", summaryParts.join(" ")) });
+        emit({ event: "session_complete", mode: ctx.mode, ts: new Date().toISOString() });
+      } catch (e) {
+        emit({ event: "error", error: String((e as Error).message || e) });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/x-ndjson",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+      "X-Content-Type-Options": "nosniff",
+    },
   });
 }

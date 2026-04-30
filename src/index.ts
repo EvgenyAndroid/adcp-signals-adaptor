@@ -71,6 +71,7 @@ import {
   handleDspCampaignSignalsLive,
   handleDspCampaignProductsLive,
   handleDspAgentCapabilities,
+  handleDspCircuits,
 } from "./routes/dspRoutes";
 import {
   handleAgenticExpand,
@@ -477,6 +478,8 @@ export default {
                 // the catch-all eats /dsp/campaigns/<id>/signals-live etc.
             } else if (method === "GET" && path === "/dsp/agents/coverage") {
                 response = await handleDspCoverage(request, env, logger);
+            } else if (method === "GET" && path === "/dsp/circuits") {
+                response = await handleDspCircuits(request, env, logger);
             } else if (method === "GET" && path === "/dsp/media-buys/live") {
                 response = await handleDspMediaBuysLive(request, env, logger);
             } else if (method === "GET" && path.startsWith("/dsp/media-buys/") && path.endsWith("/delivery-live")) {

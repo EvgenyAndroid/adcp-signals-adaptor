@@ -311,3 +311,234 @@ export async function callAgentTool(url: string, name: string, args: Record<stri
     return { ok: false, error: String((e as Error).message || e), latency_ms: Date.now() - start };
   }
 }
+
+// ── Wave 2: per-agent circuit breaker + retry wrapper ───────────────────────
+//
+// Wraps callAgentTool with:
+//   - Per-URL circuit breaker (open after N consecutive failures;
+//     half-open after a cooldown window)
+//   - Exponential-backoff retry on transient errors (NOT on auth-gates,
+//     which are deterministic — retrying just doubles the latency)
+//
+// Auth-gate detection mirrors the regex used in dspRoutes.ts +
+// the Brand Canvas auth-callout. Don't retry on those; they're
+// stable rejections.
+
+type CircuitStateName = "closed" | "open" | "half_open";
+
+interface CircuitState {
+  state: CircuitStateName;
+  failure_count: number;
+  last_failure_ts: number;
+  // Total successes since last open — exposed for /admin diagnostics.
+  success_count: number;
+  // Last circuit-event timestamp (any state change).
+  last_event_ts: number;
+}
+
+const CIRCUIT_BREAKERS = new Map<string, CircuitState>();
+
+const CIRCUIT_FAILURE_THRESHOLD = 3;        // open after 3 consecutive
+const CIRCUIT_OPEN_DURATION_MS = 60_000;     // 60s before half-open
+const RETRY_MAX_DEFAULT = 1;                // 1 transient retry
+const RETRY_BACKOFF_BASE_MS = 250;          // 250ms · 500ms · ...
+const AUTH_GATE_PATTERN = /401|unauthorized|tenant policy|principal id|authentication required|auth_token_invalid/i;
+
+function getCircuit(url: string): CircuitState {
+  let c = CIRCUIT_BREAKERS.get(url);
+  if (!c) {
+    c = { state: "closed", failure_count: 0, last_failure_ts: 0, success_count: 0, last_event_ts: Date.now() };
+    CIRCUIT_BREAKERS.set(url, c);
+  }
+  return c;
+}
+
+function onCircuitSuccess(url: string): void {
+  const c = getCircuit(url);
+  c.failure_count = 0;
+  c.success_count++;
+  if (c.state !== "closed") {
+    c.state = "closed";
+    c.last_event_ts = Date.now();
+  }
+}
+
+function onCircuitFailure(url: string): void {
+  const c = getCircuit(url);
+  c.failure_count++;
+  c.last_failure_ts = Date.now();
+  if (c.failure_count >= CIRCUIT_FAILURE_THRESHOLD && c.state !== "open") {
+    c.state = "open";
+    c.last_event_ts = Date.now();
+  }
+}
+
+function shouldHalfOpen(c: CircuitState): boolean {
+  return c.state === "open" && (Date.now() - c.last_failure_ts >= CIRCUIT_OPEN_DURATION_MS);
+}
+
+/**
+ * Public diagnostic — surface circuit state for /admin endpoints.
+ * Mutating state here is intentionally not allowed (read-only view).
+ */
+export function getCircuitSnapshot(): Array<{ url: string; state: CircuitStateName; failure_count: number; success_count: number; last_failure_ts: number; last_event_ts: number }> {
+  const out: ReturnType<typeof getCircuitSnapshot> = [];
+  for (const [url, c] of CIRCUIT_BREAKERS) {
+    out.push({ url, state: c.state, failure_count: c.failure_count, success_count: c.success_count, last_failure_ts: c.last_failure_ts, last_event_ts: c.last_event_ts });
+  }
+  return out;
+}
+
+/**
+ * Reset all circuits (useful after a deploy or via /admin). NOT exposed
+ * via HTTP unless explicitly wired.
+ */
+export function resetAllCircuits(): void {
+  CIRCUIT_BREAKERS.clear();
+}
+
+export interface CircuitToolCallResult extends ToolCallResult {
+  /** How many retries this call needed (0 if first-try success). */
+  retries?: number;
+  /** True if the circuit was open and we short-circuited. */
+  circuit_open?: boolean;
+  /** Circuit state AFTER this call. */
+  circuit_state?: CircuitStateName;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Drop-in replacement for callAgentTool that adds circuit + retry.
+ * Auth-gated errors short-circuit retry (deterministic), but DO count
+ * toward the circuit-failure threshold so a flapping vendor still
+ * trips the breaker.
+ */
+export async function callAgentToolWithCircuit(
+  url: string,
+  name: string,
+  args: Record<string, unknown>,
+  opts?: { timeoutMs?: number; retries?: number },
+): Promise<CircuitToolCallResult> {
+  const circuit = getCircuit(url);
+
+  // Closed-or-half-open path. If open, check cooldown.
+  if (circuit.state === "open") {
+    if (!shouldHalfOpen(circuit)) {
+      return {
+        ok: false,
+        error: `circuit_open: ${url} (${CIRCUIT_FAILURE_THRESHOLD}+ consecutive failures; cooldown ${Math.max(0, CIRCUIT_OPEN_DURATION_MS - (Date.now() - circuit.last_failure_ts))}ms left)`,
+        latency_ms: 0,
+        circuit_open: true,
+        circuit_state: "open",
+      };
+    }
+    circuit.state = "half_open";
+    circuit.last_event_ts = Date.now();
+  }
+
+  const maxRetries = Math.max(0, opts?.retries ?? RETRY_MAX_DEFAULT);
+  let attempts = 0;
+  let lastResult: ToolCallResult = { ok: false, error: "no_attempt", latency_ms: 0 };
+  while (attempts <= maxRetries) {
+    lastResult = await callAgentTool(url, name, args, opts?.timeoutMs ? { timeoutMs: opts.timeoutMs } : {});
+    if (lastResult.ok) {
+      onCircuitSuccess(url);
+      return { ...lastResult, retries: attempts, circuit_state: "closed" };
+    }
+    const errText = lastResult.error || "";
+    const isAuthGated = AUTH_GATE_PATTERN.test(errText);
+    if (isAuthGated) break;  // deterministic; don't retry
+    attempts++;
+    if (attempts <= maxRetries) {
+      await sleep(RETRY_BACKOFF_BASE_MS * attempts);
+    }
+  }
+  onCircuitFailure(url);
+  return { ...lastResult, retries: attempts, circuit_state: getCircuit(url).state };
+}
+
+// ── Wave 2: async operation polling ────────────────────────────────────────
+//
+// Some AdCP tools are async — they return { task_id, status: "pending" }
+// and the caller is expected to poll get_operation_status until status
+// is terminal (completed / failed / canceled). Today our orchestrator
+// is one-shot and ignores async; this helper closes the gap.
+//
+// Bounded by total timeout (default 30s) + max polls (default 20).
+// Backoff: 500ms · 1s · 2s · 3s · 3s · 3s · ... (capped at 3s).
+
+export interface AsyncOperationStatus {
+  task_id?: string;
+  status?: string;        // "pending" | "working" | "completed" | "failed" | "canceled" | etc.
+  result?: unknown;
+  error?: string;
+  // Vendors return arbitrary additional fields.
+}
+
+export interface PollResult {
+  ok: boolean;
+  final_status: string;
+  poll_count: number;
+  total_latency_ms: number;
+  final: AsyncOperationStatus | null;
+  /** What happened — "terminal_status" / "timeout" / "max_polls" / "error" */
+  reason: string;
+}
+
+const TERMINAL_STATUSES = new Set(["completed", "failed", "canceled", "succeeded", "rejected", "expired"]);
+
+export async function pollOperationStatus(
+  url: string,
+  taskId: string,
+  opts?: { totalTimeoutMs?: number; maxPolls?: number; toolName?: string },
+): Promise<PollResult> {
+  const totalTimeoutMs = opts?.totalTimeoutMs ?? 30_000;
+  const maxPolls = opts?.maxPolls ?? 20;
+  const toolName = opts?.toolName ?? "get_operation_status";
+  const start = Date.now();
+  let polls = 0;
+  let final: AsyncOperationStatus | null = null;
+  let lastStatus = "pending";
+
+  while (polls < maxPolls && (Date.now() - start) < totalTimeoutMs) {
+    polls++;
+    const r = await callAgentTool(url, toolName, { task_id: taskId }, { timeoutMs: 8_000 });
+    if (!r.ok) {
+      // Failed poll — surface as the result.
+      return {
+        ok: false,
+        final_status: "poll_error",
+        poll_count: polls,
+        total_latency_ms: Date.now() - start,
+        final: null,
+        reason: r.error || "unknown",
+      };
+    }
+    const sc = (r.structured_content as AsyncOperationStatus | undefined) ?? {};
+    final = sc;
+    lastStatus = sc.status || "pending";
+    if (TERMINAL_STATUSES.has(lastStatus)) {
+      return {
+        ok: lastStatus === "completed" || lastStatus === "succeeded",
+        final_status: lastStatus,
+        poll_count: polls,
+        total_latency_ms: Date.now() - start,
+        final,
+        reason: "terminal_status",
+      };
+    }
+    // Backoff: 500ms · 1s · 2s · 3s · 3s · ...
+    const backoff = Math.min(3_000, 500 * Math.pow(2, Math.min(3, polls - 1)));
+    await sleep(backoff);
+  }
+
+  return {
+    ok: false,
+    final_status: lastStatus,
+    poll_count: polls,
+    total_latency_ms: Date.now() - start,
+    final,
+    reason: polls >= maxPolls ? "max_polls" : "timeout",
+  };
+}

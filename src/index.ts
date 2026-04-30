@@ -280,6 +280,7 @@ export default {
             "/dsp/campaigns",
             "/dsp/agents",
             "/dsp/media-buys",
+            "/dsp/circuits",
             // Agentic Canvas (LLM-driven planner + executor).
             "/agentic/brief",
             "/agentic/plan",

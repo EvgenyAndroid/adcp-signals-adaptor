@@ -5558,6 +5558,92 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   .agentic-brief-cell-wide { grid-column: span 2; }
 }
 
+/* ── Agentic Canvas streaming WOW polish ─────────────────────────
+   Animations that make the page FEEL like an agent is thinking:
+   skeleton pulse while waiting, slide-up on arrival, type-out on
+   reasoning trace, glow on the active stage.
+*/
+@keyframes agentic-skel-pulse {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 0.85; }
+}
+@keyframes agentic-pulse-dot {
+  0%, 60%, 100% { opacity: 0.25; transform: scale(0.85); }
+  30%           { opacity: 1; transform: scale(1.1); }
+}
+@keyframes agentic-slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes agentic-trace-arrive {
+  from { opacity: 0; transform: translateX(-6px); background: rgba(56,182,255,0.18); }
+  to   { opacity: 1; transform: translateX(0);    background: var(--bg-raised); }
+}
+@keyframes agentic-section-arrive {
+  0%   { box-shadow: 0 0 0 1px var(--border); }
+  30%  { box-shadow: 0 0 0 2px var(--accent), 0 0 18px 4px rgba(56,182,255,0.30); }
+  100% { box-shadow: 0 0 0 1px var(--border); }
+}
+@keyframes agentic-cursor-blink {
+  0%, 50%   { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+@keyframes agentic-active-glow {
+  0%, 100% { box-shadow: -3px 0 0 0 var(--accent); }
+  50%      { box-shadow: -3px 0 0 0 var(--accent), 0 0 14px 1px rgba(56,182,255,0.20); }
+}
+
+.agentic-section { transition: border-color 0.3s; animation: agentic-slide-in 0.32s ease both; }
+.agentic-section.agentic-section-pending {
+  border-left-color: var(--text-mut);
+  opacity: 0.95;
+}
+.agentic-section.agentic-section-active {
+  border-left-color: var(--accent);
+  animation: agentic-active-glow 1.6s ease-in-out infinite;
+}
+.agentic-section.agentic-section-arrived {
+  animation: agentic-section-arrive 1.0s ease;
+}
+
+/* Skeleton card while waiting */
+.agentic-skel-card {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 8px 0;
+}
+.agentic-skel-line {
+  height: 9px; border-radius: 3px;
+  background: linear-gradient(90deg, var(--bg-raised), var(--bg-input), var(--bg-raised));
+  background-size: 200% 100%;
+  animation: agentic-skel-pulse 1.4s ease-in-out infinite;
+}
+.agentic-skel-line-w90 { width: 90%; }
+.agentic-skel-line-w70 { width: 70%; }
+.agentic-skel-line-w50 { width: 50%; }
+.agentic-section-label-floating {
+  margin-top: 8px; color: var(--text-mut);
+  font-style: italic; font-size: 10.5px;
+}
+
+/* Pulsing dots ("thinking…") in section source area */
+.agentic-pulse-dot {
+  display: inline-block; width: 5px; height: 5px;
+  border-radius: 50%; background: var(--accent);
+  margin-right: 3px; vertical-align: middle;
+  animation: agentic-pulse-dot 1.4s ease-in-out infinite;
+}
+.agentic-pulse-dot:nth-child(2) { animation-delay: 0.2s; }
+.agentic-pulse-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* Trace step animations */
+.agentic-trace-step.agentic-trace-arriving {
+  animation: agentic-trace-arrive 0.32s ease both;
+}
+.agentic-trace-cursor {
+  display: inline-block; color: var(--accent); margin-left: 1px;
+  font-weight: 700; animation: agentic-cursor-blink 1s steps(1) infinite;
+}
+
 /* "Explain this" badge + modal — works across all surfaces */
 .explain-badge {
   display: inline-flex; align-items: center; justify-content: center;
@@ -17054,25 +17140,42 @@ async function _agenticSubmit() {
   if (!input || !input.value.trim()) return;
   var brief = input.value.trim();
   _agenticTrace = [];
+  _agenticCurrent = { plan: null };
   _agenticUpdateTrace();
-  document.getElementById("agentic-brief-section").style.display = "none";
-  document.getElementById("agentic-plan-section").style.display = "none";
+
+  // Pre-render skeletons for every section so the user sees a SHAPE
+  // immediately and watches each fill in. Each card pulses while
+  // its stage is in-flight; fades to solid + slides into place when
+  // its data arrives.
+  _agenticShowSkeleton("brief", "Brief expanded");
+  _agenticShowSkeleton("plan", "Execution plan");
+  _agenticShowSkeleton("compliance", "Governance + remediation");
+  _agenticShowSkeleton("memory", "Memory");
   document.getElementById("agentic-exec-section").style.display = "none";
-  document.getElementById("agentic-compliance-section").style.display = "none";
-  document.getElementById("agentic-memory-section").style.display = "none";
+
   var btn = document.getElementById("agentic-submit-btn");
   if (btn) { btn.disabled = true; btn.querySelector("span").textContent = "thinking…"; }
+
   try {
-    var r = await fetch("/agentic/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ input: brief }) });
-    var d = await r.json();
-    _agenticCurrent = d;
-    // Append all initial trace steps
-    for (var i = 0; i < (d.trace || []).length; i++) _agenticTrace.push(d.trace[i]);
-    _agenticUpdateTrace();
-    _agenticRenderBrief(d.expanded);
-    _agenticRenderPlan(d.plan);
-    _agenticRenderCompliance(d.compliance);
-    _agenticRenderMemory(d.memory);
+    var resp = await fetch("/agentic/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ input: brief }) });
+    if (!resp.body) throw new Error("no stream body");
+    var reader = resp.body.getReader();
+    var dec = new TextDecoder();
+    var buffer = "";
+    while (true) {
+      var read = await reader.read();
+      if (read.done) break;
+      buffer += dec.decode(read.value, { stream: true });
+      var lines = buffer.split("\\n");
+      buffer = lines.pop() || "";
+      for (var li = 0; li < lines.length; li++) {
+        var line = lines[li].trim();
+        if (!line) continue;
+        var ev = null;
+        try { ev = JSON.parse(line); } catch (e) { continue; }
+        _agenticHandleStreamEvent(ev);
+      }
+    }
   } catch (e) {
     showToast("agentic chat failed: " + ((e && e.message) || e), true);
   } finally {
@@ -17080,6 +17183,146 @@ async function _agenticSubmit() {
   }
 }
 
+// Render an empty skeleton pulse for a section. Shown while the
+// corresponding stage is in-flight.
+function _agenticShowSkeleton(stage, label) {
+  var sec = document.getElementById("agentic-" + stage + "-section");
+  var src = document.getElementById("agentic-" + stage + "-source");
+  var body = document.getElementById("agentic-" + stage + "-body");
+  if (!sec || !body) return;
+  sec.style.display = "";
+  sec.classList.add("agentic-section-pending");
+  if (src) src.innerHTML = '<span class="agentic-pulse-dot"></span><span class="agentic-pulse-dot"></span><span class="agentic-pulse-dot"></span>';
+  body.innerHTML =
+    '<div class="agentic-skel-card">' +
+      '<div class="agentic-skel-line agentic-skel-line-w70"></div>' +
+      '<div class="agentic-skel-line agentic-skel-line-w50"></div>' +
+      '<div class="agentic-skel-line agentic-skel-line-w90"></div>' +
+    '</div>' +
+    '<div class="agentic-section-label-floating orch-small">' + escapeHtml(label || "") + '</div>';
+}
+
+function _agenticMarkSectionDone(stage) {
+  var sec = document.getElementById("agentic-" + stage + "-section");
+  if (sec) {
+    sec.classList.remove("agentic-section-pending");
+    sec.classList.add("agentic-section-arrived");
+    setTimeout(function () { if (sec) sec.classList.remove("agentic-section-arrived"); }, 1200);
+  }
+}
+
+// ── Stream event router ──────────────────────────────────────────────
+function _agenticHandleStreamEvent(ev) {
+  if (!ev || !ev.event) return;
+  if (ev.event === "session_start") {
+    _agenticSetActiveStage("brief");
+    return;
+  }
+  if (ev.event === "stage_start") {
+    _agenticSetActiveStage(ev.stage);
+    var src = document.getElementById("agentic-" + ev.stage + "-source");
+    if (src && ev.label) {
+      src.innerHTML = '<span class="agentic-pulse-dot"></span><span class="agentic-pulse-dot"></span><span class="agentic-pulse-dot"></span> <span class="orch-small" style="color:var(--text-mut)">' + escapeHtml(ev.label) + '</span>';
+    }
+    return;
+  }
+  if (ev.event === "reasoning" && ev.step) {
+    _agenticTrace.push(ev.step);
+    _agenticAppendTraceStep(ev.step);
+    return;
+  }
+  if (ev.event === "stage_complete") {
+    if (ev.stage === "brief") {
+      _agenticRenderBrief(ev.payload);
+      _agenticMarkSectionDone("brief");
+    } else if (ev.stage === "coverage") {
+      // Coverage is informational; just narrated in trace.
+    } else if (ev.stage === "plan") {
+      _agenticCurrent.plan = ev.payload;
+      _agenticRenderPlan(ev.payload);
+      _agenticMarkSectionDone("plan");
+    } else if (ev.stage === "governance") {
+      _agenticRenderCompliance({ advisory: ev.payload.advisory, remediations: ev.payload.remediations });
+      _agenticMarkSectionDone("compliance");
+    } else if (ev.stage === "memory") {
+      _agenticRenderMemory(ev.payload);
+      _agenticMarkSectionDone("memory");
+    }
+    return;
+  }
+  if (ev.event === "session_complete") {
+    _agenticSetActiveStage(null);
+    return;
+  }
+  if (ev.event === "error") {
+    showToast("agentic stream error: " + ev.error, true);
+    return;
+  }
+}
+
+// Visual cue for which stage is currently being worked on.
+function _agenticSetActiveStage(stage) {
+  document.querySelectorAll(".agentic-section").forEach(function (el) {
+    el.classList.remove("agentic-section-active");
+  });
+  if (!stage) return;
+  var sec = document.getElementById("agentic-" + stage + "-section");
+  if (sec) sec.classList.add("agentic-section-active");
+}
+
+// Type-out animation: append one trace step with char-by-char reveal.
+// Each new step appears with a blinking cursor that disappears when
+// the next step starts (or when typing finishes for the last one).
+var _agenticTypingIndex = 0;
+function _agenticAppendTraceStep(step) {
+  var pane = document.getElementById("agentic-trace");
+  var counter = document.getElementById("agentic-trace-count");
+  if (counter) counter.textContent = _agenticTrace.length + " step" + (_agenticTrace.length === 1 ? "" : "s");
+  if (!pane) return;
+  // Drop the placeholder line if this is the first step.
+  if (_agenticTrace.length === 1 && pane.querySelector(".orch-small")) pane.innerHTML = "";
+  // Stop any prior typing cursors.
+  pane.querySelectorAll(".agentic-trace-cursor").forEach(function (c) { c.remove(); });
+  var idx = _agenticTypingIndex++;
+  var row = document.createElement("div");
+  row.className = "agentic-trace-step agentic-trace-" + (step.kind || "info") + " agentic-trace-arriving";
+  row.innerHTML =
+    '<span class="agentic-trace-kind mono">' + escapeHtml((step.kind || "info").toUpperCase()) + '</span>' +
+    '<span class="agentic-trace-msg" id="agentic-trace-msg-' + idx + '"></span>' +
+    (step.latency_ms != null ? '<span class="agentic-trace-lat mono orch-small">' + step.latency_ms + 'ms</span>' : '');
+  pane.appendChild(row);
+  pane.scrollTop = pane.scrollHeight;
+  // Animate text in.
+  var msgEl = document.getElementById("agentic-trace-msg-" + idx);
+  if (!msgEl) return;
+  var fullText = step.message || "";
+  // Add a blinking cursor while typing.
+  var cursor = document.createElement("span");
+  cursor.className = "agentic-trace-cursor";
+  cursor.textContent = "▌";
+  msgEl.appendChild(cursor);
+  // Type at ~160 chars/sec — fast enough to keep up with rapid steps,
+  // slow enough to feel like the agent is forming the sentence.
+  var charsPerTick = Math.max(2, Math.ceil(fullText.length / 50));  // type in ~50 ticks
+  var pos = 0;
+  var typedNode = document.createTextNode("");
+  msgEl.insertBefore(typedNode, cursor);
+  var typer = setInterval(function () {
+    pos = Math.min(fullText.length, pos + charsPerTick);
+    typedNode.nodeValue = fullText.slice(0, pos);
+    pane.scrollTop = pane.scrollHeight;
+    if (pos >= fullText.length) {
+      clearInterval(typer);
+      setTimeout(function () { if (cursor && cursor.parentNode) cursor.remove(); }, 150);
+    }
+  }, 16);
+  // Fade-arriving class away after the slide-in completes.
+  setTimeout(function () { row.classList.remove("agentic-trace-arriving"); }, 300);
+}
+
+// Reset the trace pane back to its placeholder. Called at the start of
+// a new submission. The streaming consumer then appends steps one at
+// a time via _agenticAppendTraceStep.
 function _agenticUpdateTrace() {
   var pane = document.getElementById("agentic-trace");
   var counter = document.getElementById("agentic-trace-count");
@@ -17087,16 +17330,9 @@ function _agenticUpdateTrace() {
   if (!pane) return;
   if (_agenticTrace.length === 0) {
     pane.innerHTML = '<span class="orch-small" style="color:var(--text-mut)">decisions will narrate here as the agent works…</span>';
+    _agenticTypingIndex = 0;
     return;
   }
-  pane.innerHTML = _agenticTrace.map(function (s, idx) {
-    return '<div class="agentic-trace-step agentic-trace-' + escapeHtml(s.kind || "info") + '">' +
-      '<span class="agentic-trace-kind mono">' + escapeHtml((s.kind || "info").toUpperCase()) + '</span>' +
-      '<span class="agentic-trace-msg">' + escapeHtml(s.message || "") + '</span>' +
-      (s.latency_ms != null ? '<span class="agentic-trace-lat mono orch-small">' + s.latency_ms + 'ms</span>' : '') +
-    '</div>';
-  }).join("");
-  pane.scrollTop = pane.scrollHeight;
 }
 
 function _agenticRenderBrief(b) {
@@ -17221,7 +17457,7 @@ async function _agenticExecute() {
         try { ev = JSON.parse(line); } catch (e) { continue; }
         if (ev.event === "reasoning" && ev.step) {
           _agenticTrace.push(ev.step);
-          _agenticUpdateTrace();
+          _agenticAppendTraceStep(ev.step);
         } else if (ev.event === "tool_complete") {
           stepResults[ev.step_id] = ev;
           _agenticAppendExec(ev);

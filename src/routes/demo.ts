@@ -4812,6 +4812,18 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 }
 .canvas-mediabuy-pred-icon { color: var(--accent); }
 
+/* Industry-enrichment provenance: chips added by brand-name pattern
+   override (vs registry-original) get a dashed accent border + a "+"
+   prefix so the demo stays honest about which tags we derived. */
+.canvas-industry-augmented {
+  background: rgba(56,182,255,0.08);
+  color: var(--accent);
+  border: 1px dashed var(--accent);
+}
+.canvas-industry-augmented-mark {
+  font-weight: 700; opacity: 0.75; margin-right: 1px;
+}
+
 /* MVP #6: portfolio-rebalance banner. Shows above the media-buy cells
    when N agents auth-gate and at least 1 succeeds. Communicates that
    the workflow is robust to partial failure and the deployable budget
@@ -13525,8 +13537,22 @@ function _canvasRenderBrandCard(data) {
   // Dedupe (the data sometimes repeats)
   var uniqInd = [];
   industries.forEach(function (i) { if (uniqInd.indexOf(i) < 0) uniqInd.push(i); });
+  // Brand industry enrichment provenance: mark override-added chips
+  // visually so the demo stays honest about what came from registry vs
+  // what we derived from brand-name patterns.
+  var indMeta = bm.industries_meta || {};
+  var addedSet = {};
+  (indMeta.added_by_override || []).forEach(function (s) { addedSet[String(s).toLowerCase()] = true; });
   var industryChips = uniqInd.map(function (i) {
-    return '<span class="pill pill-muted mono" style="font-size:10.5px">' + escapeHtml(i) + '</span>';
+    var isAdded = addedSet[String(i).toLowerCase()] === true;
+    var cls = "pill mono " + (isAdded ? "canvas-industry-augmented" : "pill-muted");
+    var title = isAdded
+      ? "added by client-side enrichment (registry industry taxonomy is coarse) — pattern: " + escapeHtml(indMeta.matched_pattern_id || "?")
+      : "from registry";
+    return '<span class="' + cls + '" style="font-size:10.5px" title="' + title + '">' +
+      (isAdded ? '<span class="canvas-industry-augmented-mark">+</span> ' : '') +
+      escapeHtml(i) +
+    '</span>';
   }).join(" ");
 
   var qualityScore = typeof bm.quality_score === "number"

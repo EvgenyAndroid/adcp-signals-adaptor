@@ -19,6 +19,7 @@
 import type { Env } from "../types/env";
 import type { Logger } from "../utils/logger";
 import { jsonResponse, errorResponse } from "./shared";
+import { enrichIndustries } from "../domain/brandIndustryOverrides";
 
 const REGISTRY_BASE = "https://agenticadvertising.org/api";
 const SEARCH_TTL_SEC = 600;       // 10 min — search results change with new brand additions
@@ -48,6 +49,37 @@ async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Respons
     signal: AbortSignal.timeout(timeoutMs),
     headers: { "Accept": "application/json" },
   });
+}
+
+// Industry enrichment: server-side merge of pattern-derived industry
+// tags with the registry's coarse taxonomy. Mutates a copy of the
+// brand_manifest.company.industries; adds a parallel `industries_meta`
+// object inside brand_manifest carrying provenance (which entries
+// were registry-original vs override-added). Idempotent — safe to
+// re-run on already-enriched bodies.
+function applyIndustryEnrichment(brand: BrandResolved): BrandResolved {
+  if (!brand || !brand.brand_manifest) return brand;
+  const bm = brand.brand_manifest as Record<string, unknown>;
+  const company = (bm.company || {}) as Record<string, unknown>;
+  const original = Array.isArray(company.industries)
+    ? (company.industries as unknown[]).filter((s) => typeof s === "string") as string[]
+    : [];
+  const enr = enrichIndustries(brand.brand_name, original);
+  if (enr.added_by_override.length === 0 && !enr.matched_pattern_id) {
+    return brand;
+  }
+  // Clone shallowly so the cached/returned object reflects the merge.
+  const newCompany: Record<string, unknown> = { ...company, industries: enr.industries };
+  const newBm: Record<string, unknown> = {
+    ...bm,
+    company: newCompany,
+    industries_meta: {
+      registry_original: original,
+      added_by_override: enr.added_by_override,
+      ...(enr.matched_pattern_id ? { matched_pattern_id: enr.matched_pattern_id } : {}),
+    },
+  };
+  return { ...brand, brand_manifest: newBm };
 }
 
 // Phase A: conditional fetch with If-None-Match. Returns the upstream
@@ -180,7 +212,8 @@ export async function handleBrandResolve(
         return errorResponse("BRAND_NOT_FOUND", `No brand found for domain '${domain}'`, 404);
       }
       if (res.ok) {
-        const body = (await res.json()) as BrandResolved;
+        const rawBody = (await res.json()) as BrandResolved;
+        const body = applyIndustryEnrichment(rawBody);
         const out = { ...body, fetched_at: new Date().toISOString(), cache: "swr-refresh" };
         try {
           const { cache: _c, ...store } = out;
@@ -219,6 +252,12 @@ export async function handleBrandResolve(
     logger.warn("brand_resolve_upstream_error", { error: String((e as Error).message || e) });
     return errorResponse("UPSTREAM_ERROR", "Registry unreachable", 502);
   }
+
+  // Apply industry enrichment — registry's industry taxonomy is coarse;
+  // pattern-based overrides supplement so policy/governance/brand-rights
+  // matchers downstream produce useful results even when the registry
+  // misses obvious tags (Heineken → alcohol, Pfizer → pharma, etc.).
+  body = applyIndustryEnrichment(body);
 
   const out = { ...body, fetched_at: new Date().toISOString(), cache: "miss" };
   try {

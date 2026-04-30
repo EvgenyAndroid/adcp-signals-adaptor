@@ -263,6 +263,7 @@ export default {
             "/agents/workflow/save",
             "/agents/workflow/runs",
             "/agents/workflow/measurement-stub",
+            "/agents/workflow/allocate",
             // Canvas v2 Phase 1: brand registry passthrough endpoints.
             // Public — same posture as the upstream registry itself.
             "/brands/search",

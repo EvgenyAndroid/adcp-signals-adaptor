@@ -1334,6 +1334,11 @@ ${STYLES}
             <button class="canvas-quickpick" data-domain="scottbrand.com">scottbrand.com</button>
             <button class="canvas-quickpick" data-domain="rembrand.com">rembrand.com</button>
             <button class="canvas-quickpick" data-domain="brandvelocity.ai">brandvelocity.ai</button>
+            <span class="canvas-demo-spacer"></span>
+            <button class="canvas-demo-btn" id="canvas-demo-btn" title="One-click canonical demo: resolve Coca-Cola, run workflow, fire dry-run on default trio. Use on stage to skip typing.">
+              <svg class="ico" style="width:11px;height:11px"><use href="#icon-bolt"/></svg>
+              <span>Run canonical demo</span>
+            </button>
           </div>
         </div>
 
@@ -4776,6 +4781,17 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   transition: color 0.12s, border-color 0.12s;
 }
 .canvas-quickpick:hover { color: var(--accent); border-color: var(--accent-border); }
+.canvas-demo-spacer { flex: 1; min-width: 8px; }
+.canvas-demo-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--accent); color: #000;
+  border: 1px solid var(--accent); border-radius: 4px;
+  padding: 4px 10px; font-size: 11px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+  transition: filter 0.15s;
+}
+.canvas-demo-btn:hover:not(:disabled) { filter: brightness(1.1); }
+.canvas-demo-btn:disabled { opacity: 0.6; cursor: wait; }
 
 .canvas-search-list {
   margin-top: 10px;
@@ -6194,6 +6210,70 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   color: var(--text-mut);
 }
 .canvas-rights-advisories li { margin-bottom: 2px; }
+
+/* Wave 1: Sponsored-Intelligence row — symmetric with brand-rights /
+   governance preview rows. Closes the AdCP 4th protocol domain
+   visually on Canvas. */
+.canvas-si-row {
+  margin-top: 8px; padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.canvas-si-body { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.canvas-si-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 10px; border-radius: 4px; font-size: 12px;
+  border: 1px solid currentColor;
+}
+.canvas-si-icon { font-size: 14px; }
+.canvas-si-rate-limited { color: var(--warning, #d4a017); background: rgba(212,160,23,0.10); }
+.canvas-si-summary { color: var(--text-dim); }
+.canvas-si-section-label {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-mut); font-weight: 600;
+  margin-top: 4px; margin-bottom: 2px;
+}
+.canvas-si-comps {
+  width: 100%; border-collapse: collapse; font-size: 11px;
+}
+.canvas-si-comps th {
+  text-align: left; padding: 3px 6px; color: var(--text-mut);
+  font-weight: 500; font-size: 9.5px; text-transform: uppercase;
+  letter-spacing: 0.05em; border-bottom: 1px solid var(--border);
+}
+.canvas-si-comps td {
+  padding: 4px 6px; color: var(--text-dim);
+  border-bottom: 1px dashed var(--border);
+}
+.canvas-si-comps tr:last-child td { border-bottom: none; }
+.canvas-si-comps tr.canvas-si-trend-up   .canvas-si-trend-icon { color: var(--success); font-weight: 700; }
+.canvas-si-comps tr.canvas-si-trend-down .canvas-si-trend-icon { color: var(--error); font-weight: 700; }
+.canvas-si-comps tr.canvas-si-trend-flat .canvas-si-trend-icon { color: var(--text-mut); }
+.canvas-si-insight {
+  padding: 6px 10px; border-radius: 4px; font-size: 11.5px;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-left-width: 3px;
+}
+.canvas-si-insight-competitive       { border-left-color: var(--accent); }
+.canvas-si-insight-category          { border-left-color: var(--success); }
+.canvas-si-insight-content_adjacency { border-left-color: var(--warning, #d4a017); }
+.canvas-si-insight-share_of_voice    { border-left-color: #c084fc; }
+.canvas-si-insight-head {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 3px;
+}
+.canvas-si-tier {
+  font-size: 8.5px; padding: 1px 5px; border-radius: 2px;
+  background: var(--bg-input); color: var(--text);
+  font-weight: 700; letter-spacing: 0.06em;
+}
+.canvas-si-headline { color: var(--text); font-weight: 500; }
+.canvas-si-conf { margin-left: auto; }
+.canvas-si-detail { color: var(--text-dim); font-size: 11px; line-height: 1.4; }
+.canvas-si-action {
+  margin-top: 4px; padding-top: 4px;
+  border-top: 1px dashed var(--border);
+  color: var(--accent); font-size: 10.5px;
+}
 
 /* Phase B: registry health bar. Strip across canvas-bottom showing
    how stale our local view of the registry is (agents + policies
@@ -14485,6 +14565,28 @@ async function ensureCanvas() {
       if (d) _canvasResolveBrand(d);
     });
   });
+  // Wave 1: Demo mode — single-click canonical run for stage demos.
+  var demoBtn = document.getElementById("canvas-demo-btn");
+  if (demoBtn) demoBtn.addEventListener("click", _canvasRunCanonicalDemo);
+}
+
+// Wave 1: Canonical demo run. Resolves Coca-Cola, then auto-clicks
+// "Run workflow" once the brand card finishes hydrating. Single-click
+// stage-day insurance — removes typing risk during the live demo.
+async function _canvasRunCanonicalDemo() {
+  var btn = document.getElementById("canvas-demo-btn");
+  if (btn) { btn.disabled = true; btn.querySelector("span").textContent = "running…"; }
+  try {
+    await _canvasResolveBrand("coca-cola.com");
+    // Wait for the brand card to render the run button (single tick).
+    await new Promise(function (r) { setTimeout(r, 250); });
+    var run = document.getElementById("canvas-run-btn");
+    if (run) run.click();
+    if (btn) { btn.querySelector("span").textContent = "Re-run canonical demo"; btn.disabled = false; }
+  } catch (e) {
+    if (btn) { btn.querySelector("span").textContent = "Retry"; btn.disabled = false; }
+    showToast("demo run failed: " + ((e && e.message) || e), true);
+  }
 }
 
 async function _canvasRunSearch() {
@@ -14736,6 +14838,18 @@ function _canvasRenderBrandCard(data) {
           '<span class="orch-small">awaiting creative-stage formats…</span>' +
         '</div>' +
       '</div>' +
+      // Wave 1: predictive Sponsored-Intelligence overlay. Closes the
+      // 4th of 6 AdCP protocol domains on Canvas. Populates from
+      // brand industries; no live vendor in the directory advertises
+      // any SI primitive yet.
+      '<div class="canvas-si-row" id="canvas-si-row">' +
+        '<div class="canvas-brand-label">Sponsored Intelligence ' +
+          '<span class="pill pill-muted mono" style="font-size:9px;margin-left:6px">predictive · si_session mock · 0 live agents</span>' +
+        '</div>' +
+        '<div class="canvas-si-body" id="canvas-si-body">' +
+          '<span class="orch-small">computing competitive overlap…</span>' +
+        '</div>' +
+      '</div>' +
       // Phase 2 + Multi-brand A/B: Run workflow + Compare buttons.
       '<div class="canvas-brand-actions">' +
         '<button class="btn-primary canvas-run-btn" id="canvas-run-btn">' +
@@ -14787,6 +14901,76 @@ function _canvasRenderBrandCard(data) {
   // shows "awaiting creative-stage formats"; the creative-stage
   // event handler calls it again with real format ids.
   _canvasFillBrandRights();
+  // Wave 1: hydrate Sponsored-Intelligence row.
+  _canvasFillSi(data, uniqInd);
+}
+
+// Wave 1: SI hydrator. Calls /registry/si-preview with the brand's
+// name + industries + (optional) budget; renders competitor table +
+// tier-grouped insights.
+async function _canvasFillSi(brand, industries) {
+  var body = document.getElementById("canvas-si-body");
+  if (!body) return;
+  try {
+    var qs = new URLSearchParams({
+      brand_name: brand.brand_name || "",
+      brand_domain: brand.canonical_domain || "",
+      industries: (industries || []).join(","),
+    });
+    var r = await fetch("/registry/si-preview?" + qs.toString());
+    var d = await r.json();
+    var adv = d.advisory;
+    if (!adv) {
+      body.innerHTML = '<span class="orch-small" style="color:var(--text-mut)">SI advisory unavailable</span>';
+      return;
+    }
+    if (adv.state === "rate_limited") {
+      body.innerHTML =
+        '<div class="canvas-si-banner canvas-si-rate-limited">' +
+          '<span class="canvas-si-icon">⏱</span>' +
+          '<span><strong>SI session rate-limited.</strong> Retry in ' + (adv.refresh_window_sec || 60) + 's. (Demo: ~5% of brands hit this on probe.)</span>' +
+        '</div>' +
+        '<div class="orch-small" style="color:var(--text-mut);margin-top:4px">' + escapeHtml(adv.summary || "") + '</div>';
+      return;
+    }
+    var compTbl = (adv.competitors || []).length === 0
+      ? '<div class="orch-small" style="color:var(--text-mut)">no overlapping competitors found for these industries</div>'
+      : '<table class="canvas-si-comps">' +
+          '<thead><tr><th>brand</th><th>SOV</th><th>overlap</th><th>30d</th></tr></thead>' +
+          '<tbody>' +
+            adv.competitors.map(function (c) {
+              var trendIcon = c.trend_30d === "up" ? "↑" : c.trend_30d === "down" ? "↓" : "→";
+              var trendCls = "canvas-si-trend-" + c.trend_30d;
+              return '<tr class="' + trendCls + '">' +
+                '<td><span class="mono">' + escapeHtml(c.brand_name) + '</span> ' + (c.brand_domain ? '<span class="orch-small mono" style="color:var(--text-mut)">' + escapeHtml(c.brand_domain) + '</span>' : '') + '</td>' +
+                '<td class="mono">' + Math.round((c.share_of_voice || 0) * 100) + '%</td>' +
+                '<td class="mono">' + Math.round((c.campaign_overlap_pct || 0) * 100) + '%</td>' +
+                '<td class="mono"><span class="canvas-si-trend-icon">' + trendIcon + '</span> ' + escapeHtml(c.trend_30d) + '</td>' +
+              '</tr>';
+            }).join("") +
+          '</tbody>' +
+        '</table>';
+    var insights = (adv.insights || []).map(function (i) {
+      var tierCls = "canvas-si-insight-" + i.tier;
+      return '<div class="canvas-si-insight ' + tierCls + '">' +
+        '<div class="canvas-si-insight-head">' +
+          '<span class="canvas-si-tier mono">' + escapeHtml(i.tier.replace(/_/g, " ").toUpperCase()) + '</span>' +
+          '<span class="canvas-si-headline">' + escapeHtml(i.headline) + '</span>' +
+          '<span class="canvas-si-conf orch-small mono">conf ' + Math.round((i.confidence || 0) * 100) + '%</span>' +
+        '</div>' +
+        '<div class="canvas-si-detail">' + escapeHtml(i.detail) + '</div>' +
+        (i.action ? '<div class="canvas-si-action mono">→ ' + escapeHtml(i.action) + '</div>' : '') +
+      '</div>';
+    }).join("");
+    body.innerHTML =
+      '<div class="canvas-si-summary orch-small">' + escapeHtml(adv.summary) + '</div>' +
+      '<div class="canvas-si-section-label">Top overlapping competitors</div>' +
+      compTbl +
+      '<div class="canvas-si-section-label" style="margin-top:8px">Insights</div>' +
+      insights;
+  } catch (e) {
+    body.innerHTML = '<span class="orch-small" style="color:var(--error)">SI preview failed</span>';
+  }
 }
 
 // Phase C: in-page policy cache + hits resolver.

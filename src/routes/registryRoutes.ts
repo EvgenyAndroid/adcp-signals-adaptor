@@ -26,6 +26,7 @@ import { AGENT_REGISTRY } from "../domain/agentRegistry";
 import { getDemoProviderAttestations } from "../domain/workflowOrchestration";
 import { predictGovernance } from "../domain/governanceMock";
 import { predictBrandRights } from "../domain/brandRightsMock";
+import { predictSi } from "../domain/sponsoredIntelligenceMock";
 import { getLastDiffReport } from "../domain/registrySync";
 
 const REGISTRY_AGENTS_URL = "https://agenticadvertising.org/api/registry/agents";
@@ -252,6 +253,59 @@ export async function handleBrandRightsPreview(
       brand_classification: classification ?? null,
       chosen_format_count: formats.length,
     },
+    advisory,
+  });
+}
+
+// ── /registry/si-preview ───────────────────────────────────────────────────
+//
+// Wave 1: predictive Sponsored-Intelligence overlay. Closes the 4th
+// of 6 AdCP 3.0 GA protocol domains visually on Canvas. No vendor
+// in the directory currently advertises any SI primitive live;
+// when upstream lands, swap mock → passthrough.
+//
+// POST: { brand_name, brand_domain?, industries[], budget_usd? }
+// GET:  ?brand_name=&brand_domain=&industries=a,b,c&budget_usd=
+
+interface SiPreviewBody {
+  brand_name?: string;
+  brand_domain?: string;
+  industries?: string[];
+  budget_usd?: number;
+}
+
+export async function handleSiPreview(
+  request: Request,
+  _env: Env,
+  _logger: Logger,
+): Promise<Response> {
+  let inputs: SiPreviewBody = {};
+  if (request.method === "GET") {
+    const url = new URL(request.url);
+    const brandName = url.searchParams.get("brand_name") || "";
+    const brandDomain = url.searchParams.get("brand_domain") || undefined;
+    const inds = (url.searchParams.get("industries") || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const budget = parseInt(url.searchParams.get("budget_usd") || "0", 10) || undefined;
+    inputs = { brand_name: brandName, ...(brandDomain ? { brand_domain: brandDomain } : {}), industries: inds, ...(budget ? { budget_usd: budget } : {}) };
+  } else {
+    try {
+      inputs = await request.json();
+    } catch {
+      return errorResponse("INVALID_INPUT", "body must be JSON", 400);
+    }
+  }
+  if (!inputs.brand_name) return errorResponse("INVALID_INPUT", "brand_name required", 400);
+
+  const advisory = predictSi({
+    brand_name: inputs.brand_name,
+    ...(inputs.brand_domain ? { brand_domain: inputs.brand_domain } : {}),
+    industries: Array.isArray(inputs.industries) ? inputs.industries : [],
+    ...(inputs.budget_usd ? { budget_usd: inputs.budget_usd } : {}),
+  });
+  return jsonResponse({
+    mode: "predictive_local",
+    note: "Mock Sponsored Intelligence — synthesized from competitor seed map × industry × budget. No vendor in the AdCP directory currently advertises submit_si_request / si_session_lifecycle / si_availability / si_handoff live.",
+    inputs,
     advisory,
   });
 }

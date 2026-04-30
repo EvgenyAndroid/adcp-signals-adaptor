@@ -55,6 +55,9 @@ import {
   type ProductFilter,
 } from "../domain/workflowOrchestration";
 import { ADCP_TOOLS } from "../mcp/tools";
+// Wave 4: spend allocation + run annotations
+import { allocateSpend, type AllocationStrategy } from "../domain/spendAllocator";
+import { listAnnotations, appendAnnotation, deleteAnnotation } from "../domain/runAnnotations";
 
 // Sec-48b: hook the generic MCP client with a self-detector. When the orchestrator
 // probes or fans-out to our own URL, Cloudflare Workers refuse self-fetch; we
@@ -1363,14 +1366,16 @@ export async function handleWorkflowSave(request: Request, env: Env, logger: Log
 
 export async function handleWorkflowRuns(request: Request, env: Env, _logger: Logger): Promise<Response> {
   const url = new URL(request.url);
-  // GET /agents/workflow/runs/:id  → load specific
+  // GET /agents/workflow/runs/:id  → load specific (now also includes annotations[])
   const m = url.pathname.match(/\/agents\/workflow\/runs\/(wf_[a-z0-9]+)$/i);
   if (m) {
     const id = m[1]!;
     try {
       const snap = await env.SIGNALS_CACHE.get(WF_HISTORY_PREFIX + id, "json");
       if (!snap) return errorResponse("NOT_FOUND", "no run with id " + id, 404);
-      return jsonResponse(snap as object);
+      // Wave 4: hydrate annotations alongside the snapshot.
+      const annotations = await listAnnotations(env, id);
+      return jsonResponse({ ...(snap as object), annotations });
     } catch {
       return errorResponse("STORAGE_ERROR", "read failed", 500);
     }
@@ -1382,4 +1387,75 @@ export async function handleWorkflowRuns(request: Request, env: Env, _logger: Lo
   } catch {
     return jsonResponse({ count: 0, runs: [] });
   }
+}
+
+// ── Wave 4: workflow allocation + annotations ─────────────────────────────
+
+interface AllocateBody {
+  total_budget_usd?: number;
+  agents?: Array<{ agent_id: string; score?: number; max_usd?: number; priority?: boolean }>;
+  strategy?: AllocationStrategy;
+  config?: { priority_share_pct?: number; min_per_agent_usd?: number };
+}
+
+export async function handleWorkflowAllocate(request: Request, _env: Env, _logger: Logger): Promise<Response> {
+  let body: AllocateBody = {};
+  try { body = await request.json(); } catch { /* empty */ }
+  if (typeof body.total_budget_usd !== "number" || body.total_budget_usd <= 0) {
+    return errorResponse("INVALID_INPUT", "total_budget_usd > 0 required", 400);
+  }
+  if (!Array.isArray(body.agents) || body.agents.length === 0) {
+    return errorResponse("INVALID_INPUT", "agents (non-empty array) required", 400);
+  }
+  const strategy = body.strategy ?? "equal_split";
+  const validStrategies: AllocationStrategy[] = ["equal_split", "score_weighted", "priority_first", "cap_then_split"];
+  if (!validStrategies.includes(strategy)) {
+    return errorResponse("INVALID_INPUT", "strategy must be one of: " + validStrategies.join(", "), 400);
+  }
+  const result = allocateSpend({
+    total_budget_usd: body.total_budget_usd,
+    agents: body.agents,
+    strategy,
+    ...(body.config ? { config: body.config } : {}),
+  });
+  return jsonResponse(result);
+}
+
+interface AnnotationBody { author?: string; text?: string; ref?: string }
+
+export async function handleWorkflowAnnotation(request: Request, env: Env, _logger: Logger): Promise<Response> {
+  const url = new URL(request.url);
+  const m = url.pathname.match(/\/agents\/workflow\/runs\/(wf_[a-z0-9]+)\/annotation/i);
+  if (!m) return errorResponse("INVALID_INPUT", "expected /agents/workflow/runs/<id>/annotation", 400);
+  const workflowId = m[1]!;
+
+  if (request.method === "GET") {
+    // List
+    const list = await listAnnotations(env, workflowId);
+    return jsonResponse({ workflow_id: workflowId, count: list.length, annotations: list });
+  }
+  if (request.method === "POST") {
+    let body: AnnotationBody = {};
+    try { body = await request.json(); } catch { /* empty */ }
+    if (!body.text || body.text.trim().length === 0) {
+      return errorResponse("INVALID_INPUT", "text required", 400);
+    }
+    try {
+      const out = await appendAnnotation(env, workflowId, {
+        ...(body.author !== undefined ? { author: body.author } : {}),
+        text: body.text,
+        ...(body.ref !== undefined ? { ref: body.ref } : {}),
+      });
+      return jsonResponse(out);
+    } catch (e) {
+      return errorResponse("INVALID_INPUT", String((e as Error).message || e), 400);
+    }
+  }
+  if (request.method === "DELETE") {
+    const annId = url.searchParams.get("annotation_id");
+    if (!annId) return errorResponse("INVALID_INPUT", "annotation_id query param required", 400);
+    const out = await deleteAnnotation(env, workflowId, annId);
+    return jsonResponse(out);
+  }
+  return errorResponse("METHOD_NOT_ALLOWED", "GET / POST / DELETE only", 405);
 }

@@ -17212,7 +17212,7 @@ async function _agenticExecute() {
       var read = await reader.read();
       if (read.done) break;
       buffer += dec.decode(read.value, { stream: true });
-      var lines = buffer.split("\n");
+      var lines = buffer.split("\\n");
       buffer = lines.pop() || "";
       for (var li = 0; li < lines.length; li++) {
         var line = lines[li].trim();

@@ -15745,6 +15745,11 @@ async function _canvasSaveRun() {
     });
     var d = await r.json();
     if (!d.ok) return;
+    // Wave 4 fix: persist the server-issued workflow_id so the
+    // annotations button has a real id to attach to. Without this,
+    // data-wf-id renders empty and clicking the button no-ops.
+    if (d.id) _canvasState.workflow_id = d.id;
+    var savedWfId = _canvasState.workflow_id || (d.permalink || "").replace(/^\/\?wf=/, "");
     // Surface the permalink in a small footer chip beneath the run button.
     var actions = document.querySelector(".canvas-brand-actions");
     if (!actions) return;
@@ -15758,7 +15763,7 @@ async function _canvasSaveRun() {
       '<svg class="ico" style="width:10px;height:10px"><use href="#icon-link"/></svg> ' +
       'permalink: <a href="' + escapeHtml(permalink) + '" class="mono">' + escapeHtml(d.permalink) + '</a> ' +
       '<button class="canvas-permalink-copy" title="copy">copy</button>' +
-      '<button class="canvas-annotation-toggle" data-wf-id="' + escapeHtml(_canvasState.workflow_id || "") + '" title="Add or view annotations on this run">💬 annotations</button>';
+      '<button class="canvas-annotation-toggle" data-wf-id="' + escapeHtml(savedWfId) + '" title="Add or view annotations on this run">💬 annotations</button>';
     actions.appendChild(chip);
     var copyBtn = chip.querySelector(".canvas-permalink-copy");
     if (copyBtn) {
@@ -17680,6 +17685,10 @@ function _agenticHandleStreamEvent(ev) {
   }
   if (ev.event === "stage_complete") {
     if (ev.stage === "brief") {
+      // Wave 3 fix: stash the expanded brief so /agentic/refine has a
+      // previous_brief to send. Without this, refine silently no-ops
+      // on the early-return guard checking _agenticCurrent.expanded.
+      _agenticCurrent.expanded = ev.payload;
       _agenticRenderBrief(ev.payload);
       _agenticMarkSectionDone("brief");
     } else if (ev.stage === "coverage") {

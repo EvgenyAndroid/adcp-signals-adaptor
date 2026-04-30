@@ -15749,7 +15749,9 @@ async function _canvasSaveRun() {
     // annotations button has a real id to attach to. Without this,
     // data-wf-id renders empty and clicking the button no-ops.
     if (d.id) _canvasState.workflow_id = d.id;
-    var savedWfId = _canvasState.workflow_id || (d.permalink || "").replace(/^\/\?wf=/, "");
+    // Avoid regex literal here — backslashes inside the SCRIPT_TAG
+    // template literal collapse + break the regex. String slice instead.
+    var savedWfId = _canvasState.workflow_id || ((d.permalink || "").indexOf("/?wf=") === 0 ? d.permalink.slice(5) : "");
     // Surface the permalink in a small footer chip beneath the run button.
     var actions = document.querySelector(".canvas-brand-actions");
     if (!actions) return;

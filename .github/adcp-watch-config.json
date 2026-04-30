@@ -14,15 +14,9 @@
     },
     {
       "repo": "adcontextprotocol/adcp-client",
-      "number": 1060,
-      "kind": "issue",
-      "context": "Filed 2026-04-29: SCENARIO_REQUIREMENTS gates error_handling / validation / schema_compliance behind get_products, so signals-only agents skip all three even though they should run universally. Companion to #2916 systemic class. Workshop cite-able."
-    },
-    {
-      "repo": "adcontextprotocol/adcp-client",
       "number": 1062,
       "kind": "issue",
-      "context": "Filed 2026-04-29: past_start_enforcement runs unconditionally on signals-only agents instead of SKIP. Same systemic class as #2916; SCENARIO_REQUIREMENTS row needs media_buy_lifecycle dependency. Workshop cite-able."
+      "context": "Filed 2026-04-29, closed 2026-04-30. Fix shipped in @adcp/sdk 5.25.0; we're on 5.25.1. Tracking kept transiently because the adjacent spec-side normative note ('Storyboards MUST report SKIP, not FAIL, when supported_protocols excludes the scenario's required protocol') was filed as a small follow-up — closure event will fire when that lands. Drop after spec follow-up resolves."
     }
   ]
 }

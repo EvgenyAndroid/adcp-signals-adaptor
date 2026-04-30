@@ -60,7 +60,7 @@ import { ADCP_TOOLS } from "../mcp/tools";
 // probes or fans-out to our own URL, Cloudflare Workers refuse self-fetch; we
 // short-circuit and return our real tool list / dispatch the call in-process.
 let _envHookInstalled = false;
-function ensureSelfHooksInstalled(env: Env, logger: Logger): void {
+export function ensureSelfHooksInstalled(env: Env, logger: Logger): void {
   if (_envHookInstalled) return;
   _envHookInstalled = true;
   installSelfProbeHook((url) => {

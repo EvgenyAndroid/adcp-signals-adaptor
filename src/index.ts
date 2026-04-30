@@ -72,6 +72,16 @@ import {
   handleDspAgentCapabilities,
 } from "./routes/dspRoutes";
 import {
+  handleAgenticExpand,
+  handleAgenticPlan,
+  handleAgenticExecute,
+  handleAgenticExplain,
+  handleAgenticRecover,
+  handleAgenticRemediate,
+  handleAgenticMemoryRecall,
+  handleAgenticChat,
+} from "./routes/agenticRoutes";
+import {
   handleAudienceCompose,
   handleAudienceSaturation,
   handleAffinityAudit,
@@ -266,6 +276,15 @@ export default {
             "/dsp/campaigns",
             "/dsp/agents",
             "/dsp/media-buys",
+            // Agentic Canvas (LLM-driven planner + executor).
+            "/agentic/brief",
+            "/agentic/plan",
+            "/agentic/execute",
+            "/agentic/explain",
+            "/agentic/chat",
+            "/agentic/recover",
+            "/agentic/remediate",
+            "/agentic/memory",
             "/taxonomy/reverse",
             // Sec-43: audience composer + activation-planning analytics.
             // Read-only — same posture as /portfolio/* and /analytics/*.
@@ -470,6 +489,24 @@ export default {
                 // Catch-all comes LAST.
             } else if (method === "GET" && path.startsWith("/dsp/campaigns")) {
                 response = await handleDspCampaigns(request, env, logger);
+
+                // ── Agentic Canvas ───────────────────────────────────────────────────
+            } else if (method === "POST" && path === "/agentic/brief/expand") {
+                response = await handleAgenticExpand(request, env, logger);
+            } else if (method === "POST" && path === "/agentic/plan") {
+                response = await handleAgenticPlan(request, env, logger);
+            } else if (method === "POST" && path === "/agentic/execute") {
+                response = await handleAgenticExecute(request, env, logger);
+            } else if (method === "POST" && path === "/agentic/explain") {
+                response = await handleAgenticExplain(request, env, logger);
+            } else if (method === "POST" && path === "/agentic/recover") {
+                response = await handleAgenticRecover(request, env, logger);
+            } else if (method === "POST" && path === "/agentic/remediate") {
+                response = await handleAgenticRemediate(request, env, logger);
+            } else if (method === "POST" && path === "/agentic/chat") {
+                response = await handleAgenticChat(request, env, logger);
+            } else if (method === "GET" && path === "/agentic/memory/recall") {
+                response = await handleAgenticMemoryRecall(request, env, logger);
 
                 // ── Sec-43: Audience Composer + activation analytics ────────────────
             } else if (method === "POST" && path === "/audience/compose") {

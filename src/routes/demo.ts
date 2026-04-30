@@ -157,6 +157,10 @@ ${STYLES}
         <svg class="ico"><use href="#icon-network"/></svg><span>Campaign</span>
         <span class="nav-tag">DSP</span>
       </button>
+      <button class="nav-item" data-tab="agentic">
+        <svg class="ico"><use href="#icon-bolt"/></svg><span>Agentic</span>
+        <span class="nav-tag">AI</span>
+      </button>
       <button class="nav-item" data-tab="activations">
         <svg class="ico"><use href="#icon-activations"/></svg><span>Activations</span>
         <span class="nav-count" id="nav-activations-count">—</span>
@@ -1617,6 +1621,99 @@ ${STYLES}
             <svg class="ico" style="width:14px;height:14px"><use href="#icon-loop"/></svg>
             <span>feedback loop — optimization signals re-tune the bid strategy each cycle</span>
             <span class="campaign-feedback-arrow-tag mono">↻ continuous</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── TAB: Agentic Canvas ─────────────────────────────────────── -->
+      <section class="tab-pane" data-tab="agentic">
+        <div class="pane-header">
+          <div>
+            <h1 class="pane-title">Agentic Canvas <span class="pill pill-warning mono" style="font-size:9.5px;margin-left:8px;letter-spacing:0.04em" id="agentic-mode-pill">probing mode…</span></h1>
+            <p class="pane-subtitle">
+              Type a brief in plain English. The agent expands it, plans the call sequence dynamically, executes against live MCP agents, and narrates every decision.
+              <br/>
+              <span style="color:var(--text-mut)">Live mode requires <code>ANTHROPIC_API_KEY</code>; otherwise rule-based templates produce the same surface deterministically.</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="agentic-shell">
+          <div class="agentic-chat-col">
+            <div class="agentic-chat-input-row">
+              <textarea class="agentic-input" id="agentic-input" rows="2" placeholder='e.g. "Plan a $50K Coca-Cola summer campaign for Gen Z urban — ROAS 3.5x"'></textarea>
+              <button class="agentic-submit-btn" id="agentic-submit-btn">
+                <svg class="ico"><use href="#icon-bolt"/></svg>
+                <span>Plan</span>
+              </button>
+            </div>
+            <div class="agentic-suggestions" id="agentic-suggestions">
+              <span class="orch-small" style="color:var(--text-mut);margin-right:6px">try:</span>
+              <button class="agentic-sugg" data-prompt='Plan a $50K Coca-Cola summer campaign for Gen Z urban — ROAS 3.5x'>Coca-Cola summer · Gen Z</button>
+              <button class="agentic-sugg" data-prompt='Pfizer healthcare brand-lift study, US adults 35+, $80K budget, 30 days'>Pfizer · brand-lift</button>
+              <button class="agentic-sugg" data-prompt='Heineken USA — alcohol, urban DMAs, evening peak, ROAS focus, $200K'>Heineken · alcohol</button>
+              <button class="agentic-sugg" data-prompt='LEGO holiday awareness — children, parents, US + EU, $1M, awareness'>LEGO · children</button>
+            </div>
+
+            <!-- Brief expansion panel -->
+            <div class="agentic-section" id="agentic-brief-section" style="display:none">
+              <div class="agentic-section-head">
+                <span class="agentic-section-label">1 · Brief expanded</span>
+                <span class="agentic-section-source mono" id="agentic-brief-source">…</span>
+              </div>
+              <div class="agentic-section-body" id="agentic-brief-body"></div>
+            </div>
+
+            <!-- Plan panel -->
+            <div class="agentic-section" id="agentic-plan-section" style="display:none">
+              <div class="agentic-section-head">
+                <span class="agentic-section-label">2 · Execution plan</span>
+                <span class="agentic-section-source mono" id="agentic-plan-source">…</span>
+              </div>
+              <div class="agentic-section-body" id="agentic-plan-body"></div>
+              <div class="agentic-plan-actions">
+                <button class="agentic-execute-btn" id="agentic-execute-btn">
+                  <svg class="ico"><use href="#icon-bolt"/></svg>
+                  <span>Execute plan</span>
+                </button>
+                <span class="orch-small" style="color:var(--text-mut)">streams reasoning + tool results live</span>
+              </div>
+            </div>
+
+            <!-- Execution panel -->
+            <div class="agentic-section" id="agentic-exec-section" style="display:none">
+              <div class="agentic-section-head">
+                <span class="agentic-section-label">3 · Execution</span>
+                <span class="agentic-section-source mono" id="agentic-exec-status">idle</span>
+              </div>
+              <div class="agentic-section-body" id="agentic-exec-body"></div>
+            </div>
+
+            <!-- Compliance + memory + recovery sidebar -->
+            <div class="agentic-section" id="agentic-compliance-section" style="display:none">
+              <div class="agentic-section-head">
+                <span class="agentic-section-label">Governance + remediation</span>
+              </div>
+              <div class="agentic-section-body" id="agentic-compliance-body"></div>
+            </div>
+
+            <div class="agentic-section" id="agentic-memory-section" style="display:none">
+              <div class="agentic-section-head">
+                <span class="agentic-section-label">Memory</span>
+              </div>
+              <div class="agentic-section-body" id="agentic-memory-body"></div>
+            </div>
+          </div>
+
+          <!-- Right: reasoning trace pane -->
+          <div class="agentic-trace-col">
+            <div class="agentic-section-head">
+              <span class="agentic-section-label">Reasoning trace</span>
+              <span class="agentic-section-source mono" id="agentic-trace-count">0 steps</span>
+            </div>
+            <div class="agentic-trace" id="agentic-trace">
+              <span class="orch-small" style="color:var(--text-mut)">decisions will narrate here as the agent works…</span>
+            </div>
           </div>
         </div>
       </section>
@@ -5247,6 +5344,264 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   .campaign-lane-2col { grid-template-columns: 1fr; }
 }
 
+/* ────────────────────────────────────────────────────────────────
+   Agentic Canvas
+   ──────────────────────────────────────────────────────────────── */
+
+.agentic-shell {
+  display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr);
+  gap: 16px; min-height: 500px;
+}
+.agentic-chat-col { display: flex; flex-direction: column; gap: 12px; }
+.agentic-chat-input-row {
+  display: flex; gap: 8px; align-items: stretch;
+}
+.agentic-input {
+  flex: 1; padding: 10px 12px; font-size: 13px; line-height: 1.4;
+  background: var(--bg-input); color: var(--text);
+  border: 1px solid var(--border); border-radius: 5px;
+  font-family: inherit; resize: vertical; min-height: 50px;
+}
+.agentic-input:focus { outline: none; border-color: var(--accent); }
+.agentic-submit-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0 18px; background: var(--accent); color: #000;
+  border: 1px solid var(--accent); border-radius: 5px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: filter 0.15s;
+}
+.agentic-submit-btn:hover:not(:disabled) { filter: brightness(1.1); }
+.agentic-submit-btn:disabled { opacity: 0.6; cursor: wait; }
+.agentic-submit-btn .ico { width: 14px; height: 14px; }
+.agentic-suggestions {
+  display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+}
+.agentic-sugg {
+  background: var(--bg-raised); color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 4px 10px; font-size: 10.5px; cursor: pointer;
+  font-family: inherit;
+}
+.agentic-sugg:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Sections */
+.agentic-section {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-left-width: 3px; border-left-color: var(--accent);
+  border-radius: 5px; padding: 10px 12px;
+}
+.agentic-section-head {
+  display: flex; align-items: center; gap: 10px;
+  padding-bottom: 6px; margin-bottom: 8px;
+  border-bottom: 1px dashed var(--border);
+}
+.agentic-section-label {
+  font-size: 11.5px; font-weight: 600; color: var(--text);
+}
+.agentic-section-source {
+  margin-left: auto; font-size: 9.5px; color: var(--text-mut);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.agentic-section-body { display: flex; flex-direction: column; gap: 6px; }
+
+/* Brief panel */
+.agentic-brief-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+}
+.agentic-brief-cell-wide { grid-column: span 3; }
+.agentic-brief-cell { display: flex; flex-direction: column; gap: 2px; }
+.agentic-brief-label {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-mut); font-weight: 500;
+}
+
+/* Plan panel */
+.agentic-plan-steps { display: flex; flex-direction: column; gap: 6px; }
+.agentic-plan-step {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: 4px; padding: 6px 10px;
+}
+.agentic-plan-step-head {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 3px;
+}
+.agentic-plan-step-num {
+  background: var(--accent); color: #000;
+  width: 18px; height: 18px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+}
+.agentic-plan-step-tool { color: var(--text); font-weight: 600; font-size: 12px; }
+.agentic-plan-step-agents { color: var(--text-mut); }
+.agentic-plan-step-rationale {
+  color: var(--text-dim); font-size: 11px; line-height: 1.4;
+  padding-left: 26px;
+}
+.agentic-plan-actions {
+  display: flex; align-items: center; gap: 10px;
+  padding-top: 8px; margin-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+.agentic-execute-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; background: var(--success); color: #000;
+  border: 1px solid var(--success); border-radius: 4px;
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  font-family: inherit;
+}
+.agentic-execute-btn:disabled { opacity: 0.6; cursor: wait; }
+.agentic-execute-btn .ico { width: 12px; height: 12px; }
+
+/* Execution panel */
+.agentic-exec-step {
+  border-left: 3px solid var(--text-mut);
+  padding: 4px 10px; margin-bottom: 4px;
+  background: var(--bg-raised); border-radius: 0 4px 4px 0;
+}
+.agentic-exec-step.agentic-exec-ok  { border-left-color: var(--success); }
+.agentic-exec-step.agentic-exec-err { border-left-color: var(--error); }
+.agentic-exec-step-head {
+  display: flex; align-items: center; gap: 8px; font-size: 11px;
+}
+.agentic-exec-status {
+  font-size: 9px; padding: 1px 5px; border-radius: 2px;
+  background: var(--bg-input); color: var(--text);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.agentic-exec-lat { margin-left: auto; color: var(--text-mut); }
+.agentic-agent-row {
+  display: flex; gap: 8px; align-items: center;
+  padding: 2px 8px 2px 26px; font-size: 10.5px;
+  color: var(--text-mut);
+}
+.agentic-agent-row.agentic-agent-ok  { border-left: 2px solid var(--success); }
+.agentic-agent-row.agentic-agent-err { border-left: 2px solid var(--error); }
+
+/* Compliance panel */
+.agentic-comp-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 5px 10px; border-radius: 3px;
+  border: 1px solid currentColor; font-size: 11px;
+}
+.agentic-comp-icon { font-size: 14px; }
+.agentic-comp-allow { color: var(--success); background: rgba(102,187,106,0.10); }
+.agentic-comp-warn  { color: var(--warning, #d4a017); background: rgba(212,160,23,0.10); }
+.agentic-comp-block { color: var(--error); background: rgba(239,68,68,0.10); }
+.agentic-comp-row {
+  display: grid; grid-template-columns: 200px 80px 1fr;
+  gap: 8px; padding: 3px 0; font-size: 10.5px;
+  border-bottom: 1px dashed var(--border);
+}
+.agentic-comp-row-block .mono:nth-child(2) { color: var(--error); font-weight: 600; }
+.agentic-comp-row-warn  .mono:nth-child(2) { color: var(--warning, #d4a017); font-weight: 600; }
+.agentic-comp-row-allow .mono:nth-child(2) { color: var(--success); }
+.agentic-rem-block { padding-top: 4px; }
+.agentic-rem-row {
+  font-size: 10.5px; color: var(--text-dim);
+  padding: 3px 0; border-bottom: 1px dashed var(--border);
+}
+.agentic-rem-suggestion {
+  font-size: 9px; padding: 1px 5px; border-radius: 2px;
+  background: var(--accent); color: #000; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-right: 4px;
+}
+
+/* Memory panel */
+.agentic-mem-row {
+  display: grid; grid-template-columns: 90px 1fr 80px;
+  gap: 8px; padding: 3px 0; font-size: 10.5px;
+  color: var(--text-dim);
+  border-bottom: 1px dashed var(--border);
+}
+.agentic-mem-when { color: var(--text-mut); }
+.agentic-mem-outcome { color: var(--accent); text-align: right; }
+
+/* Trace pane */
+.agentic-trace-col {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 5px; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 8px;
+  min-height: 400px; max-height: 80vh;
+}
+.agentic-trace {
+  flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 4px;
+  padding-right: 4px;
+}
+.agentic-trace-step {
+  display: grid; grid-template-columns: 70px 1fr 50px;
+  gap: 6px; padding: 3px 6px; align-items: baseline;
+  font-size: 10.5px; line-height: 1.35;
+  border-left: 2px solid transparent;
+  background: var(--bg-raised); border-radius: 3px;
+}
+.agentic-trace-kind {
+  font-size: 8.5px; font-weight: 700; letter-spacing: 0.06em;
+  color: var(--text-mut);
+}
+.agentic-trace-msg { color: var(--text-dim); }
+.agentic-trace-lat { color: var(--text-mut); text-align: right; }
+.agentic-trace-step.agentic-trace-analyze   { border-left-color: var(--text-mut); }
+.agentic-trace-step.agentic-trace-plan      { border-left-color: var(--accent); }
+.agentic-trace-step.agentic-trace-call      { border-left-color: var(--accent); }
+.agentic-trace-step.agentic-trace-observe   { border-left-color: var(--success); }
+.agentic-trace-step.agentic-trace-decide    { border-left-color: var(--accent); }
+.agentic-trace-step.agentic-trace-reflect   { border-left-color: var(--warning, #d4a017); }
+.agentic-trace-step.agentic-trace-recover   { border-left-color: var(--warning, #d4a017); }
+.agentic-trace-step.agentic-trace-remediate { border-left-color: var(--warning, #d4a017); }
+.agentic-trace-step.agentic-trace-complete  { border-left-color: var(--success); background: rgba(102,187,106,0.06); }
+
+@media (max-width: 1100px) {
+  .agentic-shell { grid-template-columns: 1fr; }
+  .agentic-brief-grid { grid-template-columns: repeat(2, 1fr); }
+  .agentic-brief-cell-wide { grid-column: span 2; }
+}
+
+/* "Explain this" badge + modal — works across all surfaces */
+.explain-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; margin-left: 6px;
+  border-radius: 50%; border: 1px solid var(--text-mut);
+  background: transparent; color: var(--text-mut);
+  font-size: 9px; font-weight: 700; cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, color 0.15s;
+}
+.explain-badge:hover { border-color: var(--accent); color: var(--accent); }
+.explain-modal {
+  position: fixed; inset: 0; z-index: 9100;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.explain-modal-inner {
+  background: var(--bg-surface); border: 1px solid var(--accent);
+  border-radius: 6px; padding: 14px;
+  min-width: 380px; max-width: 600px; max-height: 80vh; overflow-y: auto;
+}
+.explain-modal-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-bottom: 8px; margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.explain-modal-close {
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 3px; width: 22px; height: 22px;
+  cursor: pointer; color: var(--text-mut); font-size: 14px;
+}
+.explain-modal-close:hover { color: var(--error); border-color: var(--error); }
+.explain-mode-pill {
+  display: inline-block; padding: 2px 6px;
+  background: var(--bg-input); color: var(--text-mut);
+  border-radius: 3px; font-size: 9.5px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+.explain-text {
+  color: var(--text-dim); font-size: 12.5px; line-height: 1.55;
+}
+
 /* Live MCP coverage strip — top of Campaign Canvas */
 .campaign-coverage {
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
@@ -6577,7 +6932,7 @@ function switchTab(name) {
     journey: "Journey", planner: "Scenario", snapshots: "Snapshots",
     freshness: "Freshness",
     seasonality: "Seasonality", federation: "Federation",
-    orchestrator: "Orchestrator", canvas: "Canvas", campaign: "Campaign Canvas",
+    orchestrator: "Orchestrator", canvas: "Canvas", campaign: "Campaign Canvas", agentic: "Agentic Canvas",
   };
   document.getElementById("crumb-current").textContent = crumbMap[name] || name;
 
@@ -6593,6 +6948,7 @@ function switchTab(name) {
   if (name === "destinations") ensureDestinations();
   if (name === "canvas") _canvasReplayFromQuery();
   if (name === "campaign") _campaignInit();
+  if (name === "agentic") _agenticInit();
   if (name === "lab") ensureLab();
   if (name === "portfolio") ensurePortfolio();
   if (name === "composer") ensureComposer();
@@ -14578,6 +14934,7 @@ async function _canvasFillGovernancePreview(industries) {
         adv.advisories.filter(function (a) { return a.outcome === "warn"; }).length + ' warn · ' +
         adv.advisories.filter(function (a) { return a.outcome === "allow"; }).length + ' allow' +
       '</span>' +
+      _explainBadge("governance_outcome", adv) +
     '</div>';
     var chips = adv.advisories.map(function (a) {
       var enfTag = a.enforcement === "must" ? "M" : a.enforcement === "should" ? "S" : "?";
@@ -16591,6 +16948,330 @@ async function _campaignApplyDiffLive() {
     out.innerHTML = '<span class="orch-small" style="color:var(--error)">' + escapeHtml(String((e && e.message) || e)) + '</span>';
     btn.textContent = "Retry"; btn.disabled = false;
   }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Agentic helper: "Explain this decision" reusable button + modal.
+// Clickable "?" badge on any surface. POSTs to /agentic/explain.
+// ─────────────────────────────────────────────────────────────────
+
+function _explainBadge(topic, decision) {
+  // Returns the HTML for an inline "?" badge. Caller is responsible
+  // for wiring the click handler post-innerHTML via the data attrs.
+  var key = "ex_" + Math.random().toString(36).slice(2, 8);
+  if (!window._explainPayloads) window._explainPayloads = {};
+  window._explainPayloads[key] = { topic: topic, decision: decision };
+  return '<button class="explain-badge mono" data-explain-key="' + escapeHtml(key) + '" title="Explain this decision">?</button>';
+}
+
+document.addEventListener("click", function (e) {
+  var t = e.target;
+  if (!t || !t.closest) return;
+  var btn = t.closest(".explain-badge");
+  if (!btn) return;
+  var key = btn.getAttribute("data-explain-key");
+  if (!key || !window._explainPayloads || !window._explainPayloads[key]) return;
+  var payload = window._explainPayloads[key];
+  _showExplainModal(payload.topic, payload.decision);
+});
+
+async function _showExplainModal(topic, decision) {
+  var existing = document.getElementById("explain-modal");
+  if (existing) existing.remove();
+  var modal = document.createElement("div");
+  modal.id = "explain-modal";
+  modal.className = "explain-modal";
+  modal.innerHTML =
+    '<div class="explain-modal-inner">' +
+      '<div class="explain-modal-head">' +
+        '<span class="mono">explain · ' + escapeHtml(topic) + '</span>' +
+        '<button class="explain-modal-close" id="explain-modal-close">×</button>' +
+      '</div>' +
+      '<div class="explain-modal-body" id="explain-modal-body">' +
+        '<span class="orch-small">asking the orchestrator…</span>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(modal);
+  document.getElementById("explain-modal-close").addEventListener("click", function () { modal.remove(); });
+  modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
+  try {
+    var r = await fetch("/agentic/explain", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic: topic, decision: decision }) });
+    var d = await r.json();
+    var body = document.getElementById("explain-modal-body");
+    if (!body) return;
+    body.innerHTML =
+      '<div class="explain-mode-pill mono">' + escapeHtml(d.mode || "?") + (d.model ? " · " + escapeHtml(d.model) : "") + (d.latency_ms ? " · " + d.latency_ms + "ms" : "") + '</div>' +
+      '<div class="explain-text">' + escapeHtml(d.explanation || "no explanation returned") + '</div>' +
+      '<details style="margin-top:8px"><summary class="orch-small" style="cursor:pointer">decision payload</summary><pre class="wf-json mono" style="max-height:200px;overflow:auto;font-size:10.5px">' + escapeHtml(JSON.stringify(decision, null, 2).slice(0, 1500)) + '</pre></details>';
+  } catch (e) {
+    var b = document.getElementById("explain-modal-body");
+    if (b) b.innerHTML = '<span class="orch-small" style="color:var(--error)">' + escapeHtml(String((e && e.message) || e)) + '</span>';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Agentic Canvas — chat-first orchestrator
+// ─────────────────────────────────────────────────────────────────
+
+var _agenticCurrent = null;
+var _agenticTrace = [];
+var _agenticInitialized = false;
+
+async function _agenticInit() {
+  if (_agenticInitialized) return;
+  _agenticInitialized = true;
+  // Wire input + suggestions
+  var input = document.getElementById("agentic-input");
+  var submit = document.getElementById("agentic-submit-btn");
+  if (submit) submit.addEventListener("click", _agenticSubmit);
+  if (input) {
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); _agenticSubmit(); }
+    });
+  }
+  document.querySelectorAll(".agentic-sugg").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var p = b.getAttribute("data-prompt");
+      if (p && input) { input.value = p; _agenticSubmit(); }
+    });
+  });
+  // Probe mode
+  try {
+    // Cheap mode probe: hit the expand endpoint with a minimal input.
+    var r = await fetch("/agentic/brief/expand", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ input: "test" }) });
+    var d = await r.json();
+    var pill = document.getElementById("agentic-mode-pill");
+    if (pill) {
+      pill.textContent = d.mode === "live" ? "live · Claude" : "template mode · no API key";
+      pill.className = "pill mono " + (d.mode === "live" ? "pill-success" : "pill-muted") + " agentic-mode-pill";
+      pill.style.fontSize = "9.5px"; pill.style.marginLeft = "8px"; pill.style.letterSpacing = "0.04em";
+    }
+  } catch (e) { /* noop */ }
+}
+
+async function _agenticSubmit() {
+  var input = document.getElementById("agentic-input");
+  if (!input || !input.value.trim()) return;
+  var brief = input.value.trim();
+  _agenticTrace = [];
+  _agenticUpdateTrace();
+  document.getElementById("agentic-brief-section").style.display = "none";
+  document.getElementById("agentic-plan-section").style.display = "none";
+  document.getElementById("agentic-exec-section").style.display = "none";
+  document.getElementById("agentic-compliance-section").style.display = "none";
+  document.getElementById("agentic-memory-section").style.display = "none";
+  var btn = document.getElementById("agentic-submit-btn");
+  if (btn) { btn.disabled = true; btn.querySelector("span").textContent = "thinking…"; }
+  try {
+    var r = await fetch("/agentic/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ input: brief }) });
+    var d = await r.json();
+    _agenticCurrent = d;
+    // Append all initial trace steps
+    for (var i = 0; i < (d.trace || []).length; i++) _agenticTrace.push(d.trace[i]);
+    _agenticUpdateTrace();
+    _agenticRenderBrief(d.expanded);
+    _agenticRenderPlan(d.plan);
+    _agenticRenderCompliance(d.compliance);
+    _agenticRenderMemory(d.memory);
+  } catch (e) {
+    showToast("agentic chat failed: " + ((e && e.message) || e), true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.querySelector("span").textContent = "Plan"; }
+  }
+}
+
+function _agenticUpdateTrace() {
+  var pane = document.getElementById("agentic-trace");
+  var counter = document.getElementById("agentic-trace-count");
+  if (counter) counter.textContent = _agenticTrace.length + " step" + (_agenticTrace.length === 1 ? "" : "s");
+  if (!pane) return;
+  if (_agenticTrace.length === 0) {
+    pane.innerHTML = '<span class="orch-small" style="color:var(--text-mut)">decisions will narrate here as the agent works…</span>';
+    return;
+  }
+  pane.innerHTML = _agenticTrace.map(function (s, idx) {
+    return '<div class="agentic-trace-step agentic-trace-' + escapeHtml(s.kind || "info") + '">' +
+      '<span class="agentic-trace-kind mono">' + escapeHtml((s.kind || "info").toUpperCase()) + '</span>' +
+      '<span class="agentic-trace-msg">' + escapeHtml(s.message || "") + '</span>' +
+      (s.latency_ms != null ? '<span class="agentic-trace-lat mono orch-small">' + s.latency_ms + 'ms</span>' : '') +
+    '</div>';
+  }).join("");
+  pane.scrollTop = pane.scrollHeight;
+}
+
+function _agenticRenderBrief(b) {
+  var sec = document.getElementById("agentic-brief-section");
+  var src = document.getElementById("agentic-brief-source");
+  var body = document.getElementById("agentic-brief-body");
+  if (!sec || !body) return;
+  sec.style.display = "";
+  if (src) src.textContent = "source: " + (b.source === "live_llm" ? "Claude" : "template") + " · confidence " + Math.round((b.confidence || 0) * 100) + "%";
+  var industries = (b.industries || []).map(function (i) { return '<span class="pill pill-muted mono" style="font-size:9.5px">' + escapeHtml(i) + '</span>'; }).join(" ");
+  var aud = (b.audience_descriptors || []).map(function (a) { return '<span class="pill pill-muted mono" style="font-size:9.5px">' + escapeHtml(a) + '</span>'; }).join(" ");
+  body.innerHTML =
+    '<div class="agentic-brief-grid">' +
+      '<div class="agentic-brief-cell"><div class="agentic-brief-label">Brand</div><div class="mono">' + escapeHtml(b.brand_name || "(unknown)") + (b.brand_domain ? ' <span class="orch-small" style="color:var(--text-mut)">' + escapeHtml(b.brand_domain) + '</span>' : '') + '</div></div>' +
+      '<div class="agentic-brief-cell"><div class="agentic-brief-label">KPI</div><div class="mono">' + escapeHtml(b.kpi || "?") + ' @ ' + escapeHtml(String(b.kpi_target || "?")) + '</div></div>' +
+      '<div class="agentic-brief-cell"><div class="agentic-brief-label">Budget</div><div class="mono">' + (b.budget_usd_estimate ? '$' + b.budget_usd_estimate.toLocaleString() : '—') + '</div></div>' +
+      '<div class="agentic-brief-cell"><div class="agentic-brief-label">Geo</div><div class="mono">' + escapeHtml((b.geo || []).join(", ")) + '</div></div>' +
+      '<div class="agentic-brief-cell"><div class="agentic-brief-label">Flight</div><div class="mono">' + (b.flight_days ? b.flight_days + " days" : "—") + '</div></div>' +
+      '<div class="agentic-brief-cell"><div class="agentic-brief-label">Dayparting</div><div class="mono">' + escapeHtml(b.dayparting_hint || "—") + '</div></div>' +
+      '<div class="agentic-brief-cell agentic-brief-cell-wide"><div class="agentic-brief-label">Industries</div><div>' + (industries || '<span class="orch-small">unclassified</span>') + '</div></div>' +
+      '<div class="agentic-brief-cell agentic-brief-cell-wide"><div class="agentic-brief-label">Audience</div><div>' + (aud || '<span class="orch-small">none extracted</span>') + '</div></div>' +
+    '</div>';
+}
+
+function _agenticRenderPlan(plan) {
+  var sec = document.getElementById("agentic-plan-section");
+  var src = document.getElementById("agentic-plan-source");
+  var body = document.getElementById("agentic-plan-body");
+  if (!sec || !body) return;
+  sec.style.display = "";
+  if (src) src.textContent = "source: " + (plan.source === "live_llm" ? "Claude" : "template") + " · " + plan.steps.length + " steps · est " + Math.round((plan.estimated_duration_ms || 0) / 1000) + "s";
+  body.innerHTML = '<div class="agentic-plan-steps">' + plan.steps.map(function (s) {
+    return '<div class="agentic-plan-step">' +
+      '<div class="agentic-plan-step-head">' +
+        '<span class="agentic-plan-step-num mono">' + s.index + '</span>' +
+        '<span class="agentic-plan-step-tool mono">' + escapeHtml(s.tool) + '</span>' +
+        '<span class="agentic-plan-step-agents orch-small mono">→ ' + escapeHtml(s.agents.join(", ")) + '</span>' +
+        (s.optional ? '<span class="pill pill-muted mono" style="font-size:8.5px">optional</span>' : '') +
+      '</div>' +
+      '<div class="agentic-plan-step-rationale">' + escapeHtml(s.rationale) + '</div>' +
+    '</div>';
+  }).join("") + '</div>';
+  var execBtn = document.getElementById("agentic-execute-btn");
+  if (execBtn) {
+    execBtn.onclick = null;
+    execBtn.addEventListener("click", _agenticExecute);
+  }
+}
+
+function _agenticRenderCompliance(comp) {
+  var sec = document.getElementById("agentic-compliance-section");
+  var body = document.getElementById("agentic-compliance-body");
+  if (!sec || !body || !comp || !comp.advisory) return;
+  sec.style.display = "";
+  var adv = comp.advisory;
+  var outClass = "agentic-comp-" + adv.outcome;
+  var ico = adv.outcome === "block" ? "⛔" : adv.outcome === "warn" ? "⚠" : "✓";
+  var pols = adv.advisories.slice(0, 5).map(function (a) {
+    return '<div class="agentic-comp-row agentic-comp-row-' + escapeHtml(a.outcome) + '">' +
+      '<span class="mono">' + escapeHtml(a.policy_id) + '</span>' +
+      '<span class="mono">' + escapeHtml(a.outcome) + '</span>' +
+      '<span class="orch-small">' + escapeHtml((a.signal_claim || "silent") + " · " + (a.reason || "").slice(0, 80)) + '</span>' +
+    '</div>';
+  }).join("");
+  var rems = (comp.remediations || []).map(function (r) {
+    return '<div class="agentic-rem-row"><span class="agentic-rem-suggestion mono">' + escapeHtml(r.suggestion) + '</span> <span class="mono">' + escapeHtml(r.blocking_policy) + '</span> — <span>' + escapeHtml(r.detail) + '</span></div>';
+  }).join("");
+  body.innerHTML =
+    '<div class="agentic-comp-banner ' + outClass + '">' +
+      '<span class="agentic-comp-icon">' + ico + '</span>' +
+      '<span>governance preview <strong>' + escapeHtml(adv.outcome.toUpperCase()) + '</strong></span>' +
+      '<span class="orch-small">' + adv.restricted_attributes.length + ' block · ' + adv.advisories.filter(function (a) { return a.outcome === "warn"; }).length + ' warn · ' + adv.advisories.filter(function (a) { return a.outcome === "allow"; }).length + ' allow</span>' +
+    '</div>' +
+    pols +
+    (rems ? '<div class="agentic-rem-block"><div class="agentic-section-label" style="margin:8px 0 4px;font-size:10.5px">remediation</div>' + rems + '</div>' : '');
+}
+
+function _agenticRenderMemory(mem) {
+  var sec = document.getElementById("agentic-memory-section");
+  var body = document.getElementById("agentic-memory-body");
+  if (!sec || !body || !mem) return;
+  sec.style.display = "";
+  body.innerHTML =
+    '<div class="orch-small" style="margin-bottom:6px">' + escapeHtml(mem.hint || "") + '</div>' +
+    (mem.matches || []).map(function (m) {
+      return '<div class="agentic-mem-row">' +
+        '<span class="agentic-mem-when mono">' + escapeHtml(String(m.ran_at).slice(0, 10)) + '</span>' +
+        '<span class="agentic-mem-input">' + escapeHtml(m.brief_input.slice(0, 80)) + '</span>' +
+        '<span class="agentic-mem-outcome mono">' + escapeHtml(m.outcome) + '</span>' +
+      '</div>';
+    }).join("");
+}
+
+async function _agenticExecute() {
+  if (!_agenticCurrent || !_agenticCurrent.plan) return;
+  var btn = document.getElementById("agentic-execute-btn");
+  var sec = document.getElementById("agentic-exec-section");
+  var status = document.getElementById("agentic-exec-status");
+  var body = document.getElementById("agentic-exec-body");
+  if (!sec || !body) return;
+  sec.style.display = "";
+  body.innerHTML = "";
+  if (btn) { btn.disabled = true; btn.querySelector("span").textContent = "executing…"; }
+  if (status) status.textContent = "streaming…";
+  try {
+    var resp = await fetch("/agentic/execute", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan: _agenticCurrent.plan }) });
+    if (!resp.body) throw new Error("no stream body");
+    var reader = resp.body.getReader();
+    var dec = new TextDecoder();
+    var buffer = "";
+    var stepResults = {};
+    while (true) {
+      var read = await reader.read();
+      if (read.done) break;
+      buffer += dec.decode(read.value, { stream: true });
+      var lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      for (var li = 0; li < lines.length; li++) {
+        var line = lines[li].trim();
+        if (!line) continue;
+        var ev = null;
+        try { ev = JSON.parse(line); } catch (e) { continue; }
+        if (ev.event === "reasoning" && ev.step) {
+          _agenticTrace.push(ev.step);
+          _agenticUpdateTrace();
+        } else if (ev.event === "tool_complete") {
+          stepResults[ev.step_id] = ev;
+          _agenticAppendExec(ev);
+        } else if (ev.event === "agent_result") {
+          _agenticAppendAgentResult(ev);
+        } else if (ev.event === "execution_complete") {
+          if (status) status.textContent = "done · " + (ev.step_results ? ev.step_results.length + " steps" : "");
+        } else if (ev.event === "error") {
+          showToast("execution error: " + ev.error, true);
+        }
+      }
+    }
+  } catch (e) {
+    showToast("agentic execute failed: " + ((e && e.message) || e), true);
+    if (status) status.textContent = "error";
+  } finally {
+    if (btn) { btn.disabled = false; btn.querySelector("span").textContent = "Re-execute"; }
+  }
+}
+
+function _agenticAppendExec(ev) {
+  var body = document.getElementById("agentic-exec-body");
+  if (!body) return;
+  var statusCls = ev.ok ? "agentic-exec-ok" : "agentic-exec-err";
+  var resultPreview = "";
+  try { resultPreview = JSON.stringify(ev.result || ev.agent_results, null, 2).slice(0, 400); } catch (e) { /* noop */ }
+  body.insertAdjacentHTML("beforeend",
+    '<div class="agentic-exec-step ' + statusCls + '">' +
+      '<div class="agentic-exec-step-head">' +
+        '<span class="mono">' + escapeHtml(ev.tool || "?") + '</span>' +
+        '<span class="agentic-exec-status mono">' + (ev.ok ? "ok" : "err") + '</span>' +
+        '<span class="agentic-exec-lat orch-small mono">' + (ev.latency_ms || 0) + 'ms</span>' +
+      '</div>' +
+      (resultPreview ? '<details><summary class="orch-small" style="cursor:pointer">payload preview</summary><pre class="wf-json mono" style="max-height:160px;overflow:auto;font-size:10.5px">' + escapeHtml(resultPreview) + '</pre></details>' : '') +
+    '</div>'
+  );
+}
+
+function _agenticAppendAgentResult(ev) {
+  var body = document.getElementById("agentic-exec-body");
+  if (!body) return;
+  var statusCls = ev.status === "ok" ? "agentic-agent-ok" : "agentic-agent-err";
+  body.insertAdjacentHTML("beforeend",
+    '<div class="agentic-agent-row ' + statusCls + '">' +
+      '<span class="mono">' + escapeHtml(ev.agent_id) + '</span>' +
+      '<span class="orch-small mono">' + escapeHtml(ev.tool) + '</span>' +
+      '<span class="orch-small mono">' + (ev.latency_ms || 0) + 'ms</span>' +
+      (ev.status !== "ok" && ev.error ? '<span class="orch-small">' + escapeHtml(String(ev.error).slice(0, 100)) + '</span>' : '') +
+    '</div>'
+  );
 }
 </script>`;
 }

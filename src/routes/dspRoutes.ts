@@ -37,6 +37,7 @@ import {
 import { AGENT_REGISTRY } from "../domain/agentRegistry";
 import { callAgentTool, probeAgent } from "../federation/genericMcpClient";
 import { buildCreateMediaBuyPayload, applyVendorAdapter, getDemoProviderAttestations } from "../domain/workflowOrchestration";
+import { ensureSelfHooksInstalled } from "./agentsEndpoints";
 
 // The 11 buy-side primitives we care about. The first 7 are AdCP-spec'd
 // lifecycle tools (get_media_buy_delivery is in 3.0 GA; the rest are
@@ -103,6 +104,7 @@ export async function handleDspCoverage(
   env: Env,
   logger: Logger,
 ): Promise<Response> {
+  ensureSelfHooksInstalled(env, logger);
   // KV cache first.
   try {
     const cached = await env.SIGNALS_CACHE.get(COVERAGE_KEY, "json");
@@ -194,6 +196,7 @@ export async function handleDspMediaBuysLive(
   env: Env,
   logger: Logger,
 ): Promise<Response> {
+  ensureSelfHooksInstalled(env, logger);
   const coverage = await getCoverageInternal(env, logger);
   const capable = coverage.agents.filter((e) => e.tools_supported.includes("get_media_buys"));
 
@@ -263,6 +266,7 @@ export async function handleDspDeliveryLive(
   env: Env,
   logger: Logger,
 ): Promise<Response> {
+  ensureSelfHooksInstalled(env, logger);
   const url = new URL(request.url);
   const m = url.pathname.match(/^\/dsp\/media-buys\/([^/]+)\/delivery-live$/);
   if (!m) return errorResponse("INVALID_INPUT", "expected /dsp/media-buys/<id>/delivery-live", 400);
@@ -393,9 +397,10 @@ interface FireLiveBody {
 
 export async function handleDspCampaignFireLive(
   request: Request,
-  _env: Env,
+  env: Env,
   logger: Logger,
 ): Promise<Response> {
+  ensureSelfHooksInstalled(env, logger);
   const url = new URL(request.url);
   const m = url.pathname.match(/^\/dsp\/campaigns\/(cmp_[a-z0-9_]+)\/fire-live$/);
   if (!m) return errorResponse("INVALID_INPUT", "expected /dsp/campaigns/<id>/fire-live", 400);
@@ -479,9 +484,10 @@ interface UpdateLiveBody {
 
 export async function handleDspMediaBuyUpdateLive(
   request: Request,
-  _env: Env,
+  env: Env,
   logger: Logger,
 ): Promise<Response> {
+  ensureSelfHooksInstalled(env, logger);
   const url = new URL(request.url);
   const m = url.pathname.match(/^\/dsp\/media-buys\/([^/]+)\/update-live$/);
   if (!m) return errorResponse("INVALID_INPUT", "expected /dsp/media-buys/<id>/update-live", 400);
@@ -549,9 +555,10 @@ export async function handleDspMediaBuyUpdateLive(
 
 export async function handleDspCampaignSignalsLive(
   _request: Request,
-  _env: Env,
-  _logger: Logger,
+  env: Env,
+  logger: Logger,
 ): Promise<Response> {
+  ensureSelfHooksInstalled(env, logger);
   const url = new URL(_request.url);
   const m = url.pathname.match(/^\/dsp\/campaigns\/(cmp_[a-z0-9_]+)\/signals-live$/);
   if (!m) return errorResponse("INVALID_INPUT", "expected /dsp/campaigns/<id>/signals-live", 400);
@@ -611,6 +618,7 @@ export async function handleDspCampaignProductsLive(
   env: Env,
   logger: Logger,
 ): Promise<Response> {
+  ensureSelfHooksInstalled(env, logger);
   const url = new URL(_request.url);
   const m = url.pathname.match(/^\/dsp\/campaigns\/(cmp_[a-z0-9_]+)\/products-live$/);
   if (!m) return errorResponse("INVALID_INPUT", "expected /dsp/campaigns/<id>/products-live", 400);
@@ -675,9 +683,10 @@ export async function handleDspCampaignProductsLive(
 
 export async function handleDspAgentCapabilities(
   _request: Request,
-  _env: Env,
-  _logger: Logger,
+  env: Env,
+  logger: Logger,
 ): Promise<Response> {
+  ensureSelfHooksInstalled(env, logger);
   const url = new URL(_request.url);
   const m = url.pathname.match(/^\/dsp\/agents\/([a-z0-9_]+)\/capabilities-live$/i);
   if (!m) return errorResponse("INVALID_INPUT", "expected /dsp/agents/<id>/capabilities-live", 400);

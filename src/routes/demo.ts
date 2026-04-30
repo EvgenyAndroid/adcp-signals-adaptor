@@ -5957,6 +5957,72 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 }
 .canvas-permalink-copy:hover { color: var(--accent); border-color: var(--accent); }
 
+/* Wave 4: annotations modal — comments thread on a saved run */
+.canvas-annotation-toggle {
+  background: transparent; color: var(--text-mut);
+  border: 1px solid var(--border); border-radius: 3px;
+  padding: 0 8px; font-size: 10px; cursor: pointer;
+  font-family: inherit;
+}
+.canvas-annotation-toggle:hover { color: var(--accent); border-color: var(--accent); }
+.canvas-annotation-modal {
+  position: fixed; inset: 0; z-index: 9200;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.canvas-annotation-inner {
+  background: var(--bg-surface); border: 1px solid var(--accent);
+  border-radius: 6px; padding: 14px;
+  min-width: 480px; max-width: 700px;
+  display: flex; flex-direction: column; gap: 10px;
+  max-height: 80vh;
+}
+.canvas-annotation-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.canvas-annotation-close {
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 3px; width: 22px; height: 22px;
+  cursor: pointer; color: var(--text-mut); font-size: 14px;
+}
+.canvas-annotation-body {
+  flex: 1; overflow-y: auto; max-height: 50vh;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.canvas-annotation-row {
+  padding: 6px 10px; border-radius: 4px;
+  background: var(--bg-raised); border: 1px solid var(--border);
+}
+.canvas-annotation-meta {
+  display: flex; align-items: center; gap: 4px;
+  color: var(--text-mut); margin-bottom: 3px;
+}
+.canvas-annotation-del {
+  margin-left: auto; background: transparent; color: var(--text-mut);
+  border: 1px solid transparent; border-radius: 2px;
+  width: 18px; height: 18px; cursor: pointer; font-size: 10px;
+}
+.canvas-annotation-del:hover { color: var(--error); border-color: var(--error); }
+.canvas-annotation-text { color: var(--text); font-size: 12px; line-height: 1.4; }
+.canvas-annotation-form {
+  display: grid; grid-template-columns: 130px 1fr 60px; gap: 6px;
+  padding-top: 8px; border-top: 1px solid var(--border);
+}
+.canvas-annotation-form input {
+  padding: 5px 8px; font-size: 11.5px;
+  background: var(--bg-input); color: var(--text);
+  border: 1px solid var(--border); border-radius: 3px;
+  font-family: inherit;
+}
+.canvas-annotation-form input:focus { outline: none; border-color: var(--accent); }
+.canvas-annotation-form button {
+  background: var(--accent); color: #000;
+  border: 1px solid var(--accent); border-radius: 3px;
+  font-size: 11.5px; cursor: pointer; font-family: inherit;
+}
+
 /* Multi-brand A/B (light) — comparison panel + side-by-side cards. */
 .canvas-compare-btn {
   background: transparent; color: var(--text-dim);
@@ -15593,7 +15659,8 @@ async function _canvasSaveRun() {
     chip.innerHTML =
       '<svg class="ico" style="width:10px;height:10px"><use href="#icon-link"/></svg> ' +
       'permalink: <a href="' + escapeHtml(permalink) + '" class="mono">' + escapeHtml(d.permalink) + '</a> ' +
-      '<button class="canvas-permalink-copy" title="copy">copy</button>';
+      '<button class="canvas-permalink-copy" title="copy">copy</button>' +
+      '<button class="canvas-annotation-toggle" data-wf-id="' + escapeHtml(_canvasState.workflow_id || "") + '" title="Add or view annotations on this run">💬 annotations</button>';
     actions.appendChild(chip);
     var copyBtn = chip.querySelector(".canvas-permalink-copy");
     if (copyBtn) {
@@ -15604,7 +15671,105 @@ async function _canvasSaveRun() {
         });
       });
     }
+    var annBtn = chip.querySelector(".canvas-annotation-toggle");
+    if (annBtn) {
+      annBtn.addEventListener("click", function () {
+        var wfId = annBtn.getAttribute("data-wf-id");
+        if (wfId) _canvasOpenAnnotations(wfId);
+      });
+    }
   } catch (e) { /* non-fatal */ }
+}
+
+// Wave 4: annotations modal — list + add + delete on a saved workflow.
+async function _canvasOpenAnnotations(workflowId) {
+  var existing = document.getElementById("canvas-annotation-modal");
+  if (existing) existing.remove();
+  var modal = document.createElement("div");
+  modal.id = "canvas-annotation-modal";
+  modal.className = "canvas-annotation-modal";
+  modal.innerHTML =
+    '<div class="canvas-annotation-inner">' +
+      '<div class="canvas-annotation-head">' +
+        '<span class="mono">annotations · ' + escapeHtml(workflowId) + '</span>' +
+        '<button class="canvas-annotation-close" id="canvas-annotation-close">×</button>' +
+      '</div>' +
+      '<div class="canvas-annotation-body" id="canvas-annotation-body"><span class="orch-small">loading…</span></div>' +
+      '<div class="canvas-annotation-form">' +
+        '<input type="text" id="canvas-annotation-author" placeholder="your name (optional)" maxlength="80" />' +
+        '<input type="text" id="canvas-annotation-text" placeholder="add a note (max 500 chars)…" maxlength="500" />' +
+        '<button id="canvas-annotation-add">Add</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(modal);
+  document.getElementById("canvas-annotation-close").addEventListener("click", function () { modal.remove(); });
+  modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
+  document.getElementById("canvas-annotation-add").addEventListener("click", function () { _canvasAddAnnotation(workflowId); });
+  document.getElementById("canvas-annotation-text").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") _canvasAddAnnotation(workflowId);
+  });
+  await _canvasReloadAnnotations(workflowId);
+}
+
+async function _canvasReloadAnnotations(workflowId) {
+  var body = document.getElementById("canvas-annotation-body");
+  if (!body) return;
+  try {
+    var r = await fetch("/agents/workflow/runs/" + encodeURIComponent(workflowId) + "/annotation");
+    var d = await r.json();
+    if (!d.annotations || d.annotations.length === 0) {
+      body.innerHTML = '<span class="orch-small" style="color:var(--text-mut)">No annotations yet. Be the first.</span>';
+      return;
+    }
+    body.innerHTML = d.annotations.map(function (a) {
+      return '<div class="canvas-annotation-row">' +
+        '<div class="canvas-annotation-meta orch-small">' +
+          '<span class="mono">' + escapeHtml(a.author || "anonymous") + '</span> · ' +
+          '<span>' + escapeHtml(String(a.ts).slice(0, 19).replace("T", " ")) + '</span>' +
+          (a.ref ? ' · <span class="mono">' + escapeHtml(a.ref) + '</span>' : '') +
+          '<button class="canvas-annotation-del" data-ann-id="' + escapeHtml(a.annotation_id) + '" title="delete">✕</button>' +
+        '</div>' +
+        '<div class="canvas-annotation-text">' + escapeHtml(a.text) + '</div>' +
+      '</div>';
+    }).join("");
+    body.querySelectorAll(".canvas-annotation-del").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var id = b.getAttribute("data-ann-id");
+        if (id) _canvasDeleteAnnotation(workflowId, id);
+      });
+    });
+  } catch (e) {
+    body.innerHTML = '<span class="orch-small" style="color:var(--error)">load failed</span>';
+  }
+}
+
+async function _canvasAddAnnotation(workflowId) {
+  var author = document.getElementById("canvas-annotation-author");
+  var text = document.getElementById("canvas-annotation-text");
+  if (!text) return;
+  var t = (text.value || "").trim();
+  if (!t) return;
+  try {
+    var r = await fetch("/agents/workflow/runs/" + encodeURIComponent(workflowId) + "/annotation", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        author: (author && author.value) || "anonymous",
+        text: t,
+      }),
+    });
+    if (!r.ok) { showToast("annotation failed", true); return; }
+    text.value = "";
+    await _canvasReloadAnnotations(workflowId);
+  } catch (e) {
+    showToast("annotation error: " + ((e && e.message) || e), true);
+  }
+}
+
+async function _canvasDeleteAnnotation(workflowId, annId) {
+  try {
+    await fetch("/agents/workflow/runs/" + encodeURIComponent(workflowId) + "/annotation?annotation_id=" + encodeURIComponent(annId), { method: "DELETE" });
+    await _canvasReloadAnnotations(workflowId);
+  } catch (e) { /* noop */ }
 }
 
 // MVP #1: replay support — if the page loads with ?wf=<id>, fetch the

@@ -48,6 +48,8 @@ import {
   handleWorkflowSave,
   handleWorkflowRuns,
   handleWorkflowMeasurementStub,
+  handleWorkflowAllocate,
+  handleWorkflowAnnotation,
 } from "./routes/agentsEndpoints";
 import {
   handleBrandSearch,
@@ -448,10 +450,16 @@ export default {
                 response = await handleWorkflowFireBuy(request, env, logger);
             } else if (method === "POST" && path === "/agents/workflow/save") {
                 response = await handleWorkflowSave(request, env, logger);
+                // Wave 4: annotations — must be BEFORE the runs catch-all
+                // since /runs/<id>/annotation would otherwise collide.
+            } else if (path.match(/\/agents\/workflow\/runs\/wf_[a-z0-9]+\/annotation/i) && (method === "GET" || method === "POST" || method === "DELETE")) {
+                response = await handleWorkflowAnnotation(request, env, logger);
             } else if (method === "GET" && path.startsWith("/agents/workflow/runs")) {
                 response = await handleWorkflowRuns(request, env, logger);
             } else if (method === "GET" && path === "/agents/workflow/measurement-stub") {
                 response = await handleWorkflowMeasurementStub(request, env, logger);
+            } else if (method === "POST" && path === "/agents/workflow/allocate") {
+                response = await handleWorkflowAllocate(request, env, logger);
 
                 // ── Canvas v2 Phase 1: brand registry passthrough ───────────────────
             } else if (method === "GET" && path === "/brands/search") {

@@ -82,6 +82,10 @@ import {
   handleAgenticRemediate,
   handleAgenticMemoryRecall,
   handleAgenticChat,
+  handleAgenticRefine,
+  handleAgenticCritique,
+  handleAgenticCorrection,
+  handleAgenticCorrectionsRecall,
 } from "./routes/agenticRoutes";
 import {
   handleAudienceCompose,
@@ -513,6 +517,14 @@ export default {
                 response = await handleAgenticRemediate(request, env, logger);
             } else if (method === "POST" && path === "/agentic/chat") {
                 response = await handleAgenticChat(request, env, logger);
+            } else if (method === "POST" && path === "/agentic/refine") {
+                response = await handleAgenticRefine(request, env, logger);
+            } else if (method === "POST" && path === "/agentic/critique") {
+                response = await handleAgenticCritique(request, env, logger);
+            } else if (method === "POST" && path === "/agentic/memory/correction") {
+                response = await handleAgenticCorrection(request, env, logger);
+            } else if (method === "GET" && path === "/agentic/memory/corrections") {
+                response = await handleAgenticCorrectionsRecall(request, env, logger);
             } else if (method === "GET" && path === "/agentic/memory/recall") {
                 response = await handleAgenticMemoryRecall(request, env, logger);
 

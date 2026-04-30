@@ -1681,8 +1681,23 @@ ${STYLES}
                   <svg class="ico"><use href="#icon-bolt"/></svg>
                   <span>Execute plan</span>
                 </button>
+                <button class="agentic-critique-btn" id="agentic-critique-btn" title="Self-critique: agent reviews its own plan for missing steps, risky assumptions, compliance gaps before fire">
+                  <span>🔍 Self-critique</span>
+                </button>
                 <span class="orch-small" style="color:var(--text-mut)">streams reasoning + tool results live</span>
               </div>
+              <!-- Wave 3: critique result panel -->
+              <div class="agentic-critique-result" id="agentic-critique-result"></div>
+              <!-- Wave 3: multi-turn refinement input -->
+              <div class="agentic-refine-row">
+                <input type="text" class="agentic-refine-input" id="agentic-refine-input"
+                  placeholder='Refine: "exclude alcohol", "shorten flight to 14 days", "skip Adzymic"…'
+                  maxlength="500" />
+                <button class="agentic-refine-btn" id="agentic-refine-btn">
+                  <span>↻ Refine</span>
+                </button>
+              </div>
+              <div class="agentic-refine-result" id="agentic-refine-result"></div>
             </div>
 
             <!-- Execution panel -->
@@ -5466,6 +5481,89 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   font-family: inherit;
 }
 .agentic-execute-btn:disabled { opacity: 0.6; cursor: wait; }
+
+/* Wave 3: self-critique button + result panel */
+.agentic-critique-btn {
+  background: transparent; color: var(--accent);
+  border: 1px solid var(--accent); border-radius: 4px;
+  padding: 4px 12px; font-size: 12px; cursor: pointer;
+  font-family: inherit;
+}
+.agentic-critique-btn:hover:not(:disabled) { background: var(--accent); color: #000; }
+.agentic-critique-btn:disabled { opacity: 0.6; cursor: wait; }
+.agentic-critique-result { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.agentic-crit-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 5px 10px; border-radius: 3px;
+  border: 1px solid currentColor; font-size: 11px;
+}
+.agentic-crit-icon { font-size: 14px; }
+.agentic-crit-looks_good     { color: var(--success); background: rgba(102,187,106,0.10); }
+.agentic-crit-minor_issues   { color: var(--text-mut); background: var(--bg-input); }
+.agentic-crit-needs_revision { color: var(--warning, #d4a017); background: rgba(212,160,23,0.10); }
+.agentic-crit-block          { color: var(--error); background: rgba(239,68,68,0.10); }
+.agentic-crit-issue {
+  padding: 5px 10px; border-radius: 3px;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-left-width: 3px;
+  display: grid; grid-template-columns: 50px 100px 1fr; gap: 6px;
+  align-items: baseline; font-size: 11px;
+}
+.agentic-crit-issue .agentic-crit-msg { grid-column: 3; color: var(--text-dim); }
+.agentic-crit-issue .agentic-crit-fix {
+  grid-column: 1 / -1; color: var(--accent); font-size: 10.5px;
+  margin-top: 2px; padding-top: 2px;
+  border-top: 1px dashed var(--border);
+}
+.agentic-crit-sev {
+  font-size: 8.5px; padding: 1px 4px; border-radius: 2px;
+  font-weight: 700; letter-spacing: 0.05em;
+}
+.agentic-crit-issue.agentic-crit-sev-info  { border-left-color: var(--text-mut); }
+.agentic-crit-issue.agentic-crit-sev-warn  { border-left-color: var(--warning, #d4a017); }
+.agentic-crit-issue.agentic-crit-sev-block { border-left-color: var(--error); }
+.agentic-crit-issue.agentic-crit-sev-info  .agentic-crit-sev { background: var(--bg-input); color: var(--text-mut); }
+.agentic-crit-issue.agentic-crit-sev-warn  .agentic-crit-sev { background: var(--warning, #d4a017); color: #000; }
+.agentic-crit-issue.agentic-crit-sev-block .agentic-crit-sev { background: var(--error); color: #000; }
+.agentic-crit-cat {
+  font-size: 9px; color: var(--text-mut);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+
+/* Wave 3: refinement input + diff panel */
+.agentic-refine-row {
+  display: flex; gap: 6px; margin-top: 8px;
+  padding-top: 8px; border-top: 1px dashed var(--border);
+}
+.agentic-refine-input {
+  flex: 1; padding: 5px 10px; font-size: 12px;
+  background: var(--bg-raised); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px;
+  font-family: inherit;
+}
+.agentic-refine-input:focus { outline: none; border-color: var(--accent); }
+.agentic-refine-btn {
+  background: var(--bg-input); color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 4px 12px; font-size: 11px; cursor: pointer;
+  font-family: inherit;
+}
+.agentic-refine-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.agentic-refine-btn:disabled { opacity: 0.6; cursor: wait; }
+.agentic-refine-result { margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
+.agentic-refine-summary {
+  font-size: 11.5px; color: var(--accent); font-style: italic;
+  padding: 4px 8px; background: rgba(56,182,255,0.06);
+  border-radius: 3px;
+}
+.agentic-refine-change {
+  display: flex; align-items: center; gap: 8px;
+  padding: 3px 8px; font-size: 11px;
+  background: var(--bg-raised); border-radius: 3px;
+}
+.agentic-refine-field { color: var(--text); font-weight: 600; min-width: 140px; }
+.agentic-refine-arrow { color: var(--accent); }
+.agentic-refine-change-plan { background: rgba(102,187,106,0.06); }
 .agentic-execute-btn .ico { width: 12px; height: 12px; }
 
 /* Execution panel */
@@ -17563,6 +17661,107 @@ function _agenticRenderPlan(plan) {
   if (execBtn) {
     execBtn.onclick = null;
     execBtn.addEventListener("click", _agenticExecute);
+  }
+  // Wave 3: wire self-critique + refine controls.
+  var critBtn = document.getElementById("agentic-critique-btn");
+  if (critBtn) { critBtn.onclick = null; critBtn.addEventListener("click", _agenticCritique); }
+  var refineBtn = document.getElementById("agentic-refine-btn");
+  if (refineBtn) { refineBtn.onclick = null; refineBtn.addEventListener("click", _agenticRefine); }
+  var refineInp = document.getElementById("agentic-refine-input");
+  if (refineInp) {
+    refineInp.onkeydown = null;
+    refineInp.addEventListener("keydown", function (e) { if (e.key === "Enter") _agenticRefine(); });
+  }
+}
+
+// Wave 3: self-critique. Calls /agentic/critique with brief + plan;
+// renders issue cards color-coded by severity.
+async function _agenticCritique() {
+  if (!_agenticCurrent || !_agenticCurrent.plan) return;
+  var btn = document.getElementById("agentic-critique-btn");
+  var out = document.getElementById("agentic-critique-result");
+  if (!out) return;
+  if (btn) { btn.disabled = true; btn.querySelector("span").textContent = "🔍 reviewing…"; }
+  out.innerHTML = '<span class="orch-small">agent reviewing the plan…</span>';
+  try {
+    var r = await fetch("/agentic/critique", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brief: _agenticCurrent.expanded, plan: _agenticCurrent.plan }),
+    });
+    var d = await r.json();
+    var overallCls = "agentic-crit-" + (d.overall || "looks_good");
+    var ico = d.overall === "block" ? "⛔" : d.overall === "needs_revision" ? "⚠" : d.overall === "minor_issues" ? "ℹ" : "✓";
+    out.innerHTML =
+      '<div class="agentic-crit-banner ' + overallCls + '">' +
+        '<span class="agentic-crit-icon">' + ico + '</span>' +
+        '<span><strong>' + escapeHtml((d.overall || "looks_good").toUpperCase().replace(/_/g, " ")) + '</strong></span>' +
+        '<span class="orch-small">' + escapeHtml(d.summary || "") + '</span>' +
+        '<span class="orch-small mono" style="margin-left:auto">' + (d.mode === "live" ? "Claude" : "template") + '</span>' +
+      '</div>' +
+      (d.issues && d.issues.length ? d.issues.map(function (i) {
+        return '<div class="agentic-crit-issue agentic-crit-sev-' + escapeHtml(i.severity) + '">' +
+          '<span class="agentic-crit-sev mono">' + escapeHtml((i.severity || "info").toUpperCase()) + '</span>' +
+          '<span class="agentic-crit-cat mono">' + escapeHtml(i.category || "other") + '</span>' +
+          '<div class="agentic-crit-msg">' + escapeHtml(i.message || "") + '</div>' +
+          (i.suggested_fix ? '<div class="agentic-crit-fix">→ ' + escapeHtml(i.suggested_fix) + '</div>' : '') +
+        '</div>';
+      }).join("") : '<div class="orch-small" style="color:var(--text-mut);margin-top:6px">No issues flagged. Plan ready to execute.</div>');
+  } catch (e) {
+    out.innerHTML = '<span class="orch-small" style="color:var(--error)">' + escapeHtml(String((e && e.message) || e)) + '</span>';
+  } finally {
+    if (btn) { btn.disabled = false; btn.querySelector("span").textContent = "🔍 Self-critique"; }
+  }
+}
+
+// Wave 3: multi-turn refinement.
+async function _agenticRefine() {
+  if (!_agenticCurrent || !_agenticCurrent.expanded || !_agenticCurrent.plan) return;
+  var inp = document.getElementById("agentic-refine-input");
+  var btn = document.getElementById("agentic-refine-btn");
+  var out = document.getElementById("agentic-refine-result");
+  if (!inp || !out) return;
+  var instruction = (inp.value || "").trim();
+  if (!instruction) return;
+  if (btn) { btn.disabled = true; btn.querySelector("span").textContent = "thinking…"; }
+  out.innerHTML = '<span class="orch-small">refining brief + replanning against current coverage…</span>';
+  try {
+    var r = await fetch("/agentic/refine", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        previous_brief: _agenticCurrent.expanded,
+        previous_plan: _agenticCurrent.plan,
+        instruction: instruction,
+      }),
+    });
+    var d = await r.json();
+    if (d.error) { out.innerHTML = '<span class="orch-small" style="color:var(--error)">' + escapeHtml(d.error) + '</span>'; return; }
+
+    // Replace state + re-render the brief + plan sections.
+    _agenticCurrent.expanded = d.refined;
+    _agenticCurrent.plan = d.plan;
+    _agenticRenderBrief(d.refined);
+    _agenticRenderPlan(d.plan);
+
+    // Show diff inline
+    var changeRows = (d.changes || []).map(function (c) {
+      return '<div class="agentic-refine-change">' +
+        '<span class="agentic-refine-field mono">' + escapeHtml(c.field) + '</span>' +
+        '<span class="agentic-refine-arrow">→</span>' +
+        '<span class="orch-small">' + escapeHtml(JSON.stringify(c.before)) + ' ⇒ ' + escapeHtml(JSON.stringify(c.after)) + '</span>' +
+      '</div>';
+    }).join("");
+    var planChangeRows = (d.plan_changes || []).map(function (c) {
+      return '<div class="agentic-refine-change agentic-refine-change-plan"><span class="mono">' + escapeHtml(c.kind) + '</span> <span class="mono">' + escapeHtml(c.detail) + '</span></div>';
+    }).join("");
+    out.innerHTML =
+      '<div class="agentic-refine-summary">' + escapeHtml(d.summary || "Refined.") + '</div>' +
+      changeRows +
+      planChangeRows;
+    inp.value = "";
+  } catch (e) {
+    out.innerHTML = '<span class="orch-small" style="color:var(--error)">' + escapeHtml(String((e && e.message) || e)) + '</span>';
+  } finally {
+    if (btn) { btn.disabled = false; btn.querySelector("span").textContent = "↻ Refine"; }
   }
 }
 

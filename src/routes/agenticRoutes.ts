@@ -338,6 +338,311 @@ export async function handleAgenticRemediate(request: Request, env: Env, _logger
   return jsonResponse({ advisory: out.advisory, remediations: out.remediations, trace: out.trace });
 }
 
+// ── POST /agentic/refine ───────────────────────────────────────────────────
+//
+// Wave 3 — multi-turn conversational refinement.
+//
+// Caller provides the previous ExpandedBrief + ExecutionPlan + a free-text
+// instruction ("actually exclude alcohol", "shorten flight to 14 days",
+// "increase budget to $200K", "skip Adzymic"). We re-expand the brief
+// taking the instruction into account, then re-plan against the current
+// coverage. Returns the diff so the client can highlight what changed.
+
+interface RefineBody {
+  previous_brief?: ExpandedBrief;
+  previous_plan?: ExecutionPlan;
+  instruction?: string;
+}
+
+export async function handleAgenticRefine(request: Request, env: Env, logger: Logger): Promise<Response> {
+  void logger;
+  let body: RefineBody = {};
+  try { body = await request.json(); } catch { /* empty */ }
+  if (!body.previous_brief || !body.instruction || body.instruction.trim().length === 0) {
+    return errorResponse("INVALID_INPUT", "previous_brief and instruction required", 400);
+  }
+  if (body.instruction.length > 500) {
+    return errorResponse("INVALID_INPUT", "instruction max 500 chars", 400);
+  }
+  const ctx = makeAgenticContext(env);
+
+  // Synthesize a new input by combining the old brief input with the
+  // refinement instruction. The expander's LLM path treats this as a
+  // fresh expansion; the template path falls back to its rules.
+  const composed = `${body.previous_brief.input} — refinement: ${body.instruction}`;
+  const refined = await expandBrief(ctx, composed);
+
+  // Diff: industries / kpi / budget / geo / flight that changed.
+  const changes: Array<{ field: string; before: unknown; after: unknown }> = [];
+  const fields = ["brand_name", "kpi", "kpi_target", "budget_usd_estimate", "flight_days", "dayparting_hint"] as const;
+  for (const f of fields) {
+    const a = body.previous_brief[f];
+    const b = refined[f];
+    if (a !== b) changes.push({ field: f, before: a, after: b });
+  }
+  // Industries: detect added/removed
+  const prevInd = new Set((body.previous_brief.industries || []).map((s) => s.toLowerCase()));
+  const newInd = new Set((refined.industries || []).map((s) => s.toLowerCase()));
+  const addedInd = [...newInd].filter((i) => !prevInd.has(i));
+  const removedInd = [...prevInd].filter((i) => !newInd.has(i));
+  if (addedInd.length > 0) changes.push({ field: "industries.added", before: null, after: addedInd });
+  if (removedInd.length > 0) changes.push({ field: "industries.removed", before: removedInd, after: null });
+
+  // Re-plan against the (refined) brief.
+  const coverage = await buildCoverage(env);
+  const plan = await planExecution(ctx, refined, coverage);
+
+  // Plan-step diff: what tools changed, what agents changed.
+  const prevTools = new Set((body.previous_plan?.steps ?? []).map((s) => s.tool));
+  const newTools = new Set(plan.steps.map((s) => s.tool));
+  const planChanges: Array<{ kind: string; detail: string }> = [];
+  for (const t of newTools) if (!prevTools.has(t)) planChanges.push({ kind: "tool_added", detail: t });
+  for (const t of prevTools) if (!newTools.has(t)) planChanges.push({ kind: "tool_removed", detail: t });
+
+  return jsonResponse({
+    mode: ctx.mode,
+    instruction: body.instruction.trim(),
+    refined,
+    plan,
+    changes,
+    plan_changes: planChanges,
+    summary: changes.length === 0 && planChanges.length === 0
+      ? "No structural changes — the refinement nudged language only."
+      : `${changes.length} brief field(s) changed${planChanges.length ? `; ${planChanges.length} plan step(s) changed.` : "."}`,
+  });
+}
+
+// ── POST /agentic/critique ─────────────────────────────────────────────────
+//
+// Wave 3 — self-critique. Before execution, ask the agent to review its
+// own plan. Live mode = LLM critique (Claude inspects the plan + brief
+// for inconsistencies, missing steps, or risky assumptions). Template
+// mode = rule-based heuristics (e.g. "plan has create_media_buy but
+// no governance gate; flag", "BRAND_LIFT KPI without viewability_floor;
+// flag").
+
+interface CritiqueBody {
+  brief?: ExpandedBrief;
+  plan?: ExecutionPlan;
+}
+
+export interface CritiqueIssue {
+  severity: "info" | "warn" | "block";
+  category: "missing_step" | "risky_assumption" | "kpi_mismatch" | "compliance_gap" | "vendor_concern" | "other";
+  message: string;
+  suggested_fix?: string;
+}
+
+export interface CritiqueResult {
+  mode: "live" | "template";
+  issues: CritiqueIssue[];
+  overall: "looks_good" | "minor_issues" | "needs_revision" | "block";
+  summary: string;
+  /** Confidence of the critique 0-1. */
+  confidence: number;
+}
+
+const CRITIQUE_SYSTEM = `You are a senior media-buying strategist reviewing a colleague's execution plan before they fire it. Your job is to flag issues — missing steps, risky assumptions, KPI mismatches, compliance gaps, vendor concerns — in a constructive, terse way. Each issue: severity (info/warn/block), category, message (1 sentence), suggested_fix (optional, 1 sentence). Don't pad; only flag real concerns. Bias toward action — every issue should have a fix the operator can apply.`;
+
+const CRITIQUE_SCHEMA_HINT = `{
+  "issues": [
+    {
+      "severity": "info" | "warn" | "block",
+      "category": "missing_step" | "risky_assumption" | "kpi_mismatch" | "compliance_gap" | "vendor_concern" | "other",
+      "message": string,
+      "suggested_fix": string | null
+    }
+  ],
+  "overall": "looks_good" | "minor_issues" | "needs_revision" | "block",
+  "confidence": number
+}`;
+
+function templateCritique(brief: ExpandedBrief, plan: ExecutionPlan): CritiqueResult {
+  const issues: CritiqueIssue[] = [];
+  const tools = new Set(plan.steps.map((s) => s.tool));
+
+  // Heuristic 1: BRAND_LIFT campaign with no viewability hint
+  if (brief.kpi === "BRAND_LIFT" && !brief.dayparting_hint) {
+    issues.push({
+      severity: "info",
+      category: "kpi_mismatch",
+      message: "BRAND_LIFT KPI without dayparting hint — typical brand-lift campaigns over-index on peak hours for memorability.",
+      suggested_fix: "Add dayparting_hint='peak_evening' to the brief for awareness goals.",
+    });
+  }
+  // Heuristic 2: media_buy without governance gate
+  if (tools.has("create_media_buy") && !tools.has("check_governance")) {
+    issues.push({
+      severity: "warn",
+      category: "missing_step",
+      message: "Plan fires create_media_buy without an explicit governance gate — predictive check is silent.",
+      suggested_fix: "Add a check_governance step before media-buy. (Self-mock available; no live vendor needed.)",
+    });
+  }
+  // Heuristic 3: industries-imply-policy but no gate (alcohol/pharma/gambling/tobacco/cannabis/political)
+  const REGULATED = ["alcohol", "tobacco", "cannabis", "gambling", "pharma", "political", "ai_generated_content"];
+  const hasRegulated = (brief.industries || []).some((i) => REGULATED.some((r) => i.toLowerCase().includes(r)));
+  if (hasRegulated && !tools.has("check_governance")) {
+    issues.push({
+      severity: "block",
+      category: "compliance_gap",
+      message: `Brand industries include regulated category (${brief.industries.find((i) => REGULATED.some((r) => i.toLowerCase().includes(r)))}); plan does NOT include check_governance.`,
+      suggested_fix: "Add check_governance and check_brand_rights before create_media_buy. Don't fire on regulated brands without.",
+    });
+  }
+  // Heuristic 4: plan length sanity
+  if (plan.steps.length === 0) {
+    issues.push({
+      severity: "block",
+      category: "other",
+      message: "Plan is empty — no steps to execute.",
+      suggested_fix: "Re-run brief expansion + planning.",
+    });
+  }
+  // Heuristic 5: budget sanity
+  if (brief.budget_usd_estimate !== undefined && brief.budget_usd_estimate < 1000) {
+    issues.push({
+      severity: "warn",
+      category: "risky_assumption",
+      message: `Budget estimate is very low ($${brief.budget_usd_estimate}). Most buying agents impose a minimum.`,
+      suggested_fix: "Confirm budget with the operator; add a minimum-budget guard before fire.",
+    });
+  }
+
+  let overall: CritiqueResult["overall"];
+  if (issues.some((i) => i.severity === "block")) overall = "block";
+  else if (issues.filter((i) => i.severity === "warn").length >= 2) overall = "needs_revision";
+  else if (issues.length > 0) overall = "minor_issues";
+  else overall = "looks_good";
+
+  const summary = issues.length === 0
+    ? "Template critique: no concerns flagged. Plan looks ready to execute."
+    : `Template critique flagged ${issues.length} issue(s): ${issues.filter((i) => i.severity === "block").length} block · ${issues.filter((i) => i.severity === "warn").length} warn · ${issues.filter((i) => i.severity === "info").length} info.`;
+
+  return { mode: "template", issues, overall, summary, confidence: 0.85 };
+}
+
+export async function handleAgenticCritique(request: Request, env: Env, _logger: Logger): Promise<Response> {
+  let body: CritiqueBody = {};
+  try { body = await request.json(); } catch { /* empty */ }
+  if (!body.brief || !body.plan) return errorResponse("INVALID_INPUT", "brief and plan required", 400);
+  const ctx = makeAgenticContext(env);
+
+  if (ctx.mode === "live") {
+    const r = await llmCall(ctx, {
+      system: CRITIQUE_SYSTEM,
+      messages: [{
+        role: "user",
+        content: `Brief:\n${JSON.stringify(body.brief, null, 2)}\n\nPlan:\n${JSON.stringify(body.plan, null, 2)}\n\nProvide a critique. Be terse and actionable — only flag real concerns.`,
+      }],
+      json_schema_hint: CRITIQUE_SCHEMA_HINT,
+      max_tokens: 1500,
+    });
+    if (r.ok && r.json) {
+      const j = r.json as Partial<CritiqueResult>;
+      const issues = Array.isArray(j.issues) ? j.issues : [];
+      const out: CritiqueResult = {
+        mode: "live",
+        issues: issues as CritiqueIssue[],
+        overall: (j.overall as CritiqueResult["overall"]) || "looks_good",
+        summary: `Claude critique: ${issues.length} issue(s) flagged. Latency ${r.latency_ms}ms.`,
+        confidence: typeof j.confidence === "number" ? j.confidence : 0.8,
+      };
+      return jsonResponse(out);
+    }
+  }
+
+  // Template fallback (also runs if live mode fails).
+  return jsonResponse(templateCritique(body.brief, body.plan));
+}
+
+// ── POST /agentic/memory/correction ────────────────────────────────────────
+//
+// Wave 3 — few-shot learning from corrections.
+//
+// When the operator overrides governance / rejects a signal pick / swaps
+// a product, log the correction to the agentic memory ring buffer so
+// future similar briefs surface the prior decision. The correction is
+// keyed on the brief that triggered it; recall semantics use the same
+// industry-overlap match as the existing memory recall.
+
+interface CorrectionBody {
+  brief?: ExpandedBrief;
+  correction?: {
+    kind: "override_governance" | "reject_signal" | "swap_product" | "add_attestation" | "other";
+    before: unknown;
+    after: unknown;
+    note?: string;
+  };
+}
+
+export async function handleAgenticCorrection(request: Request, env: Env, _logger: Logger): Promise<Response> {
+  let body: CorrectionBody = {};
+  try { body = await request.json(); } catch { /* empty */ }
+  if (!body.brief || !body.correction || !body.correction.kind) {
+    return errorResponse("INVALID_INPUT", "brief and correction.kind required", 400);
+  }
+
+  // Memory entry mirrors the workflow-history pattern; corrections live
+  // in a parallel ring buffer keyed by industries × kpi.
+  const id = "corr_" + Math.random().toString(36).slice(2, 10);
+  const entry = {
+    correction_id: id,
+    ts: new Date().toISOString(),
+    brief_input: body.brief.input,
+    brief_industries: body.brief.industries,
+    brief_kpi: body.brief.kpi,
+    kind: body.correction.kind,
+    before: body.correction.before,
+    after: body.correction.after,
+    ...(body.correction.note ? { note: body.correction.note } : {}),
+  };
+
+  const indexKey = "agentic_corrections_index:v1";
+  try {
+    const existing = await env.SIGNALS_CACHE.get(indexKey, "json");
+    const list: Array<typeof entry> = Array.isArray(existing) ? (existing as Array<typeof entry>) : [];
+    const updated = [entry, ...list].slice(0, 50);
+    await env.SIGNALS_CACHE.put(indexKey, JSON.stringify(updated), { expirationTtl: 60 * 60 * 24 * 30 });
+  } catch (e) {
+    return errorResponse("KV_ERROR", "failed to persist correction: " + String((e as Error).message || e), 500);
+  }
+
+  return jsonResponse({ correction_id: id, stored: true });
+}
+
+// ── GET /agentic/memory/corrections ────────────────────────────────────────
+//
+// Wave 3 — recall corrections relevant to a brief. Same scoring as
+// recallSimilar (industry-overlap × kpi-match). The Agentic Canvas
+// surfaces matching corrections in the memory panel as "you previously
+// did X for similar brands" hints.
+
+export async function handleAgenticCorrectionsRecall(request: Request, env: Env, _logger: Logger): Promise<Response> {
+  const url = new URL(request.url);
+  const industriesStr = url.searchParams.get("industries") || "";
+  const kpi = url.searchParams.get("kpi") || "ROAS";
+  const indLower = industriesStr.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+
+  let list: Array<{ correction_id: string; ts: string; brief_industries: string[]; brief_kpi: string; brief_input: string; kind: string; before: unknown; after: unknown; note?: string }> = [];
+  try {
+    const raw = await env.SIGNALS_CACHE.get("agentic_corrections_index:v1", "json");
+    if (Array.isArray(raw)) list = raw as typeof list;
+  } catch { /* empty */ }
+
+  const scored = list.map((c) => {
+    const overlap = c.brief_industries.filter((i) => indLower.includes(i.toLowerCase())).length;
+    const kpiMatch = c.brief_kpi === kpi ? 1 : 0;
+    return { c, score: overlap * 2 + kpiMatch };
+  }).filter((x) => x.score > 0).sort((a, b) => b.score - a.score).slice(0, 5);
+
+  return jsonResponse({
+    matches: scored.map((s) => s.c),
+    count: scored.length,
+    hint: scored.length === 0 ? "No matching corrections in memory." : `Found ${scored.length} matching correction(s) from prior runs.`,
+  });
+}
+
 // ── GET /agentic/memory/recall ─────────────────────────────────────────────
 
 export async function handleAgenticMemoryRecall(request: Request, env: Env, _logger: Logger): Promise<Response> {

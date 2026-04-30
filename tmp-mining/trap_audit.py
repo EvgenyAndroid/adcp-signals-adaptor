@@ -72,6 +72,27 @@ for i, line in enumerate(lines, 1):
             bs_count = 0
             idx += 1
 
+# Trap 3: single-backslash forward-slash inside a regex literal.
+# `/foo\/bar/` in source → `/foo/bar/` in served JS — invalid syntax.
+# Common in regex literals; use string-slice or double-backslash instead.
+traps_regex = []
+for i, line in enumerate(lines, 1):
+    if i < SCRIPT_BODY_START_LINE: continue
+    stripped = line.lstrip()
+    if stripped.startswith('//') or stripped.startswith('*'): continue
+    j = 0
+    while j < len(line) - 1:
+        if line[j] == BS and line[j+1] == '/':
+            bs = 1
+            k = j - 1
+            while k >= 0 and line[k] == BS:
+                bs += 1
+                k -= 1
+            if bs % 2 == 1:
+                traps_regex.append((i, line.rstrip()[:200]))
+                break
+        j += 1
+
 print(f'Trap 1 — single \\\' inside non-comment line: {len(traps_apo)} match(es)')
 for i, l in traps_apo[:10]:
     print(f'  L{i}: {l}')
@@ -79,8 +100,12 @@ print()
 print(f'Trap 2 — single-backslash escape in JS string: {len(traps_esc)} match(es)')
 for i, l in traps_esc[:10]:
     print(f'  L{i}: {l}')
+print()
+print(f'Trap 3 — single \\/ in regex literal (or escape outside string): {len(traps_regex)} match(es)')
+for i, l in traps_regex[:10]:
+    print(f'  L{i}: {l}')
 
-if traps_apo or traps_esc:
+if traps_apo or traps_esc or traps_regex:
     print()
     print('REMEDIATION: double the backslash in source so the served JS sees the intended escape.')
     sys.exit(1)

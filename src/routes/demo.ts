@@ -65,6 +65,7 @@ ${STYLES}
     <symbol id="icon-activations" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10 5 L10 10 L13 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
     <symbol id="icon-plus" viewBox="0 0 20 20"><line x1="10" y1="4" x2="10" y2="16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="4" y1="10" x2="16" y2="10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="icon-minus" viewBox="0 0 20 20"><line x1="4" y1="10" x2="16" y2="10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="icon-chevron-down" viewBox="0 0 20 20"><path d="M5 8 L10 13 L15 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   </defs>
 </svg>
 
@@ -81,120 +82,192 @@ ${STYLES}
     </div>
 
     <nav class="sidebar-nav">
-      <div class="nav-group-label">Workspace</div>
-      <button class="nav-item active" data-tab="discover">
-        <svg class="ico"><use href="#icon-radar"/></svg><span>Discover</span>
-      </button>
-      <button class="nav-item" data-tab="catalog">
-        <svg class="ico"><use href="#icon-grid"/></svg><span>Catalog</span>
-        <span class="nav-count" id="nav-catalog-count">—</span>
-      </button>
-      <button class="nav-item" data-tab="concepts">
-        <svg class="ico"><use href="#icon-network"/></svg><span>Concepts</span>
-      </button>
 
-      <div class="nav-group-label">Visualization</div>
-      <button class="nav-item" data-tab="treemap">
-        <svg class="ico"><use href="#icon-treemap"/></svg><span>Treemap</span>
-      </button>
-      <button class="nav-item" data-tab="builder">
-        <svg class="ico"><use href="#icon-builder"/></svg><span>Builder</span>
-      </button>
-      <button class="nav-item" data-tab="overlap">
-        <svg class="ico"><use href="#icon-network"/></svg><span>Overlap</span>
-      </button>
-      <button class="nav-item" data-tab="embedding">
-        <svg class="ico"><use href="#icon-chart"/></svg><span>Embedding</span>
-      </button>
-      <button class="nav-item" data-tab="lab">
-        <svg class="ico"><use href="#icon-bolt"/></svg><span>Emb. Lab</span>
-        <span class="nav-tag">new</span>
-      </button>
-      <button class="nav-item" data-tab="portfolio">
-        <svg class="ico"><use href="#icon-chart"/></svg><span>Portfolio</span>
-        <span class="nav-tag">new</span>
-      </button>
-      <button class="nav-item" data-tab="composer">
-        <svg class="ico"><use href="#icon-builder"/></svg><span>Composer</span>
-      </button>
-      <button class="nav-item" data-tab="expression">
-        <svg class="ico"><use href="#icon-network"/></svg><span>Expression</span>
-        <span class="nav-tag">new</span>
-      </button>
-      <button class="nav-item" data-tab="journey">
-        <svg class="ico"><use href="#icon-activations"/></svg><span>Journey</span>
-        <span class="nav-tag">new</span>
-      </button>
-      <button class="nav-item" data-tab="planner">
-        <svg class="ico"><use href="#icon-chart"/></svg><span>Scenario</span>
-        <span class="nav-tag">new</span>
-      </button>
-      <button class="nav-item" data-tab="snapshots">
-        <svg class="ico"><use href="#icon-book"/></svg><span>Snapshots</span>
-        <span class="nav-tag">new</span>
-      </button>
-      <button class="nav-item" data-tab="freshness">
-        <svg class="ico"><use href="#icon-info"/></svg><span>Freshness</span>
-        <span class="nav-tag">new</span>
-      </button>
-      <button class="nav-item" data-tab="seasonality">
-        <svg class="ico"><use href="#icon-info"/></svg><span>Seasonality</span>
-        <span class="nav-tag">new</span>
-      </button>
-      <button class="nav-item" data-tab="federation">
-        <svg class="ico"><use href="#icon-network"/></svg><span>Federation</span>
-        <span class="nav-tag nav-tag-muted">a2a</span>
-      </button>
-      <button class="nav-item" data-tab="orchestrator">
-        <svg class="ico"><use href="#icon-network"/></svg><span>Orchestrator</span>
-        <span class="nav-tag">new</span>
-      </button>
-      <button class="nav-item" data-tab="canvas">
-        <svg class="ico"><use href="#icon-bolt"/></svg><span>Canvas</span>
-        <span class="nav-tag">new</span>
-      </button>
-      <button class="nav-item" data-tab="campaign">
-        <svg class="ico"><use href="#icon-network"/></svg><span>Campaign</span>
-        <span class="nav-tag">DSP</span>
-      </button>
-      <button class="nav-item" data-tab="agentic">
-        <svg class="ico"><use href="#icon-bolt"/></svg><span>Agentic</span>
-        <span class="nav-tag">AI</span>
-      </button>
-      <a class="nav-item" href="/race-canvas">
-        <svg class="ico"><use href="#icon-network"/></svg><span>Race Canvas</span>
-        <span class="nav-tag">new</span>
-      </a>
-      <a class="nav-item" href="/vendor-health">
-        <svg class="ico"><use href="#icon-radar"/></svg><span>Vendor Health</span>
-        <span class="nav-tag">new</span>
-      </a>
-      <button class="nav-item" data-tab="activations">
-        <svg class="ico"><use href="#icon-activations"/></svg><span>Activations</span>
-        <span class="nav-count" id="nav-activations-count">—</span>
-      </button>
-      <button class="nav-item" data-tab="destinations">
-        <svg class="ico"><use href="#icon-arrow-right"/></svg><span>Destinations</span>
-        <span class="nav-count" id="nav-destinations-count">—</span>
-      </button>
+      <!-- Group: Signals (sell-side discovery + browsing) -->
+      <div class="nav-group" data-group-id="signals">
+        <button class="nav-group-header" type="button" data-group-toggle>
+          <svg class="ico ico-group"><use href="#icon-radar"/></svg>
+          <span class="nav-group-title">Signals</span>
+          <svg class="nav-group-chevron"><use href="#icon-chevron-down"/></svg>
+        </button>
+        <div class="nav-group-items">
+          <button class="nav-item active" data-tab="discover">
+            <svg class="ico"><use href="#icon-radar"/></svg><span>Discover</span>
+          </button>
+          <button class="nav-item" data-tab="catalog">
+            <svg class="ico"><use href="#icon-grid"/></svg><span>Catalog</span>
+            <span class="nav-count" id="nav-catalog-count">—</span>
+          </button>
+          <button class="nav-item" data-tab="concepts">
+            <svg class="ico"><use href="#icon-network"/></svg><span>Concepts</span>
+          </button>
+        </div>
+      </div>
 
-      <div class="nav-group-label">Reference</div>
-      <button class="nav-item" data-tab="capabilities">
-        <svg class="ico"><use href="#icon-info"/></svg><span>Capabilities</span>
-      </button>
-      <button class="nav-item" data-tab="devkit">
-        <svg class="ico"><use href="#icon-book"/></svg><span>Dev kit</span>
-      </button>
-      <button class="nav-item" data-tab="toollog">
-        <svg class="ico"><use href="#icon-activations"/></svg><span>Tool Log</span>
-        <span class="nav-count" id="nav-toollog-count">—</span>
-      </button>
-      <a class="nav-item" href="https://github.com/EvgenyAndroid/adcp-signals-adaptor" target="_blank" rel="noopener">
-        <svg class="ico"><use href="#icon-book"/></svg><span>GitHub</span>
-      </a>
-      <a class="nav-item" href="https://adcontextprotocol.org" target="_blank" rel="noopener">
-        <svg class="ico"><use href="#icon-bolt"/></svg><span>AdCP spec</span>
-      </a>
+      <!-- Group: Analytics (data exploration over the catalog) -->
+      <div class="nav-group" data-group-id="analytics">
+        <button class="nav-group-header" type="button" data-group-toggle>
+          <svg class="ico ico-group"><use href="#icon-chart"/></svg>
+          <span class="nav-group-title">Analytics</span>
+          <svg class="nav-group-chevron"><use href="#icon-chevron-down"/></svg>
+        </button>
+        <div class="nav-group-items">
+          <button class="nav-item" data-tab="treemap">
+            <svg class="ico"><use href="#icon-treemap"/></svg><span>Treemap</span>
+          </button>
+          <button class="nav-item" data-tab="overlap">
+            <svg class="ico"><use href="#icon-network"/></svg><span>Overlap</span>
+          </button>
+          <button class="nav-item" data-tab="embedding">
+            <svg class="ico"><use href="#icon-chart"/></svg><span>Embedding</span>
+          </button>
+          <button class="nav-item" data-tab="lab">
+            <svg class="ico"><use href="#icon-bolt"/></svg><span>Emb. Lab</span>
+            <span class="nav-tag">new</span>
+          </button>
+          <button class="nav-item" data-tab="seasonality">
+            <svg class="ico"><use href="#icon-info"/></svg><span>Seasonality</span>
+            <span class="nav-tag">new</span>
+          </button>
+          <button class="nav-item" data-tab="freshness">
+            <svg class="ico"><use href="#icon-info"/></svg><span>Freshness</span>
+            <span class="nav-tag">new</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Group: Audience Composition (build + plan audiences) -->
+      <div class="nav-group" data-group-id="composition">
+        <button class="nav-group-header" type="button" data-group-toggle>
+          <svg class="ico ico-group"><use href="#icon-builder"/></svg>
+          <span class="nav-group-title">Audience Composition</span>
+          <svg class="nav-group-chevron"><use href="#icon-chevron-down"/></svg>
+        </button>
+        <div class="nav-group-items">
+          <button class="nav-item" data-tab="builder">
+            <svg class="ico"><use href="#icon-builder"/></svg><span>Builder</span>
+          </button>
+          <button class="nav-item" data-tab="composer">
+            <svg class="ico"><use href="#icon-builder"/></svg><span>Composer</span>
+          </button>
+          <button class="nav-item" data-tab="expression">
+            <svg class="ico"><use href="#icon-network"/></svg><span>Expression</span>
+            <span class="nav-tag">new</span>
+          </button>
+          <button class="nav-item" data-tab="journey">
+            <svg class="ico"><use href="#icon-activations"/></svg><span>Journey</span>
+            <span class="nav-tag">new</span>
+          </button>
+          <button class="nav-item" data-tab="portfolio">
+            <svg class="ico"><use href="#icon-chart"/></svg><span>Portfolio</span>
+            <span class="nav-tag">new</span>
+          </button>
+          <button class="nav-item" data-tab="planner">
+            <svg class="ico"><use href="#icon-chart"/></svg><span>Scenario</span>
+            <span class="nav-tag">new</span>
+          </button>
+          <button class="nav-item" data-tab="snapshots">
+            <svg class="ico"><use href="#icon-book"/></svg><span>Snapshots</span>
+            <span class="nav-tag">new</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Group: Workshop Canvases (the three primary demo surfaces) -->
+      <div class="nav-group" data-group-id="canvases">
+        <button class="nav-group-header" type="button" data-group-toggle>
+          <svg class="ico ico-group"><use href="#icon-bolt"/></svg>
+          <span class="nav-group-title">Workshop Canvases</span>
+          <svg class="nav-group-chevron"><use href="#icon-chevron-down"/></svg>
+        </button>
+        <div class="nav-group-items">
+          <button class="nav-item" data-tab="canvas">
+            <svg class="ico"><use href="#icon-bolt"/></svg><span>Brand Canvas</span>
+          </button>
+          <button class="nav-item" data-tab="campaign">
+            <svg class="ico"><use href="#icon-network"/></svg><span>Campaign Canvas</span>
+            <span class="nav-tag">DSP</span>
+          </button>
+          <button class="nav-item" data-tab="agentic">
+            <svg class="ico"><use href="#icon-bolt"/></svg><span>Agentic Canvas</span>
+            <span class="nav-tag">AI</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Group: Multi-Agent (federation + orchestration + race + health) -->
+      <div class="nav-group" data-group-id="multi-agent">
+        <button class="nav-group-header" type="button" data-group-toggle>
+          <svg class="ico ico-group"><use href="#icon-network"/></svg>
+          <span class="nav-group-title">Multi-Agent</span>
+          <svg class="nav-group-chevron"><use href="#icon-chevron-down"/></svg>
+        </button>
+        <div class="nav-group-items">
+          <button class="nav-item" data-tab="federation">
+            <svg class="ico"><use href="#icon-network"/></svg><span>Federation</span>
+            <span class="nav-tag nav-tag-muted">a2a</span>
+          </button>
+          <button class="nav-item" data-tab="orchestrator">
+            <svg class="ico"><use href="#icon-network"/></svg><span>Orchestrator</span>
+            <span class="nav-tag">new</span>
+          </button>
+          <a class="nav-item" href="/race-canvas">
+            <svg class="ico"><use href="#icon-network"/></svg><span>Race Canvas</span>
+            <span class="nav-tag">new</span>
+          </a>
+          <a class="nav-item" href="/vendor-health">
+            <svg class="ico"><use href="#icon-radar"/></svg><span>Vendor Health</span>
+            <span class="nav-tag">new</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Group: Activations -->
+      <div class="nav-group" data-group-id="activations">
+        <button class="nav-group-header" type="button" data-group-toggle>
+          <svg class="ico ico-group"><use href="#icon-activations"/></svg>
+          <span class="nav-group-title">Activations</span>
+          <svg class="nav-group-chevron"><use href="#icon-chevron-down"/></svg>
+        </button>
+        <div class="nav-group-items">
+          <button class="nav-item" data-tab="activations">
+            <svg class="ico"><use href="#icon-activations"/></svg><span>Activations</span>
+            <span class="nav-count" id="nav-activations-count">—</span>
+          </button>
+          <button class="nav-item" data-tab="destinations">
+            <svg class="ico"><use href="#icon-arrow-right"/></svg><span>Destinations</span>
+            <span class="nav-count" id="nav-destinations-count">—</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Group: Reference (docs + spec + tool log) -->
+      <div class="nav-group" data-group-id="reference">
+        <button class="nav-group-header" type="button" data-group-toggle>
+          <svg class="ico ico-group"><use href="#icon-book"/></svg>
+          <span class="nav-group-title">Reference</span>
+          <svg class="nav-group-chevron"><use href="#icon-chevron-down"/></svg>
+        </button>
+        <div class="nav-group-items">
+          <button class="nav-item" data-tab="capabilities">
+            <svg class="ico"><use href="#icon-info"/></svg><span>Capabilities</span>
+          </button>
+          <button class="nav-item" data-tab="devkit">
+            <svg class="ico"><use href="#icon-book"/></svg><span>Dev kit</span>
+          </button>
+          <button class="nav-item" data-tab="toollog">
+            <svg class="ico"><use href="#icon-activations"/></svg><span>Tool Log</span>
+            <span class="nav-count" id="nav-toollog-count">—</span>
+          </button>
+          <a class="nav-item" href="https://github.com/EvgenyAndroid/adcp-signals-adaptor" target="_blank" rel="noopener">
+            <svg class="ico"><use href="#icon-book"/></svg><span>GitHub</span>
+          </a>
+          <a class="nav-item" href="https://adcontextprotocol.org" target="_blank" rel="noopener">
+            <svg class="ico"><use href="#icon-bolt"/></svg><span>AdCP spec</span>
+          </a>
+        </div>
+      </div>
+
     </nav>
 
     <div class="sidebar-footer">
@@ -2150,11 +2223,66 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 .brand-title .dot { color: var(--accent); margin: 0 1px; }
 .brand-sub { font-size: 11px; color: var(--text-mut); }
 
-.sidebar-nav { flex: 1; }
+.sidebar-nav { flex: 1; overflow-y: auto; padding-right: 2px; }
 .nav-group-label {
   font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em;
   color: var(--text-mut); padding: 14px 8px 6px; font-weight: 500;
 }
+
+/* ── Capability-grouped sidebar (collapsible) ──────────────────────────
+   Groups have a clickable header with a rotating chevron. Items inside
+   a group hide on .is-collapsed. State persisted in localStorage under
+   "sidebar-group-state". The active tab's group is always force-expanded
+   on render so the user never lands on a tab whose group is collapsed.
+*/
+.nav-group {
+  margin-bottom: 4px;
+}
+.nav-group + .nav-group {
+  border-top: 1px solid transparent;
+}
+.nav-group-header {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 9px 10px; margin-top: 6px;
+  border-radius: var(--radius-md);
+  background: transparent; border: none;
+  color: var(--text-mut);
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.nav-group-header:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.nav-group-header .ico-group {
+  width: 14px; height: 14px;
+  color: var(--text-mut);
+  flex-shrink: 0;
+}
+.nav-group-header:hover .ico-group { color: var(--accent); }
+.nav-group-title { flex: 1; text-align: left; }
+.nav-group-chevron {
+  width: 12px; height: 12px;
+  color: var(--text-mut);
+  flex-shrink: 0;
+  transition: transform 0.18s ease;
+}
+.nav-group.is-collapsed .nav-group-chevron {
+  transform: rotate(-90deg);
+}
+.nav-group.has-active .nav-group-header .ico-group {
+  color: var(--accent);
+}
+.nav-group-items {
+  display: flex; flex-direction: column;
+  padding: 2px 0 4px;
+}
+.nav-group.is-collapsed .nav-group-items {
+  display: none;
+}
+
 .nav-item {
   display: flex; align-items: center; gap: 10px;
   width: 100%; padding: 8px 10px; margin-bottom: 1px;
@@ -4285,6 +4413,12 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 @media (max-width: 900px) {
   :root { --sidebar-w: 72px; --detail-w: 100%; }
   .sidebar-brand .brand-text, .nav-item span, .nav-count, .nav-group-label, .sidebar-footer { display: none; }
+  /* Narrow mode: collapse the group chrome and force all items visible
+     as a flat icon list. Group headers + chevrons + titles disappear so
+     the user gets a Linear-style icon-only nav. */
+  .nav-group-header, .nav-group-chevron, .nav-group-title { display: none; }
+  .nav-group.is-collapsed .nav-group-items { display: flex !important; }
+  .nav-group { margin-bottom: 0; }
   .sidebar-brand { justify-content: center; padding-bottom: 14px; }
   .nav-item { justify-content: center; padding: 10px; }
   .workspace { padding: 20px 18px 60px; }
@@ -7247,6 +7381,62 @@ function confidenceRange(size, tier) {
 }
 
 //────────────────────────────────────────────────────────────────────────
+// Sidebar group collapse / expand (capability-grouped nav).
+// State persists in localStorage under "sidebar-group-state" as
+// { groupId: <bool collapsed> }. The active tab's parent group is always
+// force-expanded on render so the user never lands on a tab whose group
+// is collapsed.
+//────────────────────────────────────────────────────────────────────────
+const SIDEBAR_STATE_KEY = "sidebar-group-state";
+
+function _readSidebarState() {
+  try {
+    const raw = localStorage.getItem(SIDEBAR_STATE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === "object") ? parsed : {};
+  } catch (e) { return {}; }
+}
+function _writeSidebarState(state) {
+  try { localStorage.setItem(SIDEBAR_STATE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+function _applySidebarGroupState() {
+  const state = _readSidebarState();
+  document.querySelectorAll(".nav-group").forEach((g) => {
+    const id = g.dataset.groupId;
+    const collapsed = state[id] === true;
+    g.classList.toggle("is-collapsed", collapsed);
+  });
+  // Force-expand the group containing the currently active item so the
+  // user never opens the page to a collapsed-active state.
+  const activeItem = document.querySelector(".nav-item.active");
+  if (activeItem) {
+    const parentGroup = activeItem.closest(".nav-group");
+    if (parentGroup) parentGroup.classList.remove("is-collapsed");
+  }
+  // Decorate the active group's header icon so it picks up the accent color.
+  document.querySelectorAll(".nav-group").forEach((g) => g.classList.remove("has-active"));
+  if (activeItem) {
+    const parentGroup = activeItem.closest(".nav-group");
+    if (parentGroup) parentGroup.classList.add("has-active");
+  }
+}
+// Wire group-header clicks to toggle + persist.
+document.querySelectorAll("[data-group-toggle]").forEach((header) => {
+  header.addEventListener("click", () => {
+    const group = header.closest(".nav-group");
+    if (!group) return;
+    const id = group.dataset.groupId;
+    group.classList.toggle("is-collapsed");
+    const state = _readSidebarState();
+    state[id] = group.classList.contains("is-collapsed");
+    _writeSidebarState(state);
+  });
+});
+// Apply initial state on first paint.
+_applySidebarGroupState();
+
+//────────────────────────────────────────────────────────────────────────
 // Tab switching
 //────────────────────────────────────────────────────────────────────────
 document.querySelectorAll(".nav-item[data-tab]").forEach((btn) => {
@@ -7260,6 +7450,9 @@ function switchTab(name) {
   document.querySelectorAll(".tab-pane").forEach((p) => {
     p.classList.toggle("active", p.dataset.tab === name);
   });
+  // Re-evaluate parent-group expansion + accent decoration whenever the
+  // user navigates to a new tab. Keeps the collapsed-active invariant.
+  _applySidebarGroupState();
   const crumbMap = {
     discover: "Discover", catalog: "Catalog", concepts: "Concepts",
     treemap: "Treemap", builder: "Builder", activations: "Activations",
@@ -7270,7 +7463,7 @@ function switchTab(name) {
     journey: "Journey", planner: "Scenario", snapshots: "Snapshots",
     freshness: "Freshness",
     seasonality: "Seasonality", federation: "Federation",
-    orchestrator: "Orchestrator", canvas: "Canvas", campaign: "Campaign Canvas", agentic: "Agentic Canvas",
+    orchestrator: "Orchestrator", canvas: "Brand Canvas", campaign: "Campaign Canvas", agentic: "Agentic Canvas",
   };
   document.getElementById("crumb-current").textContent = crumbMap[name] || name;
 

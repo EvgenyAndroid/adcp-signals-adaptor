@@ -3,6 +3,12 @@
     "package_name": "@adcp/client",
     "package_json_path": "package.json"
   },
+  "secondary_sdks": [
+    {
+      "package_name": "@adcp/sdk",
+      "context": "Renamed from @adcp/client at 5.23.0 (parallel-shipped through 5.25.1). 6.x onward is sdk-only — @adcp/client EOL at 5.25.1. Migration target: switch import in scripts/run-compliance.mjs + repin package.json. Watcher pings on every new release so we can audit before bumping."
+    }
+  ],
   "spec_repo": "adcontextprotocol/adcp",
   "tracking_issue_label": "adcp-watcher-tracker",
   "tracked_issues": [

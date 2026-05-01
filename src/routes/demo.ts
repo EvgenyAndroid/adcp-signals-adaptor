@@ -7382,10 +7382,19 @@ function confidenceRange(size, tier) {
 
 //────────────────────────────────────────────────────────────────────────
 // Sidebar group collapse / expand (capability-grouped nav).
-// State persists in localStorage under "sidebar-group-state" as
-// { groupId: <bool collapsed> }. The active tab's parent group is always
-// force-expanded on render so the user never lands on a tab whose group
-// is collapsed.
+//
+// Default behavior: ALL groups collapsed EXCEPT the one containing the
+// active tab. This keeps the sidebar compact on first visit; users
+// expand the groups they want and that choice persists.
+//
+// State semantics (localStorage key sidebar-group-state):
+//   state[groupId] === true   user explicitly COLLAPSED this group
+//   state[groupId] === false  user explicitly EXPANDED this group
+//   state[groupId] === undef  never touched, falls through to default
+//                              (default is collapsed)
+//
+// The active tab's parent group is force-expanded regardless of state,
+// so the user never lands on a tab whose group is hidden.
 //────────────────────────────────────────────────────────────────────────
 const SIDEBAR_STATE_KEY = "sidebar-group-state";
 
@@ -7404,7 +7413,10 @@ function _applySidebarGroupState() {
   const state = _readSidebarState();
   document.querySelectorAll(".nav-group").forEach((g) => {
     const id = g.dataset.groupId;
-    const collapsed = state[id] === true;
+    // Default to collapsed UNLESS the user has explicitly expanded this
+    // group (state[id] === false). Untouched groups are treated as
+    // collapsed by default to keep the sidebar compact.
+    const collapsed = state[id] !== false;
     g.classList.toggle("is-collapsed", collapsed);
   });
   // Force-expand the group containing the currently active item so the

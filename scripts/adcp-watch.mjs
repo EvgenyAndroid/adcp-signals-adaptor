@@ -167,6 +167,23 @@ async function buildNewState() {
   }
   newState.client_sdk = { current_pin: pin, latest_published: latest };
 
+  // 3a-bis. Secondary SDKs — packages we don't pin yet but want to watch
+  // (e.g. @adcp/sdk while migrating off @adcp/client). Watcher pings on
+  // every new release so we can audit before bumping. State diff fires
+  // any time `latest_published` for a secondary changes.
+  if (Array.isArray(config.secondary_sdks) && config.secondary_sdks.length > 0) {
+    newState.secondary_sdks = {};
+    for (const s of config.secondary_sdks) {
+      let secondaryLatest = null;
+      try {
+        secondaryLatest = JSON.parse(execSync(`npm view ${s.package_name} version --json`, { encoding: "utf8" }));
+      } catch (e) {
+        secondaryLatest = { error: String(e.message ?? e) };
+      }
+      newState.secondary_sdks[s.package_name] = { latest_published: secondaryLatest };
+    }
+  }
+
   // 3b. AdCP spec latest release
   try {
     const release = ghJson(`api repos/${config.spec_repo}/releases/latest`);

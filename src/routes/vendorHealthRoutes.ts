@@ -32,10 +32,20 @@ import { buildVendorHealthSnapshot } from "../domain/vendorHealthSnapshot";
 import { appendSnapshotDatapoints, readHistories, appendDatapoint, type HealthDatapoint } from "../storage/vendorHealthHistory";
 import { AGENT_REGISTRY } from "../domain/agentRegistry";
 import { probeAgent, getCircuitSnapshot } from "../federation/genericMcpClient";
+// ensureSelfHooksInstalled wires the Cloudflare self-fetch shim into
+// the generic MCP client. Without it, probeAgent against our own /mcp
+// URL is blocked by Cloudflare (worker-can't-fetch-its-own-public-hostname,
+// CF error 1042) and returns alive:false ~25ms in — which the dashboard
+// renders as DOWN even though our agent is fine. Every other route that
+// probes agents (agenticRoutes, dspRoutes, agentsEndpoints) calls this;
+// the Wave 5 ship missed it.
+import { ensureSelfHooksInstalled } from "./agentsEndpoints";
 
 // ── GET /vendor-health/snapshot ─────────────────────────────────────────────
 
 export async function handleVendorHealthSnapshot(request: Request, env: Env, logger: Logger): Promise<Response> {
+  ensureSelfHooksInstalled(env, logger);
+
   const url = new URL(request.url);
   const probeLive = url.searchParams.get("probe") !== "false";
 
@@ -73,6 +83,8 @@ interface ProbeOneBody {
 }
 
 export async function handleVendorHealthProbeOne(request: Request, env: Env, logger: Logger): Promise<Response> {
+  ensureSelfHooksInstalled(env, logger);
+
   let body: ProbeOneBody = {};
   try { body = await request.json(); } catch { /* empty */ }
 

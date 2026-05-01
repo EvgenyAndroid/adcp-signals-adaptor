@@ -137,6 +137,11 @@ import {
   handleRaceAddVendor,
   handleRaceAvailableVendors,
 } from "./routes/raceRoutes";
+import { handleVendorHealthCanvas } from "./routes/vendorHealthCanvas";
+import {
+  handleVendorHealthSnapshot,
+  handleVendorHealthProbeOne,
+} from "./routes/vendorHealthRoutes";
 import { handleEstimate } from "./routes/estimate";
 import { handleListOperations } from "./routes/listOperations";
 import { handleGenerateSegment } from "./routes/generateSegment";
@@ -312,6 +317,12 @@ export default {
             "/race/start",
             "/race/add-vendor",
             "/race/available-vendors",
+            // Wave 5: Vendor Health Dashboard — fleet status with
+            // per-vendor sparklines + circuit state + drill-down.
+            // All read-only diagnostic; same posture as /dsp/circuits.
+            "/vendor-health",
+            "/vendor-health/snapshot",
+            "/vendor-health/probe-one",
             "/taxonomy/reverse",
             // Sec-43: audience composer + activation-planning analytics.
             // Read-only — same posture as /portfolio/* and /analytics/*.
@@ -384,6 +395,15 @@ export default {
 
             } else if (method === "POST" && path === "/race/available-vendors") {
                 response = await handleRaceAvailableVendors(request, env, logger);
+
+            } else if (method === "GET" && path === "/vendor-health") {
+                response = handleVendorHealthCanvas(env);
+
+            } else if (method === "GET" && path === "/vendor-health/snapshot") {
+                response = await handleVendorHealthSnapshot(request, env, logger);
+
+            } else if (method === "POST" && path === "/vendor-health/probe-one") {
+                response = await handleVendorHealthProbeOne(request, env, logger);
 
             } else if (method === "GET" && path === "/health") {
                 response = jsonResponse({ status: "ok", version: "3.0" });

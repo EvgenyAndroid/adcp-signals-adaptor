@@ -305,7 +305,7 @@ function renderRaceCanvas(demoKey: string): string {
     text-align: right;
   }
 
-  /* ── Disagreement halo overlay ─────────────────────────────────────── */
+  /* ── Disagreement halo overlay (arcs only — text moved to panel) ───── */
   .halo-overlay {
     position: absolute;
     top: 0; left: 0;
@@ -314,48 +314,127 @@ function renderRaceCanvas(demoKey: string): string {
     pointer-events: none;
     z-index: 10;
   }
-  .halo-callout {
-    position: absolute;
-    background: rgba(255, 77, 94, 0.95);
+  .halo-arc {
+    animation: arcPulse 2.5s ease-in-out infinite;
+  }
+  @keyframes arcPulse {
+    0%, 100% { opacity: 0.85; }
+    50%      { opacity: 0.55; }
+  }
+
+  /* ── Disagreements panel (replaces inline callouts) ────────────────── */
+  .disagreements-panel {
+    margin-top: 16px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: none;
+  }
+  .disagreements-panel.is-active { display: block; }
+  .disagreements-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .disagreements-panel-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .disagreements-panel-meta {
+    font: 11px/1 var(--font-mono);
+    color: var(--text-faint);
+  }
+  .disagreements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .disagreement-card {
+    border-left: 4px solid var(--block);
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 12px 14px;
+    opacity: 0;
+    animation: fadeInRow 0.35s ease-out forwards;
+  }
+  .disagreement-card.warn { border-left-color: var(--warn); }
+  .disagreement-card.minor { border-left-color: var(--accent); }
+  .disagreement-card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .disagreement-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--block);
     color: #0a0d12;
-    padding: 10px 14px;
-    border-radius: 8px;
-    font: 600 12px var(--font-ui);
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.15), 0 12px 32px rgba(255, 77, 94, 0.4);
-    max-width: 320px;
-    z-index: 11;
-    pointer-events: auto;
-    animation: pulseCallout 2.5s ease-in-out infinite;
-  }
-  .halo-callout.warn {
-    background: rgba(240, 180, 0, 0.95);
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.15), 0 12px 32px rgba(240, 180, 0, 0.4);
-  }
-  .halo-callout.minor {
-    background: rgba(56, 182, 255, 0.95);
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.15), 0 12px 32px rgba(56, 182, 255, 0.4);
-  }
-  .halo-callout-title {
-    font-size: 11px;
+    font: 700 10px var(--font-mono);
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    opacity: 0.7;
-    margin-bottom: 4px;
   }
-  .halo-callout-body {
+  .disagreement-card.warn .disagreement-badge { background: var(--warn); }
+  .disagreement-card.minor .disagreement-badge { background: var(--accent); }
+  .disagreement-field {
     font-size: 13px;
-    line-height: 1.4;
+    font-weight: 600;
+    color: var(--text);
   }
-  .halo-callout-reconcile {
+  .disagreement-rationale {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .disagreement-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .vendor-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    font: 11px/1 var(--font-mono);
+    color: var(--text);
+  }
+  .vendor-chip-value {
+    color: var(--text-dim);
+    margin-left: 4px;
+  }
+  .disagreement-reconcile {
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px solid rgba(0,0,0,0.2);
-    font-size: 11px;
-    line-height: 1.4;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text);
+    display: none;
   }
-  @keyframes pulseCallout {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.02); }
+  .disagreement-reconcile.is-active {
+    display: block;
+    animation: fadeInRow 0.4s ease-out;
+  }
+  .disagreement-reconcile-label {
+    font: 10px/1 var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .disagreement-reconcile-pending {
+    color: var(--text-faint);
+    font-style: italic;
   }
 
   /* ── Receipt sidebar ───────────────────────────────────────────────── */
@@ -520,33 +599,6 @@ function renderRaceCanvas(demoKey: string): string {
     font: 13px var(--font-ui);
   }
 
-  /* ── Reconcile chat ────────────────────────────────────────────────── */
-  .reconcile-chat {
-    margin-top: 16px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px 14px;
-    display: none;
-  }
-  .reconcile-chat.is-active { display: block; }
-  .reconcile-chat-title {
-    font: 11px/1 var(--font-mono);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--accent);
-    margin-bottom: 6px;
-  }
-  .reconcile-chat-body {
-    font-size: 13px;
-    line-height: 1.5;
-    color: var(--text);
-  }
-  .reconcile-chat-body em {
-    color: var(--text-dim);
-    font-style: italic;
-  }
-
   /* ── Empty state ───────────────────────────────────────────────────── */
   .empty-state {
     color: var(--text-faint);
@@ -590,9 +642,12 @@ function renderRaceCanvas(demoKey: string): string {
       <svg class="halo-overlay" id="halo-overlay"></svg>
     </div>
 
-    <div class="reconcile-chat" id="reconcile-chat">
-      <div class="reconcile-chat-title">Claude reconciles</div>
-      <div class="reconcile-chat-body" id="reconcile-body"></div>
+    <div class="disagreements-panel" id="disagreements-panel">
+      <div class="disagreements-panel-header">
+        <div class="disagreements-panel-title">Disagreements detected</div>
+        <div class="disagreements-panel-meta" id="disagreements-meta"></div>
+      </div>
+      <div class="disagreements-list" id="disagreements-list"></div>
     </div>
 
     <div class="add-vendor-bar is-disabled" id="add-vendor-bar">
@@ -644,7 +699,11 @@ function renderRaceCanvas(demoKey: string): string {
     responses: [],
     receipts: [],
     rowsByVendor: {},
-    raceComplete: false
+    raceComplete: false,
+    // Counts arcs already drawn per "minId|maxId" pair so we can offset
+    // subsequent arcs and keep them visually distinct.
+    arcsByPair: {},
+    disagreementCount: 0
   };
 
   // ── DOM refs ────────────────────────────────────────────────────────
@@ -655,8 +714,9 @@ function renderRaceCanvas(demoKey: string): string {
   var elReceipts = document.getElementById("receipt-list");
   var elRaceMeta = document.getElementById("race-meta");
   var elHalo = document.getElementById("halo-overlay");
-  var elReconcileChat = document.getElementById("reconcile-chat");
-  var elReconcileBody = document.getElementById("reconcile-body");
+  var elDisagreementsPanel = document.getElementById("disagreements-panel");
+  var elDisagreementsList = document.getElementById("disagreements-list");
+  var elDisagreementsMeta = document.getElementById("disagreements-meta");
   var elAddBar = document.getElementById("add-vendor-bar");
   var elAddSelect = document.getElementById("add-vendor-select");
   var elAddBtn = document.getElementById("btn-add-vendor");
@@ -783,10 +843,20 @@ function renderRaceCanvas(demoKey: string): string {
   // ── Halo / disagreement rendering ──────────────────────────────────
   // SVG arc connecting two vendor rows. We measure the rows' positions
   // relative to the race-board container and draw a curved path between them.
+  // Track how many arcs have been drawn for each (rowA,rowB) pair so we can
+  // offset subsequent arcs' curve depth — same pair gets visually distinct
+  // arcs instead of overlapping into a single line. Keyed by canonical
+  // "minId|maxId" so AB and BA hash the same.
+  function pairKey(idA, idB) {
+    return idA < idB ? idA + "|" + idB : idB + "|" + idA;
+  }
+
   function renderHaloArc(disagreement) {
     if (!disagreement.conflict_pair || disagreement.conflict_pair.length < 2) return;
-    var rowA = state.rowsByVendor[disagreement.conflict_pair[0].vendor_id];
-    var rowB = state.rowsByVendor[disagreement.conflict_pair[1].vendor_id];
+    var idA = disagreement.conflict_pair[0].vendor_id;
+    var idB = disagreement.conflict_pair[1].vendor_id;
+    var rowA = state.rowsByVendor[idA];
+    var rowB = state.rowsByVendor[idB];
     if (!rowA || !rowB) return;
     var board = document.getElementById("race-board");
     var bRect = board.getBoundingClientRect();
@@ -797,14 +867,18 @@ function renderRaceCanvas(demoKey: string): string {
     var ay = aRect.top - bRect.top + aRect.height / 2;
     var bx = rRect.left - bRect.left + 4;
     var by = rRect.top - bRect.top + rRect.height / 2;
-    // Curve control point — pulled left of both anchors.
-    var cx = Math.min(ax, bx) - 60;
+
+    // Per-pair offset: 1st arc at 60px out, 2nd at 110px, 3rd at 160px, ...
+    var key = pairKey(idA, idB);
+    var prevCount = state.arcsByPair[key] || 0;
+    state.arcsByPair[key] = prevCount + 1;
+    var depth = 60 + prevCount * 50;
+    var cx = Math.min(ax, bx) - depth;
     var cy = (ay + by) / 2;
 
     var color = disagreement.severity === "blocking" ? "#ff4d5e" :
                 disagreement.severity === "material" ? "#f0b400" : "#38b6ff";
 
-    // Draw a path. Use SVG namespace.
     var ns = "http://www.w3.org/2000/svg";
     var pathStr = "M" + ax + "," + ay + " Q" + cx + "," + cy + " " + bx + "," + by;
     var path = document.createElementNS(ns, "path");
@@ -821,28 +895,72 @@ function renderRaceCanvas(demoKey: string): string {
     // Mark the conflicting rows with conflict styling.
     rowA.classList.add(disagreement.severity === "blocking" ? "is-conflict" : "is-warn");
     rowB.classList.add(disagreement.severity === "blocking" ? "is-conflict" : "is-warn");
-
-    // Render callout next to the curve control point.
-    var callout = document.createElement("div");
-    callout.className = "halo-callout " + (disagreement.severity === "minor" ? "minor" : disagreement.severity === "material" ? "warn" : "");
-    callout.style.left = Math.max(20, cx - 100) + "px";
-    callout.style.top = (cy - 30) + "px";
-    callout.innerHTML =
-      "<div class=\\"halo-callout-title\\">disagreement &middot; " + escapeHtml(disagreement.severity) + "</div>" +
-      "<div class=\\"halo-callout-body\\">" + escapeHtml(disagreement.field_label) + ": " + escapeHtml(disagreement.rationale) + "</div>";
-    callout.setAttribute("data-field", disagreement.field);
-    board.appendChild(callout);
   }
 
-  function renderReconcile(field, rationale) {
-    if (!elReconcileChat.classList.contains("is-active")) {
-      elReconcileChat.classList.add("is-active");
-      elReconcileBody.innerHTML = "";
+  // Render a card in the Disagreements panel. The card stays visible
+  // through reconciliation; reconcile_done updates the inline reconciled
+  // value rather than appending elsewhere.
+  function renderDisagreementCard(disagreement) {
+    if (!elDisagreementsPanel.classList.contains("is-active")) {
+      elDisagreementsPanel.classList.add("is-active");
+      elDisagreementsList.innerHTML = "";
     }
-    var line = document.createElement("div");
-    line.style.marginBottom = "6px";
-    line.innerHTML = "<strong>" + escapeHtml(field) + "</strong> &rarr; <em>" + escapeHtml(rationale) + "</em>";
-    elReconcileBody.appendChild(line);
+    state.disagreementCount++;
+    elDisagreementsMeta.textContent = state.disagreementCount + " field(s) in conflict";
+
+    var card = document.createElement("div");
+    var sevClass = disagreement.severity === "minor" ? "minor" : disagreement.severity === "material" ? "warn" : "";
+    card.className = "disagreement-card " + sevClass;
+    card.setAttribute("data-field", disagreement.field);
+
+    var chipsHtml = "";
+    if (Array.isArray(disagreement.all_values)) {
+      for (var i = 0; i < disagreement.all_values.length; i++) {
+        var v = disagreement.all_values[i];
+        var vendorObj = state.vendors.find ? state.vendors.find(function(x){ return x.id === v.vendor_id; }) : null;
+        var vendorName = vendorObj ? vendorObj.name : v.vendor_id;
+        var displayValue = formatFieldValue(disagreement.field, v.value);
+        chipsHtml += "<span class=\\"vendor-chip\\">" + escapeHtml(vendorName) +
+                     "<span class=\\"vendor-chip-value\\">" + escapeHtml(displayValue) + "</span></span>";
+      }
+    }
+
+    card.innerHTML =
+      "<div class=\\"disagreement-card-head\\">" +
+      "  <span class=\\"disagreement-badge\\">" + escapeHtml(disagreement.severity) + "</span>" +
+      "  <span class=\\"disagreement-field\\">" + escapeHtml(disagreement.field_label) + "</span>" +
+      "</div>" +
+      "<div class=\\"disagreement-rationale\\">" + escapeHtml(disagreement.rationale) + "</div>" +
+      "<div class=\\"disagreement-chips\\">" + chipsHtml + "</div>" +
+      "<div class=\\"disagreement-reconcile\\" data-reconcile>" +
+      "  <div class=\\"disagreement-reconcile-label\\">Claude reconciles</div>" +
+      "  <div class=\\"disagreement-reconcile-pending\\" data-reconcile-body>reconciliation queued...</div>" +
+      "</div>";
+    elDisagreementsList.appendChild(card);
+  }
+
+  // Format a value for display in a vendor chip — same rules as the server
+  // formatter but client-side so we don't have to round-trip the formatted
+  // string.
+  function formatFieldValue(field, value) {
+    if (field === "audience_size" && typeof value === "number") return fmtAudience(value);
+    if (field === "recommended_bid_floor_cents" && typeof value === "number") return fmtFloor(value) + " CPM";
+    return String(value);
+  }
+
+  // Update the matching card's reconcile section when reconcile_done fires.
+  function applyReconcileToCard(field, reconciledValue, reconcileRationale) {
+    var card = elDisagreementsList.querySelector("[data-field=\\"" + field + "\\"]");
+    if (!card) return;
+    var reconcileBlock = card.querySelector("[data-reconcile]");
+    var reconcileBody = card.querySelector("[data-reconcile-body]");
+    if (!reconcileBlock || !reconcileBody) return;
+    reconcileBlock.classList.add("is-active");
+    reconcileBody.classList.remove("disagreement-reconcile-pending");
+    var displayValue = formatFieldValue(field, reconciledValue);
+    reconcileBody.innerHTML =
+      "<strong>&rarr; " + escapeHtml(displayValue) + "</strong> &middot; " +
+      "<span style=\\"color:var(--text-dim)\\">" + escapeHtml(reconcileRationale) + "</span>";
   }
 
   function escapeHtml(s) {
@@ -901,21 +1019,17 @@ function renderRaceCanvas(demoKey: string): string {
         elRaceMeta.textContent = "all " + ev.responses.length + " vendors responded - " + ev.total_latency_ms + "ms - detecting disagreements...";
         break;
       case "disagreement_detected":
+        // Two views in lockstep: the halo arc on the race board (visual
+        // link to the conflict pair) + a card in the panel below (full
+        // rationale + chips + reconciliation slot).
         renderHaloArc(ev.disagreement);
+        renderDisagreementCard(ev.disagreement);
         break;
       case "reconcile_started":
         elRaceMeta.textContent = "reconciling " + ev.field_label + "...";
         break;
       case "reconcile_done":
-        renderReconcile(ev.field_label, ev.reconcile_rationale);
-        // Update the callout to show reconciled value.
-        var existing = document.querySelector("[data-field=\\"" + ev.field + "\\"]");
-        if (existing) {
-          var rec = document.createElement("div");
-          rec.className = "halo-callout-reconcile";
-          rec.textContent = "reconciled: " + ev.reconcile_rationale;
-          existing.appendChild(rec);
-        }
+        applyReconcileToCard(ev.field, ev.reconciled_value, ev.reconcile_rationale);
         break;
       case "race_complete":
         state.raceComplete = true;
@@ -945,12 +1059,13 @@ function renderRaceCanvas(demoKey: string): string {
     state.responses = [];
     state.receipts = [];
     state.raceComplete = false;
+    state.arcsByPair = {};
+    state.disagreementCount = 0;
     elHalo.innerHTML = "";
-    var oldCallouts = document.querySelectorAll(".halo-callout");
-    oldCallouts.forEach(function(c){ c.remove(); });
     elReceipts.innerHTML = "<div class=\\"receipt-card-empty\\">Receipts will appear here as vendors respond...</div>";
-    elReconcileChat.classList.remove("is-active");
-    elReconcileBody.innerHTML = "";
+    elDisagreementsPanel.classList.remove("is-active");
+    elDisagreementsList.innerHTML = "";
+    elDisagreementsMeta.textContent = "";
     elAddBar.classList.add("is-disabled");
     elAddSelect.disabled = true;
     elAddBtn.disabled = true;
@@ -1046,10 +1161,15 @@ function renderRaceCanvas(demoKey: string): string {
       state.responses.push(data.response);
       appendReceipt(data.receipt);
 
-      // Render any new disagreements.
+      // Render any new disagreements — both arc on the board and card
+      // in the panel. /race/add-vendor returns disagreements that touch
+      // the newly added vendor, so each one is genuinely new info.
       if (data.new_disagreements && data.new_disagreements.length > 0) {
         data.new_disagreements.forEach(function(d, i) {
-          setTimeout(function(){ renderHaloArc(d); }, 300 + i * 200);
+          setTimeout(function(){
+            renderHaloArc(d);
+            renderDisagreementCard(d);
+          }, 300 + i * 200);
         });
       }
 

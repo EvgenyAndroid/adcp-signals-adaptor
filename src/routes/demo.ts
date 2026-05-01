@@ -165,6 +165,10 @@ ${STYLES}
         <svg class="ico"><use href="#icon-network"/></svg><span>Race Canvas</span>
         <span class="nav-tag">new</span>
       </a>
+      <a class="nav-item" href="/vendor-health">
+        <svg class="ico"><use href="#icon-radar"/></svg><span>Vendor Health</span>
+        <span class="nav-tag">new</span>
+      </a>
       <button class="nav-item" data-tab="activations">
         <svg class="ico"><use href="#icon-activations"/></svg><span>Activations</span>
         <span class="nav-count" id="nav-activations-count">—</span>

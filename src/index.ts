@@ -131,6 +131,12 @@ import { handleAdminPurge } from "./routes/adminPurge";
 import { runScheduledPurge } from "./storage/scheduledPurge";
 import { runRegistrySyncDiff, getLastDiffReport } from "./domain/registrySync";
 import { handleDemo } from "./routes/demo";
+import { handleRaceCanvas } from "./routes/raceCanvas";
+import {
+  handleRaceStart,
+  handleRaceAddVendor,
+  handleRaceAvailableVendors,
+} from "./routes/raceRoutes";
 import { handleEstimate } from "./routes/estimate";
 import { handleListOperations } from "./routes/listOperations";
 import { handleGenerateSegment } from "./routes/generateSegment";
@@ -299,6 +305,13 @@ export default {
             "/agentic/memory",
             "/agentic/refine",
             "/agentic/critique",
+            // Wave 6: Race Canvas — vendor race waterfall + disagreement halo
+            // + audit receipt stack + add-vendor mid-flight. All read-only
+            // (no paid actions); same posture as the other Canvas routes.
+            "/race-canvas",
+            "/race/start",
+            "/race/add-vendor",
+            "/race/available-vendors",
             "/taxonomy/reverse",
             // Sec-43: audience composer + activation-planning analytics.
             // Read-only — same posture as /portfolio/* and /analytics/*.
@@ -357,6 +370,20 @@ export default {
                 // root surfaces a product-quality UI for exec/buyer demos;
                 // programmatic clients already know to go to /mcp or /capabilities.
                 response = handleDemo(env);
+
+            } else if (method === "GET" && path === "/race-canvas") {
+                // Wave 6: standalone Race Canvas page. Self-contained; doesn't
+                // touch the main demo's SCRIPT_TAG-laden template.
+                response = handleRaceCanvas(env);
+
+            } else if (method === "POST" && path === "/race/start") {
+                response = await handleRaceStart(request, env, logger);
+
+            } else if (method === "POST" && path === "/race/add-vendor") {
+                response = await handleRaceAddVendor(request, env, logger);
+
+            } else if (method === "POST" && path === "/race/available-vendors") {
+                response = await handleRaceAvailableVendors(request, env, logger);
 
             } else if (method === "GET" && path === "/health") {
                 response = jsonResponse({ status: "ok", version: "3.0" });

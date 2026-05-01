@@ -161,6 +161,10 @@ ${STYLES}
         <svg class="ico"><use href="#icon-bolt"/></svg><span>Agentic</span>
         <span class="nav-tag">AI</span>
       </button>
+      <a class="nav-item" href="/race-canvas">
+        <svg class="ico"><use href="#icon-network"/></svg><span>Race Canvas</span>
+        <span class="nav-tag">new</span>
+      </a>
       <button class="nav-item" data-tab="activations">
         <svg class="ico"><use href="#icon-activations"/></svg><span>Activations</span>
         <span class="nav-count" id="nav-activations-count">—</span>

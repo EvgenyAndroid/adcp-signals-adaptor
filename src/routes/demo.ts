@@ -1521,6 +1521,20 @@ ${STYLES}
               <span class="canvas-lane-num mono">1</span>
               <span class="canvas-lane-title">Audiences</span>
               <span class="orch-small">signals fan-out</span>
+              <button class="lane-info-btn" data-lane-info-toggle="signals" title="How this works" aria-label="How audiences are selected">
+                <svg class="ico"><use href="#icon-info"/></svg>
+              </button>
+              <div class="lane-info-popover" data-lane-info-panel="signals" role="dialog">
+                <div class="lane-info-title">How audiences are selected</div>
+                <ol class="lane-info-steps">
+                  <li><strong>Brief decomposition.</strong> Brand industries (e.g. <code>food_beverage</code>) + audience descriptors are extracted from the brief and forwarded as <code>signal_spec</code>.</li>
+                  <li><strong>Parallel fan-out.</strong> Each signals agent (Evgeny + Dstillery) runs <code>get_signals</code> against its own catalog and returns a ranked list with <code>coverage_percentage</code>.</li>
+                  <li><strong>Merge + pick.</strong> Results merged across agents, deduped by <code>signal_agent_segment_id</code>, top-3 picked by coverage. Chosen IDs flow into <code>create_media_buy.targeting_overlay</code>.</li>
+                </ol>
+                <div class="lane-info-trace">
+                  Code: <code>runSignalsStage</code> → <code>callAgentTool(get_signals)</code> → merged in <code>handleWorkflowRun</code>
+                </div>
+              </div>
             </div>
             <div class="canvas-lane-body" id="canvas-lane-audiences-body">
               <div class="orch-small canvas-lane-placeholder">
@@ -1534,6 +1548,20 @@ ${STYLES}
               <span class="canvas-lane-num mono">2</span>
               <span class="canvas-lane-title">Inventory</span>
               <span class="orch-small">products fan-out</span>
+              <button class="lane-info-btn" data-lane-info-toggle="products" title="How this works" aria-label="How inventory is picked">
+                <svg class="ico"><use href="#icon-info"/></svg>
+              </button>
+              <div class="lane-info-popover" data-lane-info-panel="products" role="dialog">
+                <div class="lane-info-title">How inventory is picked</div>
+                <ol class="lane-info-steps">
+                  <li><strong>Audience handoff.</strong> The 3 chosen signals + brand industries become the <code>audience_brief</code> sent to each buying agent.</li>
+                  <li><strong>Filtered fan-out.</strong> Each agent runs <code>get_products</code> with <code>filters.signals</code> + <code>filters.format_ids</code> (from the Creative lane's pick). Results filtered by brand-rights eligibility.</li>
+                  <li><strong>One pick per agent.</strong> Best product per buying agent chosen by lowest CPM floor that meets the viewability target. Selected products attach to <code>packages[]</code> in the create_media_buy payload.</li>
+                </ol>
+                <div class="lane-info-trace">
+                  Code: <code>runProductsStage</code> → <code>callAgentTool(get_products)</code> → adapter in <code>workflowOrchestration.ts</code>
+                </div>
+              </div>
             </div>
             <div class="canvas-lane-body" id="canvas-lane-inventory-body">
               <div class="orch-small canvas-lane-placeholder">
@@ -1547,6 +1575,20 @@ ${STYLES}
               <span class="canvas-lane-num mono">3</span>
               <span class="canvas-lane-title">Creative</span>
               <span class="orch-small">format catalog</span>
+              <button class="lane-info-btn" data-lane-info-toggle="creative" title="How this works" aria-label="How creative formats are chosen">
+                <svg class="ico"><use href="#icon-info"/></svg>
+              </button>
+              <div class="lane-info-popover" data-lane-info-panel="creative" role="dialog">
+                <div class="lane-info-title">How creative formats are chosen</div>
+                <ol class="lane-info-steps">
+                  <li><strong>Intent decomposition.</strong> Brief intent decomposes into channel + size hints — DOOH for retail/CPG, native for editorial brands, display+video for BRAND_LIFT KPIs.</li>
+                  <li><strong>Filtered fan-out.</strong> Each creative agent (Advertible, Celtra) runs <code>list_creative_formats</code> with the derived <code>filters</code> (asset_types, size caps, channel).</li>
+                  <li><strong>Top-2 by intent match.</strong> Formats merged across agents, top-2 picked by score on size/aspect/responsiveness alignment with the brief. Chosen <code>format_ids</code> feed back into the Inventory lane's <code>get_products</code> filter.</li>
+                </ol>
+                <div class="lane-info-trace">
+                  Code: <code>runCreativeStage</code> → <code>deriveCreativeFilter(brief)</code> → <code>callAgentTool(list_creative_formats)</code>
+                </div>
+              </div>
             </div>
             <div class="canvas-lane-body" id="canvas-lane-creative-body">
               <div class="orch-small canvas-lane-placeholder">
@@ -5462,6 +5504,107 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   display: flex; align-items: center; gap: 8px;
   padding-bottom: 8px; margin-bottom: 8px;
   border-bottom: 1px solid var(--border);
+  position: relative; /* anchor for .lane-info-popover */
+}
+
+/* Lane "(?) how this works" affordance — small info icon on the right
+   of each lane title, clicking opens a popover anchored below the icon
+   with a 3-step explainer. Non-modal, click-outside-to-close, one open
+   at a time. Designed to feel like a Linear/Stripe info-bubble. */
+.lane-info-btn {
+  margin-left: auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-mut);
+  cursor: pointer;
+  transition: all 0.12s;
+  flex-shrink: 0;
+}
+.lane-info-btn:hover {
+  background: var(--bg-hover);
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+.lane-info-btn .ico { width: 14px; height: 14px; }
+.lane-info-btn.is-open {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.lane-info-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px 14px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.32);
+  display: none;
+  animation: laneInfoFade 0.15s ease-out;
+}
+.lane-info-popover.is-open { display: block; }
+@keyframes laneInfoFade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.lane-info-popover::before {
+  /* Small triangle pointer above the popover, aimed at the (?) icon. */
+  content: "";
+  position: absolute;
+  top: -7px; right: 6px;
+  width: 12px; height: 12px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-strong);
+  border-left: 1px solid var(--border-strong);
+  transform: rotate(45deg);
+}
+.lane-info-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin-bottom: 10px;
+  letter-spacing: -0.01em;
+}
+.lane-info-steps {
+  margin: 0 0 12px;
+  padding: 0 0 0 22px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text);
+}
+.lane-info-steps li { margin-bottom: 8px; }
+.lane-info-steps li:last-child { margin-bottom: 0; }
+.lane-info-steps strong { color: var(--text-bright); }
+.lane-info-steps code {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 11px;
+  color: var(--accent);
+}
+.lane-info-trace {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font: 11px var(--font-mono);
+  color: var(--text-mut);
+  line-height: 1.5;
+}
+.lane-info-trace code {
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 11px;
 }
 .canvas-lane-num {
   display: inline-flex; align-items: center; justify-content: center;
@@ -7993,6 +8136,44 @@ document.querySelectorAll("[data-brief-target]").forEach(function(b) {
     target.value = (b.textContent || "").trim();
     target.focus();
   });
+});
+
+//────────────────────────────────────────────────────────────────────────
+// Lane info popovers — "How this works" explainers per Brand Canvas lane.
+// Click the (?) icon → popover opens anchored below the icon. One open at
+// a time; click outside or hit Esc to dismiss. Non-modal — backdrop is
+// transparent, the rest of the UI stays interactive.
+//────────────────────────────────────────────────────────────────────────
+function _closeAllLanePopovers() {
+  document.querySelectorAll(".lane-info-popover.is-open").forEach(function(p) {
+    p.classList.remove("is-open");
+  });
+  document.querySelectorAll(".lane-info-btn.is-open").forEach(function(b) {
+    b.classList.remove("is-open");
+  });
+}
+document.querySelectorAll("[data-lane-info-toggle]").forEach(function(btn) {
+  btn.addEventListener("click", function(e) {
+    e.stopPropagation();
+    var id = btn.getAttribute("data-lane-info-toggle");
+    var popover = document.querySelector("[data-lane-info-panel=\\"" + id + "\\"]");
+    var wasOpen = btn.classList.contains("is-open");
+    _closeAllLanePopovers();
+    if (!wasOpen && popover) {
+      popover.classList.add("is-open");
+      btn.classList.add("is-open");
+    }
+  });
+});
+// Click outside any popover or its trigger button → dismiss.
+document.addEventListener("click", function(e) {
+  var t = e.target;
+  if (t && (t.closest && (t.closest(".lane-info-popover") || t.closest("[data-lane-info-toggle]")))) return;
+  _closeAllLanePopovers();
+});
+// Esc dismisses any open popover.
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape") _closeAllLanePopovers();
 });
 
 //────────────────────────────────────────────────────────────────────────

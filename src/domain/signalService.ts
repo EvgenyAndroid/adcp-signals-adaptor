@@ -16,6 +16,7 @@ import { estimateAudienceSize } from "../utils/estimation";
 import { dynamicSignalId } from "../utils/ids";
 import { requestId } from "../utils/ids";
 import type { CatalogSignal } from "./queryResolver";
+import type { TraceData, TraceStep } from "../types/trace";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -39,12 +40,17 @@ export async function searchSignalsService(
   kv: KVNamespace,
   req: SearchSignalsRequest
 ): Promise<SearchSignalsResponse> {
+  const t0 = Date.now();
+  const traceSteps: TraceStep[] = [];
+  const performance: Record<string, number> = {};
+
   const limit = Math.min(req.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
   const offset = req.offset ?? 0;
 
   // When a brief is present, fetch a larger window so we can re-rank by relevance
   const fetchLimit = req.brief ? Math.min(200, MAX_LIMIT * 4) : limit;
 
+  const tDb0 = Date.now();
   const { signals, totalCount } = await searchSignals(db, {
     ...compactObj({
       query: req.query,
@@ -57,12 +63,60 @@ export async function searchSignalsService(
     limit: fetchLimit,
     offset: req.brief ? 0 : offset,  // always fetch from top when re-ranking
   });
+  performance.db_read = Date.now() - tDb0;
+  traceSteps.push({
+    id: "fetch",
+    label: "Fetch candidates from D1",
+    duration_ms: performance.db_read,
+    note: req.brief
+      ? "Wide window (up to 200) so we can re-rank by relevance after."
+      : `Catalog window of ${fetchLimit} starting at offset ${offset}.`,
+    details: [
+      { k: "filter.query", v: String(req.query ?? "—") },
+      { k: "filter.category_type", v: String(req.categoryType ?? "—") },
+      { k: "filter.generation_mode", v: String(req.generationMode ?? "—") },
+      { k: "filter.taxonomy_id", v: String(req.taxonomyId ?? "—") },
+      { k: "filter.destination", v: String(req.destination ?? "—") },
+      { k: "fetch_limit", v: String(fetchLimit) },
+      { k: "rows_returned", v: String(signals.length) },
+      { k: "total_in_catalog", v: String(totalCount) },
+    ],
+  });
 
   // If brief/signal_spec present, re-rank catalog results by relevance to brief
   // Fetch broader window, score, sort, then slice to limit
-  let summaries = toSignalSummaries(
-    req.brief ? rankByRelevance(signals, req.brief).slice(0, limit) : signals
-  );
+  const tRank0 = Date.now();
+  const ranked = req.brief ? rankByRelevance(signals, req.brief).slice(0, limit) : signals;
+  performance.rank = Date.now() - tRank0;
+
+  if (req.brief) {
+    // Build a detailed trace step for the keyword scoring pass. We re-run
+    // the scorer here so the panel has access to the per-signal scores +
+    // matched keywords that the production scorer doesn't normally surface.
+    const traceData = explainKeywordRanking(signals, req.brief, limit);
+    traceSteps.push({
+      id: "keyword_score",
+      label: "Score by keyword match (current implementation)",
+      duration_ms: performance.rank,
+      note: "Each catalog signal is scored against extracted keywords. Embedding-based cosine ranking lives at /signals/query (UCP path) — see Concepts tab for that flow.",
+      details: [
+        { k: "keywords_extracted", v: traceData.keywords.join(", ") || "(none)" },
+        { k: "category_hint", v: traceData.categoryHint ?? "—" },
+        { k: "scoring", v: "name match: +4 · description match: +2 · category hint: +3 · derived/dynamic boosts" },
+        { k: "ranked", v: String(ranked.length) },
+        { k: "tie_break", v: "estimated_audience_size desc" },
+      ],
+      matches: traceData.topScored.map((s) => ({
+        id: s.id,
+        label: s.name,
+        score: s.score,
+        meta: `${s.category_type} · ${(s.estimated_audience_size / 1_000_000).toFixed(1)}M audience`,
+      })),
+      histogram: traceData.histogram,
+    });
+  }
+
+  let summaries = toSignalSummaries(ranked);
 
   // Filter deployments by requested platforms. The request field is
   // `deployments` on SearchSignalsRequest (not `destinations` — that was
@@ -109,6 +163,31 @@ export async function searchSignalsService(
     ? `in category "${req.categoryType}"`
     : "from catalog";
 
+  if (req.brief && proposals && proposals.length > 0) {
+    traceSteps.push({
+      id: "proposal",
+      label: "Custom proposal generation",
+      duration_ms: 1, // synth, sub-millisecond
+      note: "Top match weak (or coverage gap detected). Synthesizing a custom segment definition from brief components.",
+      details: [
+        { k: "proposals_generated", v: String(proposals.length) },
+        { k: "first_proposal_id", v: proposals[0]?.signal_agent_segment_id ?? "—" },
+      ],
+    });
+  }
+
+  performance.total = Date.now() - t0;
+  performance.other = Math.max(0, performance.total - (performance.db_read ?? 0) - (performance.rank ?? 0));
+
+  const trace: TraceData = {
+    operation: req.brief ? "Discover query · brief mode" : "Discover query · catalog mode",
+    input: req.brief ?? req.query ?? "(no input)",
+    duration_ms: performance.total,
+    steps: traceSteps,
+    performance,
+    ts: new Date().toISOString(),
+  };
+
   return {
     message: `Found ${summaries.length} signal(s) ${filterDesc}. Review pricing and deployment status before activating.`,
     context_id: requestId(),
@@ -118,6 +197,109 @@ export async function searchSignalsService(
     totalCount,
     offset,
     hasMore: offset + summaries.length < totalCount,
+    _trace: trace,
+  } as SearchSignalsResponse & { _trace: TraceData };
+}
+
+// ── Keyword ranking explainer ─────────────────────────────────────────────────
+//
+// Re-runs the scoring pass with bookkeeping enabled so the trace panel
+// can show: extracted keywords, category hint, per-signal score (top-N),
+// score distribution histogram. Production rankByRelevance discards this
+// after sorting — explainKeywordRanking is a sibling that retains it.
+
+interface KeywordTraceMatch {
+  id: string;
+  name: string;
+  score: number;
+  category_type: string;
+  estimated_audience_size: number;
+}
+
+interface KeywordTraceData {
+  keywords: string[];
+  categoryHint: string | null;
+  topScored: KeywordTraceMatch[];
+  histogram: { bins: number[]; max: number; threshold?: number; axis_range: string };
+}
+
+function explainKeywordRanking(
+  signals: CanonicalSignal[],
+  brief: string,
+  topN: number,
+): KeywordTraceData {
+  const lower = brief.toLowerCase();
+  const STOP_WORDS = new Set([
+    "a","an","the","and","or","in","on","of","to","for","with","by",
+    "at","from","as","is","are","who","that","this","be","have","do",
+    "not","but","so","if","its","it","my","we","our","they","their",
+    "me","us","you","your","he","she","him","her","i","am","was","were",
+    "will","would","could","should","may","might","can",
+  ]);
+  const keywords = lower
+    .replace(/[^a-z0-9\s$]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
+
+  const categoryHints: Record<string, string[]> = {
+    demographic: ["age","income","education","household","family","senior","adult","young","boomer","millennial"],
+    interest: ["fan","viewer","streaming","content","genre","movie","show","music","gaming","sports"],
+    purchase_intent: ["buy","purchase","intent","shopping","luxury","goods","product","brand","market"],
+    geo: ["dma","city","metro","market","area","region","state","zip","national","local"],
+    composite: ["affluent","high income","premium","professional","educated","urban"],
+  };
+  let categoryHint: string | null = null;
+  for (const [cat, hints] of Object.entries(categoryHints)) {
+    if (hints.some((h) => lower.includes(h))) { categoryHint = cat; break; }
+  }
+
+  const scored = signals.map((signal) => {
+    const nameLower = signal.name.toLowerCase();
+    const descLower = signal.description.toLowerCase();
+    let score = 0;
+    for (const kw of keywords) {
+      if (nameLower.includes(kw)) score += 4;
+      if (descLower.includes(kw)) score += 2;
+    }
+    if (categoryHint && signal.categoryType === categoryHint) score += 3;
+    if (signal.generationMode === "derived") score += 1;
+    if (signal.generationMode === "dynamic") score += 2;
+    return { signal, score };
+  });
+
+  const topScored: KeywordTraceMatch[] = scored
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score || (b.signal.estimatedAudienceSize ?? 0) - (a.signal.estimatedAudienceSize ?? 0))
+    .slice(0, topN)
+    .map((s) => ({
+      id: s.signal.signalId,
+      name: s.signal.name,
+      score: s.score,
+      category_type: s.signal.categoryType,
+      estimated_audience_size: s.signal.estimatedAudienceSize ?? 0,
+    }));
+
+  // Score distribution histogram — 10 bins from 0 to maxScore
+  const maxScore = scored.reduce((m, s) => s.score > m ? s.score : m, 0);
+  const binCount = 10;
+  const bins: number[] = Array(binCount).fill(0);
+  for (const s of scored) {
+    if (s.score <= 0) continue;
+    const idx = Math.min(binCount - 1, Math.floor((s.score / Math.max(1, maxScore)) * binCount));
+    bins[idx] = (bins[idx] ?? 0) + 1;
+  }
+  const binMax = bins.reduce((m, b) => b > m ? b : m, 1);
+
+  return {
+    keywords,
+    categoryHint,
+    topScored,
+    histogram: {
+      bins,
+      max: binMax,
+      threshold: 0.3 * binCount,  // visually mark "weak match" zone
+      axis_range: `0 → ${maxScore} score`,
+    },
   };
 }
 

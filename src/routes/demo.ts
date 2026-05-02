@@ -288,6 +288,9 @@ ${STYLES}
   <main class="main">
 
     <header class="topbar">
+      <button class="topbar-sidebar-toggle" data-sidebar-toggle aria-label="Toggle sidebar" title="Toggle sidebar (Ctrl/Cmd+B)">
+        <svg class="ico" viewBox="0 0 20 20"><line x1="3" y1="6" x2="17" y2="6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="3" y1="10" x2="17" y2="10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="3" y1="14" x2="17" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
       <div class="crumbs">
         <span class="crumb muted">adcp·signals</span>
         <span class="crumb-sep">/</span>
@@ -2500,14 +2503,76 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   height: var(--topbar-h); flex-shrink: 0;
   background: var(--bg-top);
   border-bottom: 1px solid var(--border);
-  padding: 0 24px;
+  padding: 0 24px 0 12px;
   display: flex; justify-content: space-between; align-items: center;
+  gap: 14px;
 }
-.crumbs { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.topbar-sidebar-toggle {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: var(--radius-md);
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.topbar-sidebar-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+  border-color: var(--border);
+}
+.topbar-sidebar-toggle .ico { width: 18px; height: 18px; }
+.crumbs { display: flex; align-items: center; gap: 10px; font-size: 13px; flex: 1; }
 .crumb { font-weight: 500; }
 .crumb.muted { color: var(--text-mut); }
 .crumb-sep { color: var(--text-mut); }
 .topbar-meta { display: flex; gap: 8px; align-items: center; }
+
+/* ──────────────────────────────────────────────────────────────────────
+   Manual sidebar collapse — class-driven, mirrors the auto narrow-mode
+   media-query treatment but triggered by the topbar toggle (Ctrl/Cmd+B).
+   Persists to localStorage so the choice survives reloads.
+   ────────────────────────────────────────────────────────────────────── */
+.app.is-sidebar-collapsed { --sidebar-w: 64px; }
+.app.is-sidebar-collapsed .sidebar-brand .brand-text,
+.app.is-sidebar-collapsed .nav-item span,
+.app.is-sidebar-collapsed .nav-count,
+.app.is-sidebar-collapsed .nav-tag,
+.app.is-sidebar-collapsed .nav-group-header,
+.app.is-sidebar-collapsed .nav-group-chevron,
+.app.is-sidebar-collapsed .nav-group-title,
+.app.is-sidebar-collapsed .sidebar-footer .kv,
+.app.is-sidebar-collapsed .sidebar-footer .theme-picker {
+  display: none;
+}
+.app.is-sidebar-collapsed .nav-group.is-collapsed .nav-group-items {
+  /* Force-show items even if the user had the group collapsed, so the
+     icons remain reachable in narrow mode. */
+  display: flex !important;
+}
+.app.is-sidebar-collapsed .nav-group {
+  margin-bottom: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.app.is-sidebar-collapsed .sidebar-brand {
+  justify-content: center;
+  padding: 0 0 14px;
+}
+.app.is-sidebar-collapsed .nav-item {
+  justify-content: center;
+  padding: 10px;
+}
+.app.is-sidebar-collapsed .nav-item.active::before {
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+}
+.app.is-sidebar-collapsed .sidebar {
+  padding: 16px 8px;
+}
 
 /* ── Workspace / tabs ────────────────────────────────────────────────── */
 .workspace {
@@ -7646,6 +7711,46 @@ document.querySelectorAll("[data-theme-pick]").forEach(function(btn) {
 });
 // Apply persisted theme on first paint.
 _applyTheme(_readTheme());
+
+//────────────────────────────────────────────────────────────────────────
+// Manual sidebar collapse — toggle button in topbar, Ctrl/Cmd+B shortcut.
+// Adds/removes .is-sidebar-collapsed on the .app grid container; CSS
+// rules above narrow the sidebar to icons-only. Persists to
+// localStorage so the choice survives reloads.
+//────────────────────────────────────────────────────────────────────────
+const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
+
+function _readSidebarCollapsed() {
+  try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1"; } catch (e) { return false; }
+}
+function _applySidebarCollapsed(collapsed) {
+  const app = document.querySelector(".app");
+  if (!app) return;
+  app.classList.toggle("is-sidebar-collapsed", collapsed);
+  try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0"); } catch (e) {}
+}
+document.querySelectorAll("[data-sidebar-toggle]").forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    const app = document.querySelector(".app");
+    if (!app) return;
+    _applySidebarCollapsed(!app.classList.contains("is-sidebar-collapsed"));
+  });
+});
+// Keyboard shortcut: Ctrl/Cmd + B (matches VS Code muscle memory).
+document.addEventListener("keydown", function(e) {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+    // Don't intercept when the user is typing into an input.
+    const t = e.target;
+    const tag = t && t.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || (t && t.isContentEditable)) return;
+    e.preventDefault();
+    const app = document.querySelector(".app");
+    if (!app) return;
+    _applySidebarCollapsed(!app.classList.contains("is-sidebar-collapsed"));
+  }
+});
+// Apply persisted state on first paint.
+_applySidebarCollapsed(_readSidebarCollapsed());
 
 //────────────────────────────────────────────────────────────────────────
 // Tab switching

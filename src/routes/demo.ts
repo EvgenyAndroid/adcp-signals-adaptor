@@ -272,9 +272,15 @@ ${STYLES}
 
     <div class="sidebar-footer">
       <div class="kv"><span class="k">Version</span><span class="v mono">3.0 GA</span></div>
-      <div class="kv"><span class="k">Client</span><span class="v mono">@adcp/5.21</span></div>
+      <div class="kv"><span class="k">Client</span><span class="v mono">@adcp/5.25.1</span></div>
       <div class="kv"><span class="k">Status</span><span class="v"><span class="status-dot ok"></span>live</span></div>
-      <div class="kv"><span class="k">Conformance</span><span class="v"><span class="pill pill-success">3 / 3</span></span></div>
+      <div class="kv"><span class="k">Conformance</span><span class="v"><span class="pill pill-success">7 / 7</span></span></div>
+      <div class="theme-picker" role="group" aria-label="Theme">
+        <span class="theme-picker-label">Theme</span>
+        <button class="theme-swatch" data-theme-pick="midnight" title="Midnight (dark)" aria-label="Midnight theme"></button>
+        <button class="theme-swatch" data-theme-pick="daylight" title="Daylight (light)" aria-label="Daylight theme"></button>
+        <button class="theme-swatch" data-theme-pick="solar" title="Solar (warm)" aria-label="Solar theme"></button>
+      </div>
     </div>
   </aside>
 
@@ -2122,10 +2128,24 @@ ${SCRIPT_TAG(safeKey)}
 
 // Extracted for readability — the <style> block.
 const STYLES = `<style>
-:root {
+/* ──────────────────────────────────────────────────────────────────────
+   Theme system — three palettes selected via [data-theme] on <html>.
+   Picker UI lives in the sidebar footer; choice persists to localStorage
+   under "ui-theme". Falls back to midnight if no value set.
+
+   Midnight  — default dark, contrast-bumped from the original
+   Daylight  — clean light theme for projector / brightly-lit rooms
+   Solar     — warm sepia for long-session readability + presentation
+
+   All UI components reference the var()s — never hardcoded hex — so
+   theme swap is instant + total. Add a new theme by adding one block
+   below + one button in the picker.
+   ────────────────────────────────────────────────────────────────────── */
+
+:root, :root[data-theme="midnight"] {
   /* Surfaces */
   --bg-base:    #0b1017;
-  --bg-sidebar: #0d1320;
+  --bg-sidebar: #0a0f1a;
   --bg-top:     #0d1320;
   --bg-surface: #121a28;
   --bg-raised:  #1a2230;
@@ -2133,35 +2153,110 @@ const STYLES = `<style>
   --bg-hover:   #182132;
 
   /* Borders */
-  --border:         #1c2636;
-  --border-strong:  #2a3547;
+  --border:         #1f2a3d;
+  --border-faint:   #141a26;
+  --border-strong:  #2e3a50;
   --border-focus:   #3b5a87;
 
-  /* Text */
-  --text:     #e6edf3;
-  --text-dim: #8b98a9;
-  --text-mut: #5d6b7e;
-  --text-dis: #3d4658;
+  /* Text — bumped contrast vs original (text-mut #5d6b7e was unreadable) */
+  --text:        #e8eef6;
+  --text-bright: #ffffff;
+  --text-dim:    #a5b1c2;
+  --text-mut:    #76849a;
+  --text-dis:    #3d4658;
 
   /* Accents */
-  --accent:      #4f8eff;
-  --accent-hot:  #6fa4ff;
-  --accent-dim:  rgba(79, 142, 255, 0.12);
-  --accent-border: rgba(79, 142, 255, 0.3);
+  --accent:        #4f8eff;
+  --accent-hot:    #6fa4ff;
+  --accent-dim:    rgba(79, 142, 255, 0.14);
+  --accent-border: rgba(79, 142, 255, 0.32);
 
   --success:     #10b981;
-  --success-dim: rgba(16, 185, 129, 0.12);
+  --success-dim: rgba(16, 185, 129, 0.14);
   --warning:     #f59e0b;
-  --warning-dim: rgba(245, 158, 11, 0.12);
+  --warning-dim: rgba(245, 158, 11, 0.14);
   --error:       #ef4444;
-  --error-dim:   rgba(239, 68, 68, 0.12);
+  --error-dim:   rgba(239, 68, 68, 0.14);
   --violet:      #8b5cf6;
   --cyan:        #06b6d4;
+}
 
+:root[data-theme="daylight"] {
+  --bg-base:    #f5f7fb;
+  --bg-sidebar: #ffffff;
+  --bg-top:     #ffffff;
+  --bg-surface: #ffffff;
+  --bg-raised:  #f0f3f9;
+  --bg-input:   #ffffff;
+  --bg-hover:   #e9eef7;
+
+  --border:         #d8dde8;
+  --border-faint:   #ebeef5;
+  --border-strong:  #b8c0d0;
+  --border-focus:   #6090ff;
+
+  --text:        #1a1f2e;
+  --text-bright: #050810;
+  --text-dim:    #4d5872;
+  --text-mut:    #76829a;
+  --text-dis:    #b0b8c8;
+
+  --accent:        #2867ee;
+  --accent-hot:    #4480ff;
+  --accent-dim:    rgba(40, 103, 238, 0.10);
+  --accent-border: rgba(40, 103, 238, 0.30);
+
+  --success:     #0a8e5e;
+  --success-dim: rgba(10, 142, 94, 0.10);
+  --warning:     #c87a00;
+  --warning-dim: rgba(200, 122, 0, 0.10);
+  --error:       #d63333;
+  --error-dim:   rgba(214, 51, 51, 0.10);
+  --violet:      #6b3fc4;
+  --cyan:        #0598b6;
+}
+
+:root[data-theme="solar"] {
+  --bg-base:    #1c1810;
+  --bg-sidebar: #14110a;
+  --bg-top:     #1f1a12;
+  --bg-surface: #241e15;
+  --bg-raised:  #2a2418;
+  --bg-input:   #1a160e;
+  --bg-hover:   #2e2719;
+
+  --border:         #3a2f1e;
+  --border-faint:   #251f15;
+  --border-strong:  #4d3f29;
+  --border-focus:   #b87a2e;
+
+  --text:        #f3eada;
+  --text-bright: #fff8e8;
+  --text-dim:    #c4b594;
+  --text-mut:    #a08c6c;
+  --text-dis:    #5e5642;
+
+  --accent:        #ffaa3a;
+  --accent-hot:    #ffbd5e;
+  --accent-dim:    rgba(255, 170, 58, 0.16);
+  --accent-border: rgba(255, 170, 58, 0.40);
+
+  --success:     #5db82d;
+  --success-dim: rgba(93, 184, 45, 0.14);
+  --warning:     #ffd166;
+  --warning-dim: rgba(255, 209, 102, 0.14);
+  --error:       #ff6b5b;
+  --error-dim:   rgba(255, 107, 91, 0.14);
+  --violet:      #c98aff;
+  --cyan:        #6cd9d2;
+}
+
+/* Static layout + non-themed tokens */
+:root {
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
 
-  --sidebar-w: 232px;
+  --sidebar-w: 244px;
   --topbar-h:  56px;
   --detail-w:  480px;
 
@@ -2235,34 +2330,52 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
    "sidebar-group-state". The active tab's group is always force-expanded
    on render so the user never lands on a tab whose group is collapsed.
 */
+/* Group hierarchy:
+   - Each group has a faint top border so groups read as distinct sections
+   - Group header is brighter + larger than items, with a colored
+     domain icon to anchor the eye
+   - Items inside a group are indented (28px left padding) so the
+     hierarchy reads as "category → contents" not "two flat lists"
+   - Active item shows a 3px accent stripe on its left edge — much
+     stronger affordance than a bg-tint alone, especially in light theme
+   - has-active group: header icon goes full-opacity accent
+*/
 .nav-group {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  padding-top: 2px;
+  border-top: 1px solid var(--border-faint);
 }
-.nav-group + .nav-group {
-  border-top: 1px solid transparent;
-}
+.nav-group:first-of-type { border-top: none; }
 .nav-group-header {
   display: flex; align-items: center; gap: 10px;
-  width: 100%; padding: 9px 10px; margin-top: 6px;
+  width: 100%; padding: 11px 12px 9px;
   border-radius: var(--radius-md);
   background: transparent; border: none;
-  color: var(--text-mut);
-  font-size: 11px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-bright);
+  font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.10em;
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
 }
 .nav-group-header:hover {
   background: var(--bg-hover);
-  color: var(--text);
 }
 .nav-group-header .ico-group {
-  width: 14px; height: 14px;
-  color: var(--text-mut);
+  width: 16px; height: 16px;
+  color: var(--accent);
+  opacity: 0.55;
   flex-shrink: 0;
+  transition: opacity 0.12s;
 }
-.nav-group-header:hover .ico-group { color: var(--accent); }
+.nav-group-header:hover .ico-group { opacity: 1; }
 .nav-group-title { flex: 1; text-align: left; }
+.nav-group-count {
+  font: 10px var(--font-mono);
+  color: var(--text-mut);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
 .nav-group-chevron {
   width: 12px; height: 12px;
   color: var(--text-mut);
@@ -2273,11 +2386,14 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   transform: rotate(-90deg);
 }
 .nav-group.has-active .nav-group-header .ico-group {
-  color: var(--accent);
+  opacity: 1;
+}
+.nav-group.has-active .nav-group-header {
+  color: var(--text-bright);
 }
 .nav-group-items {
   display: flex; flex-direction: column;
-  padding: 2px 0 4px;
+  padding: 2px 0 6px;
 }
 .nav-group.is-collapsed .nav-group-items {
   display: none;
@@ -2285,18 +2401,30 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 
 .nav-item {
   display: flex; align-items: center; gap: 10px;
-  width: 100%; padding: 8px 10px; margin-bottom: 1px;
+  width: 100%; padding: 7px 10px 7px 32px;
+  margin-bottom: 1px;
   border-radius: var(--radius-md);
   color: var(--text-dim); font-size: 13.5px; font-weight: 500;
   text-align: left; text-decoration: none !important;
   transition: background 0.12s, color 0.12s;
+  position: relative;
 }
 .nav-item:hover { background: var(--bg-hover); color: var(--text); }
 .nav-item.active {
-  background: var(--accent-dim); color: var(--accent);
-  box-shadow: inset 2px 0 0 var(--accent);
+  background: var(--accent-dim);
+  color: var(--text-bright);
+  font-weight: 600;
+}
+.nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: 14px; top: 6px; bottom: 6px;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
 }
 .nav-item .ico { width: 15px; height: 15px; }
+.nav-item.active .ico { color: var(--accent); }
 .nav-item span { flex: 1; }
 .nav-count {
   font-family: var(--font-mono); font-size: 11px;
@@ -2304,7 +2432,46 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   background: var(--bg-raised); padding: 1px 7px; border-radius: 10px;
   flex: 0 !important;
 }
-.nav-item.active .nav-count { color: var(--accent); background: rgba(79,142,255,0.2); }
+.nav-item.active .nav-count { color: var(--accent); background: var(--accent-dim); }
+
+/* Theme picker — small button row in the sidebar footer.
+   Each button is a 16x16 swatch + label tooltip. Active theme gets
+   a ring border. */
+.theme-picker {
+  display: flex; gap: 6px; align-items: center;
+  padding: 8px 6px 4px;
+  margin-top: 6px;
+  border-top: 1px solid var(--border-faint);
+}
+.theme-picker-label {
+  font: 10px var(--font-mono);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-mut);
+  margin-right: 4px;
+}
+.theme-swatch {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  transition: transform 0.12s, border-color 0.12s;
+}
+.theme-swatch:hover { transform: scale(1.08); border-color: var(--accent); }
+.theme-swatch.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.theme-swatch[data-theme-pick="midnight"] {
+  background: linear-gradient(135deg, #0b1017 0%, #1a2230 100%);
+}
+.theme-swatch[data-theme-pick="daylight"] {
+  background: linear-gradient(135deg, #ffffff 0%, #e9eef7 100%);
+}
+.theme-swatch[data-theme-pick="solar"] {
+  background: linear-gradient(135deg, #1c1810 0%, #ffaa3a 200%);
+}
 
 .sidebar-footer {
   padding-top: 14px; border-top: 1px solid var(--border);
@@ -7447,6 +7614,38 @@ document.querySelectorAll("[data-group-toggle]").forEach((header) => {
 });
 // Apply initial state on first paint.
 _applySidebarGroupState();
+
+//────────────────────────────────────────────────────────────────────────
+// Theme switcher (Midnight / Daylight / Solar)
+// Sets data-theme on <html>; CSS in :root[data-theme="..."] picks up
+// the palette. Persists to localStorage under "ui-theme". Three themes
+// today; add more by adding a CSS block + a swatch button.
+//────────────────────────────────────────────────────────────────────────
+const THEME_KEY = "ui-theme";
+const THEME_VALID = { midnight: 1, daylight: 1, solar: 1 };
+
+function _readTheme() {
+  try {
+    const v = localStorage.getItem(THEME_KEY);
+    if (v && THEME_VALID[v]) return v;
+  } catch (e) {}
+  return "midnight";
+}
+function _applyTheme(name) {
+  const theme = THEME_VALID[name] ? name : "midnight";
+  document.documentElement.setAttribute("data-theme", theme);
+  document.querySelectorAll("[data-theme-pick]").forEach(function(btn) {
+    btn.classList.toggle("is-active", btn.getAttribute("data-theme-pick") === theme);
+  });
+  try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+}
+document.querySelectorAll("[data-theme-pick]").forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    _applyTheme(btn.getAttribute("data-theme-pick"));
+  });
+});
+// Apply persisted theme on first paint.
+_applyTheme(_readTheme());
 
 //────────────────────────────────────────────────────────────────────────
 // Tab switching

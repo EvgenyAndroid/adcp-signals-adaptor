@@ -576,7 +576,8 @@ export async function handleDspCampaignSignalsLive(
     const r = await callAgentToolWithCircuit(a.mcp_url!, "get_signals", {
       signal_spec: c.audience_brief,
       max_results: 10,
-      pagination: { max_results: 10 },
+      // pagination envelope intentionally NOT sent — see agentsEndpoints
+      // comment about Pydantic-strict vendors rejecting unknown keywords.
       deliver_to: { deployments: [{ type: "platform", platform: "mock_dsp" }], countries: ["US"] },
     }, { timeoutMs: 10_000 });
     const latency = Date.now() - start;

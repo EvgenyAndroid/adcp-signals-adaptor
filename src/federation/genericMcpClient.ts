@@ -273,6 +273,22 @@ async function callToolOnce(url: string, sessionId: string, name: string, args: 
   if (body.result.content !== undefined) out.content = body.result.content;
   if (body.result.structuredContent !== undefined) out.structured_content = body.result.structuredContent;
   if (body.result.isError !== undefined) out.is_error = body.result.isError;
+  // When isError is true, MCP spec puts the error narrative in
+  // content[0].text. Surface it as out.error so upstream UI shows the
+  // diagnostic instead of a bare "err" pill. Without this, a vendor
+  // rejecting our payload (e.g. Dstillery's Pydantic validator on
+  // unknown `pagination` field) presents identically to a network drop.
+  if (body.result.isError) {
+    const content = body.result.content;
+    if (Array.isArray(content)) {
+      const firstText = content.find((c) => c && typeof c === "object" && (c as { type?: string }).type === "text");
+      const text = (firstText as { text?: string } | undefined)?.text;
+      if (typeof text === "string" && text.trim().length > 0) {
+        out.error = text.trim().slice(0, 500);
+      }
+    }
+    if (!out.error) out.error = "tool_error_no_message";
+  }
   return out;
 }
 

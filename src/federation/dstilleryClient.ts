@@ -123,9 +123,11 @@ async function callGetSignalsOnce(
       method: "tools/call",
       params: {
         name: "get_signals",
-        // AdCP 3.0.1: paginated form preferred; top-level kept for back-compat
-        // with 3.0.0-era agents (drop top-level on 4.0 cutover).
-        arguments: { signal_spec: brief, max_results: maxResults, pagination: { max_results: maxResults } },
+        // Top-level max_results only. Dstillery's get_signals validator
+        // (Pydantic 2.12) rejects the `pagination` envelope as an
+        // "Unexpected keyword argument" — strict-additionalProperties
+        // schemas don't tolerate forward-compat fields.
+        arguments: { signal_spec: brief, max_results: maxResults },
       },
     }),
     signal: AbortSignal.timeout(15_000),

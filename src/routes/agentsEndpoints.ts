@@ -254,15 +254,16 @@ export async function handleAgentsOrchestrate(request: Request, env: Env, logger
   if (targets.length === 0) return errorResponse("NO_TARGETS", "No live signals agents matched filters.", 400);
 
   const perAgent: OrchestratePerAgent[] = await Promise.all(targets.map(async (a): Promise<OrchestratePerAgent> => {
-    // AdCP 3.0.1: send both top-level + pagination.max_results.
-    // Spec says agents honor `pagination.max_results` when both are present
-    // (top-level deprecated, removed in 4.0); we keep the top-level form
-    // for back-compat with 3.0.0-era agents that don't read the paginated
-    // form. Drop the top-level on the 4.0 cutover.
+    // AdCP 3.0.1 introduced a `pagination` request envelope ({ max_results })
+    // alongside top-level max_results. We previously sent BOTH for forward
+    // compat, but in practice some vendors validate strictly with Pydantic
+    // and reject the extra `pagination` keyword (Dstillery's get_signals
+    // surfaces "Unexpected keyword argument" on pagination). Send only
+    // top-level until the paginated form becomes universal — re-add when
+    // we observe vendors actually requiring it.
     const res = await callAgentTool(a.mcp_url!, tool, {
       signal_spec: body.brief,
       max_results: maxResults,
-      pagination: { max_results: maxResults },
     }, { timeoutMs });
     const structured = res.structured_content as { signals?: unknown[] } | undefined;
     const signals = structured?.signals ?? [];
@@ -521,8 +522,10 @@ async function runSignalsStage(
     const res = await callAgentTool(
       a.mcp_url!,
       "get_signals",
-      // AdCP 3.0.1 paginated form + top-level back-compat (see comment above).
-      { signal_spec: brief, max_results: maxResults, pagination: { max_results: maxResults } },
+      // Top-level max_results only — see handleAgentsOrchestrate comment
+      // on why we dropped the `pagination` envelope (Pydantic-strict
+      // vendors like Dstillery reject the unknown keyword).
+      { signal_spec: brief, max_results: maxResults },
       { timeoutMs },
     );
     const signals = extractMcpToolArray<SignalLite>(res.structured_content, res.content, ["signals"])
@@ -889,8 +892,8 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
           const res = await callAgentTool(
             a.mcp_url!,
             "get_signals",
-            // AdCP 3.0.1 paginated form + top-level back-compat.
-            { signal_spec: body.brief, max_results: maxSignals, pagination: { max_results: maxSignals } },
+            // Top-level max_results only (see handleAgentsOrchestrate comment).
+            { signal_spec: body.brief, max_results: maxSignals },
             { timeoutMs },
           );
           const signals = extractMcpToolArray<SignalLite>(res.structured_content, res.content, ["signals"])

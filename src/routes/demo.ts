@@ -1301,7 +1301,7 @@ ${STYLES}
           <div class="lab-panel">
             <div class="lab-panel-title">Federated search</div>
             <label class="lab-label">Brief</label>
-            <textarea id="fed-brief" class="lab-input" rows="4" placeholder="automotive intenders"></textarea>
+            <textarea id="fed-brief" class="lab-input" rows="4" placeholder="automotive intenders in-market for EVs">automotive intenders in-market for EVs</textarea>
             <label class="lab-label" style="margin-top:8px">Max results per agent</label>
             <input id="fed-max" type="number" min="1" max="20" value="5" class="lab-input"/>
             <button class="btn-primary" id="fed-run" style="margin-top:12px;width:100%;justify-content:center">
@@ -1342,7 +1342,7 @@ ${STYLES}
           <div class="lab-panel">
             <div class="lab-panel-title">Fan-out signals brief</div>
             <label class="lab-label">Brief</label>
-            <textarea id="orch-brief" class="lab-input" rows="3" placeholder="automotive intenders in-market for EVs"></textarea>
+            <textarea id="orch-brief" class="lab-input" rows="3" placeholder="automotive intenders in-market for EVs">automotive intenders in-market for EVs</textarea>
             <label class="lab-label" style="margin-top:8px">Max results per agent</label>
             <input id="orch-max" type="number" min="1" max="50" value="10" class="lab-input"/>
             <button class="btn-primary" id="orch-run" style="margin-top:12px;width:100%;justify-content:center">
@@ -1365,7 +1365,7 @@ ${STYLES}
           <div class="wf-controls">
             <div class="wf-control-row">
               <label class="lab-label">Brief</label>
-              <textarea id="wf-brief" class="lab-input" rows="2" placeholder="luxury travelers in-market for APAC trips"></textarea>
+              <textarea id="wf-brief" class="lab-input" rows="2" placeholder="luxury travelers in-market for APAC trips">luxury travelers in-market for APAC trips</textarea>
             </div>
             <div class="wf-control-row wf-activate-row">
               <div class="wf-activate-label">Stage 4 activation <span class="orch-small">(default: dry-run only)</span></div>
@@ -1408,7 +1408,7 @@ ${STYLES}
           <div class="lab-panel-title">Brand picker</div>
           <div class="canvas-picker-row">
             <input id="canvas-search" class="lab-input" type="text"
-              placeholder="Search by domain or name (cbrands.com, scott, rembrand, ...)"
+              placeholder="Search by domain or name (coca-cola.com, nike, toyota, ...)"
               autocomplete="off"/>
             <button class="btn-secondary" id="canvas-search-btn">
               <svg class="ico"><use href="#icon-network"/></svg><span>Search</span>
@@ -1417,10 +1417,14 @@ ${STYLES}
           <div id="canvas-search-results"></div>
           <div class="canvas-quickpicks">
             <span class="orch-small" style="margin-right:6px">try:</span>
-            <button class="canvas-quickpick" data-domain="cbrands.com">cbrands.com</button>
-            <button class="canvas-quickpick" data-domain="scottbrand.com">scottbrand.com</button>
-            <button class="canvas-quickpick" data-domain="rembrand.com">rembrand.com</button>
-            <button class="canvas-quickpick" data-domain="brandvelocity.ai">brandvelocity.ai</button>
+            <button class="canvas-quickpick" data-domain="coca-cola.com">Coca-Cola</button>
+            <button class="canvas-quickpick" data-domain="nike.com">Nike</button>
+            <button class="canvas-quickpick" data-domain="toyota.com">Toyota</button>
+            <button class="canvas-quickpick" data-domain="starbucks.com">Starbucks</button>
+            <button class="canvas-quickpick" data-domain="spotify.com">Spotify</button>
+            <button class="canvas-quickpick" data-domain="airbnb.com">Airbnb</button>
+            <button class="canvas-quickpick" data-domain="chase.com">Chase</button>
+            <button class="canvas-quickpick" data-domain="target.com">Target</button>
             <span class="canvas-demo-spacer"></span>
             <button class="canvas-demo-btn" id="canvas-demo-btn" title="One-click canonical demo: resolve Coca-Cola, run workflow, fire dry-run on default trio. Use on stage to skip typing.">
               <svg class="ico" style="width:11px;height:11px"><use href="#icon-bolt"/></svg>

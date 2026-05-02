@@ -115,6 +115,98 @@ function renderRaceCanvas(demoKey: string): string {
     color: var(--accent);
   }
   .header-spacer { flex: 1; }
+  /* Page info popover — same pattern as the main demo's lane-info-*. */
+  .header-title-block { position: relative; }
+  .header-title-row { display: flex; align-items: center; gap: 8px; }
+  .page-info-btn {
+    width: 24px; height: 24px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-faint);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .page-info-btn:hover {
+    background: var(--bg-panel);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .page-info-btn.is-open {
+    background: rgba(56,182,255,0.14);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .page-info-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 50;
+    width: 420px;
+    max-width: calc(100vw - 32px);
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px 14px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+    display: none;
+    animation: pageInfoFade 0.15s ease-out;
+  }
+  .page-info-popover.is-open { display: block; }
+  @keyframes pageInfoFade {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .page-info-popover::before {
+    content: "";
+    position: absolute;
+    top: -7px; left: 18px;
+    width: 12px; height: 12px;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+    transform: rotate(45deg);
+  }
+  .page-info-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+  .page-info-steps {
+    margin: 0 0 12px;
+    padding: 0 0 0 22px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--text-dim);
+  }
+  .page-info-steps li { margin-bottom: 8px; }
+  .page-info-steps li:last-child { margin-bottom: 0; }
+  .page-info-steps strong { color: var(--text); }
+  .page-info-steps code {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 11px;
+    color: var(--accent);
+  }
+  .page-info-trace {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font: 11px var(--font-mono);
+    color: var(--text-faint);
+    line-height: 1.5;
+  }
+  .page-info-trace code {
+    color: var(--text-dim);
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-size: 11px;
+  }
   .main {
     overflow-y: auto;
     padding: 24px;
@@ -640,8 +732,22 @@ function renderRaceCanvas(demoKey: string): string {
 <div class="app">
   <header class="header">
     <a class="header-back" href="/">&larr; Back to Signals</a>
-    <div>
-      <div class="header-title">Race <span class="accent">Canvas</span></div>
+    <div class="header-title-block">
+      <div class="header-title-row">
+        <div class="header-title">Race <span class="accent">Canvas</span></div>
+        <button class="page-info-btn" id="page-info-btn" title="How this works" aria-label="How Race Canvas works">
+          <svg viewBox="0 0 20 20" width="14" height="14"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="1.4"/><line x1="10" y1="9" x2="10" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="6.5" r="0.8" fill="currentColor"/></svg>
+        </button>
+        <div class="page-info-popover" id="page-info-popover" role="dialog">
+          <div class="page-info-title">How Race Canvas works</div>
+          <ol class="page-info-steps">
+            <li><strong>Parallel race.</strong> 6 vendor agents probed in parallel against the same brief; each returns audience_size, sensitive_category_verdict, recommended_bid_floor, governance_outcome.</li>
+            <li><strong>Disagreement halo.</strong> Detector compares responses on 4 fields. Numeric: ±15% threshold (audience), ±20% (bid floor). Categorical: any difference triggers. Severity: blocking / material / minor maps to red / yellow / blue arc.</li>
+            <li><strong>Reconciliation.</strong> Median across vendors for numeric; conservative-pick (worst-of) for categorical. Audit receipts (FNV-1a hash of input/output) stack in the right sidebar — click any to inspect raw payload.</li>
+          </ol>
+          <div class="page-info-trace">Code: <code>/race/start</code> → <code>synthesizeVendorResponse</code> → <code>detectDisagreements</code></div>
+        </div>
+      </div>
       <div class="header-sub">multi-agent orchestration / disagreement halo / audit receipts</div>
     </div>
     <div class="header-spacer"></div>
@@ -1233,6 +1339,29 @@ function renderRaceCanvas(demoKey: string): string {
       t.focus();
     });
   });
+
+  // Page info popover toggle.
+  var infoBtn = document.getElementById("page-info-btn");
+  var infoPopover = document.getElementById("page-info-popover");
+  if (infoBtn && infoPopover) {
+    infoBtn.addEventListener("click", function(e) {
+      e.stopPropagation();
+      var open = infoPopover.classList.toggle("is-open");
+      infoBtn.classList.toggle("is-open", open);
+    });
+    document.addEventListener("click", function(e) {
+      var t = e.target;
+      if (t === infoBtn || (t && t.closest && (t.closest("#page-info-btn") || t.closest("#page-info-popover")))) return;
+      infoPopover.classList.remove("is-open");
+      infoBtn.classList.remove("is-open");
+    });
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") {
+        infoPopover.classList.remove("is-open");
+        infoBtn.classList.remove("is-open");
+      }
+    });
+  }
   elAddBtn.addEventListener("click", addVendor);
   elBriefInput.addEventListener("keydown", function(e) {
     if (e.key === "Enter") startRace();

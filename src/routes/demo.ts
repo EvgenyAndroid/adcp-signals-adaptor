@@ -361,7 +361,19 @@ ${STYLES}
       <section class="tab-pane active" data-tab="discover">
         <div class="pane-header">
           <div>
-            <h1 class="pane-title">Brief-driven discovery</h1>
+            <div class="pane-title-with-info">
+              <h1 class="pane-title">Brief-driven discovery</h1>
+              <button class="lane-info-btn" data-lane-info-toggle="page-discover" title="How this works" aria-label="How brief-driven discovery works"><svg class="ico"><use href="#icon-info"/></svg></button>
+              <div class="lane-info-popover" data-lane-info-panel="page-discover" role="dialog">
+                <div class="lane-info-title">How brief-driven discovery works</div>
+                <ol class="lane-info-steps">
+                  <li><strong>Vectorize.</strong> Brief or NL query is embedded via <code>openai-te3-small-d512</code> (512-dim). Same embedding model used for the catalog seed.</li>
+                  <li><strong>kNN retrieve.</strong> Top-K signals fetched by cosine similarity in 512-d space; threshold ≥ 0.45.</li>
+                  <li><strong>Score + rank.</strong> Each match returns coverage_percentage, freshness, and the cosine score. AI-generated proposals appear alongside catalog matches when no clean mapping exists.</li>
+                </ol>
+                <div class="lane-info-trace">Code: <code>handleNLQuery</code> → <code>searchSignalsService</code> → <code>cosineSimilarity</code></div>
+              </div>
+            </div>
             <p class="pane-subtitle">
               <strong id="discover-mode-subtitle">Brief mode</strong> —
               <span id="discover-mode-desc">semantic similarity via the UCP embedding engine. Returns catalog matches + AI-generated custom proposals alongside each other.</span>
@@ -501,7 +513,19 @@ ${STYLES}
       <section class="tab-pane" data-tab="concepts">
         <div class="pane-header">
           <div>
-            <h1 class="pane-title">UCP concept registry</h1>
+            <div class="pane-title-with-info">
+              <h1 class="pane-title">UCP concept registry</h1>
+              <button class="lane-info-btn" data-lane-info-toggle="page-concepts" title="How this works" aria-label="How UCP concept registry works"><svg class="ico"><use href="#icon-info"/></svg></button>
+              <div class="lane-info-popover" data-lane-info-panel="page-concepts" role="dialog">
+                <div class="lane-info-title">How the concept registry works</div>
+                <ol class="lane-info-steps">
+                  <li><strong>19 canonical concepts.</strong> Age, intent verticals, life-events, behaviors — each with a fixed 512-d embedding + accepted enums + transformer hints.</li>
+                  <li><strong>Cosine search.</strong> A search query embeds in the same space; top-K concepts ranked by cosine similarity to the query vector. Score ≥ 0.45 surfaces.</li>
+                  <li><strong>Composition.</strong> Concepts compose conjunctively — a buyer brief that names "luxury travelers" + "high HHI" hits 2 concepts which become AND-joined targeting filters with declared transformer rules.</li>
+                </ol>
+                <div class="lane-info-trace">Code: <code>handleConceptRoute</code> + <code>handleSearchConcepts</code> → <code>cosineSimilarity</code></div>
+              </div>
+            </div>
             <p class="pane-subtitle">Cross-taxonomy audience concepts. Each concept carries semantic mappings to IAB, LiveRamp, TradeDesk, and internal taxonomies. Click a concept to find matching signals on the Discover tab.</p>
           </div>
         </div>
@@ -724,7 +748,19 @@ ${STYLES}
       <section class="tab-pane" data-tab="embedding">
         <div class="pane-header">
           <div>
-            <h1 class="pane-title">Embedding space</h1>
+            <div class="pane-title-with-info">
+              <h1 class="pane-title">Embedding space</h1>
+              <button class="lane-info-btn" data-lane-info-toggle="page-embedding" title="How this works" aria-label="How embedding space works"><svg class="ico"><use href="#icon-info"/></svg></button>
+              <div class="lane-info-popover" data-lane-info-panel="page-embedding" role="dialog">
+                <div class="lane-info-title">How the 2D projection is built</div>
+                <ol class="lane-info-steps">
+                  <li><strong>Source vectors.</strong> Every signal in the catalog has a 512-dim embedding from <code>openai-te3-small-d512</code>; same model that scores brief queries.</li>
+                  <li><strong>Projection.</strong> 512-d → 2-d via Procrustes-SVD against a fixed UCP reference space. Distance is approximately preserved; clusters reflect semantic similarity.</li>
+                  <li><strong>Hover + neighbors.</strong> Hover any point for full signal metadata + top-K nearest by cosine. Spatial gaps are signal-coverage holes — surfaced separately as "coverage gaps" in the analytics tabs.</li>
+                </ol>
+                <div class="lane-info-trace">Code: <code>handleUcpProjection</code> → Procrustes-SVD; vectors served from <code>/signals/&lt;id&gt;/embedding</code></div>
+              </div>
+            </div>
             <p class="pane-subtitle">Live view of the UCP semantic space powering semantic discovery. Real 512-dim <code>text-embedding-3-small</code> vectors, projected for inspection. Tight clusters = semantically adjacent audiences.</p>
           </div>
           <div class="activations-controls">
@@ -1032,7 +1068,19 @@ ${STYLES}
       <section class="tab-pane" data-tab="composer">
         <div class="pane-header">
           <div>
-            <h1 class="pane-title">Audience Composer</h1>
+            <div class="pane-title-with-info">
+              <h1 class="pane-title">Audience Composer</h1>
+              <button class="lane-info-btn" data-lane-info-toggle="page-composer" title="How this works" aria-label="How audience composer works"><svg class="ico"><use href="#icon-info"/></svg></button>
+              <div class="lane-info-popover" data-lane-info-panel="page-composer" role="dialog">
+                <div class="lane-info-title">How audience composition works</div>
+                <ol class="lane-info-steps">
+                  <li><strong>Saturation model.</strong> P(seen ≥ 1 | F) = 1 − exp(−F) across F=1..15 frequency exposures. Knee detection flags the F at which marginal reach drops below 50% of the F=1 gain.</li>
+                  <li><strong>Lookalike expansion.</strong> Take chosen signal's 512-d vector, find top-K nearest in the catalog by cosine. Returns ranked candidates with cosine score + coverage_percentage.</li>
+                  <li><strong>Affinity audit + privacy gate.</strong> Composition checked against industry attestations (DTS labels) + minimum-cohort thresholds (≥1k by default). Stages with sub-threshold cohorts auto-drop.</li>
+                </ol>
+                <div class="lane-info-trace">Code: <code>handleAudienceCompose</code> + <code>handleAudienceSaturation</code> + <code>handleAudiencePrivacyCheck</code></div>
+              </div>
+            </div>
             <p class="pane-subtitle">Compose audiences from catalog signals with set operations (union \u222a, intersect \u2229, exclude \u2212), optionally expand with embedding-based lookalikes, then plan activation via frequency-saturation curves and affinity audits vs the catalog baseline.</p>
           </div>
         </div>
@@ -1348,7 +1396,19 @@ ${STYLES}
       <section class="tab-pane" data-tab="federation">
         <div class="pane-header">
           <div>
-            <h1 class="pane-title">Agent Federation <span class="pill pill-success" style="margin-left:8px;font-size:10px">A2A live</span></h1>
+            <div class="pane-title-with-info">
+              <h1 class="pane-title">Agent Federation <span class="pill pill-success" style="margin-left:8px;font-size:10px">A2A live</span></h1>
+              <button class="lane-info-btn" data-lane-info-toggle="page-federation" title="How this works" aria-label="How federation works"><svg class="ico"><use href="#icon-info"/></svg></button>
+              <div class="lane-info-popover" data-lane-info-panel="page-federation" role="dialog">
+                <div class="lane-info-title">How federated search works</div>
+                <ol class="lane-info-steps">
+                  <li><strong>Discover.</strong> Live agent registry pulled from <code>/agents/registry</code> — every signals agent we can reach.</li>
+                  <li><strong>Parallel fan-out.</strong> Brief sent simultaneously to every live signals agent's <code>get_signals</code>. Per-agent timeouts + circuit breaker.</li>
+                  <li><strong>Merge + tag.</strong> Results merged and each row tagged with <code>source_agent</code>. Sorted by coverage_percentage; agent badges visible inline. Bulk-shortlist + CSV export available.</li>
+                </ol>
+                <div class="lane-info-trace">Code: <code>handleFederatedSearch</code> → <code>Promise.all(agents.map(callAgentTool))</code></div>
+              </div>
+            </div>
             <p class="pane-subtitle">Cross-agent search across the AdCP Signals Discovery ecosystem. Live partner: Dstillery. More coming.</p>
           </div>
         </div>
@@ -1385,7 +1445,19 @@ ${STYLES}
       <section class="tab-pane" data-tab="orchestrator">
         <div class="pane-header">
           <div>
-            <h1 class="pane-title">Multi-Agent Orchestrator <span class="pill pill-accent" style="margin-left:8px;font-size:10px">Sec-48</span></h1>
+            <div class="pane-title-with-info">
+              <h1 class="pane-title">Multi-Agent Orchestrator <span class="pill pill-accent" style="margin-left:8px;font-size:10px">Sec-48</span></h1>
+              <button class="lane-info-btn" data-lane-info-toggle="page-orchestrator" title="How this works" aria-label="How orchestration works"><svg class="ico"><use href="#icon-info"/></svg></button>
+              <div class="lane-info-popover" data-lane-info-panel="page-orchestrator" role="dialog">
+                <div class="lane-info-title">How multi-agent orchestration works</div>
+                <ol class="lane-info-steps">
+                  <li><strong>Probe.</strong> Every live agent's <code>tools/list</code> is pulled in parallel; capabilities matrix built from the union of advertised tools.</li>
+                  <li><strong>4-stage workflow.</strong> Run sequentially: signals (fan-out across signals agents) → creative (list_creative_formats) → products (filtered by chosen signals + formats) → media buy (synthesize payload, optionally fire).</li>
+                  <li><strong>Picks thread between stages.</strong> Top-3 signals from stage 1 become <code>filters.signals</code> for stage 3; top-2 formats from stage 2 become <code>filters.format_ids</code>. Stage 4 returns a dry-run payload preview per buying agent; checkboxes opt agents into a real <code>create_media_buy</code> fire.</li>
+                </ol>
+                <div class="lane-info-trace">Code: <code>handleAgentsOrchestrate</code> + <code>handleWorkflowRun</code> → <code>runSignalsStage</code> / <code>runCreativeStage</code> / <code>runProductsStage</code> / <code>runMediaBuyStage</code></div>
+              </div>
+            </div>
             <p class="pane-subtitle">Live view of every AdCP agent we know about. Probe each MCP endpoint in parallel to see who's up, what they expose, and how fast they respond. Fan out a signals brief to all live signals agents with one click, or compare tool surfaces side-by-side.</p>
           </div>
           <div class="activations-controls">
@@ -1718,7 +1790,19 @@ ${STYLES}
       <section class="tab-pane" data-tab="campaign">
         <div class="pane-header">
           <div>
-            <h1 class="pane-title">Campaign Canvas <span class="pill pill-warning mono" style="font-size:9.5px;margin-left:8px;letter-spacing:0.04em">DSP buy-side · all primitives mocked</span></h1>
+            <div class="pane-title-with-info">
+              <h1 class="pane-title">Campaign Canvas <span class="pill pill-warning mono" style="font-size:9.5px;margin-left:8px;letter-spacing:0.04em">DSP buy-side · all primitives mocked</span></h1>
+              <button class="lane-info-btn" data-lane-info-toggle="page-campaign" title="How this works" aria-label="How campaign canvas works"><svg class="ico"><use href="#icon-info"/></svg></button>
+              <div class="lane-info-popover" data-lane-info-panel="page-campaign" role="dialog">
+                <div class="lane-info-title">How Campaign Canvas works</div>
+                <ol class="lane-info-steps">
+                  <li><strong>Buy-side primitives.</strong> Four AdCP buy-side tools are unspec'd in 3.0 GA: <code>submit_bid_strategy</code>, <code>get_bid_opportunities</code>, <code>get_pacing_status</code>, <code>optimize_strategy</code>. Each lane below mocks one — same playbook as governanceMock.</li>
+                  <li><strong>Deterministic mock.</strong> Per-campaign data keyed off campaign_id (FNV-1a hash). Bid streams, SSP performance distributions, and pacing classifications are reproducible across reloads.</li>
+                  <li><strong>Resilience layer.</strong> Live calls (where they exist) wrapped in a per-URL circuit breaker (open after 3 fails, 60s cooldown, half-open recovery). Wave 4 spend allocator splits budget across vendors via 4 strategies: equal_split / score_weighted / priority_first / cap_then_split.</li>
+                </ol>
+                <div class="lane-info-trace">Code: <code>dspMock.ts</code> + <code>callAgentToolWithCircuit</code> + <code>allocateSpend</code></div>
+              </div>
+            </div>
             <p class="pane-subtitle">
               Real-time control loop: bid strategy → bid stream → inventory match → brand-safety filter → delivery + attribution → optimization signals fed BACK into strategy.
               <br/>
@@ -1840,7 +1924,19 @@ ${STYLES}
       <section class="tab-pane" data-tab="agentic">
         <div class="pane-header">
           <div>
-            <h1 class="pane-title">Agentic Canvas <span class="pill pill-warning mono" style="font-size:9.5px;margin-left:8px;letter-spacing:0.04em" id="agentic-mode-pill">probing mode…</span></h1>
+            <div class="pane-title-with-info">
+              <h1 class="pane-title">Agentic Canvas <span class="pill pill-warning mono" style="font-size:9.5px;margin-left:8px;letter-spacing:0.04em" id="agentic-mode-pill">probing mode…</span></h1>
+              <button class="lane-info-btn" data-lane-info-toggle="page-agentic" title="How this works" aria-label="How agentic canvas works"><svg class="ico"><use href="#icon-info"/></svg></button>
+              <div class="lane-info-popover" data-lane-info-panel="page-agentic" role="dialog">
+                <div class="lane-info-title">How the agentic planner works</div>
+                <ol class="lane-info-steps">
+                  <li><strong>Brief expansion.</strong> Live mode → Claude Sonnet decomposes a one-line brief into structured fields (industries, KPI, geo, flight). Template fallback uses regex + 30-brand registry. Both produce the same shape.</li>
+                  <li><strong>Tool planning.</strong> Planner picks an ordered sequence (signals → creative → products → governance → media-buy), filtered by which agents actually advertise each tool. Live mode → Claude chooses; template → 5-stage default.</li>
+                  <li><strong>Streaming execution + Wave 3 tools.</strong> NDJSON-streamed reasoning trace + per-step results. Args sanitized (#149: allowlist + required-arg backfill) before fan-out. Refine, self-critique, and correction memory let the operator iterate without restarting from scratch.</li>
+                </ol>
+                <div class="lane-info-trace">Code: <code>expandBrief</code> → <code>planExecution</code> → <code>handleAgenticExecute</code> + <code>sanitizeArgsForVendor</code></div>
+              </div>
+            </div>
             <p class="pane-subtitle">
               Type a brief in plain English. The agent expands it, plans the call sequence dynamically, executes against live MCP agents, and narrates every decision.
               <br/>
@@ -2801,6 +2897,30 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 .pane-title {
   margin: 0 0 6px; font-size: 22px; font-weight: 600;
   letter-spacing: -0.015em;
+}
+/* Wraps a pane title + (?) info icon + popover. The popover overrides
+   the default right-anchored position from .lane-info-popover so it
+   reads left-to-right under the icon. */
+.pane-title-with-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+.pane-title-with-info .lane-info-btn {
+  margin-left: 0;
+  width: 26px; height: 26px;
+}
+.pane-title-with-info .lane-info-btn .ico { width: 15px; height: 15px; }
+.pane-title-with-info .lane-info-popover {
+  right: auto;
+  left: 0;
+  top: calc(100% + 4px);
+  width: 420px;
+}
+.pane-title-with-info .lane-info-popover::before {
+  right: auto;
+  left: 18px;
 }
 .pane-subtitle {
   margin: 0; font-size: 13.5px; color: var(--text-dim);

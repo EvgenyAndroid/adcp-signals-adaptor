@@ -24,6 +24,7 @@ import { makeAgenticContext, type ReasoningStep, llmCall, newReasoningStep } fro
 import { expandBrief, type ExpandedBrief } from "../domain/agenticBrief";
 import { planExecution, type AgentCoverage, type ExecutionPlan } from "../domain/agenticPlanner";
 import { recallSimilar, suggestRecovery, suggestRemediations, checkAndRemediate, rememberWorkflow } from "../domain/agenticHelpers";
+import { sanitizeArgsForVendor } from "../domain/agenticArgsSanitizer";
 import { AGENT_REGISTRY } from "../domain/agentRegistry";
 import { probeAgent, callAgentTool } from "../federation/genericMcpClient";
 import { ensureSelfHooksInstalled } from "./agentsEndpoints";
@@ -154,13 +155,19 @@ export async function handleAgenticExecute(request: Request, env: Env, logger: L
           }
           const results = await Promise.all(targets.map(async (a) => {
             // Build args from template; resolve "${chosen_*}" interpolations.
-            const args = JSON.parse(JSON.stringify(step.args_template)) as Record<string, unknown>;
+            const rawArgs = JSON.parse(JSON.stringify(step.args_template)) as Record<string, unknown>;
             // Resolve filter signal/format placeholders.
-            if (args.filters && typeof args.filters === "object") {
-              const f = args.filters as Record<string, unknown>;
+            if (rawArgs.filters && typeof rawArgs.filters === "object") {
+              const f = rawArgs.filters as Record<string, unknown>;
               if (f.signals === "${chosen_signal_ids}") f.signals = choices.signals;
               if (f.format_ids === "${chosen_format_ids}") f.format_ids = choices.formats;
             }
+            // Sanitize: strip unknown fields per the per-tool allowlist
+            // and backfill required fields from the brief. Protects against
+            // LLM-hallucinated args like `brand` on list_creative_formats
+            // (rejected by Adzymic + Advertible) and missing signal_spec
+            // on get_signals (rejected by Dstillery). See agenticArgsSanitizer.
+            const args = sanitizeArgsForVendor(step.tool, rawArgs, plan.brief);
             const start = Date.now();
             const r = await callAgentTool(a.mcp_url!, step.tool, args, { timeoutMs: 12_000 });
             return { agent_id: a.id, agent_name: a.name, vendor: a.vendor, ok: r.ok, latency_ms: Date.now() - start, error: r.error, structured_content: r.structured_content, content: r.content };

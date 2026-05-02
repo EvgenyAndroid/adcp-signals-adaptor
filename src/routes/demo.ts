@@ -128,7 +128,7 @@ ${STYLES}
     <div class="sidebar-brand">
       <div class="brand-mark"><img src="${BRAND_LOGO_DATA_URI}" alt="signal-stack"/></div>
       <div class="brand-text">
-        <div class="brand-title">Evgeny's <span class="dot">·</span> Marketplace Agent</div>
+        <div class="brand-title">Evgeny's <span class="brand-title-mp">Marketplace&nbsp;Agent</span></div>
         <div class="brand-sub">AdCP signals provider</div>
       </div>
     </div>
@@ -1356,7 +1356,13 @@ ${STYLES}
           <div class="lab-panel">
             <div class="lab-panel-title">Federated search</div>
             <label class="lab-label">Brief</label>
-            <textarea id="fed-brief" class="lab-input" rows="4" placeholder="automotive intenders in-market for EVs">automotive intenders in-market for EVs</textarea>
+            <textarea id="fed-brief" class="lab-input" rows="4" placeholder="automotive intenders in-market for EVs"></textarea>
+            <div class="canvas-quickpicks" style="margin-top:6px">
+              <span class="orch-small" style="margin-right:6px">try:</span>
+              <button class="canvas-quickpick" data-brief-target="fed-brief">automotive intenders in-market for EVs</button>
+              <button class="canvas-quickpick" data-brief-target="fed-brief">luxury travelers high HHI</button>
+              <button class="canvas-quickpick" data-brief-target="fed-brief">premium beauty 25-44</button>
+            </div>
             <label class="lab-label" style="margin-top:8px">Max results per agent</label>
             <input id="fed-max" type="number" min="1" max="20" value="5" class="lab-input"/>
             <button class="btn-primary" id="fed-run" style="margin-top:12px;width:100%;justify-content:center">
@@ -1397,7 +1403,13 @@ ${STYLES}
           <div class="lab-panel">
             <div class="lab-panel-title">Fan-out signals brief</div>
             <label class="lab-label">Brief</label>
-            <textarea id="orch-brief" class="lab-input" rows="3" placeholder="automotive intenders in-market for EVs">automotive intenders in-market for EVs</textarea>
+            <textarea id="orch-brief" class="lab-input" rows="3" placeholder="automotive intenders in-market for EVs"></textarea>
+            <div class="canvas-quickpicks" style="margin-top:6px">
+              <span class="orch-small" style="margin-right:6px">try:</span>
+              <button class="canvas-quickpick" data-brief-target="orch-brief">automotive intenders in-market for EVs</button>
+              <button class="canvas-quickpick" data-brief-target="orch-brief">luxury travelers high HHI</button>
+              <button class="canvas-quickpick" data-brief-target="orch-brief">premium beauty 25-44</button>
+            </div>
             <label class="lab-label" style="margin-top:8px">Max results per agent</label>
             <input id="orch-max" type="number" min="1" max="50" value="10" class="lab-input"/>
             <button class="btn-primary" id="orch-run" style="margin-top:12px;width:100%;justify-content:center">
@@ -1420,7 +1432,13 @@ ${STYLES}
           <div class="wf-controls">
             <div class="wf-control-row">
               <label class="lab-label">Brief</label>
-              <textarea id="wf-brief" class="lab-input" rows="2" placeholder="luxury travelers in-market for APAC trips">luxury travelers in-market for APAC trips</textarea>
+              <textarea id="wf-brief" class="lab-input" rows="2" placeholder="luxury travelers in-market for APAC trips"></textarea>
+              <div class="canvas-quickpicks" style="margin-top:6px">
+                <span class="orch-small" style="margin-right:6px">try:</span>
+                <button class="canvas-quickpick" data-brief-target="wf-brief">Coca-Cola Summer Refresh, $250K, 30 days</button>
+                <button class="canvas-quickpick" data-brief-target="wf-brief">luxury travelers APAC trips</button>
+                <button class="canvas-quickpick" data-brief-target="wf-brief">Nike running shoes launch, ROAS 3.0</button>
+              </div>
             </div>
             <div class="wf-control-row wf-activate-row">
               <div class="wf-activate-label">Stage 4 activation <span class="orch-small">(default: dry-run only)</span></div>
@@ -2467,8 +2485,15 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 }
 .brand-mark .ico { width: 18px; height: 18px; }
 .brand-text { line-height: 1.25; }
-.brand-title { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
-.brand-title .dot { color: var(--accent); margin: 0 1px; }
+.brand-title {
+  font-size: 14px; font-weight: 600; letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+/* Marketplace + Agent stay together (non-breaking space). When the
+   sidebar is narrow, the title wraps cleanly after "Evgeny's" instead
+   of breaking the phrase "Marketplace Agent" mid-air. The .brand-title-mp
+   span gets accent color for visual interest in place of the old dot. */
+.brand-title-mp { color: var(--accent); }
 .brand-sub { font-size: 11px; color: var(--text-mut); }
 
 .sidebar-nav { flex: 1; overflow-y: auto; padding-right: 2px; }
@@ -7952,6 +7977,23 @@ document.addEventListener("keydown", function(e) {
   }
 });
 _applySidebarCollapsed(_readSidebarCollapsed());
+
+//────────────────────────────────────────────────────────────────────────
+// Brief try-chips — one-click fill. Any element with [data-brief-target]
+// fills the input/textarea with that target id when clicked. Wired
+// globally (not gated on ensureCanvas) so chips on Federation /
+// Orchestrator / Workflow tabs work without visiting the Canvas tab
+// first.
+//────────────────────────────────────────────────────────────────────────
+document.querySelectorAll("[data-brief-target]").forEach(function(b) {
+  b.addEventListener("click", function() {
+    var targetId = b.getAttribute("data-brief-target");
+    var target = targetId ? document.getElementById(targetId) : null;
+    if (!target) return;
+    target.value = (b.textContent || "").trim();
+    target.focus();
+  });
+});
 
 //────────────────────────────────────────────────────────────────────────
 // Tab switching
@@ -15442,10 +15484,9 @@ async function ensureCanvas() {
   });
   // Quick-pick chips fire resolve directly.
   document.querySelectorAll(".canvas-quickpick").forEach(function (b) {
-    b.addEventListener("click", function () {
-      var d = b.getAttribute("data-domain");
-      if (d) _canvasResolveBrand(d);
-    });
+    var d = b.getAttribute("data-domain");
+    if (!d) return; // Skip brief-target chips; they're wired globally below.
+    b.addEventListener("click", function () { _canvasResolveBrand(d); });
   });
   // Wave 1: Demo mode — single-click canonical run for stage demos.
   var demoBtn = document.getElementById("canvas-demo-btn");

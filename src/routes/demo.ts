@@ -2313,6 +2313,50 @@ ${STYLES}
 
 <div id="toast" class="toast"></div>
 
+<!-- Trace panel: slide-in detail view for any traced operation.
+     Content filled by JS from the latest _trace field on any traced
+     response. Universal schema, so new surfaces are drop-in. -->
+<button class="trace-trigger" id="trace-trigger" type="button" aria-label="Open trace inspector" title="Open trace (last operation)">
+  <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+    <path d="M3 10 L8 10 L9.5 6 L10.5 14 L12 10 L17 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <span class="trace-trigger-label">Trace</span>
+  <span class="trace-trigger-badge" id="trace-trigger-badge" hidden>1</span>
+</button>
+
+<div class="trace-backdrop" id="trace-backdrop" aria-hidden="true"></div>
+
+<aside class="trace-panel" id="trace-panel" role="dialog" aria-label="Trace inspector" aria-hidden="true">
+  <div class="trace-head">
+    <div class="trace-head-eyebrow" id="trace-eyebrow">trace inspector</div>
+    <div class="trace-head-row">
+      <h2 class="trace-title" id="trace-operation">No trace yet</h2>
+      <button class="trace-close" id="trace-close" type="button" aria-label="Close trace panel">×</button>
+    </div>
+    <div class="trace-input mono" id="trace-input"></div>
+    <div class="trace-meta">
+      <span class="trace-meta-pill mono"><span class="trace-meta-k">duration</span><span class="trace-meta-v" id="trace-duration">—</span></span>
+      <span class="trace-meta-pill mono"><span class="trace-meta-k">steps</span><span class="trace-meta-v" id="trace-step-count">—</span></span>
+      <span class="trace-meta-pill mono"><span class="trace-meta-k">at</span><span class="trace-meta-v" id="trace-ts">—</span></span>
+    </div>
+  </div>
+  <div class="trace-tabs" role="tablist">
+    <button class="trace-tab is-active" data-trace-tab="overview" role="tab" aria-selected="true">Overview</button>
+    <button class="trace-tab" data-trace-tab="json" role="tab">JSON</button>
+    <span class="trace-tab-indicator" id="trace-tab-indicator"></span>
+  </div>
+  <div class="trace-body">
+    <section class="trace-tab-pane is-active" data-trace-pane="overview">
+      <div class="trace-perf" id="trace-perf"></div>
+      <div class="trace-steps" id="trace-steps"></div>
+    </section>
+    <section class="trace-tab-pane" data-trace-pane="json">
+      <button class="trace-copy-btn" id="trace-copy-json" type="button">Copy JSON</button>
+      <pre class="trace-json mono" id="trace-json"></pre>
+    </section>
+  </div>
+</aside>
+
 <!-- Keyboard shortcuts cheat-sheet (Sec-38 A7). Opened via \`?\`. -->
 <div id="kbd-overlay" class="kbd-overlay" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
   <div class="kbd-card">
@@ -3667,6 +3711,465 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 .activation-keys .ak-row { padding: 3px 0; }
 .activation-keys .ak-platform { color: var(--text-mut); }
 .activation-keys .ak-key { color: var(--success); font-weight: 500; }
+
+/* ── Trace inspector — slide-in panel + trigger button ───────────────────
+   Wow-factor build: backdrop blur, stagger-fade step entry, glow-stroke
+   score bars, gradient histogram, animated duration counter, sliding
+   tab indicator. Theme-aware via CSS vars. */
+
+.trace-trigger {
+  position: fixed;
+  bottom: 22px; right: 22px;
+  z-index: 9000;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 16px 10px 14px;
+  border-radius: 999px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text-dim);
+  font: 600 12px var(--font-sans);
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.32);
+  transform: translateY(60px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2),
+              opacity 0.25s ease,
+              border-color 0.15s, color 0.15s, background 0.15s;
+}
+.trace-trigger.is-visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+.trace-trigger:hover {
+  border-color: var(--accent);
+  color: var(--text-bright);
+  background: var(--bg-raised);
+}
+.trace-trigger.is-pulsing {
+  animation: tracePulse 1.6s ease-in-out 3;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+@keyframes tracePulse {
+  0%, 100% { box-shadow: 0 6px 18px rgba(0,0,0,0.32), 0 0 0 0 var(--accent-dim); }
+  50%      { box-shadow: 0 6px 18px rgba(0,0,0,0.32), 0 0 0 10px transparent; }
+}
+.trace-trigger svg { color: var(--accent); }
+.trace-trigger-label { letter-spacing: 0.02em; }
+.trace-trigger-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font: 700 10px var(--font-mono);
+}
+
+.trace-backdrop {
+  position: fixed; inset: 0; z-index: 9990;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px) saturate(0.85);
+  -webkit-backdrop-filter: blur(6px) saturate(0.85);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+}
+.trace-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.trace-panel {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: 540px; max-width: 92vw;
+  z-index: 9995;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-strong);
+  box-shadow: -24px 0 60px rgba(0,0,0,0.4);
+  display: flex; flex-direction: column;
+  transform: translateX(102%);
+  transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1);
+  font-family: var(--font-sans);
+}
+.trace-panel.is-open {
+  transform: translateX(0);
+}
+
+.trace-head {
+  padding: 22px 24px 14px;
+  border-bottom: 1px solid var(--border);
+  /* Subtle scanline gradient — workshop "scientific instrument" feel */
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.02), transparent),
+    var(--bg-surface);
+}
+.trace-head-eyebrow {
+  font: 10px/1 var(--font-mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.trace-head-row {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px;
+}
+.trace-title {
+  margin: 0; font: 600 18px/1.25 var(--font-sans);
+  color: var(--text-bright);
+  letter-spacing: -0.015em;
+}
+.trace-close {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font: 200 22px/1 var(--font-sans);
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.trace-close:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+  border-color: var(--accent);
+}
+.trace-input {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+  word-break: break-word;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  display: inline-block;
+  max-width: 100%;
+}
+.trace-meta {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-top: 12px;
+}
+.trace-meta-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 9px;
+  border-radius: 4px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  font-size: 11px;
+}
+.trace-meta-k { color: var(--text-mut); text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; }
+.trace-meta-v { color: var(--text); }
+
+.trace-tabs {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 16px 0;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.trace-tab {
+  background: transparent; border: none;
+  padding: 10px 14px;
+  color: var(--text-dim);
+  font: 500 12px var(--font-sans);
+  cursor: pointer;
+  border-radius: 0;
+  position: relative;
+  transition: color 0.12s;
+}
+.trace-tab:hover { color: var(--text); }
+.trace-tab.is-active { color: var(--text-bright); }
+.trace-tab-indicator {
+  position: absolute;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  transition: left 0.22s cubic-bezier(0.2, 0.9, 0.3, 1), width 0.22s ease;
+  box-shadow: 0 0 8px var(--accent-border);
+}
+
+.trace-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 22px 28px;
+}
+.trace-body::-webkit-scrollbar { width: 8px; }
+.trace-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+.trace-body::-webkit-scrollbar-thumb:hover { background: var(--text-mut); }
+.trace-tab-pane { display: none; animation: traceFadeIn 0.2s ease; }
+.trace-tab-pane.is-active { display: block; }
+@keyframes traceFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Performance flame-bar at the top of Overview. */
+.trace-perf {
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.trace-perf-label {
+  font: 10px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-mut);
+  margin-bottom: 8px;
+}
+.trace-perf-bar {
+  display: flex;
+  height: 14px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.trace-perf-segment {
+  height: 100%;
+  position: relative;
+  border-right: 1px solid rgba(0,0,0,0.18);
+  transition: opacity 0.2s;
+}
+.trace-perf-segment:last-child { border-right: none; }
+.trace-perf-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 4px 12px;
+  margin-top: 10px;
+  font: 11px var(--font-mono);
+}
+.trace-perf-legend-row {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--text-dim);
+}
+.trace-perf-legend-swatch {
+  width: 9px; height: 9px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.trace-perf-legend-k { color: var(--text-dim); }
+.trace-perf-legend-v { color: var(--text); margin-left: auto; }
+
+/* Steps accordion. */
+.trace-steps {
+  display: flex; flex-direction: column; gap: 10px;
+}
+.trace-step {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: traceStepIn 0.4s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+@keyframes traceStepIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+.trace-step-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  color: var(--text);
+  transition: background 0.12s;
+}
+.trace-step-head:hover { background: var(--bg-hover); }
+.trace-step-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  font: 700 10px var(--font-mono);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.trace-step-label {
+  flex: 1;
+  font: 600 13px var(--font-sans);
+  color: var(--text-bright);
+  letter-spacing: -0.005em;
+}
+.trace-step-duration {
+  font: 11px var(--font-mono);
+  color: var(--text-mut);
+}
+.trace-step-chevron {
+  width: 12px; height: 12px;
+  color: var(--text-mut);
+  transition: transform 0.18s;
+}
+.trace-step.is-open .trace-step-chevron { transform: rotate(180deg); }
+
+.trace-step-body {
+  display: none;
+  padding: 4px 16px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+.trace-step.is-open .trace-step-body { display: block; }
+
+.trace-step-note {
+  font: 12px/1.5 var(--font-sans);
+  color: var(--text-dim);
+  font-style: italic;
+  padding: 10px 0 6px;
+}
+
+.trace-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) 1fr;
+  gap: 4px 14px;
+  font: 11.5px/1.5 var(--font-mono);
+  margin: 8px 0;
+}
+.trace-detail-k { color: var(--text-mut); }
+.trace-detail-v { color: var(--text); word-break: break-word; }
+
+/* Match list with score bars — the headline visualization. */
+.trace-match-list {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.trace-match {
+  display: grid;
+  grid-template-columns: 32px 1fr 56px;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 0;
+}
+.trace-match-rank {
+  font: 11px var(--font-mono);
+  color: var(--text-mut);
+  text-align: right;
+}
+.trace-match-bar-wrap {
+  position: relative;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  height: 22px;
+  overflow: hidden;
+}
+.trace-match-bar {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+  border-right: 1px solid var(--accent-hot);
+  box-shadow: 0 0 8px var(--accent-border);
+  transition: width 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+  width: 0;
+}
+.trace-match-text {
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center;
+  padding: 0 8px;
+  font: 11px var(--font-mono);
+  color: var(--text-bright);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.trace-match-meta {
+  font: 10px var(--font-mono);
+  color: var(--text-mut);
+  padding-left: 38px;
+  margin-top: -2px;
+}
+.trace-match-score {
+  font: 600 12px var(--font-mono);
+  color: var(--accent);
+  text-align: right;
+}
+
+/* Histogram with gradient + threshold marker. */
+.trace-histo {
+  margin-top: 12px;
+  padding: 10px 12px 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.trace-histo-label {
+  font: 10px var(--font-mono);
+  color: var(--text-mut);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+.trace-histo-bars {
+  display: flex; align-items: flex-end; gap: 2px;
+  height: 50px;
+  position: relative;
+}
+.trace-histo-bar {
+  flex: 1;
+  background: linear-gradient(180deg, var(--accent), var(--accent-dim));
+  border-radius: 1px 1px 0 0;
+  min-height: 2px;
+  transition: height 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
+}
+.trace-histo-threshold {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 1px;
+  background: var(--warning);
+  box-shadow: 0 0 6px var(--warning);
+}
+.trace-histo-axis {
+  display: flex; justify-content: space-between;
+  font: 10px var(--font-mono);
+  color: var(--text-mut);
+  margin-top: 4px;
+}
+
+/* JSON tab. */
+.trace-copy-btn {
+  position: sticky; top: 0;
+  float: right;
+  margin-bottom: 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 5px 10px;
+  border-radius: 4px;
+  font: 11px var(--font-mono);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.trace-copy-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.trace-json {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  font: 11px/1.55 var(--font-mono);
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: calc(100vh - 280px);
+  overflow: auto;
+  clear: both;
+}
 
 /* ── Toast ────────────────────────────────────────────────────────────── */
 .toast {
@@ -8242,6 +8745,236 @@ document.addEventListener("keydown", function(e) {
 _applySidebarCollapsed(_readSidebarCollapsed());
 
 //────────────────────────────────────────────────────────────────────────
+// Trace inspector — slide-in panel that renders any operation's _trace
+// payload. Universal renderer; new traced surfaces just need to populate
+// window.__lastTrace and trigger _showTraceTrigger().
+//────────────────────────────────────────────────────────────────────────
+window.__lastTrace = null;
+
+function _showTraceTrigger() {
+  var t = document.getElementById("trace-trigger");
+  if (!t) return;
+  t.classList.add("is-visible");
+  // Pulse 3 times to telegraph "new info available."
+  t.classList.remove("is-pulsing");
+  void t.offsetWidth; // force restart
+  t.classList.add("is-pulsing");
+}
+
+function _openTracePanel() {
+  if (!window.__lastTrace) return;
+  _renderTracePanel(window.__lastTrace);
+  document.getElementById("trace-backdrop").classList.add("is-open");
+  document.getElementById("trace-panel").classList.add("is-open");
+  document.getElementById("trace-panel").setAttribute("aria-hidden", "false");
+}
+function _closeTracePanel() {
+  document.getElementById("trace-backdrop").classList.remove("is-open");
+  document.getElementById("trace-panel").classList.remove("is-open");
+  document.getElementById("trace-panel").setAttribute("aria-hidden", "true");
+}
+
+function _fmtMs(ms) {
+  if (typeof ms !== "number") return "—";
+  if (ms < 1000) return ms + "ms";
+  return (ms / 1000).toFixed(2) + "s";
+}
+function _fmtRelTs(iso) {
+  try {
+    var diff = Date.now() - new Date(iso).getTime();
+    if (diff < 5000) return "just now";
+    if (diff < 60000) return Math.floor(diff / 1000) + "s ago";
+    if (diff < 3600000) return Math.floor(diff / 60000) + "m ago";
+    return new Date(iso).toLocaleTimeString();
+  } catch (e) { return iso; }
+}
+
+// Animate the duration counter from 0 to the final value over 600ms.
+function _animateDuration(el, targetMs) {
+  if (!el) return;
+  var start = performance.now();
+  var dur = 600;
+  function tick(t) {
+    var pct = Math.min(1, (t - start) / dur);
+    var eased = 1 - Math.pow(1 - pct, 3); // ease-out cubic
+    var v = Math.round(targetMs * eased);
+    el.textContent = _fmtMs(v);
+    if (pct < 1) requestAnimationFrame(tick);
+    else el.textContent = _fmtMs(targetMs);
+  }
+  requestAnimationFrame(tick);
+}
+
+function _renderTraceStep(step, idx) {
+  var details = (step.details || []).map(function(d) {
+    return '<div class="trace-detail-k">' + escapeHtml(d.k) + '</div>' +
+           '<div class="trace-detail-v">' + escapeHtml(d.v) + '</div>';
+  }).join("");
+  var detailsBlock = details ? '<div class="trace-detail-grid">' + details + '</div>' : "";
+
+  var matchesBlock = "";
+  if (Array.isArray(step.matches) && step.matches.length > 0) {
+    var maxScore = step.matches.reduce(function(m, x) { return x.score > m ? x.score : m; }, 0);
+    if (maxScore <= 0) maxScore = 1;
+    var rows = step.matches.map(function(m, i) {
+      var pct = Math.max(2, Math.min(100, (m.score / maxScore) * 100));
+      var rank = '<div class="trace-match-rank">#' + (i + 1) + '</div>';
+      var bar = '<div class="trace-match-bar-wrap">' +
+                '  <div class="trace-match-bar" style="width:' + pct.toFixed(1) + '%"></div>' +
+                '  <div class="trace-match-text">' + escapeHtml(m.label) + '</div>' +
+                '</div>';
+      var sc = '<div class="trace-match-score">' + (typeof m.score === "number" ? m.score.toFixed(2) : "—") + '</div>';
+      var meta = m.meta ? '<div class="trace-match-meta">' + escapeHtml(m.meta) + '</div>' : "";
+      return '<li class="trace-match-li">' +
+             '  <div class="trace-match">' + rank + bar + sc + '</div>' +
+             meta +
+             '</li>';
+    }).join("");
+    matchesBlock = '<ol class="trace-match-list">' + rows + '</ol>';
+  }
+
+  var histoBlock = "";
+  if (step.histogram && Array.isArray(step.histogram.bins)) {
+    var h = step.histogram;
+    var maxBin = h.max || h.bins.reduce(function(m, b) { return b > m ? b : m; }, 1) || 1;
+    var bars = h.bins.map(function(b) {
+      var hp = (b / maxBin) * 100;
+      return '<div class="trace-histo-bar" style="height:' + Math.max(2, hp) + '%" title="count: ' + b + '"></div>';
+    }).join("");
+    var thresh = "";
+    if (typeof h.threshold === "number") {
+      var tp = (h.threshold / h.bins.length) * 100;
+      thresh = '<div class="trace-histo-threshold" style="left:' + tp + '%"></div>';
+    }
+    histoBlock = '<div class="trace-histo">' +
+                 '  <div class="trace-histo-label">distribution</div>' +
+                 '  <div class="trace-histo-bars">' + bars + thresh + '</div>' +
+                 '  <div class="trace-histo-axis"><span>' + escapeHtml(h.axis_range || "") + '</span></div>' +
+                 '</div>';
+  }
+
+  var note = step.note ? '<div class="trace-step-note">' + escapeHtml(step.note) + '</div>' : "";
+  var dur = (typeof step.duration_ms === "number") ? '<span class="trace-step-duration">' + _fmtMs(step.duration_ms) + '</span>' : "";
+
+  // Stagger entry: each step gets an animation-delay so they cascade in.
+  var delay = (idx * 0.08).toFixed(2) + "s";
+
+  return '<div class="trace-step is-open" style="animation-delay:' + delay + '" data-trace-step="' + escapeHtml(step.id) + '">' +
+         '  <button class="trace-step-head" type="button">' +
+         '    <span class="trace-step-num">' + (idx + 1) + '</span>' +
+         '    <span class="trace-step-label">' + escapeHtml(step.label) + '</span>' +
+         '    ' + dur +
+         '    <svg class="trace-step-chevron" viewBox="0 0 16 16"><path d="M4 6 L8 10 L12 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+         '  </button>' +
+         '  <div class="trace-step-body">' +
+              note + detailsBlock + matchesBlock + histoBlock +
+         '  </div>' +
+         '</div>';
+}
+
+function _renderTracePerf(perf) {
+  if (!perf || typeof perf !== "object") return "";
+  var keys = Object.keys(perf).filter(function(k) { return k !== "total"; });
+  var total = perf.total || keys.reduce(function(s, k) { return s + (perf[k] || 0); }, 0);
+  if (total <= 0) return "";
+  var palette = ["var(--accent)", "var(--violet)", "var(--cyan)", "var(--success)", "var(--warning)"];
+  var segments = keys.map(function(k, i) {
+    var pct = (perf[k] / total) * 100;
+    var color = palette[i % palette.length];
+    return '<div class="trace-perf-segment" style="width:' + pct.toFixed(1) + '%; background:' + color + '" title="' + escapeHtml(k) + ': ' + _fmtMs(perf[k]) + '"></div>';
+  }).join("");
+  var legend = keys.map(function(k, i) {
+    var color = palette[i % palette.length];
+    return '<div class="trace-perf-legend-row">' +
+           '  <span class="trace-perf-legend-swatch" style="background:' + color + '"></span>' +
+           '  <span class="trace-perf-legend-k">' + escapeHtml(k) + '</span>' +
+           '  <span class="trace-perf-legend-v">' + _fmtMs(perf[k]) + '</span>' +
+           '</div>';
+  }).join("");
+  return '<div class="trace-perf-label">timing breakdown · total ' + _fmtMs(total) + '</div>' +
+         '<div class="trace-perf-bar">' + segments + '</div>' +
+         '<div class="trace-perf-legend">' + legend + '</div>';
+}
+
+function _renderTracePanel(trace) {
+  document.getElementById("trace-eyebrow").textContent = "trace inspector";
+  document.getElementById("trace-operation").textContent = trace.operation || "Trace";
+  var inputEl = document.getElementById("trace-input");
+  if (trace.input) {
+    inputEl.textContent = '"' + trace.input + '"';
+    inputEl.style.display = "inline-block";
+  } else {
+    inputEl.style.display = "none";
+  }
+  _animateDuration(document.getElementById("trace-duration"), trace.duration_ms || 0);
+  document.getElementById("trace-step-count").textContent = (trace.steps || []).length;
+  document.getElementById("trace-ts").textContent = trace.ts ? _fmtRelTs(trace.ts) : "—";
+  document.getElementById("trace-perf").innerHTML = _renderTracePerf(trace.performance || null);
+  document.getElementById("trace-steps").innerHTML = (trace.steps || []).map(_renderTraceStep).join("");
+  // Wire step-head clicks (accordion toggle)
+  document.querySelectorAll(".trace-step-head").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      var step = btn.closest(".trace-step");
+      if (step) step.classList.toggle("is-open");
+    });
+  });
+  // Animate match-bar widths in after a small delay so the transition triggers.
+  setTimeout(function() {
+    document.querySelectorAll(".trace-match-bar").forEach(function(b) {
+      var w = b.style.width; b.style.width = "0";
+      requestAnimationFrame(function() { b.style.width = w; });
+    });
+  }, 50);
+  // JSON tab content
+  document.getElementById("trace-json").textContent = JSON.stringify(trace, null, 2);
+  // Reset to overview tab
+  _selectTraceTab("overview");
+}
+
+function _selectTraceTab(name) {
+  document.querySelectorAll("[data-trace-tab]").forEach(function(b) {
+    var on = b.getAttribute("data-trace-tab") === name;
+    b.classList.toggle("is-active", on);
+    b.setAttribute("aria-selected", on ? "true" : "false");
+  });
+  document.querySelectorAll("[data-trace-pane]").forEach(function(p) {
+    p.classList.toggle("is-active", p.getAttribute("data-trace-pane") === name);
+  });
+  // Slide the indicator under the active tab.
+  var active = document.querySelector(".trace-tab.is-active");
+  var ind = document.getElementById("trace-tab-indicator");
+  if (active && ind) {
+    ind.style.left = active.offsetLeft + "px";
+    ind.style.width = active.offsetWidth + "px";
+  }
+}
+
+(function() {
+  var trigger = document.getElementById("trace-trigger");
+  var close = document.getElementById("trace-close");
+  var backdrop = document.getElementById("trace-backdrop");
+  if (trigger) trigger.addEventListener("click", _openTracePanel);
+  if (close) close.addEventListener("click", _closeTracePanel);
+  if (backdrop) backdrop.addEventListener("click", _closeTracePanel);
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") _closeTracePanel();
+  });
+  document.querySelectorAll("[data-trace-tab]").forEach(function(b) {
+    b.addEventListener("click", function() { _selectTraceTab(b.getAttribute("data-trace-tab")); });
+  });
+  var copyBtn = document.getElementById("trace-copy-json");
+  if (copyBtn) copyBtn.addEventListener("click", function() {
+    var pre = document.getElementById("trace-json");
+    if (!pre) return;
+    try {
+      navigator.clipboard.writeText(pre.textContent || "");
+      copyBtn.textContent = "Copied!";
+      setTimeout(function() { copyBtn.textContent = "Copy JSON"; }, 1200);
+    } catch (e) {}
+  });
+})();
+
+//────────────────────────────────────────────────────────────────────────
 // Brief try-chips — one-click fill. Any element with [data-brief-target]
 // fills the input/textarea with that target id when clicked. Wired
 // globally (not gated on ensureCanvas) so chips on Federation /
@@ -8451,6 +9184,22 @@ async function runDiscover() {
   btn.disabled = true;
   status.innerHTML = '<span class="spinner"></span>scanning catalog + generating proposals…';
   results.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Searching…</div></div>';
+
+  // Fire a parallel /signals/search call to capture the universal _trace
+  // payload. Doesn't block the main UI render — when it lands we light up
+  // the floating Trace button so the operator can inspect.
+  fetch("/signals/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + DEMO_KEY },
+    body: JSON.stringify({ brief: brief, limit: 8 }),
+  }).then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(j) {
+      if (j && j._trace) {
+        window.__lastTrace = j._trace;
+        _showTraceTrigger();
+      }
+    })
+    .catch(function() { /* trace is decorative; failure is silent */ });
 
   try {
     const t0 = performance.now();

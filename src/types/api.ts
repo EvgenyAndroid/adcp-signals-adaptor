@@ -56,6 +56,9 @@ export interface SearchSignalsResponse {
   totalCount: number;
   offset: number;
   hasMore: boolean;
+  /** Universal trace payload for the slide-in panel UI. Every traceable
+   *  endpoint emits this shape; renderer is generic. See types/trace.ts. */
+  _trace?: import("./trace").TraceData;
 }
 
 // A proposed custom signal — not persisted until activated. Shares the

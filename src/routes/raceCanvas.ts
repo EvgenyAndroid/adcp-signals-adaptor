@@ -161,6 +161,33 @@ function renderRaceCanvas(demoKey: string): string {
     outline: none;
     border-color: var(--accent);
   }
+  /* Try-chips: one-click brief examples below the input. Same pattern
+     as demo.ts canvas-quickpicks; reuses [data-brief-target] handler. */
+  .try-chips {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+    margin-top: 10px;
+  }
+  .try-chips-label {
+    font: 10px var(--font-mono);
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-right: 2px;
+  }
+  .try-chip {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font: 11px var(--font-mono);
+    padding: 4px 9px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .try-chip:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
   .btn {
     background: var(--accent);
     color: #0a0d12;
@@ -625,9 +652,15 @@ function renderRaceCanvas(demoKey: string): string {
     <div class="controls">
       <div class="controls-label">Brief</div>
       <div class="controls-row">
-        <input id="brief-input" class="brief-input" placeholder="e.g., Coca-Cola Summer Refresh, $250K, 30 days, ROAS 3.5x" value="Coca-Cola Summer Refresh, $250K, 30 days, ROAS 3.5x"/>
+        <input id="brief-input" class="brief-input" placeholder="e.g., Coca-Cola Summer Refresh, $250K, 30 days, ROAS 3.5x"/>
         <button id="btn-start" class="btn">Start race</button>
         <button id="btn-clear" class="btn btn-ghost">Clear</button>
+      </div>
+      <div class="try-chips">
+        <span class="try-chips-label">try:</span>
+        <button class="try-chip" data-brief-target="brief-input">Coca-Cola Summer Refresh, $250K, 30 days, ROAS 3.5x</button>
+        <button class="try-chip" data-brief-target="brief-input">luxury travelers APAC trips, $500K, 60 days</button>
+        <button class="try-chip" data-brief-target="brief-input">Nike running shoes launch, ROAS 3.0</button>
       </div>
     </div>
 
@@ -1189,6 +1222,16 @@ function renderRaceCanvas(demoKey: string): string {
   elBtnClear.addEventListener("click", function(){
     elBriefInput.value = "";
     elBriefInput.focus();
+  });
+  // Try-chips: one-click fill the brief input.
+  document.querySelectorAll("[data-brief-target]").forEach(function(b) {
+    b.addEventListener("click", function() {
+      var targetId = b.getAttribute("data-brief-target");
+      var t = targetId ? document.getElementById(targetId) : null;
+      if (!t) return;
+      t.value = (b.textContent || "").trim();
+      t.focus();
+    });
   });
   elAddBtn.addEventListener("click", addVendor);
   elBriefInput.addEventListener("keydown", function(e) {

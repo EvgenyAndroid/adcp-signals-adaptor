@@ -11,8 +11,26 @@
 // KPI cards for visual depth. Vanilla HTML/CSS/JS — no build step,
 // no CDN, no framework.
 //
-// Auth uses DEMO_API_KEY (public by design). Same-origin fetches to
-// /mcp and /capabilities; CORS is a non-issue on this host.
+// Auth uses DEMO_API_KEY for backend calls (public by design). The UI
+// itself is gated by a hardcoded viewer password (DEMO_VIEWER_PASSWORD
+// below) — security-through-obscurity to keep randos off the demo URL,
+// while the workshop audience can be told the password verbally.
+
+import { SPEC_LABEL } from "../constants/specVersion";
+import { BRAND_LOGO_DATA_URI } from "../constants/brandLogo";
+
+// Viewer auth: SHA-256 hash of the password (not plaintext) so it isn't
+// grep-able from a GitHub clone. Threat model: filter URL scrapers +
+// casual lurkers; workshop attendees are told the password verbally.
+// Backend auth (DEMO_API_KEY) is the actual security layer.
+//
+// To rotate: pick a new password, compute SHA-256
+//   echo -n "newpass" | sha256sum
+// or
+//   python -c "import hashlib; print(hashlib.sha256(b'newpass').hexdigest())"
+// Replace the constant below with the new hex digest. Don't commit
+// the plaintext anywhere in this repo.
+const DEMO_VIEWER_PASSWORD_SHA256 = "91bac7b38ed9c2883da874f1488cda40b035b66089b1590ccd75a0bd76f83e5c";
 
 export function handleDemo(env: { DEMO_API_KEY: string }): Response {
   return new Response(renderHtml(env.DEMO_API_KEY), {
@@ -34,15 +52,49 @@ export function handleDemo(env: { DEMO_API_KEY: string }): Response {
 function renderHtml(demoKey: string): string {
   const safeKey = JSON.stringify(demoKey);
   return `<!doctype html>
-<html lang="en">
+<html lang="en" class="is-locked">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>adcp·signals — Signals Marketplace</title>
+<title>Evgeny's Marketplace Agent</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='2' fill='%234f8eff'/%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%234f8eff' stroke-width='0.8' opacity='0.6'/%3E%3Ccircle cx='8' cy='8' r='7.5' fill='none' stroke='%234f8eff' stroke-width='0.5' opacity='0.3'/%3E%3C/svg%3E"/>
+<script>
+  // Run before body parses so authenticated users never see a flash of
+  // the auth overlay. sessionStorage is cleared when the tab closes —
+  // intentional, so a shared workshop browser doesn't stay unlocked.
+  (function(){
+    try {
+      if (sessionStorage.getItem("demo-authed") === "1") {
+        document.documentElement.classList.remove("is-locked");
+      }
+    } catch (e) {}
+  })();
+</script>
 ${STYLES}
 </head>
 <body>
+
+<!-- ── Auth overlay ─────────────────────────────────────────────────────
+     Visible only while <html class="is-locked">. Inline <head> script
+     removes the class on first paint if sessionStorage shows authed,
+     so authenticated users never see this overlay.
+
+     Password validation is SHA-256 hash compare client-side. This is UI
+     gating to filter URL scrapers, not real security — backend routes
+     all gate on DEMO_API_KEY independently. -->
+<div class="auth-overlay" id="auth-overlay">
+  <form class="auth-card" id="auth-form" autocomplete="off">
+    <div class="auth-logo">
+      <img src="${BRAND_LOGO_DATA_URI}" alt="signal-stack"/>
+    </div>
+    <div class="auth-title">Evgeny's Marketplace Agent</div>
+    <div class="auth-sub">AdCP signals provider · workshop preview</div>
+    <input type="password" id="auth-password" class="auth-input" placeholder="Password" autofocus required spellcheck="false"/>
+    <button type="submit" class="auth-submit">Unlock</button>
+    <div class="auth-error" id="auth-error" aria-live="polite"></div>
+    <div class="auth-hint">Workshop attendees: ask Evgeny for the password.</div>
+  </form>
+</div>
 
 <!-- Inline SVG sprite — referenced via <use href="#icon-X"/> throughout -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -74,10 +126,10 @@ ${STYLES}
   <!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <div class="brand-mark"><svg class="ico"><use href="#icon-radar"/></svg></div>
+      <div class="brand-mark"><img src="${BRAND_LOGO_DATA_URI}" alt="signal-stack"/></div>
       <div class="brand-text">
-        <div class="brand-title">adcp<span class="dot">·</span>signals</div>
-        <div class="brand-sub">marketplace agent</div>
+        <div class="brand-title">Evgeny's <span class="dot">·</span> Marketplace Agent</div>
+        <div class="brand-sub">AdCP signals provider</div>
       </div>
     </div>
 
@@ -271,7 +323,7 @@ ${STYLES}
     </nav>
 
     <div class="sidebar-footer">
-      <div class="kv"><span class="k">Version</span><span class="v mono">3.0 GA</span></div>
+      <div class="kv"><span class="k">Version</span><span class="v mono">${SPEC_LABEL}</span></div>
       <div class="kv"><span class="k">Client</span><span class="v mono">@adcp/5.25.1</span></div>
       <div class="kv"><span class="k">Status</span><span class="v"><span class="status-dot ok"></span>live</span></div>
       <div class="kv"><span class="k">Conformance</span><span class="v"><span class="pill pill-success">7 / 7</span></span></div>
@@ -288,8 +340,11 @@ ${STYLES}
   <main class="main">
 
     <header class="topbar">
+      <button class="topbar-sidebar-toggle" data-sidebar-toggle aria-label="Toggle sidebar" title="Toggle sidebar (Ctrl/Cmd+B)">
+        <svg class="ico" viewBox="0 0 20 20"><line x1="3" y1="6" x2="17" y2="6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="3" y1="10" x2="17" y2="10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="3" y1="14" x2="17" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
       <div class="crumbs">
-        <span class="crumb muted">adcp·signals</span>
+        <span class="crumb muted">Evgeny's Marketplace</span>
         <span class="crumb-sep">/</span>
         <span class="crumb" id="crumb-current">Discover</span>
       </div>
@@ -2270,6 +2325,93 @@ const STYLES = `<style>
   --radius-xl: 12px;
 }
 
+/* ── Auth overlay (UI gating) ─────────────────────────────────────────
+   Visibility gated by <html class="is-locked">. Default-visible until
+   the inline head script unlocks for sessionStorage-authed users. */
+html.is-locked .app { display: none; }
+html:not(.is-locked) .auth-overlay { display: none; }
+.auth-overlay {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-base);
+  z-index: 9999;
+  padding: 24px;
+}
+.auth-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 36px 32px 28px;
+  width: 100%; max-width: 380px;
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  box-shadow: 0 24px 48px rgba(0,0,0,0.35);
+}
+.auth-logo {
+  width: 64px; height: 64px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--bg-raised);
+  margin-bottom: 4px;
+}
+.auth-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.auth-title {
+  font-size: 18px; font-weight: 700; letter-spacing: -0.01em;
+  color: var(--text-bright);
+  text-align: center;
+}
+.auth-sub {
+  font: 12px/1.4 var(--font-mono);
+  color: var(--text-mut);
+  text-align: center;
+  margin-bottom: 8px;
+}
+.auth-input {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 11px 14px;
+  color: var(--text);
+  font: 14px var(--font-sans);
+  outline: none;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.auth-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.auth-submit {
+  width: 100%;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 11px 14px;
+  font: 600 14px var(--font-sans);
+  cursor: pointer;
+  transition: filter 0.12s;
+}
+.auth-submit:hover { filter: brightness(1.08); }
+.auth-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+.auth-error {
+  font: 12px var(--font-mono);
+  color: var(--error);
+  min-height: 16px;
+  text-align: center;
+}
+.auth-hint {
+  font: 11px var(--font-mono);
+  color: var(--text-mut);
+  text-align: center;
+  margin-top: 4px;
+}
+@keyframes auth-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+.auth-card.is-shake { animation: auth-shake 0.35s ease-in-out; }
+
 *, *::before, *::after { box-sizing: border-box; }
 html, body {
   margin: 0; padding: 0; height: 100%;
@@ -2311,10 +2453,17 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   margin-bottom: 18px;
 }
 .brand-mark {
-  width: 32px; height: 32px; border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--violet) 100%);
+  width: 36px; height: 36px; border-radius: 8px;
+  background: var(--bg-raised);
   color: #fff;
   display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.brand-mark img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .brand-mark .ico { width: 18px; height: 18px; }
 .brand-text { line-height: 1.25; }
@@ -2504,10 +2653,68 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   height: var(--topbar-h); flex-shrink: 0;
   background: var(--bg-top);
   border-bottom: 1px solid var(--border);
-  padding: 0 24px;
+  padding: 0 24px 0 12px;
   display: flex; justify-content: space-between; align-items: center;
+  gap: 14px;
 }
-.crumbs { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.topbar-sidebar-toggle {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: var(--radius-md);
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.topbar-sidebar-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+  border-color: var(--border);
+}
+.topbar-sidebar-toggle .ico { width: 18px; height: 18px; }
+
+/* Manual sidebar collapse — class-driven, mirrors auto narrow-mode
+   below but triggered by topbar toggle (Ctrl/Cmd+B). */
+.app.is-sidebar-collapsed { --sidebar-w: 64px; }
+.app.is-sidebar-collapsed .sidebar-brand .brand-text,
+.app.is-sidebar-collapsed .nav-item span,
+.app.is-sidebar-collapsed .nav-count,
+.app.is-sidebar-collapsed .nav-tag,
+.app.is-sidebar-collapsed .nav-group-header,
+.app.is-sidebar-collapsed .nav-group-chevron,
+.app.is-sidebar-collapsed .nav-group-title,
+.app.is-sidebar-collapsed .sidebar-footer .kv,
+.app.is-sidebar-collapsed .sidebar-footer .theme-picker {
+  display: none;
+}
+.app.is-sidebar-collapsed .nav-group.is-collapsed .nav-group-items {
+  display: flex !important;
+}
+.app.is-sidebar-collapsed .nav-group {
+  margin-bottom: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.app.is-sidebar-collapsed .sidebar-brand {
+  justify-content: center;
+  padding: 0 0 14px;
+}
+.app.is-sidebar-collapsed .sidebar {
+  padding: 16px 8px;
+}
+.app.is-sidebar-collapsed .nav-item {
+  justify-content: center;
+  padding: 10px;
+}
+.app.is-sidebar-collapsed .nav-item.active::before {
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+}
+
+.crumbs { display: flex; align-items: center; gap: 10px; font-size: 13px; flex: 1; }
 .crumb { font-weight: 500; }
 .crumb.muted { color: var(--text-mut); }
 .crumb-sep { color: var(--text-mut); }
@@ -7552,6 +7759,64 @@ function confidenceRange(size, tier) {
 }
 
 //────────────────────────────────────────────────────────────────────────
+// Auth overlay — UI gate, password validation via SHA-256 compare.
+// Hash is hardcoded in source (not plaintext); attacker would need
+// rainbow tables or brute-force to recover the password. Filters URL
+// scrapers; backend auth (DEMO_API_KEY) is the actual security.
+//────────────────────────────────────────────────────────────────────────
+const AUTH_PASSWORD_SHA256 = ${JSON.stringify(DEMO_VIEWER_PASSWORD_SHA256)};
+
+async function _sha256Hex(str) {
+  const buf = new TextEncoder().encode(str);
+  const digest = await crypto.subtle.digest("SHA-256", buf);
+  const bytes = new Uint8Array(digest);
+  let hex = "";
+  for (let i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, "0");
+  }
+  return hex;
+}
+
+(function() {
+  const form = document.getElementById("auth-form");
+  if (!form) return;
+  const input = document.getElementById("auth-password");
+  const errEl = document.getElementById("auth-error");
+  const card = form;
+  const submit = form.querySelector(".auth-submit");
+  form.addEventListener("submit", async function(e) {
+    e.preventDefault();
+    const value = input.value.trim();
+    if (!value) return;
+    submit.disabled = true;
+    submit.textContent = "Checking...";
+    try {
+      const hash = await _sha256Hex(value);
+      if (hash === AUTH_PASSWORD_SHA256) {
+        try { sessionStorage.setItem("demo-authed", "1"); } catch (e) {}
+        document.documentElement.classList.remove("is-locked");
+        // Hide overlay smoothly.
+        const overlay = document.getElementById("auth-overlay");
+        if (overlay) overlay.style.display = "none";
+      } else {
+        errEl.textContent = "Wrong password.";
+        card.classList.remove("is-shake");
+        // Force reflow so the animation re-triggers on consecutive failures.
+        void card.offsetWidth;
+        card.classList.add("is-shake");
+        input.value = "";
+        input.focus();
+      }
+    } catch (err) {
+      errEl.textContent = "Hash failed: " + (err && err.message ? err.message : String(err));
+    } finally {
+      submit.disabled = false;
+      submit.textContent = "Unlock";
+    }
+  });
+})();
+
+//────────────────────────────────────────────────────────────────────────
 // Sidebar group collapse / expand (capability-grouped nav).
 //
 // Default behavior: ALL groups collapsed EXCEPT the one containing the
@@ -7650,6 +7915,43 @@ document.querySelectorAll("[data-theme-pick]").forEach(function(btn) {
 });
 // Apply persisted theme on first paint.
 _applyTheme(_readTheme());
+
+//────────────────────────────────────────────────────────────────────────
+// Manual sidebar collapse — topbar toggle + Ctrl/Cmd+B keyboard.
+// Class-driven (.app.is-sidebar-collapsed); CSS rules above narrow the
+// sidebar to icons-only. Persists to localStorage. Skips toggling when
+// the user is typing in inputs / textareas / contenteditable.
+//────────────────────────────────────────────────────────────────────────
+const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
+
+function _readSidebarCollapsed() {
+  try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1"; } catch (e) { return false; }
+}
+function _applySidebarCollapsed(collapsed) {
+  const app = document.querySelector(".app");
+  if (!app) return;
+  app.classList.toggle("is-sidebar-collapsed", collapsed);
+  try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0"); } catch (e) {}
+}
+document.querySelectorAll("[data-sidebar-toggle]").forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    const app = document.querySelector(".app");
+    if (!app) return;
+    _applySidebarCollapsed(!app.classList.contains("is-sidebar-collapsed"));
+  });
+});
+document.addEventListener("keydown", function(e) {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+    const t = e.target;
+    const tag = t && t.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || (t && t.isContentEditable)) return;
+    e.preventDefault();
+    const app = document.querySelector(".app");
+    if (!app) return;
+    _applySidebarCollapsed(!app.classList.contains("is-sidebar-collapsed"));
+  }
+});
+_applySidebarCollapsed(_readSidebarCollapsed());
 
 //────────────────────────────────────────────────────────────────────────
 // Tab switching

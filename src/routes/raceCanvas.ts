@@ -58,6 +58,9 @@ function renderRaceCanvas(demoKey: string): string {
     --text-faint: #5b6679;
     --accent: #38b6ff;
     --accent-glow: rgba(56, 182, 255, 0.35);
+    --accent-dim: rgba(56, 182, 255, 0.15);
+    --bg-input: #0d121a;
+    --border-faint: #1a2030;
     --warn: #f0b400;
     --warn-glow: rgba(240, 180, 0, 0.4);
     --block: #ff4d5e;
@@ -725,6 +728,131 @@ function renderRaceCanvas(demoKey: string): string {
     text-align: center;
     padding: 40px 20px;
   }
+
+  /* Sec-31u: Trace inspector — minimal port of the main demo's
+     trace inspector for the Race Canvas page. */
+  .race-trace-trigger {
+    position: fixed; bottom: 20px; right: 20px;
+    display: flex; align-items: center; gap: 6px;
+    padding: 9px 14px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    color: var(--accent);
+    font: 11px var(--font-mono);
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.32);
+    z-index: 90;
+    transition: all 0.15s;
+  }
+  .race-trace-trigger:hover { transform: translateY(-1px); border-color: var(--accent); }
+  .race-trace-trigger.is-pulsing {
+    animation: race-trace-pulse 1.6s ease-in-out 3;
+    border-color: var(--accent);
+  }
+  @keyframes race-trace-pulse {
+    0%   { box-shadow: 0 6px 18px rgba(0,0,0,0.32), 0 0 0 0 var(--accent); }
+    35%  { box-shadow: 0 6px 18px rgba(0,0,0,0.32), 0 0 0 14px transparent; }
+    100% { box-shadow: 0 6px 18px rgba(0,0,0,0.32), 0 0 0 0 transparent; }
+  }
+  .race-trace-panel {
+    position: fixed; top: 0; bottom: 0; right: 0;
+    width: 420px; max-width: 92vw;
+    background: var(--bg-elevated);
+    border-left: 1px solid var(--border-strong);
+    box-shadow: -8px 0 24px rgba(0,0,0,0.4);
+    z-index: 100;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .race-trace-panel.is-open { transform: translateX(0); }
+  .race-trace-panel-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  .race-trace-panel-head button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font: 11px var(--font-mono);
+    cursor: pointer;
+  }
+  .race-trace-panel-head button:hover { border-color: var(--accent); color: var(--accent); }
+  .race-trace-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 18px;
+    color: var(--text);
+  }
+  .race-trace-empty {
+    color: var(--text-faint);
+    font: 12px var(--font-mono);
+    padding: 20px 0;
+  }
+  .race-trace-head {
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-faint);
+  }
+  .race-trace-head .op {
+    font-size: 14px; font-weight: 600; color: var(--text);
+    margin-bottom: 2px;
+  }
+  .race-trace-head .meta {
+    font: 11px var(--font-mono); color: var(--text-faint);
+  }
+  .race-trace-step {
+    background: var(--bg);
+    border: 1px solid var(--border-faint);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .race-trace-step-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 6px;
+  }
+  .race-trace-step-head .step-idx {
+    font: 700 10px var(--font-mono);
+    background: var(--accent-dim);
+    color: var(--accent);
+    padding: 2px 7px;
+    border-radius: 999px;
+  }
+  .race-trace-step-head .step-label {
+    flex: 1;
+    font: 12.5px var(--font-mono);
+    color: var(--text);
+  }
+  .race-trace-step-head .step-dur {
+    font: 11px var(--font-mono);
+    color: var(--text-faint);
+  }
+  .race-trace-detail {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 6px;
+    font: 11px var(--font-mono);
+    line-height: 1.4;
+    padding: 2px 0;
+  }
+  .race-trace-detail .k { color: var(--text-faint); }
+  .race-trace-detail .v { color: var(--text); word-break: break-all; }
+  .race-trace-note {
+    margin-top: 6px;
+    font: 11px var(--font-mono);
+    color: var(--text-faint);
+    font-style: italic;
+    padding: 6px 8px;
+    background: var(--bg-input);
+    border-radius: 4px;
+  }
 </style>
 </head>
 <body>
@@ -1368,8 +1496,84 @@ function renderRaceCanvas(demoKey: string): string {
   });
 
   console.log("Race Canvas ready");
+
+  // Sec-31u: trace inspector integration. Wraps window.fetch so any
+  // /race/* response with a _trace field is captured. Trigger button
+  // (bottom-right) opens a slide-in panel showing the most recent
+  // trace formatted as steps + raw JSON.
+  var __raceLastTrace = null;
+  var __raceOrigFetch = window.fetch;
+  window.fetch = async function () {
+    var resp = await __raceOrigFetch.apply(this, arguments);
+    try {
+      var ct = resp.headers && resp.headers.get && resp.headers.get("content-type") || "";
+      if (ct.toLowerCase().indexOf("application/json") >= 0 && resp.ok) {
+        var body = await resp.clone().json();
+        if (body && body._trace) {
+          __raceLastTrace = body._trace;
+          var trig = document.getElementById("race-trace-trigger");
+          if (trig) {
+            trig.style.display = "flex";
+            trig.classList.remove("is-pulsing");
+            void trig.offsetWidth;
+            trig.classList.add("is-pulsing");
+          }
+        }
+      }
+    } catch (e) { /* non-fatal */ }
+    return resp;
+  };
+
+  function _raceFmtMs(ms) {
+    if (typeof ms !== "number") return "—";
+    if (ms < 1) return ms.toFixed(2) + "ms";
+    if (ms < 1000) return Math.round(ms) + "ms";
+    return (ms / 1000).toFixed(2) + "s";
+  }
+  function _raceRenderTrace(t) {
+    if (!t) return "<div class=\\"race-trace-empty\\">No trace captured yet — run a race or add a vendor to see one.</div>";
+    var steps = (t.steps || []).map(function (s, i) {
+      var details = (s.details || []).map(function (d) {
+        return "<div class=\\"race-trace-detail\\"><span class=\\"k\\">" + escapeHtml(d.k) + "</span><span class=\\"v\\">" + escapeHtml(d.v) + "</span></div>";
+      }).join("");
+      return "<div class=\\"race-trace-step\\">" +
+        "<div class=\\"race-trace-step-head\\"><span class=\\"step-idx\\">" + (i + 1) + "</span><span class=\\"step-label\\">" + escapeHtml(s.label || s.id) + "</span><span class=\\"step-dur\\">" + _raceFmtMs(s.duration_ms) + "</span></div>" +
+        (details ? "<div class=\\"race-trace-details\\">" + details + "</div>" : "") +
+        (s.note ? "<div class=\\"race-trace-note\\">" + escapeHtml(s.note) + "</div>" : "") +
+      "</div>";
+    }).join("");
+    return "<div class=\\"race-trace-head\\">" +
+        "<div class=\\"op\\">" + escapeHtml(t.operation || "trace") + "</div>" +
+        "<div class=\\"meta mono\\">" + _raceFmtMs(t.duration_ms) + " · " + (t.steps || []).length + " step(s) · " + (t.ts || "") + "</div>" +
+      "</div>" +
+      "<div class=\\"race-trace-steps\\">" + steps + "</div>";
+  }
+  document.getElementById("race-trace-trigger").addEventListener("click", function () {
+    var panel = document.getElementById("race-trace-panel");
+    panel.classList.add("is-open");
+    document.getElementById("race-trace-body").innerHTML = _raceRenderTrace(__raceLastTrace);
+  });
+  document.getElementById("race-trace-close").addEventListener("click", function () {
+    document.getElementById("race-trace-panel").classList.remove("is-open");
+  });
+  function escapeHtml(s) { return String(s == null ? "" : s).replace(/[&<>\\"']/g, function (c) { return ({"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"})[c]; }); }
 })();
 </script>
+
+<!-- Sec-31u: trace inspector for Race Canvas. Trigger appears bottom-right
+     once the first traced response lands; panel slides in from right with
+     steps formatted from the captured _trace. -->
+<button id="race-trace-trigger" class="race-trace-trigger" style="display:none" type="button" aria-label="View trace">
+  <svg viewBox="0 0 20 20" width="14" height="14"><circle cx="10" cy="10" r="3" fill="currentColor"/><circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.6"/></svg>
+  <span>View trace</span>
+</button>
+<div id="race-trace-panel" class="race-trace-panel" aria-hidden="true">
+  <div class="race-trace-panel-head">
+    <strong>Trace inspector</strong>
+    <button id="race-trace-close" type="button">close</button>
+  </div>
+  <div id="race-trace-body" class="race-trace-body"></div>
+</div>
 
 </body>
 </html>`;

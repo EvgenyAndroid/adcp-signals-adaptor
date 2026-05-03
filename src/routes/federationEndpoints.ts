@@ -200,6 +200,64 @@ export async function handleFederatedSearch(
     if (r.ok) perAgentCount[r.agent] = r.signals.length;
   }
 
+  const totalDur = Date.now() - start;
+
+  // Universal trace payload — federation fan-out is core multi-agent
+  // workshop content. Make it dense + visual.
+  const trace = {
+    operation: "Agent federation · /agents/federated-search",
+    input: body.brief,
+    duration_ms: totalDur,
+    steps: [
+      {
+        id: "select",
+        label: "Select live A2A signals partners",
+        details: [
+          { k: "registry_endpoint", v: "/agents/registry" },
+          { k: "agents_requested", v: targetAgents.join(", ") },
+          { k: "agents_count", v: String(targetAgents.length) },
+          { k: "max_results_per_agent", v: String(maxPerAgent) },
+        ],
+        note: "Default trio: Evgeny (us, in-process) + Dstillery (live MCP). Roadmap partners surface in /agents/registry but lack mcp_url.",
+      },
+      {
+        id: "fanout",
+        label: "Parallel fan-out — same brief, different catalogs",
+        duration_ms: totalDur,
+        note: "Each partner's get_signals fired in parallel via Promise.all; outbound args sanitized so Pydantic-strict vendors don't reject.",
+        details: [
+          { k: "succeeded", v: succeeded.join(", ") || "(none)" },
+          { k: "failed", v: failed.join(", ") || "(none)" },
+          { k: "merge_strategy", v: "interleaved round-robin (preserves provenance)" },
+        ],
+        matches: results.map((r) => ({
+          id: r.agent,
+          label: r.agent + " · " + (r.ok ? "ok" : "fail") + " · " + r.elapsed_ms + "ms",
+          score: r.ok ? r.signals.length : 0,
+          meta: r.ok
+            ? "returned " + r.signals.length + " signals (catalog: " + (r.agent === "evgeny_signals" ? "Evgeny IAB-aligned" : r.agent === "dstillery" ? "Dstillery behavioral" : "vendor catalog") + ")"
+            : "error: " + (r.error ?? "?"),
+        })),
+      },
+      {
+        id: "merge",
+        label: "Interleave + tag merged ranking",
+        details: [
+          { k: "total_merged", v: String(merged.length) },
+          { k: "merge_method", v: "round-robin: pull nth from each agent in turn" },
+          { k: "rank_field", v: "merge_rank (1-based, global) + agent_rank (1-based, per-agent)" },
+          { k: "provenance", v: "every signal carries source_agent" },
+        ],
+        note: "Round-robin merge guarantees each partner gets representation in the top-N regardless of how many results each returned.",
+      },
+    ],
+    performance: {
+      ...Object.fromEntries(results.map((r) => [r.agent + "_ms", r.elapsed_ms])),
+      total_ms: totalDur,
+    },
+    ts: new Date().toISOString(),
+  };
+
   return jsonResponse({
     brief: body.brief,
     agents_queried: targetAgents,
@@ -210,8 +268,9 @@ export async function handleFederatedSearch(
     per_agent_errors: Object.fromEntries(results.filter((r) => r.error).map((r) => [r.agent, r.error])),
     merged,
     merge_strategy: "interleaved_round_robin_by_agent",
-    total_time_ms: Date.now() - start,
+    total_time_ms: totalDur,
     method: "parallel_fanout_mcp_tools_call",
+    _trace: trace,
   });
 }
 

@@ -8751,6 +8751,32 @@ _applySidebarCollapsed(_readSidebarCollapsed());
 //────────────────────────────────────────────────────────────────────────
 window.__lastTrace = null;
 
+// Universal helper: any response that has a _trace field auto-populates
+// the panel + lights up the floating button. Call from any fetch handler:
+//   var data = await resp.json();
+//   _captureTrace(data._trace);
+// Returns true if a trace was captured. Designed to be a one-liner per
+// fetch site.
+function _captureTrace(trace) {
+  if (!trace || typeof trace !== "object") return false;
+  if (!trace.operation && !trace.steps) return false;
+  window.__lastTrace = trace;
+  _showTraceTrigger();
+  return true;
+}
+
+// Reset on tab switch so stale traces don't carry across pages.
+function _resetTrace() {
+  window.__lastTrace = null;
+  var t = document.getElementById("trace-trigger");
+  if (t) {
+    t.classList.remove("is-visible");
+    t.classList.remove("is-pulsing");
+  }
+  var p = document.getElementById("trace-panel");
+  if (p && p.classList.contains("is-open")) _closeTracePanel();
+}
+
 function _showTraceTrigger() {
   var t = document.getElementById("trace-trigger");
   if (!t) return;
@@ -9037,6 +9063,9 @@ document.querySelectorAll(".nav-item[data-tab]").forEach((btn) => {
 });
 
 function switchTab(name) {
+  // Reset trace on tab change — stale context from a prior page shouldn't
+  // dangle. New operation on the new tab pulses the trigger fresh.
+  _resetTrace();
   document.querySelectorAll(".nav-item[data-tab]").forEach((b) => {
     b.classList.toggle("active", b.dataset.tab === name);
   });
@@ -9261,6 +9290,9 @@ async function runNlQuery() {
     // query_signals_nl response lives under data.result (handler wraps
     // the tool output in {success,result}). Unwrap carefully.
     const payload = data?.result ?? data;
+    // Capture _trace from the unwrapped payload — NL Query is the
+    // most algorithmically rich trace target (real cosine per leaf).
+    _captureTrace(payload?._trace);
     const matches = payload?.matched_signals || [];
     const estSize = payload?.estimated_size;
     const confTier = payload?.confidence_tier;
@@ -15946,6 +15978,7 @@ async function runOrchFanout() {
     var data = await r.json();
     if (!r.ok || data.error) throw new Error(data.error || "HTTP " + r.status);
     state.orchestrator.orchestrate = data;
+    _captureTrace(data._trace);
     _orchRenderFanoutResult(data);
   } catch (e) {
     host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
@@ -18105,6 +18138,7 @@ async function runFederatedSearch() {
     var r = await fetch("/agents/federated-search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brief: brief, max_results_per_agent: parseInt(document.getElementById("fed-max").value, 10) || 5 }) });
     var data = await r.json();
     _fedLastResults = data.merged || [];
+    _captureTrace(data._trace);
     renderFederatedResults(data);
   } catch (e) {
     host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div><div class="empty-desc">Federation endpoints may not be deployed yet.</div></div>';

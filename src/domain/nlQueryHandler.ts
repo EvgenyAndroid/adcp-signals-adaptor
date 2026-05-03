@@ -95,6 +95,88 @@ export async function handleNLQuery(
     (result as any)._embedding_mode = engine.phase;
     (result as any)._embedding_space = engine.spaceId;
 
+    // Build a TraceData payload for the universal trace inspector.
+    // Real embedding cosine path — each AST leaf is embedded and matched
+    // against the catalog via cosine similarity. The trace surfaces
+    // every leaf's top matches with their actual cosine scores.
+    const traceSteps: Array<Record<string, unknown>> = [];
+
+    const astLeafCount = resolvedLeaves.length;
+    traceSteps.push({
+      id: "parse",
+      label: "Parse natural-language query into AST",
+      details: [
+        { k: "input_chars", v: String(body.query.length) },
+        { k: "ast_leaves", v: String(astLeafCount) },
+        { k: "ast_op", v: ast.root?.op ?? "leaf" },
+        { k: "unresolved_hints", v: String((ast.unresolved_hints ?? []).length) },
+        { k: "parser", v: "Anthropic Claude (queryParser.ts)" },
+      ],
+      note: "Boolean AST extraction via Claude — handles AND/OR/NOT, time scopes, exclusions.",
+    });
+
+    traceSteps.push({
+      id: "embed",
+      label: "Embedding engine init",
+      details: [
+        { k: "phase", v: String(engine.phase) },
+        { k: "space_id", v: String(engine.spaceId) },
+        { k: "catalog_size", v: String(catalog.length) },
+      ],
+      note: String(engine.phase).includes("llm")
+        ? "LLM-backed real embeddings (openai-text-embedding-3-small projected to 512-d)."
+        : "Pseudo embeddings — structurally valid but cosines are NOT semantically meaningful. Set EMBEDDING_ENGINE=llm + OPENAI_API_KEY for real cosine.",
+    });
+
+    // Per-leaf trace step. Each leaf is its own step with matches table
+    // showing real cosine scores from the semantic resolver.
+    for (let i = 0; i < resolvedLeaves.length; i++) {
+      const rl = resolvedLeaves[i];
+      if (!rl) continue;
+      const inner = rl.leaf;
+      const topN = rl.matches.slice(0, 8);
+      const labelText = (inner?.dimension ? String(inner.dimension) : "leaf") +
+        (inner?.value ? " · " + String(inner.value) : "");
+      traceSteps.push({
+        id: "leaf_" + i,
+        label: "Leaf " + (i + 1) + ": " + labelText,
+        note: inner?.description ? String(inner.description) : "",
+        details: [
+          { k: "dimension", v: inner?.dimension ? String(inner.dimension) : "—" },
+          { k: "value", v: inner?.value ? String(inner.value) : "—" },
+          { k: "is_exclusion", v: String(Boolean(inner?.is_exclusion)) },
+          { k: "matches_returned", v: String(rl.matches.length) },
+          { k: "top_match_score", v: topN[0] ? Number(topN[0].match_score).toFixed(3) : "—" },
+        ],
+        matches: topN.map((m) => ({
+          id: m.signal_agent_segment_id,
+          label: m.name ?? m.signal_agent_segment_id,
+          score: m.match_score,
+          meta: "method: " + m.match_method,
+        })),
+      });
+    }
+
+    traceSteps.push({
+      id: "compose",
+      label: "Compose audience via boolean set arithmetic",
+      details: [
+        { k: "matched_signals", v: String((result.matched_signals ?? []).length) },
+        { k: "warnings", v: String((result.warnings ?? []).length) },
+      ],
+      note: "Set arithmetic over leaf resolutions — AND intersects cohorts; OR unions; NOT subtracts.",
+    });
+
+    const trace = {
+      operation: "Natural-language query · query_signals_nl",
+      input: body.query,
+      duration_ms: Date.now() - start,
+      steps: traceSteps,
+      performance: { parse_ms: 0, embed_ms: 0, total_ms: Date.now() - start },
+      ts: new Date().toISOString(),
+    };
+    (result as unknown as Record<string, unknown>)._trace = trace;
+
     return json({ success: true, result, duration_ms: Date.now() - start });
 
   } catch (err: unknown) {

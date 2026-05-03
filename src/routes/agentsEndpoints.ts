@@ -294,6 +294,62 @@ export async function handleAgentsOrchestrate(request: Request, env: Env, logger
     max_per_agent: maxResults,
   });
 
+  // Build a TraceData payload for the universal trace inspector.
+  const totalDuration = Math.max(...perAgent.map((p) => p.latency_ms || 0), 0);
+  const trace = {
+    operation: "Multi-agent orchestrate · " + tool,
+    input: body.brief,
+    duration_ms: totalDuration,
+    steps: [
+      {
+        id: "discover",
+        label: "Discover live signals agents",
+        details: [
+          { k: "role_filter", v: "signals" },
+          { k: "stage_filter", v: "live" },
+          { k: "agents_in_scope", v: String(targets.length) },
+          { k: "include_filter", v: (body.include_agents ?? []).join(", ") || "—" },
+          { k: "exclude_filter", v: (body.exclude_agents ?? []).join(", ") || "—" },
+        ],
+        note: "All agents in /agents/registry with stage=live and role=signals are eligible. Filters narrow the set.",
+      },
+      {
+        id: "fanout",
+        label: "Parallel " + tool + " across " + targets.length + " agent(s)",
+        duration_ms: totalDuration,
+        note: "Each agent gets the same brief, sequentially via Promise.all. Outbound args sanitized — no `pagination` envelope (Pydantic-strict vendors reject it).",
+        details: [
+          { k: "max_results_per_agent", v: String(maxResults) },
+          { k: "timeout_per_agent_ms", v: String(timeoutMs) },
+          { k: "succeeded", v: String(agentsSucceeded.length) },
+          { k: "failed", v: String(agentsFailed.length) },
+          { k: "total_signals_returned", v: String(merged.length) },
+        ],
+        matches: perAgent.map((p) => ({
+          id: p.id,
+          label: p.name + " · " + (p.ok ? "ok" : "fail") + " · " + p.latency_ms + "ms",
+          score: p.signal_count,
+          meta: "vendor: " + p.vendor + " · " + (p.ok ? "returned " + p.signal_count + " signals" : "error: " + (p.error ?? "?")),
+        })),
+      },
+      {
+        id: "merge",
+        label: "Merge across agents",
+        details: [
+          { k: "method", v: "flat concat with source_agent provenance" },
+          { k: "dedupe", v: "off (preserves duplicates so caller sees provenance)" },
+          { k: "total_returned", v: String(merged.length) },
+        ],
+        note: "For schema-normalized signals + Dstillery-specific mapping, use /agents/federated-search instead.",
+      },
+    ],
+    performance: {
+      slowest_agent_ms: totalDuration,
+      fastest_agent_ms: Math.min(...perAgent.map((p) => p.latency_ms || 0).filter((n) => n > 0), totalDuration),
+    },
+    ts: new Date().toISOString(),
+  };
+
   return jsonResponse({
     brief: body.brief,
     tool,
@@ -309,6 +365,7 @@ export async function handleAgentsOrchestrate(request: Request, env: Env, logger
     signals: merged,
     method: "parallel_mcp_tools_call_per_live_signals_agent",
     note: "Signals from each agent carry source_agent to preserve provenance. Failed agents don't block the merge. For schema-normalized signals use the existing /agents/federated-search which applies a Dstillery-specific mapper; this endpoint is transport-level only.",
+    _trace: trace,
   });
 }
 

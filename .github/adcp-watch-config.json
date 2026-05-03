@@ -23,6 +23,12 @@
       "number": 1062,
       "kind": "issue",
       "context": "Filed 2026-04-29, closed 2026-04-30. Fix shipped in @adcp/sdk 5.25.0; we're on 5.25.1. Tracking kept transiently because the adjacent spec-side normative note ('Storyboards MUST report SKIP, not FAIL, when supported_protocols excludes the scenario's required protocol') was filed as a small follow-up — closure event will fire when that lands. Drop after spec follow-up resolves."
+    },
+    {
+      "repo": "adcontextprotocol/adcp",
+      "number": 4009,
+      "kind": "issue",
+      "context": "Filed 2026-05-03. Runner bug: signal_owned/activate_on_agent storyboard step omits required `destinations` and `idempotency_key` per /schemas/3.0.1/signals/activate-signal-request.json. Schema-conformant agents have no signal of intent (agent vs platform). Workshop-insurance defensive heuristic shipped in this repo (correlation_id parsing in src/mcp/server.ts:callActivateSignal — search 'REMOVE WHEN adcp#4009 ships'). When the storyboard fix ships and Addie's evaluator confirms badge issuance, REVERT the heuristic — restore the simpler 2-stage destinationType precedence."
     }
   ]
 }

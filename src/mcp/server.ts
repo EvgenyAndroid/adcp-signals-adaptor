@@ -665,15 +665,38 @@ async function callActivateSignal(
     // Sec-31y: source-of-truth precedence is
     //   1. firstEntry.type (destinations[0].type)  — canonical shape
     //   2. args.destinationType                    — top-level alias
-    //   3. default "platform"                      — backward-compat
+    //   3. correlation_id heuristic                — REMOVE WHEN adcp#4009 ships
+    //   4. default "platform"                      — backward-compat
     //
     // (2) was added when AAO's signal_owned storyboard turned out to
     // sometimes send only the top-level field with no destinations
     // array — without it, those requests fell through to "platform"
     // even when the caller explicitly asked for agent.
+    //
+    // (3) — REMOVE WHEN adcp#4009 ships — workshop-insurance heuristic.
+    // The signal_owned storyboard's `activate_on_agent` step sends a
+    // request with NO destinations field (and no idempotency_key — both
+    // required per /schemas/3.0.1/signals/activate-signal-request.json).
+    // Filed as runner bug at https://github.com/adcontextprotocol/adcp/issues/4009.
+    // Until that ships, we fall back to parsing the storyboard's
+    // correlation_id ("signal_owned--activate_on_agent") to recover the
+    // intended destination type. This is non-portable and applies ONLY
+    // when destinations is absent + the correlation_id signals intent.
+    // Watch the AdCP daily watcher for issue #4009 closure → revert this
+    // block + restore the simpler 2-stage precedence above.
     const topLevelType = args["destinationType"] as string | undefined;
+    const correlationId = (args["context"] as Record<string, unknown> | undefined)?.["correlation_id"] as string | undefined;
+    const correlationHints = (() => {
+        if (raw !== undefined || topLevelType !== undefined) return undefined;
+        if (typeof correlationId !== "string") return undefined;
+        if (correlationId.includes("activate_on_agent")) return "agent" as const;
+        if (correlationId.includes("activate_on_platform")) return "platform" as const;
+        return undefined;
+    })();
     const destinationType: "platform" | "agent" =
-        firstType === "agent" || topLevelType === "agent" ? "agent" : "platform";
+        firstType === "agent" || topLevelType === "agent" || correlationHints === "agent"
+            ? "agent"
+            : "platform";
 
     const resolvedDestination = destination;
     const signalId = (args["signal_agent_segment_id"] ?? args["signalId"]) as string;
@@ -704,9 +727,16 @@ async function callActivateSignal(
         const db = getDb(env);
         const result = await activateSignalService(db, env.SIGNALS_CACHE, req, logger);
 
+        // REMOVE WHEN adcp#4009 ships — when destinations is absent, the
+        // default mirrors destinationType (which the correlation_id heuristic
+        // above may have set to "agent"). Without this, real-signal requests
+        // with no destinations + agent intent would still emit a platform
+        // deployment.
         const inputDeployments = Array.isArray(raw)
             ? (raw as Array<Record<string, unknown>>)
-            : [{ type: "platform", platform: destination }];
+            : destinationType === "agent"
+                ? [{ type: "agent", agent_url: destination }]
+                : [{ type: "platform", platform: destination }];
 
         const responseDeployments = inputDeployments.map((dep) => {
             const depType = dep["type"] as string;

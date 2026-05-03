@@ -157,6 +157,15 @@ async function runNlQuery() {
 
     results.innerHTML = renderNlResult({ payload, matches, estSize, confTier, confScalar, ast });
     wireNlCardClicks();
+    // Sec-31u T3#21: glow the AST + KPI tiles to signal a fresh result
+    // landed. Stagger so the user's eye traces from query -> AST -> matches.
+    setTimeout(function () {
+      var astEl = results.querySelector(".nl-ast-block");
+      if (astEl && typeof glowOnce === "function") glowOnce(astEl);
+      results.querySelectorAll(".nl-kpi-tile, .signal-card").forEach(function (el, i) {
+        if (typeof glowOnce === "function") setTimeout(function () { glowOnce(el); }, i * 80);
+      });
+    }, 60);
   } catch (e) {
     showToast("NL query failed: " + e.message, true);
     status.textContent = "error";

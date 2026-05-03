@@ -241,8 +241,8 @@ async function renderPortLorenz() {
     var data = await r.json();
     // Render small multiples: one mini chart per top-6 slice + overall
     var picks = (data.slices || []).slice(0, 6);
-    var cards = picks.map(function (s) { return renderLorenzCard(s); }).join("");
-    var overall = renderLorenzCard({ group: "OVERALL", signal_count: data.overall.signal_count, lorenz: data.overall.lorenz, gini: data.overall.gini, interpretation: data.overall.interpretation });
+    var cards = picks.map(function (s, i) { return renderLorenzCard(s, i + 1); }).join("");
+    var overall = renderLorenzCard({ group: "OVERALL", signal_count: data.overall.signal_count, lorenz: data.overall.lorenz, gini: data.overall.gini, interpretation: data.overall.interpretation }, 0);
     host.innerHTML = '<div class="lorenz-grid">' + overall + cards + '</div>';
     document.getElementById("port-lorenz-explainer").innerHTML = renderChartExplainer({
       what: "Catalog concentration per vertical. How evenly audience reach is distributed across signals in each group.",
@@ -254,10 +254,13 @@ async function renderPortLorenz() {
     host.innerHTML = '<div class="empty-state"><div class="empty-title" style="color:var(--error)">' + escapeHtml(String(e.message || e)) + '</div></div>';
   }
 }
-function renderLorenzCard(s) {
+function renderLorenzCard(s, staggerIdx) {
   var W = 200, H = 140, pad = 20;
   var lz = s.lorenz || [];
   var pts = lz.map(function (p) { return pad + p.x * (W - 2 * pad) + "," + (H - pad - p.y * (H - 2 * pad)); }).join(" ");
+  // Stagger entry — index drives --ux-stagger-i (80ms steps) so cards
+  // fade-lift in cascade and curves draw left→right.
+  var staggerStyle = typeof staggerIdx === "number" ? ' style="--ux-stagger-i:' + staggerIdx + '"' : "";
   // Sec-31u T2#11: hover-scrubber. Invisible-ish dots at each datapoint
   // with native SVG <title> tooltips show exact x (cumulative %) and y
   // (cumulative reach %) values. Filled area-under-curve also added
@@ -269,7 +272,7 @@ function renderLorenzCard(s) {
     var tt = "x=" + (p.x * 100).toFixed(0) + "% of signals → y=" + (p.y * 100).toFixed(0) + "% of reach";
     return '<circle class="lorenz-dot" cx="' + cx + '" cy="' + cy + '" r="3" fill="var(--accent)" opacity="0.55"><title>' + escapeHtml(tt) + '</title></circle>';
   }).join("");
-  return '<div class="lorenz-card">' +
+  return '<div class="lorenz-card"' + staggerStyle + '>' +
     '<div class="lorenz-title">' + escapeHtml(s.group) + ' <span class="lorenz-gini">Gini ' + s.gini.toFixed(2) + '</span></div>' +
     '<svg viewBox="0 0 ' + W + ' ' + H + '">' +
       '<line x1="' + pad + '" y1="' + (H - pad) + '" x2="' + (W - pad) + '" y2="' + pad + '" stroke="var(--text-mut)" stroke-dasharray="3,2" stroke-width="1"/>' +
@@ -281,6 +284,26 @@ function renderLorenzCard(s) {
   '</div>';
 }
 function wirePortFromBrief() {
+  // Sec-31u: try-chips fill the brief textarea + budget + auto-submit.
+  // Click → populate fields → fire the existing brief-run handler so
+  // there's exactly one code path for brief execution.
+  document.querySelectorAll("#port-brief-chips .brief-try-chip").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      var brief = chip.getAttribute("data-brief") || "";
+      var budget = chip.getAttribute("data-budget") || "250000";
+      var briefEl = document.getElementById("brief-text");
+      var budgetEl = document.getElementById("brief-budget");
+      if (briefEl) briefEl.value = brief;
+      if (budgetEl) budgetEl.value = budget;
+      // Mark this chip as the active selection
+      document.querySelectorAll("#port-brief-chips .brief-try-chip").forEach(function (c) {
+        c.classList.toggle("is-active", c === chip);
+      });
+      // Auto-submit
+      var runBtn = document.getElementById("brief-run");
+      if (runBtn) runBtn.click();
+    });
+  });
   document.getElementById("brief-run").addEventListener("click", async function () {
     var host = document.getElementById("brief-results");
     var brief = document.getElementById("brief-text").value.trim();

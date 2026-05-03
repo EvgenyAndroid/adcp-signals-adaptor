@@ -1019,6 +1019,33 @@ ${STYLES}
           <div class="lab-grid">
             <div class="lab-panel">
               <div class="lab-panel-title">Brief</div>
+              <!-- Sec-31u: try-chips for one-click brief population. Each chip
+                   carries the brief text in data-brief and a budget in data-budget;
+                   clicking fills the textarea + budget input + auto-submits.
+                   Wired in fragments/portfolio.ts. -->
+              <div class="brief-try-chips" id="port-brief-chips">
+                <span class="brief-try-label">Try</span>
+                <button type="button" class="brief-try-chip" data-budget="250000"
+                        data-brief="Launch campaign for affluent urban millennials interested in premium fitness + wellness. Target CTV + podcast.">
+                  Premium fitness · CTV + podcast
+                </button>
+                <button type="button" class="brief-try-chip" data-budget="180000"
+                        data-brief="Cord-cutter parents 35-44 with kids at home, household income $100K+. Drama + family streaming on connected TV.">
+                  Cord-cutter parents · streaming
+                </button>
+                <button type="button" class="brief-try-chip" data-budget="500000"
+                        data-brief="High-net-worth professionals 35-54 in top-10 DMAs interested in luxury travel, fine dining, business news. Premium audio + video.">
+                  HNW professionals · luxury
+                </button>
+                <button type="button" class="brief-try-chip" data-budget="120000"
+                        data-brief="Gen Z college students interested in gaming, esports, and music streaming. Mobile-first, short-form video.">
+                  Gen Z gamers · mobile video
+                </button>
+                <button type="button" class="brief-try-chip" data-budget="300000"
+                        data-brief="DIY homeowners 35-64 with high household spend on home improvement. Daypart-aware: weekend mornings, weekday evenings.">
+                  DIY homeowners · daypart
+                </button>
+              </div>
               <textarea id="brief-text" class="lab-input" rows="6" placeholder="Launch campaign for affluent urban millennials interested in premium fitness + wellness. Target CTV + podcast..."></textarea>
               <label class="lab-label" style="margin-top:8px">Budget</label>
               <input id="brief-budget" type="number" min="1000" value="250000" step="10000" class="lab-input"/>
@@ -2359,6 +2386,10 @@ ${STYLES}
   <div class="trace-body">
     <section class="trace-tab-pane is-active" data-trace-pane="overview">
       <div class="trace-perf" id="trace-perf"></div>
+      <!-- Sec-31u T1#5: timeline scrubber. Proportional bar across the
+           steps; click a segment to jump to that step. Wired in
+           fragments/trace-inspector.ts. Empty until first trace lands. -->
+      <div class="trace-timeline-scrubber" id="trace-timeline-scrubber"></div>
       <div class="trace-steps" id="trace-steps"></div>
     </section>
     <section class="trace-tab-pane" data-trace-pane="json">

@@ -1,0 +1,8 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`handleDemo byte-equivalence > matches the committed golden hash (LF-normalized SHA-256 of body) 1`] = `
+{
+  "hash": "2fbddc6056d8852eab91257f5ffe07dd91432f16ad71fe5ef20d509023578b89",
+  "length": 1040148,
+}
+`;

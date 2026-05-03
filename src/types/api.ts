@@ -81,11 +81,17 @@ export interface CustomSignalProposal {
 /**
  * Universal signal identifier per /schemas/core/signal-id.json.
  * Discriminated by `source`. We're a self-contained signals agent (not a
- * data-provider catalog mirror), so every signal we expose is the `agent`
- * variant — schema requires `source`, `agent_url`, `id`.
+ * data-provider catalog mirror), so every signal we expose is the
+ * `agent_native` variant — schema requires `source`, `agent_url`, `id`.
+ *
+ * Sec-31w: AAO `signal_owned` storyboard requires `source: "agent_native"`
+ * (not `"agent"`). The two are semantically equivalent for our agent
+ * (we ARE the source, not a wrapper around an external data provider),
+ * but the storyboard's `search_owned_signals` step asserts the literal
+ * string. Aligned to spec here so the badge issuer accepts our shape.
  */
 export interface SignalIdAgent {
-  source: "agent";
+  source: "agent_native";
   agent_url: string;
   id: string;
 }
@@ -169,7 +175,18 @@ export interface SignalDeployment {
   is_live: boolean;
   decisioning_platform_segment_id: string;
   activation_supported: boolean;
-  activation_key?: { type: string; segment_id: string };
+  /**
+   * Activation key shape varies by deployment type per AdCP signals spec:
+   *   - platform deployments expose `{ type: "segment_id", segment_id }`
+   *   - agent deployments expose `{ type: "key_value", key, value }`
+   *
+   * Sec-31w: AAO `signal_owned` storyboard's `activate_on_agent` step
+   * asserts the key_value shape literal-by-literal. Both shapes are
+   * permitted by /schemas/core/signal-deployment.json.
+   */
+  activation_key?:
+    | { type: "segment_id"; segment_id: string }
+    | { type: "key_value"; key: string; value: string };
 }
 
 // ── Activation ────────────────────────────────────────────────────────────────

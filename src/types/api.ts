@@ -81,17 +81,17 @@ export interface CustomSignalProposal {
 /**
  * Universal signal identifier per /schemas/core/signal-id.json.
  * Discriminated by `source`. We're a self-contained signals agent (not a
- * data-provider catalog mirror), so every signal we expose is the
- * `agent_native` variant — schema requires `source`, `agent_url`, `id`.
+ * data-provider catalog mirror), so every signal we expose is the `agent`
+ * variant — schema requires `source`, `agent_url`, `id`.
  *
- * Sec-31w: AAO `signal_owned` storyboard requires `source: "agent_native"`
- * (not `"agent"`). The two are semantically equivalent for our agent
- * (we ARE the source, not a wrapper around an external data provider),
- * but the storyboard's `search_owned_signals` step asserts the literal
- * string. Aligned to spec here so the badge issuer accepts our shape.
+ * Sec-31w: PR #173 briefly flipped this to "agent_native" based on the
+ * AAO `signal_owned` storyboard's prose description; PR #174 reverted
+ * after Addie confirmed the schema's enum is { "catalog", "agent" } and
+ * AJV strict mode rejects any other value. Storyboard description was
+ * prose, not normative. Schema is authority.
  */
 export interface SignalIdAgent {
-  source: "agent_native";
+  source: "agent";
   agent_url: string;
   id: string;
 }

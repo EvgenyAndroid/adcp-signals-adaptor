@@ -43,16 +43,17 @@ describe("get_signals response — storyboard signal_id requirement", () => {
     expect(summary.signal_id).toBeDefined();
   });
 
-  it("signals[].signal_id.source equals the agent_native discriminator", () => {
-    // Per /schemas/core/signal-id.json — source is the discriminator. We're
-    // an agent-native signals service (no upstream data-provider catalog),
-    // so the agent_native variant is the only correct value.
+  it("signals[].signal_id.source equals the agent discriminator", () => {
+    // Per /schemas/core/signal-id.json — source enum is {"catalog","agent"}.
+    // We're an agent-native signals service (no upstream data-provider
+    // catalog), so the "agent" variant is the only correct value.
     //
-    // Sec-31w: AAO `signal_owned` storyboard's `search_owned_signals` step
-    // asserts the literal string "agent_native" (vs the older "agent"
-    // alias), so this test pins the spec-compliant value.
+    // Sec-31w (PR #174): pinned to "agent" after PR #173 had briefly
+    // flipped to "agent_native" based on storyboard prose. AJV strict
+    // validation against the published schema rejects "agent_native";
+    // the schema enum is the authority.
     const summary = toSignalSummary(makeFixtureSignal());
-    expect(summary.signal_id.source).toBe("agent_native");
+    expect(summary.signal_id.source).toBe("agent");
   });
 
   it("signals[].signal_id.agent_url is a valid https URL pointing at our MCP endpoint", () => {

@@ -31,7 +31,7 @@ import {
 
 function sig(over: Partial<SignalSummary> & { signal_agent_segment_id: string }): SignalSummary {
   const base = {
-    signal_id: { source: "agent_native", agent_url: "https://x", id: over.signal_agent_segment_id },
+    signal_id: { source: "agent", agent_url: "https://x", id: over.signal_agent_segment_id },
     name: over.signal_agent_segment_id,
     description: "",
     signal_type: "owned",

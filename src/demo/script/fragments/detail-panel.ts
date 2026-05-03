@@ -659,7 +659,16 @@ async function activateFromDetail(sig) {
       signal_agent_segment_id: sid,
       deliver_to: { deployments: [{ type: "platform", platform: "mock_dsp" }], countries: ["US"] },
     });
-    const taskId = act.task_id;
+    // Sec-31w-final: AdCP v3 spec moves task_id off the activate-signal
+    // response payload (envelope-level per protocol-envelope.json).
+    // MCP server now emits it inside ext for clients that need to poll.
+    // Read both shapes for backward-compat: top-level first, then ext.
+    const taskId = act.task_id ?? act.ext?.task_id;
+    if (!taskId) {
+      status.className = "activation-status success";
+      status.textContent = "✓ activated (sync, no task to poll)";
+      return;
+    }
     status.innerHTML = '<span class="spinner"></span> polling task ' + taskId.slice(0, 14) + '…';
 
     let finalState = null;

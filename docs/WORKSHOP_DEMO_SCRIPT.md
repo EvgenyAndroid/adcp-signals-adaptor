@@ -2,7 +2,18 @@
 
 **For:** "Mini Governance & Signals Workshop — AAO" · May 7, 2026 · 9–12 NYC · iHeartMedia (in-person + remote)
 **Live reference:** https://adcp-signals-adaptor.evgeny-193.workers.dev/ → **Orchestrator** tab
-**Companion:** [WORKSHOP_BLOCK1_EXHIBITS.md](./WORKSHOP_BLOCK1_EXHIBITS.md) — signal-definition card, boundary diagram, trust contract strawman.
+**Companions:**
+- [WORKSHOP_BLOCK1_EXHIBITS.md](./WORKSHOP_BLOCK1_EXHIBITS.md) — signal-definition card, boundary diagram, trust contract strawman.
+- [WORKSHOP_PRE_FLIGHT.md](./WORKSHOP_PRE_FLIGHT.md) — morning-of runbook, smoke commands, anticipated Q&A.
+
+**Status badge openers** (refresh on the morning of):
+
+| Lever | What | Live verification |
+|---|---|---|
+| **AAO Verified for Signals** | 21/21 core + 9/9 signals storyboards passing under AAO's `evaluate_agent_quality` runner. | Mention as credibility — "we passed AAO's compliance suite end to end." |
+| **AdCP 3.0.1 envelope binding** | MCP `structuredContent` carries `status` at top level (per `mcp-response-extraction.mdx` test vectors). Drove [adcp#3999](https://github.com/adcontextprotocol/adcp/issues/3999) ruling. | This is the resolution to gap #5 (was MCP-shape ambiguity); see §3 below. |
+| **Compliance suite** | `@adcp/client testAllScenarios` — **7/7** scenarios (signals_flow 9/9). | `npm run compliance` against prod. |
+| **Pre-demo audit** | 68/68 surface checks against prod (REST + MCP + LinkedIn + CORS + error paths). | `node scripts/pre-demo-audit.mjs`. |
 
 ---
 
@@ -15,7 +26,15 @@ Before opening the orchestrator:
 - **What we listen on:** measurement / attribution / lift (DV/IAS/Comscore/Nielsen own the floor), identity resolution (LiveRamp), attention measurement (Triton), IVT/fraud (Human/DV).
 - **What we volunteer to own** in the working committee: response-shape convention (gap #5) + brand-context primitive harmonization (gap #2). Both are concrete, scoped, and we can lead on a draft spec.
 
-Open the Orchestrator tab. Header chrome reads: **19 agents** in directory · **12 alive** · **~2s avg latency**. That's the credibility opener — we are speaking from interop reality, not slideware.
+Open the Orchestrator tab. Header chrome reads (live numbers — refresh on the morning of via `curl /agents/probe-all`): **~15 agents** in directory · **~11 alive** · **~2s avg latency**. That's the credibility opener — we are speaking from interop reality, not slideware.
+
+Currently-down vendors as of last smoke (2026-05-03) — useful to acknowledge live so the room sees us read the dashboard honestly:
+
+- `claire_scope3` — operation timeout
+- `setupad_gatavocom`, `setupad_wheelrandom` — HTTP 502 (vendor-side)
+- `mamamia` — HTTP 405 (probe method mismatch; not a real outage)
+
+The morning-of pre-flight (see [WORKSHOP_PRE_FLIGHT.md](./WORKSHOP_PRE_FLIGHT.md)) re-checks these so you walk in with the actual count.
 
 ---
 
@@ -66,7 +85,7 @@ Then surface the **6 implementation-observed gaps** (canonical, the workshop's g
 2. **Two distinct schema families for brand context.** Adzymic + Swivel use `brand_manifest: BrandManifest`. Claire + Content Ignite use top-level `brand: BrandReference` with `{domain, name}` — Claire's rejection cited the AdCP spec by URL. Not field-name drift; entirely different object contracts.
 3. **`packages[].buyer_ref`, `pricing_option_id`, scalar `budget`** — required by every known buying vendor's validator, NOT in the spec's required list. Implementation drift hardened.
 4. **`filters.format_ids` shape.** Spec wants `FormatId{agent_url, id}`; only `adzymic_apx` tolerates `string[]`. Five other agents reject Sec-48q's strings.
-5. **MCP response-shape optionality.** Celtra wraps JSON inside text blocks; most use `structuredContent`; Swivel embeds errors in a structured result. All three are spec-compliant. Naive extractors miss data.
+5. **MCP response-shape optionality.** Celtra wraps JSON inside text blocks; most use `structuredContent`; Swivel embeds errors in a structured result. All three were spec-compliant against the body schemas — the gap was at the *transport binding* level (where `status` lives in `structuredContent`). [adcp#3999](https://github.com/adcontextprotocol/adcp/issues/3999) ruled `status` must be at the top of `structuredContent` (per `mcp-response-extraction.mdx`); we shipped envelope binding accordingly. Naive extractors that only checked body schemas missed the binding requirement — that's the durable lesson.
 6. **Creative-agent surfaces beyond `list_creative_formats` are bespoke.** Celtra builds, Advertible previews. No shared creative-tool contract.
 
 Each maps to a Block 2 / Block 3 thread.
@@ -156,7 +175,7 @@ If the room wants a working committee with named deliverables, here's what I can
 
 | Deliverable | Scope | Target |
 |---|---|---|
-| **Signals tool-call response-shape convention** (gap #5) | Spec proposal: signals tools MUST emit results under a single canonical key in `structuredContent`; if using `content[].text`, must be parseable JSON without prefix wrapping. | Reviewable draft within 30 days of workshop |
+| **Signals tool-call response-shape convention** (gap #5) | Largely resolved upstream by [adcp#3999](https://github.com/adcontextprotocol/adcp/issues/3999) + bokelley's narrative-clarification PR [adcp#4005](https://github.com/adcontextprotocol/adcp/pulls/4005). Open follow-up: AdCP-side lint that gates `envelope_field_present` paths in `PATH_BEARING_CHECKS` (`code-reviewer` flagged this in #4005). I can drive that. | Reviewable draft within 30 days of workshop |
 | **Brand-context primitive harmonization** (gap #2) | Spec proposal: choose `brand_manifest: BrandManifest` OR `brand: BrandReference` as the single contract. Reference Adzymic + Claire shapes as priors. | Reviewable draft within 30 days |
 | **Live reference adaptor stays public** | `adcp-signals-adaptor` continues to host the orchestrator + interactive workflow as a working-committee testbed. PRs welcome. | Indefinite |
 

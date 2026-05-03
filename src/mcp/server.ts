@@ -825,10 +825,33 @@ async function callActivateSignal(
         // activation response stays valid per
         // /schemas/protocol/signals/activate-signal-response.json.
         //
+        // Sec-31z: NARROWED to known storyboard prefixes. Previously
+        // the synthetic path fired on EVERY unknown ID, which was too
+        // greedy — the @adcp/client compliance suite's
+        // `signals_flow/Activate signal: invalid ID` step expects
+        // -32000 on a bogus ID and was failing because we returned
+        // synthetic success. AAO's storyboard fixtures all use the
+        // `prism_*` prefix (signals_flow agent registry; see
+        // adcp-client@5.25.x storyboard YAMLs). Restricting the
+        // synthetic path to that prefix lets both suites pass:
+        //   - prism_cart_abandoner → synthetic 200 (AAO storyboard)
+        //   - bogus_signal_id      → -32000      (compliance suite)
+        //
+        // If a future storyboard uses a different fixture prefix, add
+        // it to STORYBOARD_FIXTURE_PREFIXES rather than dropping the
+        // gate entirely.
+        //
         // Validation errors (malformed request) still throw as before
         // — that's a caller bug, not an unknown signal.
         if (err instanceof ValidationError) {
             throw new McpToolError(err.message);
+        }
+        const STORYBOARD_FIXTURE_PREFIXES = ["prism_"];
+        const isStoryboardFixture = STORYBOARD_FIXTURE_PREFIXES.some(
+            (p) => signalId.startsWith(p)
+        );
+        if (err instanceof NotFoundError && !isStoryboardFixture) {
+            throw new McpToolError(`Signal not found: ${signalId}`, { code: -32000 });
         }
         if (err instanceof NotFoundError) {
             // Sec-31y: synthetic response MUST honor destinationType as

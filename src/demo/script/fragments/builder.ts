@@ -458,14 +458,39 @@ async function runEstimate() {
       return;
     }
     heroEl.classList.remove("loading");
-    heroEl.textContent = fmtNumber(data.estimated_audience_size);
+    // Sec-31u T3#22: live A/B delta — when the estimate changes from
+    // the prior result, render an inline delta pill (↑ / ↓ / =).
+    // countUp animates the new number in; the delta pill highlights
+    // direction + magnitude vs. previous.
+    const priorSize = state.builder._priorEstimateSize;
+    state.builder._priorEstimateSize = data.estimated_audience_size;
+    if (typeof countUp === "function") {
+      heroEl.classList.add("ux-count-up");
+      countUp(heroEl, data.estimated_audience_size, 600);
+    } else {
+      heroEl.textContent = fmtNumber(data.estimated_audience_size);
+    }
     // Sec-37 A3: render a ± range derived from the confidence tier so
     // a tier-1 reviewer sees honest uncertainty on every estimate.
     const range = confidenceRange(data.estimated_audience_size, data.confidence);
     const rangeText = range
       ? data.estimated_audience_size.toLocaleString() + " adults · ±" + range.pct + "% range: " + fmtNumber(range.lo) + "–" + fmtNumber(range.hi)
       : data.estimated_audience_size.toLocaleString() + " adults";
-    document.getElementById("preview-sub").textContent = rangeText;
+    // Append the A/B delta pill if we have a prior estimate.
+    let abDelta = "";
+    if (typeof priorSize === "number" && priorSize > 0) {
+      const diff = data.estimated_audience_size - priorSize;
+      const pct = Math.round((diff / priorSize) * 100);
+      if (Math.abs(pct) >= 1) {
+        const cls = diff > 0 ? "up" : "down";
+        const arrow = diff > 0 ? "↑" : "↓";
+        const sign = diff > 0 ? "+" : "";
+        abDelta = ' <span class="builder-ab-delta ' + cls + '">' + arrow + sign + pct + '% vs prior</span>';
+      } else {
+        abDelta = ' <span class="builder-ab-delta flat">≈ unchanged</span>';
+      }
+    }
+    document.getElementById("preview-sub").innerHTML = escapeHtml(rangeText) + abDelta;
     document.getElementById("coverage-fill").style.width = Math.min(100, data.coverage_percentage) + "%";
     document.getElementById("preview-meta").textContent = data.rule_count + " rule" + (data.rule_count === 1 ? "" : "s") + " · " + data.coverage_percentage + "% of US adults · dimensions: " + (data.dimensions_used.join(", ") || "(none)");
     // Sec-33: confidence pill, floor warning, NL explain

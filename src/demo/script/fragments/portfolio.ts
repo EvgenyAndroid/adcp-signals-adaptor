@@ -256,12 +256,26 @@ async function renderPortLorenz() {
 }
 function renderLorenzCard(s) {
   var W = 200, H = 140, pad = 20;
-  var pts = (s.lorenz || []).map(function (p) { return pad + p.x * (W - 2 * pad) + "," + (H - pad - p.y * (H - 2 * pad)); }).join(" ");
+  var lz = s.lorenz || [];
+  var pts = lz.map(function (p) { return pad + p.x * (W - 2 * pad) + "," + (H - pad - p.y * (H - 2 * pad)); }).join(" ");
+  // Sec-31u T2#11: hover-scrubber. Invisible-ish dots at each datapoint
+  // with native SVG <title> tooltips show exact x (cumulative %) and y
+  // (cumulative reach %) values. Filled area-under-curve also added
+  // for visual weight.
+  var areaPts = pts ? (pad + "," + (H - pad) + " " + pts + " " + (W - pad) + "," + (H - pad)) : "";
+  var hoverDots = lz.map(function (p, i) {
+    var cx = (pad + p.x * (W - 2 * pad)).toFixed(1);
+    var cy = (H - pad - p.y * (H - 2 * pad)).toFixed(1);
+    var tt = "x=" + (p.x * 100).toFixed(0) + "% of signals → y=" + (p.y * 100).toFixed(0) + "% of reach";
+    return '<circle class="lorenz-dot" cx="' + cx + '" cy="' + cy + '" r="3" fill="var(--accent)" opacity="0.55"><title>' + escapeHtml(tt) + '</title></circle>';
+  }).join("");
   return '<div class="lorenz-card">' +
     '<div class="lorenz-title">' + escapeHtml(s.group) + ' <span class="lorenz-gini">Gini ' + s.gini.toFixed(2) + '</span></div>' +
     '<svg viewBox="0 0 ' + W + ' ' + H + '">' +
       '<line x1="' + pad + '" y1="' + (H - pad) + '" x2="' + (W - pad) + '" y2="' + pad + '" stroke="var(--text-mut)" stroke-dasharray="3,2" stroke-width="1"/>' +
+      (areaPts ? '<polygon fill="var(--accent)" fill-opacity="0.10" points="' + areaPts + '"/>' : "") +
       '<polyline fill="none" stroke="var(--accent)" stroke-width="1.5" points="' + pts + '"/>' +
+      hoverDots +
     '</svg>' +
     '<div class="lorenz-count mono">' + s.signal_count + ' signals</div>' +
   '</div>';

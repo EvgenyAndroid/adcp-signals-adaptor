@@ -83,6 +83,22 @@ function _exprRenderNode(node, parentOp, depth) {
   return _exprRenderGroup(node, parentOp, depth);
 }
 
+// Sec-31u T3#26: render a small delta pill (↑/↓ + magnitude) when a
+// node's reach changed materially from the previous evaluation. Stays
+// silent on first run (no prior) and on changes <2% (noise floor).
+function _exprDeltaPill(nodeId, currentReach) {
+  var prior = state.expression && state.expression._priorReachMap
+    ? state.expression._priorReachMap[nodeId] : undefined;
+  if (typeof prior !== "number" || typeof currentReach !== "number") return "";
+  var delta = currentReach - prior;
+  if (Math.abs(delta) < Math.max(1, prior * 0.02)) return "";
+  var arrow = delta > 0 ? "↑" : "↓";
+  var cls = delta > 0 ? "expr-delta-up" : "expr-delta-down";
+  var sign = delta > 0 ? "+" : "";
+  return ' <span class="expr-delta-pill ' + cls + '" title="vs prior eval">' +
+    arrow + sign + fmtNumber(Math.abs(delta)) + '</span>';
+}
+
 function _exprRenderLeaf(node, parentOp) {
   var sig = node.signal_id ? state.catalog.all.find(function (s) {
     return (s.signal_agent_segment_id || (s.signal_id && s.signal_id.id)) === node.signal_id;
@@ -91,7 +107,8 @@ function _exprRenderLeaf(node, parentOp) {
   var lastResult = state.expression.lastResult;
   if (lastResult) {
     var match = _exprFindResultNode(lastResult.root, node.id);
-    if (match) reachTxt = '<span class="expr-node-reach mono">' + fmtNumber(match.reach) + '</span>';
+    if (match) reachTxt = '<span class="expr-node-reach mono">' + fmtNumber(match.reach) +
+      _exprDeltaPill(node.id, match.reach) + '</span>';
   }
   var body = sig
     ? '<div class="expr-leaf-body"><div class="expr-leaf-name">' + escapeHtml(sig.name) + '</div>' +
@@ -124,7 +141,8 @@ function _exprRenderGroup(node, parentOp, depth) {
   var reachTxt = "";
   if (lastResult) {
     var match = _exprFindResultNode(lastResult.root, node.id);
-    if (match) reachTxt = '<span class="expr-node-reach mono">' + fmtNumber(match.reach) + '</span>';
+    if (match) reachTxt = '<span class="expr-node-reach mono">' + fmtNumber(match.reach) +
+      _exprDeltaPill(node.id, match.reach) + '</span>';
   }
   var opLabel = node.op === "OR" ? "Any (OR)" : node.op === "AND" ? "All (AND)" : "NOT";
   var opClass = "expr-op-" + node.op.toLowerCase();
@@ -411,10 +429,30 @@ async function runExpression() {
     });
     var data = await r.json();
     if (!r.ok || data.error) throw new Error(data.error || "HTTP " + r.status);
+    // Sec-31u T3#26: capture previous reach map so per-node reach pills
+    // can show delta indicators (↑/↓ + amount). Walks the prior result
+    // tree once and indexes by node id.
+    var priorReachMap = {};
+    if (state.expression.lastResult && state.expression.lastResult.root) {
+      (function indexReach(n) {
+        if (!n) return;
+        if (n.id && typeof n.reach === "number") priorReachMap[n.id] = n.reach;
+        if (Array.isArray(n.children)) n.children.forEach(indexReach);
+      })(state.expression.lastResult.root);
+    }
+    state.expression._priorReachMap = priorReachMap;
     state.expression.lastResult = data;
     _renderExprResult(data);
     _exprRender();  // re-render tree so per-node reach pills show up
     document.getElementById("expr-save-panel").hidden = false;
+    // Glow each reach badge briefly to draw attention to new values.
+    if (typeof glowOnce === "function") {
+      setTimeout(function () {
+        document.querySelectorAll(".expr-node-reach").forEach(function (el) {
+          glowOnce(el);
+        });
+      }, 50);
+    }
   } catch (e) {
     host.innerHTML = '<div class="empty-state" style="border-color:var(--error)"><div class="empty-title" style="color:var(--error)">' + escapeHtml(e.message) + '</div></div>';
   }

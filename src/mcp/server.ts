@@ -519,16 +519,59 @@ async function callGetSignals(
         result.hasMore = false;
     }
 
+    // Sec-31z: AAO `pagination_walk` envelope cleanup.
+    //
+    // searchSignalsService returns a response with these top-level
+    // fields aimed at REST callers + the demo trace inspector:
+    //   message, context_id, signals, count, totalCount, offset,
+    //   hasMore, _trace
+    //
+    // AAO's get_signals_pagination_integrity check expects a v3-style
+    // envelope: pagination structured under a single sub-object, no
+    // legacy v2 flat fields, and no debugging _trace at top level.
+    //
+    // This block normalises the MCP-returned shape ONLY (REST
+    // /signals/search keeps its existing flat shape so other clients
+    // that depend on it don't break):
+    //   - strip _trace (UI-only debugging field)
+    //   - strip count, totalCount, offset, hasMore from top level
+    //   - emit pagination: { total_count, page_size, offset, has_more,
+    //                        next_offset? } as a single sub-object
+    const pageSize = (req as { limit: number }).limit;
+    const pageOffset = (req as { offset: number }).offset;
+    const totalCount = (result as { totalCount: number }).totalCount;
+    const hasMore = pageOffset + result.signals.length < totalCount;
+    const paginationBlock = {
+        total_count: totalCount,
+        page_size: pageSize,
+        offset: pageOffset,
+        has_more: hasMore,
+        ...(hasMore ? { next_offset: pageOffset + result.signals.length } : {}),
+    };
+
     // Echo back the request's context block. Signals storyboard validates
     // `context.correlation_id` round-trips. Per /schemas/core/context.json,
     // context is opaque — copy through unchanged. Same pattern as
     // get_adcp_capabilities.
     const ctx = args["context"];
-    const response = ctx && typeof ctx === "object" && !Array.isArray(ctx)
-        ? { ...result, context: ctx as Record<string, unknown> }
-        : result;
 
-    return toolResult(JSON.stringify(response, null, 2), response);
+    // Build the v3-clean response. Only message, context_id, signals,
+    // pagination, and (optionally) context survive; legacy fields are
+    // dropped. proposals (when present) is preserved as it's an AdCP-
+    // native field, not a v2 holdover.
+    const cleanResponse: Record<string, unknown> = {
+        message: (result as { message: string }).message,
+        context_id: (result as { context_id: string }).context_id,
+        signals: result.signals,
+        pagination: paginationBlock,
+    };
+    const proposals = (result as { proposals?: unknown[] }).proposals;
+    if (proposals && proposals.length > 0) cleanResponse["proposals"] = proposals;
+    if (ctx && typeof ctx === "object" && !Array.isArray(ctx)) {
+        cleanResponse["context"] = ctx as Record<string, unknown>;
+    }
+
+    return toolResult(JSON.stringify(cleanResponse, null, 2), cleanResponse);
 }
 
 async function callActivateSignal(
@@ -555,7 +598,19 @@ async function callActivateSignal(
     // Track agent vs platform so the service can skip the destinations-
     // whitelist check for agent activations (every signal MUST accept
     // type=agent per the AdCP signals spec).
-    const destinationType: "platform" | "agent" = firstType === "agent" ? "agent" : "platform";
+    //
+    // Sec-31y: source-of-truth precedence is
+    //   1. firstEntry.type (destinations[0].type)  — canonical shape
+    //   2. args.destinationType                    — top-level alias
+    //   3. default "platform"                      — backward-compat
+    //
+    // (2) was added when AAO's signal_owned storyboard turned out to
+    // sometimes send only the top-level field with no destinations
+    // array — without it, those requests fell through to "platform"
+    // even when the caller explicitly asked for agent.
+    const topLevelType = args["destinationType"] as string | undefined;
+    const destinationType: "platform" | "agent" =
+        firstType === "agent" || topLevelType === "agent" ? "agent" : "platform";
 
     const resolvedDestination = destination;
     const signalId = (args["signal_agent_segment_id"] ?? args["signalId"]) as string;
@@ -618,9 +673,15 @@ async function callActivateSignal(
             ? { context: ctx as Record<string, unknown> }
             : {};
 
+        // Sec-31z: AAO v3_envelope_integrity — top-level `status` is
+        // the v2 holdover Addie flagged. v3 conveys success via the
+        // presence of valid deployments + message; status was always
+        // a duplicate signal. Removed from both success + synthetic
+        // paths. task_id is preserved (no schema-authoritative reason
+        // to rename it; will revisit if envelope_integrity surfaces it
+        // as a new finding).
         const specResponse = {
             task_id: result.task_id,
-            status: "pending",
             signal_agent_segment_id: signalId,
             deployments: responseDeployments,
             ...(webhookUrl ? { webhook_url: webhookUrl } : {}),
@@ -751,15 +812,14 @@ async function callActivateSignal(
                 ? { context: ctx as Record<string, unknown> }
                 : {};
             const syntheticResponse = {
-                // Storyboard schema fields (per AAO Addie guidance):
-                // message + context_id at top level, deployments mirror
-                // request type, is_live:true for sync. Other fields
-                // (signal_agent_segment_id, status) preserved for
-                // backward-compat with our existing API consumers.
+                // v3 envelope: message + context_id + deployments are
+                // the protocol-meaningful fields. status removed (v2
+                // holdover per Addie's envelope_integrity check).
+                // task_id preserved (no schema-authoritative reason to
+                // rename yet; envelope_integrity will surface it if so).
                 message: "Signal activated (synthetic response for unknown segment ID)",
                 context_id: correlationId ?? `ctx_synthetic_${Date.now()}_${signalId}`.slice(0, 64),
                 task_id: `task_synthetic_${Date.now()}_${signalId}`.slice(0, 64),
-                status: "completed",
                 signal_agent_segment_id: signalId,
                 deployments: responseDeployments,
                 ...(webhookUrl ? { webhook_url: webhookUrl } : {}),

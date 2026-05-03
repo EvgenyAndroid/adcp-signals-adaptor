@@ -698,6 +698,34 @@ function _canvasApplyEvent(ev) {
     if (laneEl) {
       laneEl.classList.remove("canvas-lane-active");
       laneEl.classList.add("canvas-lane-done");
+      // Sec-31u: glow pulse on lane completion + emit a celebratory
+      // particle burst toward the next lane (or off-screen on the
+      // final lane). Adds a "wave" feel as the workflow propagates.
+      if (typeof glowOnce === "function") glowOnce(laneEl);
+      if (typeof spawnParticle === "function" && typeof elementCenter === "function") {
+        try {
+          var stages = ["signals", "inventory", "creative", "media_buy"];
+          var nextIdx = stages.indexOf(stage) + 1;
+          var nextLane = nextIdx < stages.length
+            ? document.getElementById("canvas-lane-" + (stages[nextIdx] === "media_buy" ? "mediabuy-row" : stages[nextIdx]))
+            : null;
+          if (nextLane) {
+            var from = elementCenter(laneEl);
+            var to = elementCenter(nextLane);
+            for (var pi = 0; pi < 5; pi++) {
+              (function (delay, jitter) {
+                setTimeout(function () {
+                  spawnParticle(
+                    { x: from.x + jitter, y: from.y },
+                    { x: to.x + jitter, y: to.y },
+                    { duration: 800 }
+                  );
+                }, delay);
+              })(pi * 60, (pi - 2) * 14);
+            }
+          }
+        } catch (e) { /* non-fatal */ }
+      }
     }
     if (r[stage]) r[stage].total = (ev.summary && ev.summary.total) || 0;
     _canvasRenderLane(stage);

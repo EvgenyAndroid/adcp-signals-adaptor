@@ -88,9 +88,17 @@ function renderTreemap() {
   svg.setAttribute("preserveAspectRatio", "none");
 
   const leaves = hier.leaves();
-  for (const leaf of leaves) {
+  // Stagger cell entry — each cell appears with a stepped delay for a
+  // "cascading reveal" effect on initial render. Capped at 30 to keep
+  // the total animation under ~900ms even for huge category groups.
+  for (let li = 0; li < leaves.length; li++) {
+    const leaf = leaves[li];
     const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
     g.setAttribute("class", "treemap-cell");
+    if (li < 30) {
+      g.style.setProperty("--ux-stagger-i", String(li));
+      g.classList.add("ux-stagger-row");
+    }
     const rectEl = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     rectEl.setAttribute("x", leaf.x0);
     rectEl.setAttribute("y", leaf.y0);

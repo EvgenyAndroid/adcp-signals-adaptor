@@ -566,6 +566,9 @@ async function renderFunnelCumulative() {
     } catch { return; }
   }
   renderFunnel(steps);
+  // Sec-31u: pulse the funnel container to signal a fresh recompute
+  // after rule changes. Subtle but communicates "this is live data".
+  if (typeof glowOnce === "function") glowOnce(host);
 }
 
 function renderFunnel(steps) {
@@ -681,9 +684,11 @@ async function renderEmbeddingScatter() {
       geo:             "#2bd4a0",
       composite:       "#ffcb5c",
     };
-    var svgDots = points.map(function (p) {
+    var svgDots = points.map(function (p, idx) {
       var color = colorMap[p.category] || "#8892a6";
-      return '<circle cx="' + sx(p.x).toFixed(1) + '" cy="' + sy(p.y).toFixed(1) + '" r="5" ' +
+      // Stagger dot entry so the scatter "blooms" on initial render.
+      // data-emb-idx wires the click handler installed below.
+      return '<circle class="emb-dot ux-stagger-row" data-emb-idx="' + idx + '" style="--ux-stagger-i:' + Math.min(idx, 28) + '" cx="' + sx(p.x).toFixed(1) + '" cy="' + sy(p.y).toFixed(1) + '" r="5" ' +
         'fill="' + color + '" fill-opacity="0.85" stroke="rgba(255,255,255,0.2)" stroke-width="0.8">' +
         '<title>' + escapeHtml(p.name) + ' (' + escapeHtml(p.category) + ')&#10;' + escapeHtml(p.description) + '</title>' +
       '</circle>';
@@ -701,6 +706,65 @@ async function renderEmbeddingScatter() {
       '<text x="8" y="18" fill="var(--text-mut)" font-size="10" font-family="ui-monospace">UCP₂</text>' +
       svgDots + svgLabels +
     '</svg>';
+    // Sec-31u: interactive scatter — click dot to highlight + draw
+    // dashed edges to its 5 nearest 2D neighbors. Click again or
+    // outside to clear. State lives on the SVG element via data-attrs
+    // so it survives re-renders.
+    var svgEl = host.querySelector("svg");
+    if (svgEl) {
+      svgEl.addEventListener("click", function (ev) {
+        var t = ev.target;
+        if (!t || !t.classList) return;
+        // Click on background → clear
+        if (t.tagName === "svg" || t.tagName === "SVG") {
+          host.querySelectorAll(".emb-dot.is-anchor, .emb-dot.is-near, .emb-dot.is-dim").forEach(function (e) {
+            e.classList.remove("is-anchor", "is-near", "is-dim");
+          });
+          host.querySelectorAll(".emb-edge").forEach(function (e) { e.parentNode.removeChild(e); });
+          return;
+        }
+        if (!t.classList.contains("emb-dot")) return;
+        var idx = parseInt(t.getAttribute("data-emb-idx"), 10);
+        if (isNaN(idx)) return;
+        // Compute 5 nearest in 2D
+        var anchor = points[idx];
+        var dists = [];
+        for (var i = 0; i < points.length; i++) {
+          if (i === idx) continue;
+          var dx = points[i].x - anchor.x, dy = points[i].y - anchor.y;
+          dists.push({ idx: i, d: Math.sqrt(dx * dx + dy * dy) });
+        }
+        dists.sort(function (a, b) { return a.d - b.d; });
+        var near = {};
+        for (var k = 0; k < 5 && k < dists.length; k++) near[dists[k].idx] = true;
+        // Apply visual state to dots
+        host.querySelectorAll(".emb-dot").forEach(function (d) {
+          var di = parseInt(d.getAttribute("data-emb-idx"), 10);
+          d.classList.remove("is-anchor", "is-near", "is-dim");
+          if (di === idx) d.classList.add("is-anchor");
+          else if (near[di]) d.classList.add("is-near");
+          else d.classList.add("is-dim");
+        });
+        // Remove old edges, draw new
+        host.querySelectorAll(".emb-edge").forEach(function (e) { e.parentNode.removeChild(e); });
+        var ax = sx(anchor.x).toFixed(1), ay = sy(anchor.y).toFixed(1);
+        for (var n = 0; n < 5 && n < dists.length; n++) {
+          var p2 = points[dists[n].idx];
+          var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          line.setAttribute("class", "emb-edge ux-stagger-row");
+          line.setAttribute("x1", ax); line.setAttribute("y1", ay);
+          line.setAttribute("x2", sx(p2.x).toFixed(1));
+          line.setAttribute("y2", sy(p2.y).toFixed(1));
+          line.setAttribute("stroke", "var(--accent)");
+          line.setAttribute("stroke-width", "1.4");
+          line.setAttribute("stroke-dasharray", "3,3");
+          line.setAttribute("opacity", "0.6");
+          line.style.setProperty("--ux-stagger-i", String(n));
+          // Insert edges UNDER the dots so clicks still hit dots first
+          svgEl.insertBefore(line, svgEl.firstChild.nextSibling);
+        }
+      });
+    }
     var cats = Object.keys(colorMap);
     legend.innerHTML = cats.map(function (c) {
       return '<span class="emb-legend-item"><span class="emb-legend-dot" style="background:' + colorMap[c] + '"></span>' + escapeHtml(c) + '</span>';

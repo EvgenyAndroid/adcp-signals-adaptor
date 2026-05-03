@@ -62,6 +62,15 @@ type AdcpCapabilities = {
     idempotency: { supported: true; replay_ttl_seconds: number };
   };
   supported_protocols: string[];
+  /**
+   * AAO specialism declarations. Drives which specialist scenario tracks
+   * the AAO compliance runner executes when verifying badge eligibility.
+   * For a signals-only first-party adaptor, the relevant value is
+   * `signal-owned`. The legacy `signed-requests` value is deprecated in
+   * 3.1 — request-signing capabilities are declared via the
+   * `request_signing` block instead.
+   */
+  specialisms?: string[];
   signals?: unknown;
   media_buy?: unknown;
   governance?: unknown;
@@ -74,7 +83,6 @@ type AdcpCapabilities = {
   webhook_signing?: unknown;
   identity?: unknown;
   compliance_testing?: unknown;
-  specialisms?: unknown;
   experimental_features?: string[];
   ext?: Record<string, unknown>;
   /**
@@ -100,6 +108,14 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       idempotency: { supported: true, replay_ttl_seconds: 86400 },
     },
     supported_protocols: ["signals"],
+    // Sec-31v (AAO compliance): specialism declaration. AAO's badge
+    // issuer reads this array to decide which specialist scenario tracks
+    // to run. For a first-party signals adaptor exposing owned segments
+    // (not reselling third-party marketplace data), the right value is
+    // `signal-owned`. The deprecated `signed-requests` value is NOT
+    // included — request-signing capabilities are declared via the
+    // `request_signing` block below.
+    specialisms: ["signal-owned"],
     // Sec-42 (AdCP 3.0 GA): top-level protocol-level capability blocks.
     // See /schemas/3.0.0/protocol/get-adcp-capabilities-response.json.
     // Declared honestly — we only claim what we actually implement.
@@ -659,6 +675,11 @@ export async function getCapabilities(
   const filtered: AdcpCapabilities = {
     adcp: full.adcp,
     supported_protocols: full.supported_protocols,
+    // Sec-31v: specialisms is a top-level declaration like
+    // supported_protocols and is always returned regardless of the
+    // requested-protocols filter (the AAO badge runner reads it
+    // independently of which protocol blocks are projected).
+    ...(full.specialisms ? { specialisms: full.specialisms } : {}),
     ...(full.ext ? { ext: full.ext } : {}),
   };
   for (const key of PROTOCOL_BLOCK_KEYS) {

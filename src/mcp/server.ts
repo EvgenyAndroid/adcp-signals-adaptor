@@ -71,6 +71,19 @@ const RPC_UNAUTHORIZED = -32001;
 // return -32001 if no API key is present on the request.
 const AUTHENTICATED_MCP_METHODS = new Set(["tools/call"]);
 
+// Sec-31v: tools/call carve-out for AdCP capability discovery. The AAO
+// storyboard runner and similar conformance probes call
+// get_adcp_capabilities BEFORE any handshake / auth flow to learn what
+// the agent supports — they need the unauthed call to succeed in order
+// to issue specialty badges. Other discovery probes (compliance
+// evaluators, directory crawlers) follow the same pattern.
+//
+// Treating this single tool as public matches how `initialize` and
+// `tools/list` behave at the MCP layer, and keeps mutating tools
+// (activate_signal, get_signals, etc.) gated behind the bearer key.
+// All other tools/call invocations remain auth-gated.
+const PUBLIC_TOOL_CALL_NAMES = new Set(["get_adcp_capabilities"]);
+
 interface McpInitializeParams {
     protocolVersion: string;
     capabilities?: Record<string, unknown>;
@@ -181,15 +194,26 @@ async function handleSingleMessage(
     logger.info("mcp_request", { method, id });
 
     if (AUTHENTICATED_MCP_METHODS.has(method) && !isAuthed) {
-        // Log auth failures so spammy unauthenticated tool-call attempts are
-        // visible in the observability pipeline.
-        logger.warn("mcp_auth_required", { method, id });
-        if (id === undefined || id === null) return null;
-        return rpcError(
-            id,
-            RPC_UNAUTHORIZED,
-            "Authentication required for this method. Supply Authorization: Bearer <key>.",
-        );
+        // Sec-31v: tools/call → get_adcp_capabilities is public. The AAO
+        // and AdCP conformance probes call this tool unauthenticated to
+        // discover specialisms / supported_protocols before any handshake.
+        // Other tools/call invocations stay auth-gated.
+        const toolName = (params && typeof params === "object" && "name" in params)
+            ? (params as { name?: unknown }).name
+            : undefined;
+        if (method === "tools/call" && typeof toolName === "string" && PUBLIC_TOOL_CALL_NAMES.has(toolName)) {
+            logger.info("mcp_public_tool_call", { method, tool: toolName, id });
+        } else {
+            // Log auth failures so spammy unauthenticated tool-call attempts are
+            // visible in the observability pipeline.
+            logger.warn("mcp_auth_required", { method, id });
+            if (id === undefined || id === null) return null;
+            return rpcError(
+                id,
+                RPC_UNAUTHORIZED,
+                "Authentication required for this method. Supply Authorization: Bearer <key>.",
+            );
+        }
     }
 
     try {

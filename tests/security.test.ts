@@ -795,12 +795,15 @@ describe("handleMcpRequest — auth gate", () => {
     // Sec-23: single-request auth failures surface at the HTTP layer per
     // RFC 6750 so standard MCP clients and conformance probes detect the
     // auth failure via transport. JSON-RPC body still carries -32001.
+    // Sec-31v: get_adcp_capabilities is now public (carve-out for AAO
+    // discovery probes), so this test uses get_signals which remains
+    // auth-gated. See PUBLIC_TOOL_CALL_NAMES in mcp/server.ts.
     const { status, body, res } = await callAndParse(
       mcpReq({
         jsonrpc: "2.0",
         id: 3,
         method: "tools/call",
-        params: { name: "get_adcp_capabilities", arguments: {} },
+        params: { name: "get_signals", arguments: {} },
       }),
     );
     expect(status).toBe(401);
@@ -812,7 +815,7 @@ describe("handleMcpRequest — auth gate", () => {
   it("tools/call with wrong API key returns HTTP 401 + -32001", async () => {
     const { status, body } = await callAndParse(
       mcpReq(
-        { jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "get_adcp_capabilities", arguments: {} } },
+        { jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "get_signals", arguments: {} } },
         "Bearer not-the-key",
       ),
     );
@@ -827,7 +830,7 @@ describe("handleMcpRequest — auth gate", () => {
     const { status, body } = await callAndParse(
       mcpReq([
         { jsonrpc: "2.0", id: 10, method: "tools/list", params: {} },
-        { jsonrpc: "2.0", id: 11, method: "tools/call", params: { name: "get_adcp_capabilities", arguments: {} } },
+        { jsonrpc: "2.0", id: 11, method: "tools/call", params: { name: "get_signals", arguments: {} } },
       ]),
     );
     expect(status).toBe(200);
@@ -837,16 +840,42 @@ describe("handleMcpRequest — auth gate", () => {
     expect(byId[11].error?.code).toBe(-32001);
   });
 
+  it("Sec-31v: tools/call get_adcp_capabilities is PUBLIC (carve-out for AAO discovery)", async () => {
+    // The AAO storyboard runner and similar conformance probes call
+    // get_adcp_capabilities BEFORE any auth handshake to learn what the
+    // agent supports. This single tool is public; mutating tools
+    // (get_signals, activate_signal, etc.) stay auth-gated. See
+    // PUBLIC_TOOL_CALL_NAMES in mcp/server.ts.
+    const { status, body } = await callAndParse(
+      mcpReq({
+        jsonrpc: "2.0",
+        id: 100,
+        method: "tools/call",
+        params: { name: "get_adcp_capabilities", arguments: {} },
+      }),
+    );
+    expect(status).toBe(200);
+    expect(body.error).toBeUndefined();
+    expect(body.result?.content).toBeDefined();
+    // Capability response must include specialisms for AAO badge issuance
+    const text = body.result.content[0].text;
+    const caps = JSON.parse(text);
+    expect(caps.specialisms).toEqual(["signal-owned"]);
+    expect(caps.supported_protocols).toContain("signals");
+  });
+
   // Sec-26b: broaden mixed-auth batch isolation coverage beyond tools/list.
   // The existing tools/list+tools/call test proves per-message isolation
   // for one public-method pair. These pin the invariant across the other
   // public methods (initialize, ping) so a refactor that special-cases
   // tools/list accidentally would still fail here.
   it("Sec-26b: mixed batch [initialize, tools/call] — public succeeds, tool-call gets -32001", async () => {
+    // Sec-31v: get_adcp_capabilities is now public; using get_signals
+    // here so this test still validates the auth-gate path.
     const { status, body } = await callAndParse(
       mcpReq([
         { jsonrpc: "2.0", id: 40, method: "initialize", params: { protocolVersion: "2024-11-05", clientInfo: { name: "t", version: "1" } } },
-        { jsonrpc: "2.0", id: 41, method: "tools/call", params: { name: "get_adcp_capabilities", arguments: {} } },
+        { jsonrpc: "2.0", id: 41, method: "tools/call", params: { name: "get_signals", arguments: {} } },
       ]),
     );
     expect(status).toBe(200);
@@ -885,8 +914,10 @@ describe("handleMcpRequest — auth gate", () => {
     // response array; HTTP stays 200.
     const { status, body, res } = await callAndParse(
       mcpReq([
-        { jsonrpc: "2.0", id: 30, method: "tools/call", params: { name: "get_adcp_capabilities", arguments: {} } },
-        { jsonrpc: "2.0", id: 31, method: "tools/call", params: { name: "get_signals", arguments: {} } },
+        // Sec-31v: get_adcp_capabilities is public — using non-public
+        // tools here so all three messages exercise the auth-gate path.
+        { jsonrpc: "2.0", id: 30, method: "tools/call", params: { name: "get_signals", arguments: {} } },
+        { jsonrpc: "2.0", id: 31, method: "tools/call", params: { name: "search_signals", arguments: {} } },
         { jsonrpc: "2.0", id: 32, method: "tools/call", params: { name: "activate_signal", arguments: {} } },
       ]),
     );

@@ -198,7 +198,31 @@ function _renderTracePanel(trace) {
   document.getElementById("trace-step-count").textContent = (trace.steps || []).length;
   document.getElementById("trace-ts").textContent = trace.ts ? _fmtRelTs(trace.ts) : "—";
   document.getElementById("trace-perf").innerHTML = _renderTracePerf(trace.performance || null);
-  document.getElementById("trace-steps").innerHTML = (trace.steps || []).map(_renderTraceStep).join("");
+  // Sec-31u T1#5: timeline scrubber — proportional bar across the top
+  // of the steps list. Each segment width = step.duration_ms / total.
+  // Click any segment to scroll its expanded step into view + highlight.
+  var stepsArr = trace.steps || [];
+  var totalDur = stepsArr.reduce(function (a, s) { return a + (typeof s.duration_ms === "number" ? s.duration_ms : 0); }, 0) || 1;
+  var scrubberHost = document.getElementById("trace-timeline-scrubber");
+  if (scrubberHost) {
+    if (stepsArr.length > 0) {
+      var palette = ["#4f8eff", "#8b6eff", "#2bd4a0", "#ffcb5c", "#ff7a5c", "#ff4d8e"];
+      var segs = stepsArr.map(function (s, i) {
+        var w = ((typeof s.duration_ms === "number" ? s.duration_ms : 0) / totalDur) * 100;
+        var color = palette[i % palette.length];
+        return '<button type="button" class="trace-tl-seg" data-tl-step="' + escapeHtml(s.id) +
+          '" style="width:' + w.toFixed(2) + '%;background:' + color + '"' +
+          ' title="' + escapeHtml(s.label || s.id) + ' · ' + _fmtMs(s.duration_ms || 0) + '">' +
+          '<span class="trace-tl-seg-label">' + escapeHtml(s.label || s.id) + '</span>' +
+        '</button>';
+      }).join("");
+      scrubberHost.innerHTML = '<div class="trace-tl-track">' + segs + '</div>' +
+        '<div class="trace-tl-axis"><span>0ms</span><span>total ' + _fmtMs(totalDur) + '</span></div>';
+    } else {
+      scrubberHost.innerHTML = '';
+    }
+  }
+  document.getElementById("trace-steps").innerHTML = stepsArr.map(_renderTraceStep).join("");
   // Wire step-head clicks (accordion toggle)
   document.querySelectorAll(".trace-step-head").forEach(function(btn) {
     btn.addEventListener("click", function() {
@@ -206,6 +230,22 @@ function _renderTracePanel(trace) {
       if (step) step.classList.toggle("is-open");
     });
   });
+  // Wire timeline-segment clicks → scroll matching step into view + glow
+  if (scrubberHost) {
+    scrubberHost.querySelectorAll(".trace-tl-seg").forEach(function (seg) {
+      seg.addEventListener("click", function () {
+        var stepId = seg.getAttribute("data-tl-step");
+        var stepEl = document.querySelector('.trace-step[data-trace-step="' + stepId + '"]');
+        if (!stepEl) return;
+        stepEl.classList.add("is-open");
+        stepEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (typeof glowOnce === "function") setTimeout(function () { glowOnce(stepEl); }, 300);
+        // Highlight active segment
+        scrubberHost.querySelectorAll(".trace-tl-seg").forEach(function (s) { s.classList.remove("is-active"); });
+        seg.classList.add("is-active");
+      });
+    });
+  }
   // Animate match-bar widths in after a small delay so the transition triggers.
   setTimeout(function() {
     document.querySelectorAll(".trace-match-bar").forEach(function(b) {

@@ -836,13 +836,18 @@ async function renderEmbeddingHeatmap() {
         return "rgb(" + rr2 + "," + gg2 + "," + bb2 + ")";
       }
     }
+    // Sec-31u: heatmap cells animate-in with stagger and respond to
+    // hover (highlights row + column, dims rest). data-hr/data-hc carry
+    // row/col indices so the hover handler can light up linked cells.
     var svgCells = "";
+    var totalCells = n * n;
     for (var i = 0; i < n; i++) {
       for (var j = 0; j < n; j++) {
         var v = matrix[i * n + j];
-        svgCells += '<rect x="' + (margin + j * cell) + '" y="' + (margin + i * cell) + '" width="' + cell + '" height="' + cell + '" ' +
+        var staggerIdx = Math.min(totalCells - 1, i * n + j);
+        svgCells += '<rect class="hm-cell ux-stagger-row" data-hr="' + i + '" data-hc="' + j + '" style="--ux-stagger-i:' + Math.min(staggerIdx, 60) + '" x="' + (margin + j * cell) + '" y="' + (margin + i * cell) + '" width="' + cell + '" height="' + cell + '" ' +
           'fill="' + colorFor(v) + '" stroke="var(--bg-surface)" stroke-width="0.4">' +
-          '<title>' + escapeHtml(names[i] || "") + ' × ' + escapeHtml(names[j] || "") + ': cos=' + v.toFixed(3) + '</title>' +
+          '<title>' + escapeHtml(names[i] || "") + ' x ' + escapeHtml(names[j] || "") + ': cos=' + v.toFixed(3) + '</title>' +
         '</rect>';
       }
     }
@@ -865,6 +870,32 @@ async function renderEmbeddingHeatmap() {
       '<div class="ehs-gradient ehs-gradient-r"></div>' +
       '<span class="ehs-label" style="text-align:right">+1<br><span class="ehs-sub">identical</span></span>' +
     '</div>';
+    // Sec-31u: heatmap hover -> highlight row + column, dim others.
+    var hmSvg = host.querySelector("svg");
+    if (hmSvg) {
+      hmSvg.addEventListener("mouseover", function (ev) {
+        var t = ev.target;
+        if (!t || !t.classList || !t.classList.contains("hm-cell")) return;
+        var hr = t.getAttribute("data-hr");
+        var hc = t.getAttribute("data-hc");
+        hmSvg.querySelectorAll(".hm-cell").forEach(function (c) {
+          if (c.getAttribute("data-hr") === hr || c.getAttribute("data-hc") === hc) {
+            c.classList.add("hm-active");
+            c.classList.remove("hm-dim");
+          } else {
+            c.classList.add("hm-dim");
+            c.classList.remove("hm-active");
+          }
+        });
+      });
+      hmSvg.addEventListener("mouseout", function (ev) {
+        var related = ev.relatedTarget;
+        if (related && hmSvg.contains(related)) return;
+        hmSvg.querySelectorAll(".hm-active, .hm-dim").forEach(function (c) {
+          c.classList.remove("hm-active", "hm-dim");
+        });
+      });
+    }
     var expl2 = document.getElementById("emb-heatmap-explainer");
     if (expl2) expl2.innerHTML = renderChartExplainer({
       what: "How semantically close every audience is to every other one, shown as a 20\u00d720 grid of cosine similarity scores.",
@@ -907,12 +938,13 @@ async function renderEmbeddingSankey() {
     var nodeW = 18;
     var midSpace = (H - 40) / (mids.length || 1);
     var rightSpace = (H - 40) / rightSystems.length;
-    // Nodes
+    // Sec-31u: nodes + flows now carry data-sk-* attributes so the
+    // hover handler below can highlight a chain across the columns.
     var nodes = "";
     mids.forEach(function (m, i) {
       var y = 20 + i * midSpace;
       var size = Math.max(16, Math.min(midSpace - 8, midCounts[m] * 6));
-      nodes += '<rect x="' + midX + '" y="' + y + '" width="' + nodeW + '" height="' + size + '" fill="var(--accent)" fill-opacity="0.7"/>' +
+      nodes += '<rect class="sk-node sk-node-mid" data-sk-mid="' + i + '" x="' + midX + '" y="' + y + '" width="' + nodeW + '" height="' + size + '" fill="var(--accent)" fill-opacity="0.7"/>' +
         '<text x="' + (midX + nodeW + 8) + '" y="' + (y + size / 2 + 4) + '" fill="var(--text)" font-size="11" font-family="ui-sans-serif">' + escapeHtml(m) + ' · ' + midCounts[m] + '</text>';
     });
     rightSystems.forEach(function (sys, i) {
@@ -920,37 +952,108 @@ async function renderEmbeddingSankey() {
       var size = Math.max(20, rightSpace - 20);
       var totalForSys = 0;
       mids.forEach(function (m) { totalForSys += (rightFromMid[m] && rightFromMid[m][sys]) || 0; });
-      nodes += '<rect x="' + rightX + '" y="' + y + '" width="' + nodeW + '" height="' + size + '" fill="#8b6eff" fill-opacity="0.7"/>' +
+      nodes += '<rect class="sk-node sk-node-right" data-sk-right="' + escapeHtml(sys) + '" x="' + rightX + '" y="' + y + '" width="' + nodeW + '" height="' + size + '" fill="#8b6eff" fill-opacity="0.7"/>' +
         '<text x="' + (rightX + nodeW + 8) + '" y="' + (y + size / 2 + 4) + '" fill="var(--text)" font-size="11" font-family="ui-sans-serif">' + escapeHtml(sys) + ' · ' + totalForSys + '</text>';
     });
     // Left-column anchor
     nodes += '<rect x="' + leftX + '" y="20" width="' + nodeW + '" height="' + (H - 40) + '" fill="#2bd4a0" fill-opacity="0.5"/>' +
       '<text x="' + (leftX + nodeW + 8) + '" y="40" fill="var(--text)" font-size="11" font-family="ui-sans-serif">IAB Audience 1.1</text>' +
       '<text x="' + (leftX + nodeW + 8) + '" y="56" fill="var(--text-mut)" font-size="10" font-family="ui-monospace">' + signals.length + ' signals</text>';
-    // Flows: left → mid (all one color), mid → right (colored per mid)
+    // Flows: each path carries data-sk-mid (and data-sk-right for the
+    // mid->right segments) so the hover handler can light up a full
+    // chain. Stagger index drives the draw-in animation.
     var flows = "";
+    var skFi = 0;
     mids.forEach(function (m, mi) {
       var yMid = 20 + mi * midSpace + Math.min(midSpace - 8, midCounts[m] * 6) / 2;
-      // left→mid
       var yLeft = 20 + (H - 40) / 2 + (mi - mids.length / 2) * 10;
       var cx1 = leftX + nodeW + (midX - leftX - nodeW) / 2;
-      flows += '<path d="M' + (leftX + nodeW) + ',' + yLeft + ' C' + cx1 + ',' + yLeft + ' ' + cx1 + ',' + yMid + ' ' + midX + ',' + yMid + '" ' +
-        'fill="none" stroke="#2bd4a0" stroke-opacity="0.3" stroke-width="' + Math.max(1, midCounts[m] * 1.5) + '"/>';
-      // mid→right(s)
+      flows += '<path class="sk-flow sk-flow-leftmid" data-sk-mid="' + mi + '" style="--ux-stagger-i:' + skFi + '" d="M' + (leftX + nodeW) + ',' + yLeft + ' C' + cx1 + ',' + yLeft + ' ' + cx1 + ',' + yMid + ' ' + midX + ',' + yMid + '" ' +
+        'fill="none" stroke="#2bd4a0" stroke-opacity="0.3" stroke-width="' + Math.max(1, midCounts[m] * 1.5) + '"><title>' + escapeHtml(m) + ' · ' + midCounts[m] + '</title></path>';
+      skFi++;
       var rfm = rightFromMid[m] || {};
       rightSystems.forEach(function (sys, ri) {
         var count = rfm[sys] || 0;
         if (!count) return;
         var yRight = 20 + ri * rightSpace + rightSpace / 2;
         var cx2 = midX + nodeW + (rightX - midX - nodeW) / 2;
-        flows += '<path d="M' + (midX + nodeW) + ',' + yMid + ' C' + cx2 + ',' + yMid + ' ' + cx2 + ',' + yRight + ' ' + rightX + ',' + yRight + '" ' +
-          'fill="none" stroke="#8b6eff" stroke-opacity="0.25" stroke-width="' + Math.max(1, count * 1.2) + '"/>';
+        flows += '<path class="sk-flow sk-flow-midright" data-sk-mid="' + mi + '" data-sk-right="' + escapeHtml(sys) + '" style="--ux-stagger-i:' + skFi + '" d="M' + (midX + nodeW) + ',' + yMid + ' C' + cx2 + ',' + yMid + ' ' + cx2 + ',' + yRight + ' ' + rightX + ',' + yRight + '" ' +
+          'fill="none" stroke="#8b6eff" stroke-opacity="0.25" stroke-width="' + Math.max(1, count * 1.2) + '"><title>' + escapeHtml(m) + " -> " + escapeHtml(sys) + ' · ' + count + '</title></path>';
+        skFi++;
       });
     });
-    host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
+    host.innerHTML = '<svg class="sk-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
       flows + nodes +
     '</svg>' +
     '<div style="font-size:10.5px;color:var(--text-mut);margin-top:8px">Left column: native IAB Audience 1.1 catalog. Middle: mapped IAB Content 3.0 topics. Right: buyer-side DMP / onboarder / measurement systems. Widths \u221d signal count. Stage flags (live/modeled/roadmap) surfaced in signal detail panel.</div>';
+    // Sec-31u: wire hover/click interactivity on the sankey.
+    // Hover any node or flow -> highlight the chain (matching mid index
+    // and/or right system) and dim the rest. Click locks the highlight;
+    // click again or click empty space to clear.
+    var skSvg = host.querySelector(".sk-svg");
+    if (skSvg) {
+      var _skClear = function () {
+        skSvg.querySelectorAll(".sk-active, .sk-dim").forEach(function (el) {
+          el.classList.remove("sk-active", "sk-dim");
+        });
+        skSvg.classList.remove("sk-locked");
+      };
+      var _skApply = function (filterFn) {
+        skSvg.querySelectorAll(".sk-flow, .sk-node-mid, .sk-node-right").forEach(function (el) {
+          if (filterFn(el)) {
+            el.classList.add("sk-active");
+            el.classList.remove("sk-dim");
+          } else {
+            el.classList.add("sk-dim");
+            el.classList.remove("sk-active");
+          }
+        });
+      };
+      skSvg.addEventListener("mouseover", function (ev) {
+        if (skSvg.classList.contains("sk-locked")) return;
+        var t = ev.target;
+        if (!t || !t.classList) return;
+        if (t.classList.contains("sk-flow")) {
+          var mid = t.getAttribute("data-sk-mid");
+          var right = t.getAttribute("data-sk-right");
+          _skApply(function (el) {
+            if (el.getAttribute("data-sk-mid") === mid) {
+              if (right && el.classList.contains("sk-flow-midright")) {
+                return el.getAttribute("data-sk-right") === right;
+              }
+              return true;
+            }
+            if (right && el.getAttribute("data-sk-right") === right && el.classList.contains("sk-node-right")) return true;
+            return false;
+          });
+        } else if (t.classList.contains("sk-node-mid")) {
+          var mid2 = t.getAttribute("data-sk-mid");
+          _skApply(function (el) { return el.getAttribute("data-sk-mid") === mid2; });
+        } else if (t.classList.contains("sk-node-right")) {
+          var rt = t.getAttribute("data-sk-right");
+          _skApply(function (el) { return el.getAttribute("data-sk-right") === rt; });
+        }
+      });
+      skSvg.addEventListener("mouseout", function (ev) {
+        if (skSvg.classList.contains("sk-locked")) return;
+        var related = ev.relatedTarget;
+        if (related && skSvg.contains(related)) return;
+        _skClear();
+      });
+      skSvg.addEventListener("click", function (ev) {
+        var t = ev.target;
+        var isInteractive = t && t.classList && (t.classList.contains("sk-flow") || t.classList.contains("sk-node-mid") || t.classList.contains("sk-node-right"));
+        if (!isInteractive) {
+          _skClear();
+          return;
+        }
+        if (skSvg.classList.contains("sk-locked")) {
+          _skClear();
+        } else {
+          skSvg.classList.add("sk-locked");
+        }
+      });
+    }
     var expl3 = document.getElementById("emb-sankey-explainer");
     if (expl3) expl3.innerHTML = renderChartExplainer({
       what: "How this agent\u2019s audiences map into the buyer-side taxonomies a HoldCo planner already uses.",

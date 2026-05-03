@@ -823,13 +823,181 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
+/* Sec-31u: Portfolio brief try-chips — one-click brief population.
+   Sits above the textarea; clicking a chip fills brief + budget then
+   auto-fires the Generate button. */
+.brief-try-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+.brief-try-label {
+  font: 10px var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-mut);
+  margin-right: 4px;
+}
+.brief-try-chip {
+  font: 11.5px var(--font-mono);
+  padding: 5px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.brief-try-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+.brief-try-chip.is-active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Sec-31u T2#10: Composer saturation curve hover dots — marginal +
+   curve points become interactive scrub anchors. */
+.comp-sat-marg-dot, .comp-sat-curve-dot {
+  cursor: help;
+  transition: r 0.15s, opacity 0.15s, fill-opacity 0.15s;
+}
+.comp-sat-marg-dot:hover { r: 5; opacity: 1 !important; }
+.comp-sat-curve-dot:hover { opacity: 0.85 !important; r: 6; }
+.comp-sat-curve { animation: ux-fade-soft 0.5s ease forwards; }
+.comp-sat-curve path { transition: stroke-width 0.2s; }
+.comp-sat-curve:hover path[stroke="var(--accent)"] { stroke-width: 2.4; }
+
+/* Sec-31u: Heatmap cell stagger + hover row/column highlight. */
+.hm-cell {
+  cursor: pointer;
+  transition: stroke 0.15s, stroke-width 0.15s, opacity 0.15s;
+}
+.hm-cell.hm-active {
+  stroke: var(--accent) !important;
+  stroke-width: 1.4 !important;
+}
+.hm-cell.hm-dim { opacity: 0.32; }
+
+/* Sec-31u: Sankey animation + interactivity. Each flow draws in via
+   stroke-dashoffset; hover/click toggles .sk-active / .sk-dim across
+   the linked chain. */
+.sk-svg .sk-flow {
+  stroke-dasharray: 1500;
+  stroke-dashoffset: 1500;
+  animation: ux-sankey-draw 0.9s cubic-bezier(0.4, 0.1, 0.2, 1) forwards;
+  animation-delay: calc(var(--ux-stagger-i, 0) * 18ms);
+  transition: stroke-opacity 0.18s, stroke-width 0.18s, filter 0.18s;
+}
+.sk-svg .sk-node {
+  transition: fill-opacity 0.18s, filter 0.18s;
+  cursor: pointer;
+}
+.sk-svg .sk-node-mid, .sk-svg .sk-node-right { cursor: pointer; }
+.sk-svg .sk-flow { cursor: pointer; }
+.sk-svg.sk-locked .sk-active { filter: drop-shadow(0 0 4px var(--accent)); }
+.sk-svg .sk-flow.sk-active {
+  stroke-opacity: 0.85 !important;
+  filter: drop-shadow(0 0 3px currentColor);
+}
+.sk-svg .sk-flow.sk-dim { stroke-opacity: 0.05 !important; }
+.sk-svg .sk-node.sk-active { fill-opacity: 1 !important; filter: drop-shadow(0 0 4px var(--accent)); }
+.sk-svg .sk-node.sk-dim { fill-opacity: 0.15 !important; }
+@keyframes ux-sankey-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Sec-31u T1#5: Trace inspector timeline scrubber. Stacked atop the
+   step list, proportional segments per step. Click any segment to
+   scroll its step into view + glow it. */
+.trace-timeline-scrubber {
+  margin: 12px 0 16px;
+}
+.trace-timeline-scrubber:empty { display: none; }
+.trace-tl-track {
+  display: flex;
+  height: 24px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+.trace-tl-seg {
+  flex-shrink: 0;
+  border: none;
+  padding: 0 6px;
+  cursor: pointer;
+  position: relative;
+  transition: filter 0.15s, box-shadow 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-width: 18px;
+}
+.trace-tl-seg:hover { filter: brightness(1.15); }
+.trace-tl-seg.is-active {
+  box-shadow: inset 0 0 0 2px var(--text);
+  filter: brightness(1.2);
+}
+.trace-tl-seg-label {
+  font: 9.5px var(--font-mono);
+  color: var(--bg-base);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+.trace-tl-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font: 10px var(--font-mono);
+  color: var(--text-mut);
+}
+
 /* Sec-31u T2#11: Lorenz hover dots — visible enough to invite hover,
    discreet enough not to clutter the curve. */
 .lorenz-dot {
   cursor: help;
   transition: r 0.15s, fill-opacity 0.15s;
+  /* Hide dots until the curve has drawn in (1.4s + per-card delay). */
+  opacity: 0;
+  animation: ux-fade-soft 0.4s ease 1.4s forwards;
 }
 .lorenz-dot:hover { r: 4.5; fill-opacity: 1; }
+
+/* Lorenz curve draw-in. SVG path animation via stroke-dasharray:
+   total path length isn't computed here (we'd need JS getTotalLength()),
+   so we use a "long enough" dash that sweeps through the full curve.
+   Each card staggers via its position in the grid (handled by JS
+   .lorenz-card ux-stagger-row class set in renderLorenzCard). */
+.lorenz-card svg polyline {
+  stroke-dasharray: 600;
+  stroke-dashoffset: 600;
+  animation: ux-lorenz-draw 1.2s cubic-bezier(0.4, 0.1, 0.2, 1) 0.15s forwards;
+}
+.lorenz-card svg polygon {
+  /* Area fill follows the line draw — fade in after stroke completes. */
+  opacity: 0;
+  animation: ux-fade-soft 0.5s ease 1.0s forwards;
+}
+@keyframes ux-lorenz-draw {
+  to { stroke-dashoffset: 0; }
+}
+.lorenz-card {
+  /* Card container also fades + lifts in, staggered. */
+  opacity: 0;
+  animation: ux-row-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation-delay: calc(var(--ux-stagger-i, 0) * 80ms);
+}
 
 /* Sec-31u T3#26: delta pill on expression-tree reach badges. Renders
    inline next to the reach value when a node's reach changed >=2% from

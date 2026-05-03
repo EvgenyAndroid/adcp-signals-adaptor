@@ -610,10 +610,15 @@ function renderVendorHealthCanvas(demoKey: string): string {
     width: 14px;
     border-top: 1px dashed currentColor;
   }
-  .modal-close {
+  .modal-actions {
     position: absolute;
     top: 16px;
     right: 16px;
+    display: flex;
+    gap: 6px;
+  }
+  .modal-close,
+  .modal-reprobe {
     background: transparent;
     border: 1px solid var(--border);
     color: var(--text);
@@ -621,6 +626,56 @@ function renderVendorHealthCanvas(demoKey: string): string {
     border-radius: 4px;
     cursor: pointer;
     font: 11px var(--font-mono);
+    transition: all 0.15s;
+  }
+  .modal-reprobe:hover { border-color: var(--accent); color: var(--accent); }
+  .modal-reprobe:disabled { opacity: 0.5; cursor: progress; }
+  .modal-reprobe.is-loading::after {
+    content: "";
+    display: inline-block;
+    width: 8px; height: 8px;
+    margin-left: 6px;
+    border: 1.5px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: -1px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* Time-window filter (applies in modal chart). Lives in the same row
+     as the chart stats; selecting a window re-renders the chart with
+     the matching slice of history. */
+  .modal-chart-window {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  .modal-chart-window-label {
+    font: 10px var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+    margin-right: 6px;
+  }
+  .modal-chart-window-btn {
+    padding: 4px 9px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: 4px;
+    font: 10.5px var(--font-mono);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .modal-chart-window-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .modal-chart-window-btn.is-active {
+    background: var(--accent);
+    color: #0a0d12;
+    border-color: var(--accent);
   }
   .modal-tools-list {
     display: flex;
@@ -724,7 +779,10 @@ function renderVendorHealthCanvas(demoKey: string): string {
   <div class="modal">
     <div class="modal-title" id="modal-title">Vendor</div>
     <div class="modal-sub" id="modal-sub"></div>
-    <button class="modal-close" id="modal-close">close</button>
+    <div class="modal-actions">
+      <button class="modal-reprobe" id="modal-reprobe" type="button" title="Re-probe this vendor and refresh the modal in place">↻ Re-probe</button>
+      <button class="modal-close" id="modal-close">close</button>
+    </div>
     <div class="modal-section">
       <div class="modal-section-title">Identity</div>
       <div class="modal-grid" id="modal-identity"></div>
@@ -743,6 +801,15 @@ function renderVendorHealthCanvas(demoKey: string): string {
     </div>
     <div class="modal-section">
       <div class="modal-section-title">Recent history</div>
+      <!-- Time-window filter: time-based slices (relative to NOW). Each
+           button keeps datapoints whose ts is within the window — "1h"
+           = last 60 min, "24h" = last 1440 min, "all" = full ring. -->
+      <div class="modal-chart-window" id="modal-chart-window">
+        <span class="modal-chart-window-label">window</span>
+        <button class="modal-chart-window-btn" data-window="60" type="button">1h</button>
+        <button class="modal-chart-window-btn" data-window="1440" type="button">24h</button>
+        <button class="modal-chart-window-btn is-active" data-window="all" type="button">all</button>
+      </div>
       <!-- Stats row computed from KV ring buffer (24-entry, 7-day TTL).
            Empty until first probe lands. -->
       <div id="modal-chart-stats"></div>
@@ -1249,14 +1316,78 @@ function renderVendorHealthCanvas(demoKey: string): string {
 
     // Time-series chart + stat row (replaces the old <pre> text dump).
     // Both render from the same KV ring buffer; the chart fades in the
-    // moment a probe lands.
-    var hist = state.histories[r.agent_id] || [];
-    var stats = computeTrendStats(hist);
-    elModalChartStats.innerHTML = renderChartStats(stats);
-    elModalChartHost.innerHTML = renderHistoryChart(hist);
+    // moment a probe lands. The window filter slices the tail of the
+    // history before rendering — "all" = full 24, "12" = last 12, etc.
+    state._modalAgentId = agentId;
+    state._modalWindow = state._modalWindow || "all";
+    _renderModalChartForWindow();
     elModalTools.innerHTML = "<span class=\\"modal-tool\\">tools list captured at probe time, see /agents/registry for full list</span>";
+    // Sync window-filter button active state
+    document.querySelectorAll("[data-window]").forEach(function (b) {
+      b.classList.toggle("is-active", b.getAttribute("data-window") === state._modalWindow);
+    });
 
     elModalBackdrop.classList.add("is-open");
+  }
+  // Time-window-aware chart re-render. Driven by state._modalAgentId
+  // and state._modalWindow; called on modal open, window switch, and
+  // reprobe completion.
+  function _renderModalChartForWindow() {
+    var agentId = state._modalAgentId;
+    if (!agentId) return;
+    var hist = state.histories[agentId] || [];
+    var window = state._modalWindow || "all";
+    // Time-based slice: window value is "all" or a minute count
+    // ("60" = last hour, "1440" = last 24 hours). Filters by ts.
+    var sliced;
+    if (window === "all" || isNaN(parseInt(window, 10))) {
+      sliced = hist;
+    } else {
+      var minutes = parseInt(window, 10);
+      var cutoffMs = Date.now() - minutes * 60 * 1000;
+      sliced = hist.filter(function (d) {
+        if (!d || !d.ts) return false;
+        var t = Date.parse(d.ts);
+        return !isNaN(t) && t >= cutoffMs;
+      });
+    }
+    var stats = computeTrendStats(sliced);
+    elModalChartStats.innerHTML = renderChartStats(stats);
+    elModalChartHost.innerHTML = renderHistoryChart(sliced);
+  }
+  // Wire window-filter buttons (one-time)
+  document.querySelectorAll("[data-window]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      state._modalWindow = btn.getAttribute("data-window");
+      document.querySelectorAll("[data-window]").forEach(function (b) {
+        b.classList.toggle("is-active", b === btn);
+      });
+      _renderModalChartForWindow();
+    });
+  });
+  // Wire in-modal re-probe button — runs reprobeOne for the open agent,
+  // shows loading state, refreshes the modal in place when done.
+  var elModalReprobe = document.getElementById("modal-reprobe");
+  if (elModalReprobe) {
+    elModalReprobe.addEventListener("click", async function () {
+      var agentId = state._modalAgentId;
+      if (!agentId) return;
+      elModalReprobe.disabled = true;
+      elModalReprobe.classList.add("is-loading");
+      var origText = elModalReprobe.textContent;
+      elModalReprobe.textContent = "Probing";
+      try {
+        await reprobeOne(agentId);
+        // Re-render the open modal with fresh data
+        openModal(agentId);
+      } catch (e) {
+        console.error("modal reprobe failed", e);
+      } finally {
+        elModalReprobe.disabled = false;
+        elModalReprobe.classList.remove("is-loading");
+        elModalReprobe.textContent = origText;
+      }
+    });
   }
   function kvRow(k, v) {
     return "<div class=\\"modal-grid-key\\">" + escapeHtml(k) + "</div><div class=\\"modal-grid-val\\">" + escapeHtml(v) + "</div>";
@@ -1285,6 +1416,13 @@ function renderVendorHealthCanvas(demoKey: string): string {
       state.counts = data.counts || null;
       renderAggregate(state.counts, data.total || state.rows.length);
       renderGrid();
+      // Sec-31u: auto-refresh open modal so its chart picks up the new
+      // datapoint without requiring the user to close + reopen.
+      if (elModalBackdrop.classList.contains("is-open") && state._modalAgentId) {
+        // Re-render via openModal() so all sections (probe, circuit,
+        // chart) reflect the updated row + history.
+        openModal(state._modalAgentId);
+      }
     } catch (err) {
       console.error("loadSnapshot failed", err);
       elGrid.innerHTML = "<div class=\\"empty-state\\">Snapshot failed: " + escapeHtml(err.message || String(err)) + "</div>";

@@ -361,8 +361,13 @@ function renderSaturationResult(data) {
     '<path d="' + areaPts + '" fill="rgba(79,142,255,0.18)" stroke="none"/>' +
     '<path d="' + curve.map(function (c, i) { return (i === 0 ? "M " : "L ") + xScale(i) + " " + yScale(c.unique_reach); }).join(" ") +
       '" fill="none" stroke="var(--accent)" stroke-width="1.8"/>';
+  // Sec-31u T2#10: marginal-reach dots get hover-scrub tooltips +
+  // larger interactive radius. Plus invisible-ish over-dots on the
+  // unique_reach line for "scrub the curve" behavior.
   curve.forEach(function (c, i) {
-    svg += '<circle cx="' + xScale(i) + '" cy="' + yScaleMarg(c.marginal_reach) + '" r="2.5" fill="var(--accent-hot)" opacity="0.7"/>';
+    var tt = "F=" + c.frequency + " | reach=" + fmtNumber(c.unique_reach) + " | marginal=" + fmtNumber(c.marginal_reach) + " | cost=$" + fmtNumber(c.cost_usd);
+    svg += '<circle class="comp-sat-marg-dot" cx="' + xScale(i) + '" cy="' + yScaleMarg(c.marginal_reach) + '" r="2.5" fill="var(--accent-hot)" opacity="0.7"><title>' + escapeHtml(tt) + '</title></circle>';
+    svg += '<circle class="comp-sat-curve-dot" cx="' + xScale(i) + '" cy="' + yScale(c.unique_reach) + '" r="4.5" fill="var(--accent)" opacity="0.0"><title>' + escapeHtml(tt) + '</title></circle>';
   });
   if (kneeIdx >= 0) {
     svg += '<line x1="' + xScale(kneeIdx) + '" y1="' + P + '" x2="' + xScale(kneeIdx) + '" y2="' + (H - P) + '" stroke="var(--warning)" stroke-width="1" stroke-dasharray="4,3"/>';

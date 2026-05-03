@@ -128,8 +128,70 @@ function renderFederatedResults(data) {
       '<button class="btn-primary" id="fed-activate-selected" style="padding:4px 12px;font-size:11.5px"' + (selectedCount === 0 ? ' disabled' : '') + '><svg class="ico"><use href="#icon-bolt"/></svg><span>Activate selected</span></button>' +
     '</div>';
 
+  // Sec-31u T3#24: Pairwise agreement heatmap — counts how many signals
+  // each pair of agents BOTH surfaced (matched on signal name normalized
+  // to lowercase). Shown only when 2+ agents have any results.
+  var agentList = Object.keys(data.per_agent_count || {}).filter(function (k) { return data.per_agent_count[k] > 0; });
+  var heatmapHtml = "";
+  if (agentList.length >= 2) {
+    // Build per-agent set of normalized signal-name keys
+    var perAgent = {};
+    agentList.forEach(function (a) { perAgent[a] = new Set(); });
+    merged.forEach(function (m) {
+      var name = (m.signal && m.signal.name) ? m.signal.name.toLowerCase().trim() : "";
+      if (name && perAgent[m.source_agent]) perAgent[m.source_agent].add(name);
+    });
+    // Pairwise overlap matrix
+    var maxOverlap = 0;
+    var cells = [];
+    agentList.forEach(function (rowA, ri) {
+      agentList.forEach(function (colA, ci) {
+        if (rowA === colA) {
+          cells.push({ ri: ri, ci: ci, val: perAgent[rowA].size, diag: true });
+        } else {
+          var overlap = 0;
+          perAgent[rowA].forEach(function (k) { if (perAgent[colA].has(k)) overlap++; });
+          if (overlap > maxOverlap) maxOverlap = overlap;
+          cells.push({ ri: ri, ci: ci, val: overlap, diag: false });
+        }
+      });
+    });
+    var n = agentList.length;
+    var cols = "auto " + agentList.map(function () { return "1fr"; }).join(" ");
+    // Header row: blank + col labels
+    var headerRow = '<div></div>' + agentList.map(function (a) {
+      return '<div class="fed-agreement-col-label">' + escapeHtml(a) + '</div>';
+    }).join("");
+    var bodyRows = agentList.map(function (rowA, ri) {
+      var rowLabel = '<div class="fed-agreement-row-label mono">' + escapeHtml(rowA) + '</div>';
+      var rowCells = agentList.map(function (colA, ci) {
+        var c = cells.find(function (x) { return x.ri === ri && x.ci === ci; });
+        var v = c ? c.val : 0;
+        var bg = "var(--bg)";
+        if (!c.diag && maxOverlap > 0 && v > 0) {
+          var t = v / maxOverlap;
+          // Accent gradient: from faint to full intensity
+          var alpha = 0.10 + 0.55 * t;
+          bg = "rgba(56, 182, 255, " + alpha.toFixed(2) + ")";
+        }
+        var classes = "fed-agreement-cell" + (c.diag ? " diag" : "");
+        var title = c.diag ? "self: " + v + " signals" : (rowA + " ∩ " + colA + " = " + v + " overlap");
+        return '<div class="' + classes + '" style="background:' + bg + '" title="' + escapeHtml(title) + '">' + v + '</div>';
+      }).join("");
+      return rowLabel + rowCells;
+    }).join("");
+    heatmapHtml =
+      '<div class="fed-agreement-host">' +
+        '<div class="fed-agreement-title">Agent agreement (signal-name overlap, max ' + maxOverlap + ')</div>' +
+        '<div class="fed-agreement-grid" style="grid-template-columns:' + cols + '">' +
+          headerRow + bodyRows +
+        '</div>' +
+      '</div>';
+  }
+
   host.innerHTML = summary + actionBar +
     '<div class="fed-rows">' + (rowsHtml || '<div class="empty-state"><div class="empty-desc">No results from any agent.</div></div>') + '</div>' +
+    heatmapHtml +
     '<div id="fed-compare-host"></div>';
 
   // Wire row clicks

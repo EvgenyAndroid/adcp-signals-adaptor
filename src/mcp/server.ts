@@ -443,6 +443,22 @@ async function callGetSignals(
     const filters = args["filters"] as Record<string, unknown> | undefined;
     const pagination = args["pagination"] as Record<string, unknown> | undefined;
 
+    // Sec-31w: AAO `signal_owned` storyboard's `filter_by_criteria` step
+    // sends three filter keys we didn't previously honour:
+    //   - filters.max_cpm                — numeric ceiling on CPM ($)
+    //   - filters.min_coverage_percentage — numeric floor 0..1 or 0..100
+    //   - filters.signal_type             — "owned" | "marketplace" | "custom"
+    // Captured here for post-search filtering (the search service doesn't
+    // know about CPM/coverage thresholds; cheaper to filter the shaped
+    // SignalSummary payload than to thread three more args through it).
+    // Empty result is a valid response per storyboard spec — we don't
+    // throw on no-match, just return `signals: []`.
+    const maxCpm = numArgOrNull(filters?.["max_cpm"]);
+    const minCoveragePct = numArgOrNull(filters?.["min_coverage_percentage"]);
+    const signalTypeFilter = typeof filters?.["signal_type"] === "string"
+        ? (filters!["signal_type"] as string)
+        : null;
+
     const req = {
         ...compactObj({
             brief: (args["signal_spec"] ?? args["brief"]) as string | undefined,
@@ -472,6 +488,36 @@ async function callGetSignals(
     // canonical AdCP enum members — cast to satisfy the stricter typed
     // signature on searchSignalsService.
     const result = await searchSignalsService(db, env.SIGNALS_CACHE, req as SearchSignalsRequest);
+
+    // Sec-31w: post-search filter pass for the storyboard filter keys
+    // captured above. Each predicate is a no-op when its filter is null,
+    // so callers that omit these keys see the unfiltered result. Storyboard
+    // requires an empty array on no-match (NOT an error).
+    if (maxCpm !== null || minCoveragePct !== null || signalTypeFilter !== null) {
+        // min_coverage_percentage is documented as 0..1 in some places
+        // (decimal fraction) and 0..100 in others. Detect by magnitude:
+        // values >1 are treated as 0..100 percent, values 0..1 as fraction.
+        // Our coverage_percentage field is 0..100 (rounded one decimal).
+        const minCovPctNormalized = minCoveragePct !== null
+            ? (minCoveragePct <= 1 ? minCoveragePct * 100 : minCoveragePct)
+            : null;
+        result.signals = result.signals.filter((s) => {
+            if (signalTypeFilter !== null && s.signal_type !== signalTypeFilter) return false;
+            if (minCovPctNormalized !== null && (s.coverage_percentage ?? 0) < minCovPctNormalized) return false;
+            if (maxCpm !== null) {
+                const cheapest = (s.pricing_options ?? [])
+                    .filter((p): p is { pricing_option_id: string; model: "cpm"; cpm: number; currency: string } =>
+                        p.model === "cpm")
+                    .reduce((min, p) => (p.cpm < min ? p.cpm : min), Number.POSITIVE_INFINITY);
+                if (Number.isFinite(cheapest) && cheapest > maxCpm) return false;
+            }
+            return true;
+        });
+        // Recount totalCount + hasMore against the filtered set so the
+        // pagination contract stays internally consistent.
+        result.totalCount = result.signals.length;
+        result.hasMore = false;
+    }
 
     // Echo back the request's context block. Signals storyboard validates
     // `context.correlation_id` round-trips. Per /schemas/core/context.json,
@@ -735,6 +781,19 @@ export function numArg(v: unknown, fallback: number): number {
     if (v == null) return fallback;
     const n = Number(v);
     return Number.isNaN(n) ? fallback : n;
+}
+
+/**
+ * Variant of numArg() that returns `null` when the value is absent or
+ * non-numeric, instead of falling back to a default. Used by filter
+ * predicates where "filter not provided" is semantically distinct from
+ * "filter set to 0" (e.g. max_cpm = 0 means "free signals only" — not
+ * "no filter").
+ */
+function numArgOrNull(v: unknown): number | null {
+    if (v == null) return null;
+    const n = Number(v);
+    return Number.isNaN(n) ? null : n;
 }
 
 function rpcSuccess(id: string | number | null, result: unknown): JsonRpcSuccess {

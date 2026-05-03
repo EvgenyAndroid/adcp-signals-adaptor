@@ -370,15 +370,17 @@ export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
   return {
     // Universal signal_id required by the AdCP signals storyboard baseline.
     // We're an agent-native signals service (no upstream data-provider
-    // catalog), so source is "agent_native". The internal signalId already
+    // catalog), so source is "agent". The internal signalId already
     // matches the schema's `^[a-zA-Z0-9_-]+$` pattern.
     //
-    // Sec-31w: AAO's signal_owned storyboard's search_owned_signals step
-    // asserts literal "agent_native" (not "agent"). Two strings differ but
-    // mean the same thing for us; aligning here so the badge issuer
-    // accepts our shape.
+    // Sec-31w (PR #174): reverted from "agent_native" back to "agent"
+    // after Addie/AAO confirmed the schema's enum is { "catalog", "agent" }
+    // and AJV strict mode rejects any other value. The storyboard's prose
+    // description said "agent_native" but the schema is authority. AAO's
+    // run_storyboard signal_owned step 2 was failing on signal_id schema
+    // validation against all 5 signals before this revert.
     signal_id: {
-      source: "agent_native" as const,
+      source: "agent" as const,
       agent_url: SELF_AGENT_URL,
       id: signal.signalId,
     },

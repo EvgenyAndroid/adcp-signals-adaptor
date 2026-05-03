@@ -8806,9 +8806,23 @@ window.__lastTrace = null;
 // Per-site capture (kept as no-op safety net; the interceptor above
 // usually beats this to the trace). Call sites added in #157/#158
 // remain harmless.
+//
+// Replacement rule: a rich trace (multi-step, OR single step with id !=
+// "handler" — i.e. NOT the default auto-trace from injectTraceIfMissing)
+// is sticky. Default auto-traces from background side-effect endpoints
+// (workflow/save, annotation writes, brand resolves) can't overwrite a
+// rich trace from the user's just-completed primary operation.
+function _isAutoDefaultTrace(t) {
+  if (!t || !Array.isArray(t.steps)) return false;
+  return t.steps.length === 1 && t.steps[0] && t.steps[0].id === "handler";
+}
 function _captureTrace(trace) {
   if (!trace || typeof trace !== "object") return false;
   if (!trace.operation && !trace.steps) return false;
+  // Preserve rich existing trace from being clobbered by auto-default.
+  if (window.__lastTrace && !_isAutoDefaultTrace(window.__lastTrace) && _isAutoDefaultTrace(trace)) {
+    return false;
+  }
   window.__lastTrace = trace;
   _showTraceTrigger();
   return true;

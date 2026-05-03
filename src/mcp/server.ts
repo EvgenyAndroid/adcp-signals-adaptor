@@ -496,7 +496,18 @@ async function callGetSignals(
         // response make pagination discoverable. Callers who want the
         // bigger page still pass `max_results` explicitly.
         limit: numArg(args["max_results"], numArg(args["limit"], 5)),
-        offset: numArg(pagination?.["offset"], numArg(args["offset"], 0)),
+        // Sec-31w-cursor: callers can paginate via either explicit
+        // pagination.offset (legacy) OR pagination.cursor (v3 / what we
+        // emit when has_more=true). Cursor format is "offset:<int>".
+        // Falls through to 0 if neither is set or cursor is malformed.
+        offset: (() => {
+            const c = pagination?.["cursor"];
+            if (typeof c === "string" && c.startsWith("offset:")) {
+                const n = parseInt(c.slice(7), 10);
+                if (!isNaN(n) && n >= 0) return n;
+            }
+            return numArg(pagination?.["offset"], numArg(args["offset"], 0));
+        })(),
     };
 
     const db = getDb(env);
@@ -560,10 +571,20 @@ async function callGetSignals(
     const pageOffset = (req as { offset: number }).offset;
     const totalCount = (result as { totalCount: number }).totalCount;
     const hasMore = pageOffset + result.signals.length < totalCount;
-    const paginationBlock = {
+    // Sec-31w-cursor: when has_more=true, emit an opaque cursor string.
+    // The pagination-response schema declares cursor as optional, but
+    // AAO's runner asserts that has_more=true REQUIRES cursor (so the
+    // caller knows how to fetch the next page). Cursor format is
+    // intentionally opaque per schema; we encode the next offset so
+    // round-tripping is straightforward but the caller doesn't need
+    // to parse it — pass it back in pagination.cursor on the next
+    // request and we resolve.
+    const nextOffset = pageOffset + result.signals.length;
+    const paginationBlock: Record<string, unknown> = {
         has_more: hasMore,
         total_count: totalCount,
     };
+    if (hasMore) paginationBlock["cursor"] = `offset:${nextOffset}`;
 
     // Echo back the request's context block. Signals storyboard validates
     // `context.correlation_id` round-trips. Per /schemas/core/context.json,

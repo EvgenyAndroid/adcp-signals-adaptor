@@ -823,6 +823,110 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
+/* Sec-31u T2#11: Lorenz hover dots — visible enough to invite hover,
+   discreet enough not to clutter the curve. */
+.lorenz-dot {
+  cursor: help;
+  transition: r 0.15s, fill-opacity 0.15s;
+}
+.lorenz-dot:hover { r: 4.5; fill-opacity: 1; }
+
+/* Sec-31u T3#26: delta pill on expression-tree reach badges. Renders
+   inline next to the reach value when a node's reach changed >=2% from
+   the previous evaluation. Up = green, down = red. */
+.expr-delta-pill {
+  display: inline-block;
+  font: 10px var(--font-mono);
+  padding: 1px 5px;
+  margin-left: 4px;
+  border-radius: 3px;
+  letter-spacing: 0.02em;
+  vertical-align: 1px;
+}
+.expr-delta-pill.expr-delta-up   { background: rgba(46, 213, 115, 0.18); color: #2ed573; }
+.expr-delta-pill.expr-delta-down { background: rgba(255, 77, 94, 0.18); color: #ff4d5e; }
+
+/* Sec-31u T3#22: Set Builder live A/B delta — small inline pill on the
+   estimate showing change from the prior rule set's estimate. */
+.builder-ab-delta {
+  display: inline-block;
+  font: 11px var(--font-mono);
+  padding: 2px 7px;
+  margin-left: 8px;
+  border-radius: 3px;
+  letter-spacing: 0.02em;
+}
+.builder-ab-delta.up   { background: rgba(46, 213, 115, 0.16); color: #2ed573; border: 1px solid rgba(46, 213, 115, 0.4); }
+.builder-ab-delta.down { background: rgba(255, 77, 94, 0.16); color: #ff4d5e; border: 1px solid rgba(255, 77, 94, 0.4); }
+.builder-ab-delta.flat { background: var(--bg-input); color: var(--text-mut); border: 1px solid var(--border); }
+
+/* Sec-31u T3#24: Federation vendor agreement heatmap.
+   Compact NxN cell grid showing how often each pair of vendors
+   surfaced overlapping signals. Values 0..1 mapped to color. */
+.fed-agreement-host {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.fed-agreement-title {
+  font: 11px var(--font-mono);
+  color: var(--text-mut);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+.fed-agreement-grid {
+  display: grid;
+  gap: 2px;
+  font: 10px var(--font-mono);
+  color: var(--text);
+}
+.fed-agreement-cell {
+  padding: 6px 4px;
+  text-align: center;
+  border-radius: 2px;
+  cursor: default;
+}
+.fed-agreement-cell.diag { background: var(--bg-base); color: var(--text-mut); }
+.fed-agreement-row-label {
+  text-align: right;
+  padding: 6px 8px 6px 4px;
+  color: var(--text-dim);
+}
+.fed-agreement-col-label {
+  text-align: center;
+  padding: 4px 0;
+  color: var(--text-dim);
+  font-size: 9px;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+/* Sec-31u T3#25: Snapshots diff highlighting. Diff lines get color
+   gutters indicating insertion (green) / deletion (red) / equal. */
+.snap-diff-row {
+  display: grid;
+  grid-template-columns: 6px 1fr;
+  gap: 8px;
+  padding: 4px 6px;
+  font: 11.5px var(--font-mono);
+  color: var(--text);
+  border-radius: 3px;
+}
+.snap-diff-row .gut {
+  border-radius: 2px;
+}
+.snap-diff-row.added { background: rgba(46, 213, 115, 0.07); }
+.snap-diff-row.added .gut { background: #2ed573; }
+.snap-diff-row.removed { background: rgba(255, 77, 94, 0.07); text-decoration: line-through; opacity: 0.78; }
+.snap-diff-row.removed .gut { background: #ff4d5e; }
+.snap-diff-row.changed { background: rgba(240, 180, 0, 0.06); }
+.snap-diff-row.changed .gut { background: #f0b400; }
+.snap-diff-row.equal { color: var(--text-dim); }
+.snap-diff-row.equal .gut { background: var(--border-faint); }
+
 /* Empty-state buttons — used as inline CTAs in empty states across
    tabs. Subtle accent rectangle with hover lift. */
 .empty-cta {
@@ -6179,9 +6283,31 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   padding: 10px 12px; margin-bottom: 8px;
 }
 .snap-diff-facet-head { font-size: 12px; font-weight: 500; margin-bottom: 4px; }
-.snap-diff-line { font-size: 11.5px; font-family: var(--font-mono); line-height: 1.6; word-break: break-all; }
-.snap-diff-line.snap-add { color: var(--success); }
-.snap-diff-line.snap-rem { color: var(--error); }
+.snap-diff-line {
+  font-size: 11.5px; font-family: var(--font-mono); line-height: 1.6; word-break: break-all;
+  /* Sec-31u T3#25: enhanced diff highlighting — colored gutter + tinted bg */
+  padding: 4px 8px 4px 12px;
+  margin-top: 2px;
+  border-radius: 3px;
+  position: relative;
+}
+.snap-diff-line::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 4px; bottom: 4px;
+  width: 3px;
+  border-radius: 2px;
+}
+.snap-diff-line.snap-add {
+  color: var(--success);
+  background: rgba(46, 213, 115, 0.07);
+}
+.snap-diff-line.snap-add::before { background: var(--success); }
+.snap-diff-line.snap-rem {
+  color: var(--error);
+  background: rgba(255, 77, 94, 0.07);
+}
+.snap-diff-line.snap-rem::before { background: var(--error); }
 
 /* ── Sec-45: Freshness table ───────────────────────────────────────────── */
 .fresh-table {

@@ -882,6 +882,7 @@ type StreamEvent =
   | { type: "targeting_chosen"; chosen_signal_ids: string[] }
   | { type: "formats_chosen"; chosen_format_ids: string[] }
   | { type: "products_chosen"; chosen_product_per_agent: Record<string, string | null> }
+  | { type: "trace"; trace: import("../types/trace").TraceData }
   | { type: "workflow_complete"; mode: string; total_time_ms: number; warnings: string[] };
 
 export async function handleWorkflowRunStream(request: Request, env: Env, logger: Logger): Promise<Response> {
@@ -1150,6 +1151,111 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
 
         const totalTimeMs = Date.now() - t0;
         const mode = activateSet.size === 0 ? "dry_run" : activateSet.size === buyingAgents.length ? "all_live" : "partial_live";
+
+        // Emit final trace event before workflow_complete. Streaming
+        // endpoints can't hang trace on a JSON response (no JSON body),
+        // so we emit a sentinel NDJSON event the frontend listens for
+        // and routes into the trace panel.
+        const sigCount = signalsResults.reduce((n, r) => n + r.payload.count, 0);
+        const crvCount = creativeResults.reduce((n, r) => n + r.payload.count, 0);
+        const prdCount = productsResults.reduce((n, r) => n + r.payload.count, 0);
+        const fanoutLatency = (rs: Array<{ id: string; latency_ms: number; payload: { count: number } }>) =>
+          Math.max(...rs.map((r) => r.latency_ms || 0), 0);
+        send({
+          type: "trace",
+          trace: {
+            operation: "Brand Canvas · workflow run (stream)",
+            input: body.brief!,
+            duration_ms: totalTimeMs,
+            steps: [
+              {
+                id: "plan",
+                label: "Plan & probe",
+                duration_ms: 0,
+                details: [
+                  { k: "workflow_id", v: workflowId },
+                  { k: "mode", v: mode },
+                  { k: "signals_agents", v: signalsAgents.map((a) => a.id).join(", ") },
+                  { k: "creative_agents", v: creativeAgents.map((a) => a.id).join(", ") },
+                  { k: "buying_agents", v: buyingAgents.map((a) => a.id).join(", ") },
+                  { k: "activate_targets", v: activateSet.size > 0 ? Array.from(activateSet).join(", ") : "(dry-run)" },
+                ],
+                note: "Stages 1+2 (signals + creative) run in parallel; 3 (products) consumes their picks; 4 (media buy) synthesizes payloads.",
+              },
+              {
+                id: "signals",
+                label: "Stage 1 · signals fan-out",
+                duration_ms: fanoutLatency(signalsResults as Array<{ id: string; latency_ms: number; payload: { count: number } }>),
+                details: [
+                  { k: "agents_called", v: String(signalsResults.length) },
+                  { k: "succeeded", v: String(signalsResults.filter((r) => r.ok).length) },
+                  { k: "total_signals_returned", v: String(sigCount) },
+                  { k: "chosen_top_3", v: chosenSignalIds.join(", ") || "(none)" },
+                ],
+                matches: signalsResults.map((r) => ({
+                  id: r.id,
+                  label: r.name + " · " + r.latency_ms + "ms · " + (r.ok ? "ok" : "fail"),
+                  score: r.payload.count,
+                  meta: r.ok ? "returned " + r.payload.count + " signals (" + r.vendor + ")" : "error: " + (r.error ?? "?"),
+                })),
+              },
+              {
+                id: "creative",
+                label: "Stage 2 · creative fan-out",
+                duration_ms: fanoutLatency(creativeResults as Array<{ id: string; latency_ms: number; payload: { count: number } }>),
+                details: [
+                  { k: "agents_called", v: String(creativeResults.length) },
+                  { k: "succeeded", v: String(creativeResults.filter((r) => r.ok).length) },
+                  { k: "total_formats_returned", v: String(crvCount) },
+                  { k: "chosen_format_ids", v: chosenFormatIds.join(", ") || "(none)" },
+                ],
+                matches: creativeResults.map((r) => ({
+                  id: r.id,
+                  label: r.name + " · " + r.latency_ms + "ms · " + (r.ok ? "ok" : "fail"),
+                  score: r.payload.count,
+                  meta: r.ok ? "returned " + r.payload.count + " formats (" + r.vendor + ")" : "error: " + (r.error ?? "?"),
+                })),
+              },
+              {
+                id: "products",
+                label: "Stage 3 · products fan-out",
+                duration_ms: fanoutLatency(productsResults as Array<{ id: string; latency_ms: number; payload: { count: number } }>),
+                details: [
+                  { k: "agents_called", v: String(productsResults.length) },
+                  { k: "succeeded", v: String(productsResults.filter((r) => r.ok).length) },
+                  { k: "total_products_returned", v: String(prdCount) },
+                  { k: "chosen_one_per_agent", v: Object.entries(chosenProductByAgent).map(([k, v]) => k + "=" + (v ?? "—")).join(", ") || "(none)" },
+                  { k: "filter_applied", v: JSON.stringify(productFilter).slice(0, 120) },
+                ],
+                note: "Each agent's products filtered by chosen signals + format_ids. One pick per agent by best CPM-floor match.",
+                matches: productsResults.map((r) => ({
+                  id: r.id,
+                  label: r.name + " · " + r.latency_ms + "ms · " + (r.ok ? "ok" : "fail"),
+                  score: r.payload.count,
+                  meta: r.ok ? "returned " + r.payload.count + " products (" + r.vendor + ")" : "error: " + (r.error ?? "?"),
+                })),
+              },
+              {
+                id: "media_buy",
+                label: "Stage 4 · media-buy synthesis" + (activateSet.size > 0 ? " + fire" : " (dry-run)"),
+                details: [
+                  { k: "buying_agents", v: String(buyingAgents.length) },
+                  { k: "activated", v: activateSet.size > 0 ? Array.from(activateSet).join(", ") : "(none — dry-run)" },
+                  { k: "warnings", v: activateWarnings.join("; ") || "(none)" },
+                ],
+                note: "Per-vendor adapter rules applied (Adzymic / Claire / Swivel schemas split). Idempotency-key derived from FNV-1a hash. Auth-gate failures surface inline (Sec-48 finding: no shared buy-side auth posture in 3.0 GA).",
+              },
+            ],
+            performance: {
+              signals_ms: fanoutLatency(signalsResults as Array<{ id: string; latency_ms: number; payload: { count: number } }>),
+              creative_ms: fanoutLatency(creativeResults as Array<{ id: string; latency_ms: number; payload: { count: number } }>),
+              products_ms: fanoutLatency(productsResults as Array<{ id: string; latency_ms: number; payload: { count: number } }>),
+              total_ms: totalTimeMs,
+            },
+            ts: new Date().toISOString(),
+          },
+        });
+
         send({ type: "workflow_complete", mode, total_time_ms: totalTimeMs, warnings: activateWarnings });
 
         logger.info("agents_workflow_run_stream", {

@@ -16373,6 +16373,12 @@ function _wfApplyEvent(ev) {
     });
     return;
   }
+  if (ev.type === "trace") {
+    // Streaming trace event — emit by handleWorkflowRunStream just
+    // before workflow_complete. Routes into the universal trace panel.
+    _captureTrace(ev.trace);
+    return;
+  }
   if (ev.type === "workflow_complete") {
     _wfState.complete = true;
     _wfState.mode = ev.mode;
@@ -17449,6 +17455,12 @@ function _canvasApplyEvent(ev) {
   if (type === "products_chosen") {
     r.products.chosen = ev.chosen_product_per_agent || {};
     _canvasRenderLane("products");
+    return;
+  }
+  if (type === "trace") {
+    // Streaming trace event from /agents/workflow/run/stream. Routes
+    // into the universal trace panel; trigger pulses bottom-right.
+    _captureTrace(ev.trace);
     return;
   }
   if (type === "workflow_complete") {
@@ -19600,6 +19612,10 @@ function _agenticHandleStreamEvent(ev) {
     }
     return;
   }
+  if (ev.event === "trace") {
+    _captureTrace(ev.trace);
+    return;
+  }
   if (ev.event === "session_complete") {
     _agenticSetActiveStage(null);
     return;
@@ -19914,6 +19930,8 @@ async function _agenticExecute() {
           _agenticAppendExec(ev);
         } else if (ev.event === "agent_result") {
           _agenticAppendAgentResult(ev);
+        } else if (ev.event === "trace") {
+          _captureTrace(ev.trace);
         } else if (ev.event === "execution_complete") {
           if (status) status.textContent = "done · " + (ev.step_results ? ev.step_results.length + " steps" : "");
         } else if (ev.event === "error") {

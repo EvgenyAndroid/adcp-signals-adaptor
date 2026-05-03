@@ -212,18 +212,32 @@ async function checkMcp() {
   log('mcp — tools/list 8 tools', tools.body.result?.tools?.length === 8);
   log('mcp — every tool has outputSchema', tools.body.result?.tools?.every(t => !!t.outputSchema));
 
-  const unauthCall = await fetchJson(`${BASE}/mcp`, {
+  // Sec-31v: get_adcp_capabilities is the ONE public tools/call carve-out
+  // (for AAO discovery probe). Other tools must still 401. Audit both
+  // sides of the carve-out so we catch regressions in either direction.
+  const publicCall = await fetchJson(`${BASE}/mcp`, {
     method: 'POST', headers: json,
     body: JSON.stringify({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'get_adcp_capabilities', arguments: {} } }),
   });
-  log('mcp — tools/call unauth returns -32001', unauthCall.body.error?.code === -32001);
+  log('mcp — tools/call get_adcp_capabilities unauth succeeds (Sec-31v public carve-out)',
+    !!publicCall.body.result?.structuredContent?.adcp);
+
+  const unauthCall = await fetchJson(`${BASE}/mcp`, {
+    method: 'POST', headers: json,
+    body: JSON.stringify({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'activate_signal', arguments: { signal_agent_segment_id: 'sig_drama_viewers', destinations: [{ type: 'platform', platform: 'mock_dsp' }] } } }),
+  });
+  log('mcp — tools/call (auth-gated tool) unauth returns -32001',
+    unauthCall.body.error?.code === -32001);
 
   const authedCall = await fetchJson(`${BASE}/mcp`, {
     method: 'POST', headers: { ...auth, ...json },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'get_adcp_capabilities', arguments: {} } }),
+    body: JSON.stringify({ jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'get_adcp_capabilities', arguments: {} } }),
   });
   log('mcp — tools/call authed has structuredContent',
     !!authedCall.body.result?.structuredContent?.adcp);
+  // adcp#3999 envelope binding: status MUST be at top of structuredContent
+  log('mcp — structuredContent envelope status="completed" (adcp#3999)',
+    authedCall.body.result?.structuredContent?.status === 'completed');
 
   const similar = await fetchJson(`${BASE}/mcp`, {
     method: 'POST', headers: { ...auth, ...json },

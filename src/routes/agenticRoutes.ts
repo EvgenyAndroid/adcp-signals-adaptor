@@ -232,6 +232,47 @@ export async function handleAgenticExecute(request: Request, env: Env, logger: L
         }
 
         emit({ event: "reasoning", step: newReasoningStep("complete", `Plan executed: ${stepResults.filter((s) => s.ok).length}/${stepResults.length} steps successful. Final picks: ${choices.signals.length} signals, ${choices.formats.length} formats, ${Object.keys(choices.products).length} product(s).`) });
+
+        // Streaming trace event — agentic execute compiles the
+        // reasoning trace into the universal TraceData shape so the
+        // panel can render the same way it does for sync endpoints.
+        const stepCount = stepResults.length;
+        const okCount = stepResults.filter((s) => s.ok).length;
+        emit({
+          event: "trace",
+          trace: {
+            operation: "Agentic Canvas · execute plan",
+            input: plan.brief.input,
+            duration_ms: 0, // executor doesn't track t0; per-step latencies cover it
+            steps: stepResults.map((s, i) => {
+              const agentResults = (s.agent_results || []) as Array<{ agent_id?: string; agent_name?: string; ok?: boolean; latency_ms?: number; error?: string }>;
+              const latencies = agentResults.map((r) => Number(r.latency_ms) || 0);
+              return {
+                id: "step_" + i,
+                label: "Step " + s.index + ": " + s.tool,
+                duration_ms: latencies.length > 0 ? Math.max(...latencies) : 0,
+                details: [
+                  { k: "tool", v: s.tool },
+                  { k: "ok", v: s.ok ? "yes" : "no" },
+                  { k: "agents_called", v: String(agentResults.length) },
+                  { k: "agents_succeeded", v: String(agentResults.filter((r) => r.ok).length) },
+                ],
+                matches: agentResults.map((r) => ({
+                  id: r.agent_id ?? "?",
+                  label: (r.agent_name ?? r.agent_id ?? "?") + " · " + (r.ok ? "ok" : "fail") + " · " + (r.latency_ms || 0) + "ms",
+                  score: Number(r.latency_ms) || 0,
+                  meta: r.ok ? "succeeded" : "error: " + (r.error ?? "?"),
+                })),
+              };
+            }),
+            performance: {
+              total_steps: stepCount,
+              succeeded: okCount,
+              failed: stepCount - okCount,
+            },
+            ts: new Date().toISOString(),
+          },
+        });
         emit({ event: "execution_complete", plan_id: plan.plan_id, choices, step_results: stepResults, ts: new Date().toISOString() });
 
         // Persist memory.
@@ -741,6 +782,82 @@ export async function handleAgenticChat(request: Request, env: Env, _logger: Log
         if (memory.matches.length > 0) summaryParts.push(`Memory: ${memory.hint}`);
 
         emit({ event: "reasoning", step: newReasoningStep("complete", summaryParts.join(" ")) });
+
+        // Streaming trace — agentic chat compiles the 5 stages into a
+        // single TraceData. Surface in the universal panel so the same
+        // affordance covers every entry surface.
+        emit({
+          event: "trace",
+          trace: {
+            operation: "Agentic Canvas · chat · " + ctx.mode,
+            input: input,
+            duration_ms: 0,
+            steps: [
+              {
+                id: "brief",
+                label: "Stage 1 · brief expansion",
+                details: [
+                  { k: "mode", v: ctx.mode },
+                  { k: "brand_name", v: expanded.brand_name ?? "(unknown)" },
+                  { k: "industries", v: expanded.industries.slice(0, 5).join(", ") || "(none)" },
+                  { k: "kpi", v: expanded.kpi },
+                  { k: "kpi_target", v: expanded.kpi_target !== undefined ? String(expanded.kpi_target) : "—" },
+                  { k: "geo", v: (expanded.geo || []).join(", ") },
+                  { k: "confidence", v: expanded.confidence !== undefined ? String(expanded.confidence) : "—" },
+                ],
+                note: ctx.mode === "live" ? "Claude decomposed the brief into structured fields." : "Rule-based extractor (template fallback).",
+              },
+              {
+                id: "coverage",
+                label: "Stage 2 · live MCP coverage probe",
+                details: [
+                  { k: "agents_in_coverage", v: String(coverage.length) },
+                  { k: "tools_total", v: String(coverage.reduce((s, a) => s + a.tools_supported.length, 0)) },
+                ],
+                note: "Each live agent's tools/list pulled in parallel; planner sees only callable tools.",
+              },
+              {
+                id: "plan",
+                label: "Stage 3 · execution plan",
+                details: [
+                  { k: "step_count", v: String(plan.steps.length) },
+                  { k: "tools_in_order", v: plan.steps.map((s) => s.tool).join(" → ") },
+                  { k: "source", v: plan.source },
+                  { k: "confidence", v: String(plan.confidence) },
+                ],
+                matches: plan.steps.map((s, i) => ({
+                  id: s.step_id,
+                  label: (i + 1) + ". " + s.tool + " → " + s.agents.join(", "),
+                  score: i + 1,
+                  meta: s.rationale.slice(0, 140),
+                })),
+              },
+              {
+                id: "governance",
+                label: "Stage 4 · governance preview",
+                details: [
+                  { k: "outcome", v: compliance.advisory.outcome.toUpperCase() },
+                  { k: "blocks", v: compliance.advisory.restricted_attributes.join(", ") || "(none)" },
+                  { k: "policies_evaluated", v: String((compliance.advisory.advisories || []).length) },
+                  { k: "remediations", v: String((compliance.remediations || []).length) },
+                ],
+                note: "Predictive check_governance against brand industries × signal attestations. Mocked locally — no live vendor.",
+              },
+              {
+                id: "memory",
+                label: "Stage 5 · memory recall",
+                details: [
+                  { k: "matches_found", v: String(memory.matches.length) },
+                  { k: "hint", v: memory.hint ?? "(none)" },
+                ],
+                note: "Industry-overlap × KPI-match scoring against past workflow history (KV ring buffer).",
+              },
+            ],
+            performance: {},
+            ts: new Date().toISOString(),
+          },
+        });
+
         emit({ event: "session_complete", mode: ctx.mode, ts: new Date().toISOString() });
       } catch (e) {
         emit({ event: "error", error: String((e as Error).message || e) });

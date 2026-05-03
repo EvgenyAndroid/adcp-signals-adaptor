@@ -40,6 +40,8 @@ Files scanned (post-refactor):
   src/routes/demo.ts                  — the HTML template + script-tag wrapper
   src/demo/styles.ts                  — the CSS template (Trap 4 only relevant)
   src/demo/script/fragments/*.ts      — 32 inlined-JS fragments
+  src/routes/vendorHealthCanvas.ts    — separate-page canvas (one big template literal)
+  src/routes/raceCanvas.ts            — separate-page canvas (one big template literal)
 
 Run:
   python tmp-mining/trap_audit.py
@@ -237,6 +239,9 @@ def main() -> int:
         *sorted(
             (REPO_ROOT / "src" / "demo" / "script").glob("**/*.ts")
         ),
+        # Separate-page canvases (each their own giant template literal).
+        REPO_ROOT / "src" / "routes" / "vendorHealthCanvas.ts",
+        REPO_ROOT / "src" / "routes" / "raceCanvas.ts",
     ]
     targets = [p for p in targets if p.is_file()]
 

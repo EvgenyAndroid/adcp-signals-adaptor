@@ -89,6 +89,12 @@ describe("handleDemo byte-equivalence", () => {
       "_agenticHandleStreamEvent",
       "renderTreemap",
       "_captureTrace",
+      // Sign-out + 5-min idle auto-logout (Sec-31s).
+      'id="logout-btn"',
+      'id="icon-logout"',
+      "SESSION_IDLE_MS",
+      "function _logout(",
+      "function _markActivity(",
     ];
     for (const frag of expectedFragments) {
       expect(body, `expected to contain ${frag}`).toContain(frag);

@@ -121,6 +121,7 @@ ${STYLES}
     <symbol id="icon-plus" viewBox="0 0 20 20"><line x1="10" y1="4" x2="10" y2="16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="4" y1="10" x2="16" y2="10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="icon-minus" viewBox="0 0 20 20"><line x1="4" y1="10" x2="16" y2="10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="icon-chevron-down" viewBox="0 0 20 20"><path d="M5 8 L10 13 L15 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="icon-logout" viewBox="0 0 20 20"><path d="M9 4 L4 4 L4 16 L9 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 7 L16 10 L12 13 M16 10 L8 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   </defs>
 </svg>
 
@@ -336,6 +337,13 @@ ${STYLES}
         <button class="theme-swatch" data-theme-pick="daylight" title="Daylight (light)" aria-label="Daylight theme"></button>
         <button class="theme-swatch" data-theme-pick="solar" title="Solar (warm)" aria-label="Solar theme"></button>
       </div>
+      <!-- Sign out: manual logout button + paired with 5-min idle auto-logout
+           wired in src/demo/script/fragments/auth.ts. Both clear the
+           sessionStorage 'demo-authed' flag and re-show the auth overlay. -->
+      <button class="logout-btn" id="logout-btn" type="button" title="Sign out (also auto after 5 min idle)" aria-label="Sign out">
+        <svg class="ico" aria-hidden="true"><use href="#icon-logout"/></svg>
+        <span>Sign out</span>
+      </button>
     </div>
   </aside>
 

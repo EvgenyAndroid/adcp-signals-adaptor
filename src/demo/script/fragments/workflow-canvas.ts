@@ -300,6 +300,29 @@ function _wfPaintAgentComplete(ev) {
   if (!card) return;
   card.classList.remove("wf-agent-pending");
   card.classList.add(ev.ok ? "wf-agent-ok" : "wf-agent-err");
+  // Sec-31u: emit a particle that travels from the completing agent
+  // card to the next stage's timeline cell. Visual cue that work is
+  // moving through the pipeline.
+  if (ev.ok && typeof spawnParticle === "function" && typeof elementCenter === "function") {
+    try {
+      var from = elementCenter(card);
+      var stages = ["signals", "inventory", "creative", "media_buy"];
+      var stageIdx = stages.indexOf(ev.stage);
+      var nextStage = (stageIdx >= 0 && stageIdx < stages.length - 1) ? stages[stageIdx + 1] : null;
+      var target = nextStage ? document.getElementById("wf-timeline-cell-" + nextStage) : null;
+      if (target) {
+        var to = elementCenter(target);
+        // Emit 3 particles staggered for a "flow" effect
+        for (var pi = 0; pi < 3; pi++) {
+          (function (delay) {
+            setTimeout(function () { spawnParticle(from, to, { duration: 700, color: ev.ok ? null : "#ff4d5e" }); }, delay);
+          })(pi * 80);
+        }
+      }
+      // Glow pulse on the completing card
+      if (typeof glowOnce === "function") glowOnce(card);
+    } catch (e) { /* non-fatal */ }
+  }
   var body = "";
   if (ev.stage === "signals") {
     var preview = (ev.summary && ev.summary.preview) || [];

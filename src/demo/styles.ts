@@ -158,7 +158,13 @@ html:not(.is-locked) .auth-overlay { display: none; }
 .auth-overlay {
   position: fixed; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  background: var(--bg-base);
+  /* Sec-31u: subtle gradient drift so the locked screen feels alive */
+  background:
+    radial-gradient(circle at 20% 30%, rgba(79, 142, 255, 0.08), transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(139, 110, 255, 0.06), transparent 50%),
+    var(--bg-base);
+  background-size: 200% 200%, 200% 200%, 100% 100%;
+  animation: ux-auth-bg 24s ease-in-out infinite;
   z-index: 9999;
   padding: 24px;
 }
@@ -597,6 +603,245 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 .tab-pane { display: none; }
 .tab-pane.active { display: block; animation: fadeIn 0.22s ease; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── Animation primitives (Sec-31u UX deep-pass) ────────────────────
+   Reusable keyframes + utility classes used across every surface. The
+   goal: feel responsive, give visual feedback on state transitions,
+   and make the demo feel "alive" instead of static.
+
+   - .ux-stagger-row N: row N appears with a 60ms-stepped delay
+   - .ux-shimmer: loading skeleton with subtle gradient sweep
+   - .ux-count-up: number target hooked by countUp() in utils.ts
+   - .ux-hover-lift: card-style hover (translate + shadow)
+   - .ux-pulse-once: one-time pulse on a state change
+   - .ux-fade-in-soft: gentle 0.4s fade
+   - .ux-glow: outline glow that pulses for 1.5s then settles
+   - .ux-particle: small dot that floats from origin → target
+   ───────────────────────────────────────────────────────────────────── */
+@keyframes ux-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.ux-shimmer {
+  background: linear-gradient(90deg,
+    var(--bg-surface) 0%,
+    var(--bg-hover) 50%,
+    var(--bg-surface) 100%);
+  background-size: 200% 100%;
+  animation: ux-shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-md);
+  color: transparent !important;
+  user-select: none;
+}
+.ux-shimmer * { color: transparent !important; }
+
+/* Row stagger entry — apply via JS by setting --ux-stagger-i */
+.ux-stagger-row {
+  opacity: 0;
+  animation: ux-row-in 0.36s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation-delay: calc(var(--ux-stagger-i, 0) * 35ms);
+}
+@keyframes ux-row-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Count-up target — hooked by countUp(el, target) in utils.ts.
+   Marks an element as receiving an animated count, JS reads/writes
+   data-ux-target and overwrites textContent over the duration. */
+.ux-count-up {
+  font-variant-numeric: tabular-nums;
+  transition: color 0.18s;
+}
+
+/* Hover lift — for cards / clickable rows. Adds shadow + tiny rise. */
+.ux-hover-lift {
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.18s,
+              border-color 0.18s;
+}
+.ux-hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px -4px rgba(0,0,0,0.35);
+}
+
+/* One-shot pulse for state changes (success, new data arrived). Add
+   then remove the class to retrigger. */
+.ux-pulse-once {
+  animation: ux-pulse-once 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes ux-pulse-once {
+  0%   { box-shadow: 0 0 0 0 var(--accent-dim); }
+  60%  { box-shadow: 0 0 0 7px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* Soft fade-in on initial render (less aggressive than fadeIn). */
+.ux-fade-in-soft {
+  animation: ux-fade-soft 0.42s ease both;
+}
+@keyframes ux-fade-soft {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Glow ring pulse — used to highlight a recently-updated value/card. */
+.ux-glow {
+  animation: ux-glow 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) 1;
+}
+@keyframes ux-glow {
+  0%   { box-shadow: 0 0 0 0 transparent; }
+  20%  { box-shadow: 0 0 0 3px var(--accent-dim); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* Particle — small absolutely-positioned dot that drifts from
+   --x-from/--y-from to --x-to/--y-to over --duration-ms. Use with
+   spawnParticle() in utils.ts; auto-removed on animation end. */
+.ux-particle {
+  position: absolute;
+  pointer-events: none;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  z-index: 9999;
+  animation: ux-particle var(--duration-ms, 600ms) cubic-bezier(0.4, 0.1, 0.2, 1) forwards;
+}
+@keyframes ux-particle {
+  0%   { transform: translate(var(--x-from, 0), var(--y-from, 0)) scale(0.6); opacity: 0; }
+  10%  { opacity: 1; }
+  85%  { opacity: 0.9; }
+  100% { transform: translate(var(--x-to, 100px), var(--y-to, 0)) scale(0.3); opacity: 0; }
+}
+
+/* Dynamic ripple — radial expand from a click/hover origin. Used on
+   treemap nodes + KPI tiles. */
+.ux-ripple {
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  overflow: hidden;
+}
+.ux-ripple::after {
+  content: "";
+  position: absolute;
+  left: var(--rx, 50%); top: var(--ry, 50%);
+  width: 0; height: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.18;
+  transform: translate(-50%, -50%);
+  animation: ux-ripple 0.55s ease-out forwards;
+}
+@keyframes ux-ripple {
+  to { width: 240px; height: 240px; opacity: 0; }
+}
+
+/* Tab pane crossfade — replaces the abrupt switch-and-fade-in with a
+   gentler crossfade. Combined with .tab-pane.active above. */
+@keyframes ux-tab-crossfade {
+  0%   { opacity: 0; transform: translateY(2px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Skeleton row helper — used by renderSkeletonRow() in utils. Composes
+   shimmer with a row-shaped wrapper. */
+.ux-skeleton-row {
+  display: grid;
+  grid-template-columns: 30px 1fr 80px 80px 80px;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-faint);
+  align-items: center;
+}
+.ux-skeleton-row > div {
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(90deg,
+    var(--bg-surface) 0%,
+    var(--bg-hover) 50%,
+    var(--bg-surface) 100%);
+  background-size: 200% 100%;
+  animation: ux-shimmer 1.4s ease-in-out infinite;
+}
+
+/* Auth overlay subtle gradient drift — adds a slow color shift to the
+   locked-state background so it doesn't feel dead. */
+@keyframes ux-auth-bg {
+  0%   { background-position: 0% 0%; }
+  50%  { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
+}
+
+/* Toast stack — the existing showToast() bottom-anchors a single
+   toast. We extend it to stack and slide-in. Multiple toasts stack
+   bottom-up; oldest at top. Each ride .toast-slide-in on entry. */
+.toast-slide-in {
+  animation: ux-toast-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes ux-toast-in {
+  from { opacity: 0; transform: translate(-50%, 12px) scale(0.95); }
+  to   { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+/* Sec-31u: blanket hover-lift across cards, rows, and clickable tiles.
+   Applies via class composition — selectors here add .ux-hover-lift
+   behavior to existing classes that we KNOW are clickable, without
+   touching the markup. Matches the same translate+shadow pattern as
+   the named .ux-hover-lift class. */
+.signal-card,
+.concept-card,
+.kpi-tile,
+.tool-card,
+.vendor-card,
+.brief-stack-item,
+.dest-row,
+.fed-card,
+.snap-row,
+.lab-result-card {
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.18s,
+              border-color 0.18s;
+}
+.signal-card:hover,
+.concept-card:hover,
+.kpi-tile:hover,
+.tool-card:hover,
+.brief-stack-item:hover,
+.dest-row:hover,
+.fed-card:hover,
+.snap-row:hover,
+.lab-result-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px -4px rgba(0,0,0,0.35);
+}
+/* Catalog row hover — was a flat color, now subtle lift with shadow */
+.cat-row { transition: background 0.16s, box-shadow 0.16s; }
+.cat-row:hover {
+  background: var(--bg-hover);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* Empty-state buttons — used as inline CTAs in empty states across
+   tabs. Subtle accent rectangle with hover lift. */
+.empty-cta {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  font: 11.5px var(--font-mono);
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.empty-cta:hover {
+  background: var(--accent);
+  color: var(--bg-base);
+  transform: translateY(-1px);
+}
 
 .pane-header { margin-bottom: 24px; }
 .pane-title {
@@ -1414,8 +1659,12 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   color: var(--accent);
 }
 @keyframes tracePulse {
-  0%, 100% { box-shadow: 0 6px 18px rgba(0,0,0,0.32), 0 0 0 0 var(--accent-dim); }
-  50%      { box-shadow: 0 6px 18px rgba(0,0,0,0.32), 0 0 0 10px transparent; }
+  /* Sec-31u: louder pulse — bigger ring expansion + slight scale.
+     Triple-fires (count: 3 above) so it's hard to miss. */
+  0%   { box-shadow: 0 6px 18px rgba(0,0,0,0.32), 0 0 0 0 var(--accent); transform: scale(1); }
+  35%  { box-shadow: 0 6px 18px rgba(0,0,0,0.32), 0 0 0 14px transparent; transform: scale(1.04); }
+  70%  { box-shadow: 0 6px 18px rgba(0,0,0,0.32), 0 0 0 0 transparent; transform: scale(1); }
+  100% { box-shadow: 0 6px 18px rgba(0,0,0,0.32), 0 0 0 0 var(--accent-dim); transform: scale(1); }
 }
 .trace-trigger svg { color: var(--accent); }
 .trace-trigger-label { letter-spacing: 0.02em; }
@@ -1874,9 +2123,14 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 }
 .treemap-cell {
   cursor: pointer;
-  transition: filter 0.12s;
+  transition: filter 0.16s;
+  transform-origin: center;
 }
-.treemap-cell:hover { filter: brightness(1.25); }
+.treemap-cell:hover {
+  filter: brightness(1.32) drop-shadow(0 0 6px rgba(79, 142, 255, 0.5));
+}
+/* Cell entry uses ux-row-in keyframe via .ux-stagger-row on the <g> */
+.treemap-cell.ux-stagger-row { transform-box: fill-box; }
 /* Halo-stroke approach: white fill with a dark stroke outline and
    paint-order=stroke-fill means the fill paints over the stroke,
    leaving a thin dark halo around each glyph. Readable on any
@@ -3022,6 +3276,37 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .emb-legend-dot {
   width: 10px; height: 10px; border-radius: 50%;
   display: inline-block;
+}
+/* Sec-31u: interactive scatter dots — hover scales, click sets anchor.
+   When an anchor is set: anchor pulses, near-neighbors glow, others dim. */
+.emb-dot {
+  cursor: pointer;
+  transition: r 0.18s, fill-opacity 0.18s, stroke-width 0.18s;
+}
+.emb-dot:hover {
+  r: 7;
+  fill-opacity: 1 !important;
+  stroke: var(--accent) !important;
+  stroke-width: 1.5 !important;
+}
+.emb-dot.is-anchor {
+  r: 8;
+  stroke: var(--accent) !important;
+  stroke-width: 2.5 !important;
+  fill-opacity: 1 !important;
+  filter: drop-shadow(0 0 6px var(--accent));
+  animation: ux-pulse-once 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+.emb-dot.is-near {
+  r: 6;
+  fill-opacity: 1 !important;
+  stroke: var(--accent) !important;
+  stroke-width: 1.5 !important;
+}
+.emb-dot.is-dim { fill-opacity: 0.18 !important; }
+.emb-edge {
+  pointer-events: none;
+  animation: ux-row-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 /* Measurement block — lift + delivery simulator + campaign overlap (Sec-38 B4) */

@@ -13,19 +13,43 @@
 // doesn't interpolate them. Trap audit: tmp-mining/trap_audit.py.
 export const catalogJs = `function populateKPIs() {
   const all = state.catalog.all;
-  document.getElementById("kpi-total").textContent = String(all.length);
+  // Animated count-ups — KPIs settle from 0 → target with ease-out
+  // (countUp from utils). Glow pulse on first paint signals data
+  // arrival; subsequent calls (filter changes) skip the glow.
+  const elTotal = document.getElementById("kpi-total");
+  const elCpm = document.getElementById("kpi-cpm");
+  const elVerticals = document.getElementById("kpi-verticals");
   const cpms = all.map((s) => fmtCPM(s).cpm).filter((x) => typeof x === "number");
   const avg = cpms.length ? cpms.reduce((a, b) => a + b, 0) / cpms.length : 0;
-  document.getElementById("kpi-cpm").textContent = "$" + avg.toFixed(2);
-  // Distinct vertical count (live, from the real ID prefix)
   const verticals = new Set(all.map(verticalOf));
-  document.getElementById("kpi-verticals").textContent = String(verticals.size);
+  if (elTotal) {
+    elTotal.classList.add("ux-count-up");
+    countUp(elTotal, all.length, 700);
+  }
+  if (elCpm) {
+    elCpm.classList.add("ux-count-up");
+    countUp(elCpm, avg, 700, function (n) { return "$" + n.toFixed(2); });
+  }
+  if (elVerticals) {
+    elVerticals.classList.add("ux-count-up");
+    countUp(elVerticals, verticals.size, 600);
+  }
   // Sparkline for "total signals" — fake upward trend visualizing growth
   const spark = document.getElementById("spark-total");
   spark.innerHTML = '<svg viewBox="0 0 80 24"><path d="M2 22 L12 20 L22 19 L32 16 L42 14 L52 10 L62 8 L72 5 L78 4" fill="none" stroke="var(--accent)" stroke-width="1.4"/></svg>';
   // Subtitle count on the catalog pane
   const sub = document.getElementById("catalog-subtitle-counts");
   if (sub) sub.textContent = all.length + " signals · " + verticals.size + " verticals";
+  // Glow each KPI tile briefly on first populate so the user notices
+  // the data has arrived. Re-populate (e.g. catalog refresh) skips
+  // glow; the tile only highlights when state.catalog._kpiPrimed flips.
+  if (!state.catalog._kpiPrimed) {
+    state.catalog._kpiPrimed = true;
+    [elTotal, elCpm, elVerticals].forEach(function (el) {
+      const tile = el && el.closest ? el.closest(".kpi-tile") : null;
+      if (tile && typeof glowOnce === "function") setTimeout(function () { glowOnce(tile); }, 100);
+    });
+  }
 }
 
 function populateVerticalChips() {
@@ -124,11 +148,15 @@ function renderCatalog() {
     return;
   }
 
-  tbody.innerHTML = slice.map((s) => {
+  tbody.innerHTML = slice.map((s, i) => {
     const sid = s.signal_agent_segment_id || s.signal_id?.id || "";
     const price = fmtCPM(s);
+    // Stagger the row entry — first 14 rows fade in over ~500ms total,
+    // remaining rows appear immediately (avoids long delays on page 2+).
+    const staggerStyle = i < 14 ? ' style="--ux-stagger-i:' + i + '"' : '';
+    const staggerCls = i < 14 ? ' ux-stagger-row' : '';
     return '' +
-      '<tr data-sid="' + escapeHtml(sid) + '">' +
+      '<tr class="cat-row' + staggerCls + '" data-sid="' + escapeHtml(sid) + '"' + staggerStyle + '>' +
         '<td class="td-name"><div>' + escapeHtml(s.name || "") + dtsPill(s) + freshnessPill(s) + sensitivePill(s) + '</div><span class="signal-id">' + escapeHtml(sid) + '</span></td>' +
         '<td class="td-vertical">' + escapeHtml(verticalOf(s)) + '</td>' +
         '<td>' + typeBadge(s.signal_type || "marketplace") + ' <span style="color:var(--text-mut);font-size:11.5px;margin-left:4px">' + escapeHtml(s.category_type || "") + '</span></td>' +

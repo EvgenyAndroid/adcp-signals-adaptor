@@ -158,7 +158,11 @@ function verticalOf(signal) {
 function showToast(msg, isError) {
   const el = document.getElementById("toast");
   el.textContent = msg;
-  el.className = "toast show" + (isError ? " error" : "");
+  // Sec-31u: re-trigger slide-in animation each call by removing then
+  // re-adding the class on the next frame. Force reflow with offsetWidth.
+  el.classList.remove("show", "error", "toast-slide-in");
+  void el.offsetWidth;
+  el.className = "toast show toast-slide-in" + (isError ? " error" : "");
   clearTimeout(el._t);
   el._t = setTimeout(() => { el.className = "toast"; }, 3200);
 }
@@ -194,5 +198,137 @@ function confidenceRange(size, tier) {
   const pct = tier === "high" ? 0.10 : tier === "medium" ? 0.25 : 0.50;
   const delta = Math.round(size * pct);
   return { lo: size - delta, hi: size + delta, pct: Math.round(pct * 100), delta };
+}
+
+//────────────────────────────────────────────────────────────────────────
+// UX deep-pass animation utilities (Sec-31u). Used across surfaces.
+//────────────────────────────────────────────────────────────────────────
+
+/**
+ * Animate a number on an element from its current value (or 0) up to
+ * \`target\` over \`duration\` ms. Uses ease-out-cubic for a "settling"
+ * feel. \`fmt\` formats the displayed value (default: integer).
+ * Cancels any prior count-up on the same element.
+ */
+function countUp(el, target, duration, fmt) {
+  if (!el) return;
+  if (typeof duration !== "number") duration = 700;
+  if (typeof fmt !== "function") fmt = function (n) { return Math.round(n).toLocaleString(); };
+  if (el._countUpRaf) cancelAnimationFrame(el._countUpRaf);
+  var fromVal = parseFloat((el.textContent || "0").replace(/[^0-9.\\-]/g, "")) || 0;
+  var startTs = null;
+  function tick(ts) {
+    if (startTs === null) startTs = ts;
+    var t = Math.min(1, (ts - startTs) / duration);
+    // ease-out-cubic
+    var k = 1 - Math.pow(1 - t, 3);
+    var v = fromVal + (target - fromVal) * k;
+    el.textContent = fmt(v);
+    if (t < 1) {
+      el._countUpRaf = requestAnimationFrame(tick);
+    } else {
+      el.textContent = fmt(target);
+      el._countUpRaf = null;
+    }
+  }
+  el._countUpRaf = requestAnimationFrame(tick);
+}
+
+/**
+ * Apply a one-shot pulse class to an element, removing it after the
+ * animation completes. Triggers a state-change visual cue without
+ * leaving stale class state behind.
+ */
+function pulseOnce(el, className) {
+  if (!el) return;
+  className = className || "ux-pulse-once";
+  el.classList.remove(className);
+  // Force reflow so the animation re-fires on consecutive calls.
+  void el.offsetWidth;
+  el.classList.add(className);
+  setTimeout(function () { el.classList.remove(className); }, 800);
+}
+
+/**
+ * Glow ring around an element that fades after 1.6s. Used to highlight
+ * recently-updated cards/values without the full pulse.
+ */
+function glowOnce(el) {
+  if (!el) return;
+  el.classList.remove("ux-glow");
+  void el.offsetWidth;
+  el.classList.add("ux-glow");
+  setTimeout(function () { el.classList.remove("ux-glow"); }, 1700);
+}
+
+/**
+ * Apply a stagger-row entry animation to children of a container.
+ * Sets each child's --ux-stagger-i custom property so the keyframe
+ * delays in 35ms steps. Skips index >= maxStaggered to avoid long
+ * delays on large lists; everything past that appears immediately.
+ */
+function staggerRows(container, selector, maxStaggered) {
+  if (!container) return;
+  selector = selector || ":scope > *";
+  if (typeof maxStaggered !== "number") maxStaggered = 14;
+  var els = container.querySelectorAll(selector);
+  for (var i = 0; i < els.length; i++) {
+    if (i < maxStaggered) {
+      els[i].style.setProperty("--ux-stagger-i", String(i));
+      els[i].classList.add("ux-stagger-row");
+    }
+  }
+}
+
+/**
+ * Spawn an absolutely-positioned particle that travels from \`from\`
+ * (page coords) to \`to\` (page coords) over \`duration\` ms. Used to
+ * visualize work flowing between agents/lanes/UI sections.
+ */
+function spawnParticle(from, to, opts) {
+  opts = opts || {};
+  var duration = opts.duration || 600;
+  var color = opts.color || null;
+  var p = document.createElement("div");
+  p.className = "ux-particle";
+  p.style.left = from.x + "px";
+  p.style.top = from.y + "px";
+  p.style.setProperty("--x-from", "0px");
+  p.style.setProperty("--y-from", "0px");
+  p.style.setProperty("--x-to", (to.x - from.x) + "px");
+  p.style.setProperty("--y-to", (to.y - from.y) + "px");
+  p.style.setProperty("--duration-ms", duration + "ms");
+  if (color) {
+    p.style.background = color;
+    p.style.boxShadow = "0 0 8px " + color;
+  }
+  document.body.appendChild(p);
+  setTimeout(function () { if (p.parentNode) p.parentNode.removeChild(p); }, duration + 100);
+}
+
+/**
+ * Render a shimmer skeleton row block. Used in place of bare spinners
+ * while a fetch is in flight. \`rows\` controls how many to render.
+ */
+function renderSkeletonRows(rows) {
+  rows = rows || 5;
+  var html = "";
+  for (var i = 0; i < rows; i++) {
+    html += '<div class="ux-skeleton-row"><div></div><div></div><div></div><div></div><div></div></div>';
+  }
+  return html;
+}
+
+/**
+ * Center of an element in page coordinates (accounting for scroll).
+ * Used as origin/target for spawnParticle.
+ */
+function elementCenter(el) {
+  if (!el) return { x: 0, y: 0 };
+  var rect = el.getBoundingClientRect();
+  return {
+    x: rect.left + rect.width / 2 + window.scrollX,
+    y: rect.top + rect.height / 2 + window.scrollY
+  };
 }
 `;

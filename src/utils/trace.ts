@@ -92,12 +92,35 @@ function pathToOperationName(path: string): string {
  * Handlers that build their OWN _trace (richer steps, matches, etc.)
  * are detected and passed through unchanged.
  */
+// Sec-31w: paths whose response shape is constrained by an external
+// protocol spec — extra top-level fields like _trace can cause strict
+// clients to reject the envelope. JSON-RPC 2.0 (which MCP uses) is the
+// canonical example: { jsonrpc, id, result|error } is the entire
+// allowed shape, and conformance probes like @adcp/client reject
+// responses with sibling fields as "not MCP."
+//
+// Symptom that surfaced this: AAO's storyboard runner + npx
+// @adcp/client@latest both reported "Failed to discover MCP endpoint"
+// despite /mcp returning 200 + valid JSON-RPC body. Adding _trace
+// alongside `result` broke their MCP-protocol detection.
+//
+// Skip-list rather than allow-list because the demo surfaces (REST
+// /signals/*, /agents/*, /audience/*, etc.) all benefit from the
+// auto-trace and have no external schema constraint.
+const TRACE_INJECT_SKIP_PATHS: ReadonlySet<string> = new Set([
+  "/mcp",
+  "/mcp/",
+]);
+
 export async function injectTraceIfMissing(
   response: Response,
   path: string,
   start_ms: number,
   method: string,
 ): Promise<Response> {
+  // JSON-RPC envelope safety: skip MCP and any other path whose
+  // response shape is fixed by an external protocol contract.
+  if (TRACE_INJECT_SKIP_PATHS.has(path)) return response;
   const ct = response.headers.get("content-type") || "";
   if (!ct.toLowerCase().includes("application/json")) return response;
   // Skip non-2xx — caller wants the original error body intact.

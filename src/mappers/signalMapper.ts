@@ -287,12 +287,18 @@ export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
     ? Math.min(99, Math.round((signal.estimatedAudienceSize / TOTAL_ADDRESSABLE) * 100 * 10) / 10)
     : 0;
 
+  // Sec-31w: AAO `signal_owned` storyboard requires `signal_type: "owned"`
+  // for first-party catalog signals. We're a first-party signals adaptor
+  // (declared via specialisms: ["signal-owned"] in get_adcp_capabilities),
+  // so static signals are "owned". Dynamic (brief-derived) signals stay
+  // "custom" — they're synthesized per-request, not part of the owned
+  // catalog the buyer can pre-license.
   const signalType: SignalSummary["signal_type"] =
-    signal.generationMode === "dynamic" ? "custom" : "marketplace";
+    signal.generationMode === "dynamic" ? "custom" : "owned";
 
-  const deployments: SignalDeployment[] = signal.destinations.map((dest) => {
+  const isLive = signal.status === "available";
+  const platformDeployments: SignalDeployment[] = signal.destinations.map((dest) => {
     const platform = DESTINATION_PLATFORM_MAP[dest] ?? { activationSupported: true };
-    const isLive = signal.status === "available";
     const platformSegmentId = `${dest}_${signal.signalId}`;
     return {
       type: "platform",
@@ -301,10 +307,37 @@ export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
       decisioning_platform_segment_id: platformSegmentId,
       activation_supported: platform.activationSupported,
       ...(isLive
-        ? { activation_key: { type: "segment_id", segment_id: platformSegmentId } }
+        ? { activation_key: { type: "segment_id" as const, segment_id: platformSegmentId } }
         : {}),
     };
   });
+
+  // Sec-31w: AAO `signal_owned` storyboard's `activate_on_agent` step
+  // requires at least one deployment with `type: "agent"`,
+  // `activation_key: { type: "key_value", ... }`, and `is_live: true`.
+  // Since we ARE the agent (signal_id.source = "agent_native"), we
+  // expose every owned signal as activatable via our own /mcp endpoint
+  // — buyers call activate_signal with destinationType: "agent" and
+  // get a sync activation receipt. The key_value pair carries the
+  // segment id under the canonical "signal_agent_segment_id" key so a
+  // cross-agent buyer can just store the {key, value} pair and replay it.
+  const agentDeployment: SignalDeployment = {
+    type: "agent",
+    agent_url: SELF_AGENT_URL,
+    is_live: isLive,
+    decisioning_platform_segment_id: signal.signalId,
+    activation_supported: true,
+    ...(isLive
+      ? {
+          activation_key: {
+            type: "key_value" as const,
+            key: "signal_agent_segment_id",
+            value: signal.signalId,
+          },
+        }
+      : {}),
+  };
+  const deployments: SignalDeployment[] = [...platformDeployments, agentDeployment];
 
   const pricingCpm = signal.pricing?.model === "mock_cpm" ? signal.pricing.value ?? 0 : 0;
   const pricingCurrency = signal.pricing?.currency ?? "USD";
@@ -337,10 +370,15 @@ export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
   return {
     // Universal signal_id required by the AdCP signals storyboard baseline.
     // We're an agent-native signals service (no upstream data-provider
-    // catalog), so source is always "agent". The internal signalId already
+    // catalog), so source is "agent_native". The internal signalId already
     // matches the schema's `^[a-zA-Z0-9_-]+$` pattern.
+    //
+    // Sec-31w: AAO's signal_owned storyboard's search_owned_signals step
+    // asserts literal "agent_native" (not "agent"). Two strings differ but
+    // mean the same thing for us; aligning here so the badge issuer
+    // accepts our shape.
     signal_id: {
-      source: "agent" as const,
+      source: "agent_native" as const,
       agent_url: SELF_AGENT_URL,
       id: signal.signalId,
     },

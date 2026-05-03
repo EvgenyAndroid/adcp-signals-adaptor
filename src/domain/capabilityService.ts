@@ -35,7 +35,12 @@
 // self-fetch short-circuit, URL corrections for content_ignite + claire_scope3).
 // The key version must be bumped any time the SHAPE of the capability response
 // changes, so clients that cache by key pick up the new fields.
-const CACHE_KEY = "adcp_capabilities_v23";
+// Cache key carries a monotonic version suffix. Bump on every change to
+// the static capability shape so already-warmed KV entries don't serve
+// stale fields after a deploy. Bumps:
+//   v23 → previous baseline
+//   v24 → Sec-31v: added top-level `specialisms` for AAO badge issuance
+const CACHE_KEY = "adcp_capabilities_v24";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";

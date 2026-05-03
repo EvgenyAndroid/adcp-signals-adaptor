@@ -376,7 +376,13 @@ async function loadCatalog() {
       });
       const batch = (data.signals || []).filter((s) => s.signal_type !== "custom");
       all.push(...batch);
-      if (!data.hasMore || batch.length === 0) break;
+      // Sec-31z: read pagination defensively — MCP responses now use
+      // the v3 nested shape (data.pagination.has_more) per AAO
+      // pagination_walk requirements; legacy v2 shape (data.hasMore)
+      // is read as a fallback so this loop survives any future shape
+      // revert. Either shape signals "fetch more" via boolean truthy.
+      const hasMore = data.pagination?.has_more ?? data.hasMore;
+      if (!hasMore || batch.length === 0) break;
       offset += 100;
       if (offset > 1000) break; // safety — catalog shouldn't exceed this
     }

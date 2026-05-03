@@ -459,9 +459,26 @@ async function callGetSignals(
         ? (filters!["signal_type"] as string)
         : null;
 
+    // Sec-31z: AAO v3 sends `signal_spec` as an OBJECT — { brief: "..." }
+    // — not a bare string. Older callers (and our REST surface) still
+    // send a plain string. Accept both, plus the older `brief` arg, and
+    // collapse to a string for the search service.
+    //
+    // Without this normalisation, `(args["signal_spec"] ?? args["brief"])
+    // as string` cast through an object → downstream toLowerCase / regex
+    // etc. throws → the whole MCP tools/call request returns a -32603
+    // Internal error. AAO's pagination_walk check failed on this exact
+    // crash (NOT on the pagination shape itself).
+    const rawSignalSpec = args["signal_spec"];
+    const briefFromSpec = typeof rawSignalSpec === "string"
+        ? rawSignalSpec
+        : (rawSignalSpec && typeof rawSignalSpec === "object" && !Array.isArray(rawSignalSpec)
+            ? (rawSignalSpec as Record<string, unknown>)["brief"] as string | undefined
+            : undefined);
+
     const req = {
         ...compactObj({
-            brief: (args["signal_spec"] ?? args["brief"]) as string | undefined,
+            brief: briefFromSpec ?? (args["brief"] as string | undefined),
             query: (filters?.["query"] ?? args["query"]) as string | undefined,
             categoryType: (filters?.["category_type"] ?? args["categoryType"]) as string | undefined,
             generationMode: (filters?.["generation_mode"] ?? args["generationMode"]) as string | undefined,

@@ -475,6 +475,36 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 .status-dot.ok { background: var(--success); box-shadow: 0 0 6px var(--success); animation: pulse 2.4s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 
+/* Sign out button — sits below the theme picker in the sidebar footer.
+   Low visual weight (no fill, just a thin border on hover). Paired with
+   a 5-minute idle auto-logout wired in fragments/auth.ts. The collapsed-
+   sidebar rule below hides the label + reduces the button to icon-only,
+   matching the theme-picker's collapse behavior. */
+.logout-btn {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  margin-top: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-mut);
+  font: 12px var(--font-stack);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.logout-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+  border-color: var(--border);
+}
+.logout-btn:active { transform: translateY(0.5px); }
+.logout-btn .ico { width: 14px; height: 14px; flex-shrink: 0; }
+.logout-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 /* ── Topbar ──────────────────────────────────────────────────────────── */
 .main {
   display: flex; flex-direction: column;
@@ -521,6 +551,12 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 .app.is-sidebar-collapsed .sidebar-footer .theme-picker {
   display: none;
 }
+.app.is-sidebar-collapsed .logout-btn {
+  /* Icon-only when sidebar is collapsed — hide label, center icon. */
+  justify-content: center;
+  padding: 7px 4px;
+}
+.app.is-sidebar-collapsed .logout-btn span { display: none; }
 .app.is-sidebar-collapsed .nav-group.is-collapsed .nav-group-items {
   display: flex !important;
 }

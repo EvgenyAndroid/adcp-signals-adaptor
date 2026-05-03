@@ -16,16 +16,21 @@
 // literal. All template-literal backticks and `${...}` inside the
 // inner JS must be escaped with a backslash so the outer literal
 // doesn't interpolate them. Trap audit: tmp-mining/trap_audit.py.
-import { DEMO_VIEWER_PASSWORD_SHA256 } from "../../config";
+import { DEMO_VIEWER_PASSWORD_HASHES } from "../../config";
 
 export const authJs = `
 //────────────────────────────────────────────────────────────────────────
 // Auth overlay — UI gate, password validation via SHA-256 compare.
-// Hash is hardcoded in source (not plaintext); attacker would need
-// rainbow tables or brute-force to recover the password. Filters URL
+// Hashes are hardcoded in source (not plaintext); attacker would need
+// rainbow tables or brute-force to recover the passwords. Filters URL
 // scrapers; backend auth (DEMO_API_KEY) is the actual security.
+//
+// AUTH_PASSWORD_HASHES is an array — multiple passwords unlock the same
+// UI. Workshop attendees get the primary; the alias is for fast stage
+// typing. Add or rotate by editing src/demo/config.ts (no flow changes
+// here).
 //────────────────────────────────────────────────────────────────────────
-const AUTH_PASSWORD_SHA256 = ${JSON.stringify(DEMO_VIEWER_PASSWORD_SHA256)};
+const AUTH_PASSWORD_HASHES = ${JSON.stringify(DEMO_VIEWER_PASSWORD_HASHES)};
 
 async function _sha256Hex(str) {
   const buf = new TextEncoder().encode(str);
@@ -53,7 +58,7 @@ async function _sha256Hex(str) {
     submit.textContent = "Checking...";
     try {
       const hash = await _sha256Hex(value);
-      if (hash === AUTH_PASSWORD_SHA256) {
+      if (AUTH_PASSWORD_HASHES.indexOf(hash) !== -1) {
         try { sessionStorage.setItem("demo-authed", "1"); } catch (e) {}
         document.documentElement.classList.remove("is-locked");
         // Hide overlay smoothly.

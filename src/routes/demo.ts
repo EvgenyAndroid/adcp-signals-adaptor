@@ -8751,12 +8751,61 @@ _applySidebarCollapsed(_readSidebarCollapsed());
 //────────────────────────────────────────────────────────────────────────
 window.__lastTrace = null;
 
-// Universal helper: any response that has a _trace field auto-populates
-// the panel + lights up the floating button. Call from any fetch handler:
-//   var data = await resp.json();
-//   _captureTrace(data._trace);
-// Returns true if a trace was captured. Designed to be a one-liner per
-// fetch site.
+// Global fetch interceptor — any JSON response from /signals, /agents,
+// /audience, /portfolio, /analytics, /ucp, /registry, /dsp, /agentic
+// is sniffed for a _trace field. If present, it auto-populates the
+// panel and pulses the trigger. Means every backend endpoint that
+// emits _trace gets free trace UI without per-site frontend wiring.
+//
+// Implementation: monkey-patch window.fetch. Clone the response so the
+// caller can still consume the body normally. Body sniff happens off
+// the critical path. Failures are silent (trace is decorative).
+(function() {
+  if (window.__traceInterceptorInstalled) return;
+  window.__traceInterceptorInstalled = true;
+  var origFetch = window.fetch.bind(window);
+  // Path prefixes worth sniffing for _trace. Backslash-slash in regex
+  // literals is a Trap-3 hazard inside this template literal — we use
+  // string-prefix matching instead. Order doesn't matter; matching is
+  // O(n) over a tiny list.
+  var TRACE_PREFIXES = [
+    "/signals", "/agents", "/audience", "/portfolio", "/analytics",
+    "/ucp", "/registry", "/dsp", "/agentic", "/race", "/vendor-health",
+    "/brands"
+  ];
+  function _isTracePath(p) {
+    for (var i = 0; i < TRACE_PREFIXES.length; i++) {
+      var pre = TRACE_PREFIXES[i];
+      if (p === pre || p.indexOf(pre + "/") === 0) return true;
+    }
+    return false;
+  }
+  window.fetch = function(input, init) {
+    var resp = origFetch(input, init);
+    return resp.then(function(r) {
+      try {
+        var url = typeof input === "string" ? input : (input && input.url) || "";
+        var path = url;
+        try { path = new URL(url, window.location.origin).pathname; } catch (e) {}
+        if (!_isTracePath(path)) return r;
+        var ct = r.headers && r.headers.get && r.headers.get("content-type") || "";
+        if (ct.indexOf("application/json") < 0) return r;
+        // Clone so the caller can still .json() / .text() the original.
+        var cloned = r.clone();
+        cloned.json().then(function(j) {
+          if (j && j._trace) _captureTrace(j._trace);
+          // Some handlers wrap result under .result (e.g. nlQueryHandler)
+          else if (j && j.result && j.result._trace) _captureTrace(j.result._trace);
+        }).catch(function() {});
+      } catch (e) {}
+      return r;
+    });
+  };
+})();
+
+// Per-site capture (kept as no-op safety net; the interceptor above
+// usually beats this to the trace). Call sites added in #157/#158
+// remain harmless.
 function _captureTrace(trace) {
   if (!trace || typeof trace !== "object") return false;
   if (!trace.operation && !trace.steps) return false;

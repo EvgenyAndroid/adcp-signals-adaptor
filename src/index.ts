@@ -109,6 +109,7 @@ import { handleMcpRequest } from "./mcp/server";
 import { jsonResponse, errorResponse, requireAuth } from "./routes/shared";
 import { createLogger } from "./utils/logger";
 import { requestId } from "./utils/ids";
+import { injectTraceIfMissing } from "./utils/trace";
 import { runSeedPipeline } from "./domain/seedPipeline";
 import { getDb } from "./storage/db";
 import { getAllSignalsForCatalog } from "./domain/signalService";
@@ -178,6 +179,7 @@ export default {
         const url = new URL(request.url);
         const path = url.pathname;
         const method = request.method.toUpperCase();
+        const _traceStart = Date.now();
 
         // CORS preflight
         if (method === "OPTIONS") {
@@ -803,6 +805,13 @@ export default {
                     404
                 );
             }
+
+            // Universal trace inject — every JSON 2xx response gets a
+            // baseline _trace if the handler didn't build one. Handlers
+            // that DO build a richer trace (Discover, NL Query, federation,
+            // orchestrate, etc.) are detected and passed through unchanged.
+            // See src/utils/trace.ts for the implementation.
+            response = await injectTraceIfMissing(response, path, _traceStart, method);
 
             return withCors(response);
         } catch (err) {

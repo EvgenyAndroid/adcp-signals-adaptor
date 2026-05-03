@@ -536,49 +536,60 @@ async function callGetSignals(
         result.hasMore = false;
     }
 
-    // Sec-31z: AAO `pagination_walk` envelope cleanup.
+    // Sec-31w-final: pagination shape grounded in authoritative schema.
     //
-    // searchSignalsService returns a response with these top-level
-    // fields aimed at REST callers + the demo trace inspector:
-    //   message, context_id, signals, count, totalCount, offset,
-    //   hasMore, _trace
+    // /schemas/source/core/pagination-response.json (HEAD) defines:
+    //   {
+    //     "has_more":   boolean   (REQUIRED),
+    //     "cursor":     string    (optional, only when has_more=true),
+    //     "total_count": integer  (optional)
+    //   }
+    //   "additionalProperties": false
     //
-    // AAO's get_signals_pagination_integrity check expects a v3-style
-    // envelope: pagination structured under a single sub-object, no
-    // legacy v2 flat fields, and no debugging _trace at top level.
+    // The strict additionalProperties:false means ANY extra field
+    // (page_size, offset, next_offset, etc.) FAILS schema validation
+    // under AJV strict mode. PR #177's pagination block included
+    // page_size/offset/next_offset — those were guesses, not
+    // schema-compliant. Reverted here to the literal three-field shape.
     //
-    // This block normalises the MCP-returned shape ONLY (REST
-    // /signals/search keeps its existing flat shape so other clients
-    // that depend on it don't break):
-    //   - strip _trace (UI-only debugging field)
-    //   - strip count, totalCount, offset, hasMore from top level
-    //   - emit pagination: { total_count, page_size, offset, has_more,
-    //                        next_offset? } as a single sub-object
-    const pageSize = (req as { limit: number }).limit;
+    // We don't emit `cursor` because we're not actually cursor-paginated
+    // — our pagination is offset-based on the search result set. Buyers
+    // who need a "next page" pass max_results + offset on the next
+    // request. cursor: undefined is permitted by the schema (optional
+    // field).
     const pageOffset = (req as { offset: number }).offset;
     const totalCount = (result as { totalCount: number }).totalCount;
     const hasMore = pageOffset + result.signals.length < totalCount;
     const paginationBlock = {
-        total_count: totalCount,
-        page_size: pageSize,
-        offset: pageOffset,
         has_more: hasMore,
-        ...(hasMore ? { next_offset: pageOffset + result.signals.length } : {}),
+        total_count: totalCount,
     };
 
     // Echo back the request's context block. Signals storyboard validates
     // `context.correlation_id` round-trips. Per /schemas/core/context.json,
-    // context is opaque — copy through unchanged. Same pattern as
-    // get_adcp_capabilities.
+    // context is opaque — copy through unchanged.
     const ctx = args["context"];
 
-    // Build the v3-clean response. Only message, context_id, signals,
-    // pagination, and (optionally) context survive; legacy fields are
-    // dropped. proposals (when present) is preserved as it's an AdCP-
-    // native field, not a v2 holdover.
+    // Sec-31w-final: get-signals-response payload per spec. Authoritative
+    // schema (/schemas/source/protocol/signals/get-signals-response.json):
+    //
+    //   required: [signals]
+    //   properties: signals, errors, pagination, sandbox, context, ext
+    //   additionalProperties: true
+    //
+    // Envelope-only fields (NOT in payload): context_id, task_id, status,
+    // message, timestamp, replayed, adcp_error. These belong on
+    // protocol-envelope.json (the MCP/A2A/REST layer wrapper) per its
+    // header text:
+    //   "Task response schemas should NOT include these fields — they
+    //    are protocol-level concerns."
+    //
+    // PR #177's normalisation kept message + context_id at top level as
+    // legacy holdovers; this finalisation removes them along with the
+    // demo-trace _trace and the v2 flat fields (count/totalCount/
+    // offset/hasMore). Result is a payload that is structurally
+    // schema-clean.
     const cleanResponse: Record<string, unknown> = {
-        message: (result as { message: string }).message,
-        context_id: (result as { context_id: string }).context_id,
         signals: result.signals,
         pagination: paginationBlock,
     };
@@ -690,20 +701,39 @@ async function callActivateSignal(
             ? { context: ctx as Record<string, unknown> }
             : {};
 
-        // Sec-31z: AAO v3_envelope_integrity — top-level `status` is
-        // the v2 holdover Addie flagged. v3 conveys success via the
-        // presence of valid deployments + message; status was always
-        // a duplicate signal. Removed from both success + synthetic
-        // paths. task_id is preserved (no schema-authoritative reason
-        // to rename it; will revisit if envelope_integrity surfaces it
-        // as a new finding).
-        const specResponse = {
-            task_id: result.task_id,
-            signal_agent_segment_id: signalId,
+        // Sec-31w-final: activate-signal-response payload per spec.
+        // Authoritative schema (/schemas/source/signals/activate-signal-
+        // response.json) is a oneOf {success, error}:
+        //   success: required [deployments]
+        //            optional sandbox, context, ext
+        //            additionalProperties: true
+        //
+        // Envelope-only fields (per protocol-envelope.json header):
+        //   "Task response schemas should NOT include these fields"
+        //   → context_id, task_id, status, message, timestamp,
+        //     replayed, adcp_error
+        //
+        // Stripped from this payload: task_id, status (was already gone),
+        //   message, context_id, pricing_option_id, signal_agent_segment_id,
+        //   webhook_url at top level. None are in the activate-signal-
+        //   response schema's properties; while additionalProperties:true
+        //   permits them, they pollute the protocol-vs-payload boundary
+        //   that the AAO envelope_integrity check enforces.
+        //
+        // BUT: our demo's poll loop reads task_id off the response to
+        // call get_operation_status. To keep the demo working without
+        // re-polluting the payload, the task_id rides inside `ext`
+        // (which IS in the payload schema's properties). Demo reads
+        // `act.task_id ?? act.ext?.task_id` — backward-compat aware.
+        const specResponse: Record<string, unknown> = {
             deployments: responseDeployments,
-            ...(webhookUrl ? { webhook_url: webhookUrl } : {}),
-            ...(pricingOptionId ? { pricing_option_id: pricingOptionId } : {}),
             ...contextEcho,
+            ext: {
+                task_id: result.task_id,
+                ...(webhookUrl ? { webhook_url: webhookUrl } : {}),
+                ...(pricingOptionId ? { pricing_option_id: pricingOptionId } : {}),
+                signal_agent_segment_id: signalId,
+            },
         };
 
         return toolResult(JSON.stringify(specResponse, null, 2), specResponse);
@@ -822,25 +852,17 @@ async function callActivateSignal(
                 });
             const responseDeployments = [leadDeployment, ...trailingDeployments];
             const ctx = args["context"];
-            const correlationId = (ctx && typeof ctx === "object" && !Array.isArray(ctx)
-                ? (ctx as Record<string, unknown>)["correlation_id"]
-                : undefined) as string | undefined;
             const contextEcho = ctx && typeof ctx === "object" && !Array.isArray(ctx)
                 ? { context: ctx as Record<string, unknown> }
                 : {};
-            const syntheticResponse = {
-                // v3 envelope: message + context_id + deployments are
-                // the protocol-meaningful fields. status removed (v2
-                // holdover per Addie's envelope_integrity check).
-                // task_id preserved (no schema-authoritative reason to
-                // rename yet; envelope_integrity will surface it if so).
-                message: "Signal activated (synthetic response for unknown segment ID)",
-                context_id: correlationId ?? `ctx_synthetic_${Date.now()}_${signalId}`.slice(0, 64),
-                task_id: `task_synthetic_${Date.now()}_${signalId}`.slice(0, 64),
-                signal_agent_segment_id: signalId,
+            // Sec-31w-final: synthetic response also payload-pure per
+            // activate-signal-response schema. correlationId tracking
+            // (was used for the now-removed context_id field) is
+            // dropped; the request's context block — which carries the
+            // storyboard's correlation_id — already echoes back
+            // unchanged via contextEcho.
+            const syntheticResponse: Record<string, unknown> = {
                 deployments: responseDeployments,
-                ...(webhookUrl ? { webhook_url: webhookUrl } : {}),
-                ...(pricingOptionId ? { pricing_option_id: pricingOptionId } : {}),
                 ...contextEcho,
             };
             logger.warn("activate_unknown_signal_synthetic", { signalId });

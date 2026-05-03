@@ -251,6 +251,36 @@ def main() -> int:
     print(f"Auditing {len(targets)} files for SCRIPT_TAG escape traps...")
     print()
 
+    # Sec-31w-final: Trap-5 — ODD number of unescaped backticks in
+    # source. The region-based audit above can be fooled by a backtick
+    # in a comment INSIDE the template literal, because that backtick
+    # closes the outer literal early and the audit then treats
+    # everything after as "outside the region." When that happens, the
+    # file has an odd backtick count overall (well-formed template
+    # literals always come in matched pairs).
+    #
+    # Cheap-and-correct check: count unescaped backticks in each file.
+    # An odd count is unconditionally a syntax bug — TypeScript will
+    # fail to compile, but the audit runs faster than tsc and surfaces
+    # the location in the same report.
+    odd_backtick_files: list[tuple[str, int]] = []
+    for path in targets:
+        text = path.read_text(encoding="utf-8")
+        count = 0
+        i = 0
+        while i < len(text):
+            if text[i] == BACKTICK:
+                bs = 0
+                k = i - 1
+                while k >= 0 and text[k] == BS:
+                    bs += 1
+                    k -= 1
+                if bs % 2 == 0:
+                    count += 1
+            i += 1
+        if count % 2 != 0:
+            odd_backtick_files.append((path.relative_to(REPO_ROOT).as_posix(), count))
+
     for path in targets:
         rel = path.relative_to(REPO_ROOT).as_posix()
         traps_apo, traps_esc, traps_regex, traps_bt = audit_file(path)
@@ -282,6 +312,14 @@ def main() -> int:
         total_bt += len(traps_bt)
 
     print(f"Totals  Trap1={total_apo}  Trap2={total_esc}  Trap3={total_regex}  Trap4={total_bt}")
+    if odd_backtick_files:
+        any_findings = True
+        print()
+        print("Trap 5 — ODD unescaped backtick count (unmatched template literal):")
+        for rel, count in odd_backtick_files:
+            print(f"  {rel}: {count} unescaped backticks")
+        print("  (One often hides in a comment inside the template literal — search")
+        print("   for ` and replace with single quotes or backslash-escape: \\`)")
     if any_findings:
         print()
         print("REMEDIATION:")

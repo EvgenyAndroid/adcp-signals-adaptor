@@ -74,7 +74,12 @@ async function callTool(name, args, label) {
   if (!j.result?.content?.[0]?.text) return { label, ok: false, error: "no result.content[0].text" };
   let payload;
   try { payload = JSON.parse(j.result.content[0].text); } catch (e) { return { label, ok: false, error: `parse: ${e.message}` }; }
-  return { label, ok: true, payload };
+  // Capture structuredContent too — per AdCP MCP transport binding
+  // (mcp-response-extraction.mdx + adcp#3999 ruling), envelope fields
+  // (status, task_id, ...) live at the top level of structuredContent.
+  // The runner's `envelope_field_present` check traverses this.
+  const structured = j.result.structuredContent;
+  return { label, ok: true, payload, structured };
 }
 
 function validate(schemaId, payload, label) {
@@ -136,28 +141,49 @@ for (const r of checks) {
     continue;
   }
   console.log(`  payload top-level keys: ${Object.keys(r.payload).sort().join(", ")}`);
+  // MCP envelope check (adcp#3999): the AAO runner asserts `status` is
+  // present at the top level of structuredContent. Body-schema validation
+  // is not sufficient — the body schemas describe only the payload portion.
+  const structuredKeys = r.structured && typeof r.structured === "object"
+    ? Object.keys(r.structured).sort().join(", ")
+    : "(no structuredContent)";
+  console.log(`  structuredContent top-level keys: ${structuredKeys}`);
+  const envelopeStatus = r.structured?.status;
+  const envelopeOk = typeof envelopeStatus === "string" && envelopeStatus.length > 0;
+  if (envelopeOk) {
+    console.log(`  ✅ envelope status present: "${envelopeStatus}"`);
+  } else {
+    console.log(`  ❌ envelope status MISSING — runner will fail envelope_field_present:status`);
+  }
   let schemaId;
   if (r.label.startsWith("get_adcp_capabilities")) schemaId = "/schemas/3.0.1/protocol/get-adcp-capabilities-response.json";
   else if (r.label.startsWith("get_signals")) schemaId = "/schemas/3.0.1/signals/get-signals-response.json";
   else if (r.label.startsWith("activate_signal")) schemaId = "/schemas/3.0.1/signals/activate-signal-response.json";
   if (!schemaId) {
-    results.push({ label: r.label, schemaCheck: "no schema id resolved" });
+    results.push({ label: r.label, schemaCheck: "no schema id resolved", envelopeOk });
     continue;
   }
   const v = validate(schemaId, r.payload, r.label);
-  if (v.ok) {
+  const schemaPassed = v.ok;
+  if (schemaPassed) {
     console.log(`  ✅ valid against ${schemaId}`);
-    results.push({ label: r.label, ok: true });
   } else {
     console.log(`  ❌ FAILED ${schemaId}`);
     if (v.error) console.log(`     ${v.error}`);
     for (const err of (v.errors || []).slice(0, 8)) {
       console.log(`     - ${err.instancePath || "(root)"}: ${err.message} (${err.keyword})`);
     }
-    results.push({ label: r.label, ok: false, errors: v.errors });
   }
+  // Both checks must pass — body schema AND MCP envelope binding.
+  const ok = schemaPassed && envelopeOk;
+  results.push({ label: r.label, ok, schemaOk: schemaPassed, envelopeOk, errors: v.errors });
 }
 
 const allOk = results.every((r) => r.ok);
-console.log(`\n=== Summary: ${results.filter((r) => r.ok).length}/${results.length} passed ===`);
+const schemaPassedCount = results.filter((r) => r.schemaOk).length;
+const envelopePassedCount = results.filter((r) => r.envelopeOk).length;
+console.log(`\n=== Summary ===`);
+console.log(`  Body schema:     ${schemaPassedCount}/${results.length} passed`);
+console.log(`  MCP envelope:    ${envelopePassedCount}/${results.length} passed`);
+console.log(`  Combined:        ${results.filter((r) => r.ok).length}/${results.length} passed`);
 process.exit(allOk ? 0 : 1);

@@ -395,8 +395,14 @@ async function handleToolCall(
         case "search_concepts": {
             // handleConceptToolCall returns a plain object; wrap it in MCP tool
             // result format with both stringified text and structuredContent.
+            // MCP transport binding (adcp#3999): synchronous concept lookup
+            // → completed envelope status.
             const conceptResult = handleConceptToolCall(resolvedName, args);
-            return toolResult(JSON.stringify(conceptResult, null, 2), conceptResult);
+            const conceptResponse = withMcpEnvelope(
+                { status: "completed" },
+                conceptResult as Record<string, unknown>
+            );
+            return toolResult(JSON.stringify(conceptResponse, null, 2), conceptResponse);
         }
         default:
             throw new McpToolError(`Tool not implemented: ${name}`);
@@ -429,9 +435,13 @@ async function callGetCapabilities(
     // /schemas/core/context.json, context is opaque — we don't parse it, we
     // copy it through unchanged.
     const ctx = args["context"];
-    const response = ctx && typeof ctx === "object" && !Array.isArray(ctx)
+    const payload = ctx && typeof ctx === "object" && !Array.isArray(ctx)
         ? { ...caps, context: ctx as Record<string, unknown> }
         : caps;
+
+    // MCP transport binding (adcp#3999): envelope fields flat-merged into
+    // structuredContent. Capability discovery is fully synchronous → completed.
+    const response = withMcpEnvelope({ status: "completed" }, payload as Record<string, unknown>);
 
     return toolResult(JSON.stringify(response, null, 2), response);
 }
@@ -620,7 +630,11 @@ async function callGetSignals(
         cleanResponse["context"] = ctx as Record<string, unknown>;
     }
 
-    return toolResult(JSON.stringify(cleanResponse, null, 2), cleanResponse);
+    // MCP transport binding (adcp#3999): envelope fields flat-merged into
+    // structuredContent. Signals discovery is fully synchronous → completed.
+    const response = withMcpEnvelope({ status: "completed" }, cleanResponse);
+
+    return toolResult(JSON.stringify(response, null, 2), response);
 }
 
 async function callActivateSignal(
@@ -722,31 +736,27 @@ async function callActivateSignal(
             ? { context: ctx as Record<string, unknown> }
             : {};
 
-        // Sec-31w-final: activate-signal-response payload per spec.
-        // Authoritative schema (/schemas/source/signals/activate-signal-
-        // response.json) is a oneOf {success, error}:
+        // activate-signal-response payload per spec
+        // (/schemas/source/signals/activate-signal-response.json):
         //   success: required [deployments]
         //            optional sandbox, context, ext
         //            additionalProperties: true
         //
-        // Envelope-only fields (per protocol-envelope.json header):
-        //   "Task response schemas should NOT include these fields"
-        //   → context_id, task_id, status, message, timestamp,
-        //     replayed, adcp_error
+        // MCP transport binding (adcp#3999, mcp-response-extraction.mdx):
+        //   envelope fields (status, task_id, context_id, message) live at
+        //   the TOP LEVEL of structuredContent — flat-merged with payload.
+        //   Sec-31w-final's strip-everything-envelope approach was wrong
+        //   for MCP (right for REST/A2A, where envelope is a true wrapper).
         //
-        // Stripped from this payload: task_id, status (was already gone),
-        //   message, context_id, pricing_option_id, signal_agent_segment_id,
-        //   webhook_url at top level. None are in the activate-signal-
-        //   response schema's properties; while additionalProperties:true
-        //   permits them, they pollute the protocol-vs-payload boundary
-        //   that the AAO envelope_integrity check enforces.
+        // Activation here is asynchronous: the service queues a job and
+        // returns task_id; deployment.is_live transitions later. Per
+        // task-status enum, "submitted" is the right initial state ("Task
+        // accepted and queued for long-running execution").
         //
-        // BUT: our demo's poll loop reads task_id off the response to
-        // call get_operation_status. To keep the demo working without
-        // re-polluting the payload, the task_id rides inside `ext`
-        // (which IS in the payload schema's properties). Demo reads
-        // `act.task_id ?? act.ext?.task_id` — backward-compat aware.
-        const specResponse: Record<string, unknown> = {
+        // task_id is also kept inside `ext` for demo backward-compat: the
+        // demo's poll loop was updated in #179 to read
+        // `act.task_id ?? act.ext?.task_id`, so either location works.
+        const payload: Record<string, unknown> = {
             deployments: responseDeployments,
             ...contextEcho,
             ext: {
@@ -756,6 +766,10 @@ async function callActivateSignal(
                 signal_agent_segment_id: signalId,
             },
         };
+        const specResponse = withMcpEnvelope(
+            { status: "submitted", task_id: result.task_id },
+            payload
+        );
 
         return toolResult(JSON.stringify(specResponse, null, 2), specResponse);
     } catch (err) {
@@ -876,16 +890,19 @@ async function callActivateSignal(
             const contextEcho = ctx && typeof ctx === "object" && !Array.isArray(ctx)
                 ? { context: ctx as Record<string, unknown> }
                 : {};
-            // Sec-31w-final: synthetic response also payload-pure per
-            // activate-signal-response schema. correlationId tracking
-            // (was used for the now-removed context_id field) is
-            // dropped; the request's context block — which carries the
-            // storyboard's correlation_id — already echoes back
-            // unchanged via contextEcho.
-            const syntheticResponse: Record<string, unknown> = {
+            // Synthetic response for unknown-signal storyboard fixtures.
+            // Lead deployment claims is_live: true (no async backend) so
+            // the AAO runner sees a sync activation — envelope status is
+            // "completed". MCP envelope fields (status) flat-merged via
+            // withMcpEnvelope per adcp#3999.
+            const syntheticPayload: Record<string, unknown> = {
                 deployments: responseDeployments,
                 ...contextEcho,
             };
+            const syntheticResponse = withMcpEnvelope(
+                { status: "completed" },
+                syntheticPayload
+            );
             logger.warn("activate_unknown_signal_synthetic", { signalId });
             return toolResult(JSON.stringify(syntheticResponse, null, 2), syntheticResponse);
         }
@@ -904,7 +921,16 @@ async function callGetOperation(
     try {
         const db = getDb(env);
         const result = await getOperationService(db, taskId, logger, env.WEBHOOK_SIGNING_SECRET);
-        return toolResult(JSON.stringify(result, null, 2), result);
+        // get_operation_status itself is synchronous (it READS another task's
+        // current state). Envelope status="completed" reflects the operation
+        // status query — the underlying task's status is in the payload via
+        // result.status (and is preserved on collision since payload wins).
+        // task_id is echoed at envelope level to mirror the queried task ID.
+        const response = withMcpEnvelope(
+            { status: "completed", task_id: taskId },
+            result as unknown as Record<string, unknown>
+        );
+        return toolResult(JSON.stringify(response, null, 2), response);
     } catch (err) {
         if (err instanceof NotFoundError) throw new McpToolError(err.message);
         throw err;
@@ -970,11 +996,20 @@ async function callGetSimilarSignals(
             ...toSignalSummary(x.signal),
             cosine_similarity: Math.round(x.similarity * 1000) / 1000,
         })),
-        context_id: requestId(),
         count: scored.length,
     };
 
-    return toolResult(JSON.stringify(result, null, 2), result);
+    // MCP transport binding (adcp#3999): synchronous similarity search → completed.
+    // The legacy top-level context_id (used by an older trace pipeline) is
+    // dropped in favor of the spec envelope; if a request supplies context.*
+    // we echo it through the regular `context` field. Here we just emit
+    // a fresh request id as the envelope context_id for correlation.
+    const response = withMcpEnvelope(
+        { status: "completed", context_id: requestId() },
+        result as Record<string, unknown>
+    );
+
+    return toolResult(JSON.stringify(response, null, 2), response);
 }
 
 async function callQuerySignalsNl(
@@ -993,6 +1028,16 @@ async function callQuerySignalsNl(
     const text = await res.text();
     let structured: unknown;
     try { structured = JSON.parse(text); } catch { /* leave undefined — text-only result */ }
+    // MCP transport binding (adcp#3999): when the NL response is a structured
+    // object, flat-merge the envelope status. Plain-text responses skip the
+    // envelope (no structuredContent emitted; envelope semantics don't apply).
+    if (structured && typeof structured === "object" && !Array.isArray(structured)) {
+        const wrapped = withMcpEnvelope(
+            { status: "completed" },
+            structured as Record<string, unknown>
+        );
+        return toolResult(JSON.stringify(wrapped, null, 2), wrapped);
+    }
     return toolResult(text, structured);
 }
 
@@ -1019,6 +1064,48 @@ export function toolResult(text: string, structured?: unknown): unknown {
         result["structuredContent"] = structured;
     }
     return result;
+}
+
+/**
+ * Apply the AdCP MCP transport-binding envelope to a tool response payload.
+ *
+ * Per `mcp-response-extraction.mdx` (AdCP 3.0) and the maintainer ruling on
+ * adcontextprotocol/adcp#3999, MCP responses carry the protocol envelope
+ * fields (`status`, `task_id`, `context_id`, `message`) at the TOP LEVEL of
+ * `structuredContent` — flat-merged with the body payload. The `payload`
+ * nesting visible in `protocol-envelope.json` examples is the abstract
+ * shape; MCP-specific binding flattens it. Confirmed by
+ * `static/test-vectors/mcp-response-extraction.json` whose `expected_data`
+ * vectors are flat objects of envelope+payload fields.
+ *
+ * AAO's compliance runner enforces this via `envelope_field_present:
+ * status`. Body-schema validation (`get-signals-response.json` etc.) is
+ * NECESSARY but NOT SUFFICIENT — those schemas describe only the payload
+ * portion of the envelope.
+ *
+ * The envelope object is spread BEFORE the payload so that payload-level
+ * fields can override (e.g. `get_operation_status` returns the underlying
+ * task's `status`, which must win over a default).
+ *
+ * Accepted statuses (from /schemas/3.0.1/enums/task-status.json):
+ *   submitted | working | input-required | completed | canceled |
+ *   failed | rejected | auth-required | unknown
+ */
+function withMcpEnvelope(
+    envelope: { status: string; task_id?: string; context_id?: string; message?: string },
+    payload: Record<string, unknown>
+): Record<string, unknown> {
+    const out: Record<string, unknown> = { status: envelope.status };
+    if (envelope.task_id !== undefined) out["task_id"] = envelope.task_id;
+    if (envelope.context_id !== undefined) out["context_id"] = envelope.context_id;
+    if (envelope.message !== undefined) out["message"] = envelope.message;
+    for (const [k, v] of Object.entries(payload)) {
+        // Spread payload over envelope fields — payload wins on collision so
+        // tools that legitimately surface their own status (e.g. get_operation_status)
+        // override the default.
+        out[k] = v;
+    }
+    return out;
 }
 
 /**

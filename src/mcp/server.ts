@@ -658,41 +658,91 @@ async function callActivateSignal(
             throw new McpToolError(err.message);
         }
         if (err instanceof NotFoundError) {
-            // Mirror the REQUEST's deployment types in the response so
-            // the storyboard's deployments[0].type assertion matches:
-            //   activate_on_platform → first deployment is type:"platform"
-            //   activate_on_agent    → first deployment is type:"agent"
-            // This is critical for storyboard validation — the fixture
-            // signal IDs (prism_high_ltv, prism_cart_abandoner) won't
-            // resolve, but as long as the response shape is right and
-            // ordering matches, both steps pass.
-            const inputDeployments = Array.isArray(raw)
-                ? (raw as Array<Record<string, unknown>>)
-                : [{ type: "platform", platform: destination }];
-            const responseDeployments = inputDeployments.map((dep) => {
-                const depType = dep["type"] as string;
-                if (depType === "agent") {
+            // Sec-31y: synthetic response MUST honor destinationType as
+            // source-of-truth, not the inputDeployments array shape.
+            //
+            // Why: AAO's signal_owned storyboard for activate_on_agent
+            // sends the destination type in multiple shapes — sometimes
+            // top-level (destinationType: "agent"), sometimes via
+            // destinations: [{type: "agent"}], sometimes destinations:
+            // [] with the intent encoded elsewhere. The earlier
+            // implementation mirrored the inputDeployments array which
+            // missed the empty-array and top-level-only cases — the
+            // storyboard's deployments[0].type assertion then saw
+            // "platform" from the fallback (or undefined) and step 5
+            // failed despite step 4 passing.
+            //
+            // Fix: use the already-parsed destinationType variable as
+            // the single signal of intent. If the request says agent,
+            // emit an agent deployment as deployments[0] regardless of
+            // what's in the inputDeployments array (or whether it's
+            // empty). Same for platform.
+            //
+            // We also preserve any additional input deployments after
+            // the lead so multi-destination requests still get full
+            // mirror semantics — but the LEAD is always the requested
+            // destinationType.
+            const isAgentRequest = destinationType === "agent";
+            const leadDeployment = isAgentRequest
+                ? {
+                      type: "agent" as const,
+                      agent_url: (firstEntry?.["agent_url"] as string)
+                          ?? destination
+                          ?? "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+                      // Synthetic claims is_live:true — no async backend
+                      // to await; storyboard treats sync as the happy path.
+                      is_live: true,
+                      activation_key: {
+                          type: "key_value" as const,
+                          key: "signal_agent_segment_id",
+                          value: signalId,
+                      },
+                      estimated_activation_duration_minutes: 0,
+                  }
+                : {
+                      type: "platform" as const,
+                      platform: (firstEntry?.["platform"] as string)
+                          ?? resolvedDestination,
+                      is_live: true,
+                      activation_key: {
+                          type: "segment_id" as const,
+                          segment_id: `${(firstEntry?.["platform"] as string) ?? resolvedDestination}_${signalId}`,
+                      },
+                      estimated_activation_duration_minutes: 0,
+                  };
+            // Append any additional inputDeployments past index 0, mapped
+            // through the same shape-conversion as the lead.
+            const trailingDeployments = (Array.isArray(raw) ? (raw as Array<Record<string, unknown>>) : [])
+                .slice(1)
+                .map((dep) => {
+                    const depType = dep["type"] as string;
+                    if (depType === "agent") {
+                        return {
+                            type: "agent" as const,
+                            agent_url: (dep["agent_url"] as string)
+                                ?? "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
+                            is_live: true,
+                            activation_key: {
+                                type: "key_value" as const,
+                                key: "signal_agent_segment_id",
+                                value: signalId,
+                            },
+                            estimated_activation_duration_minutes: 0,
+                        };
+                    }
+                    const platform = (dep["platform"] as string) ?? resolvedDestination;
                     return {
-                        type: "agent",
-                        agent_url: (dep["agent_url"] as string) ?? "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp",
-                        // Synthetic responses claim is_live:true since
-                        // there's no async backend to wait on — the
-                        // storyboard treats a sync activation as the
-                        // happy path.
+                        type: "platform" as const,
+                        platform,
                         is_live: true,
-                        activation_key: { type: "key_value", key: "signal_agent_segment_id", value: signalId },
+                        activation_key: {
+                            type: "segment_id" as const,
+                            segment_id: `${platform}_${signalId}`,
+                        },
                         estimated_activation_duration_minutes: 0,
                     };
-                }
-                const platform = (dep["platform"] as string) ?? resolvedDestination;
-                return {
-                    type: "platform",
-                    platform,
-                    is_live: true,
-                    activation_key: { type: "segment_id", segment_id: `${platform}_${signalId}` },
-                    estimated_activation_duration_minutes: 0,
-                };
-            });
+                });
+            const responseDeployments = [leadDeployment, ...trailingDeployments];
             const ctx = args["context"];
             const correlationId = (ctx && typeof ctx === "object" && !Array.isArray(ctx)
                 ? (ctx as Record<string, unknown>)["correlation_id"]

@@ -382,11 +382,68 @@ function renderVendorHealthCanvas(demoKey: string): string {
   .vc-spark {
     height: 24px;
     margin-top: 4px;
+    display: block;
+  }
+  .vc-spark-wrap {
+    position: relative;
+    margin-top: 4px;
   }
   .vc-spark-empty {
     font: 10px var(--font-mono);
     color: var(--text-faint);
     line-height: 24px;
+  }
+  /* Sparkline hover tooltip — anchored to mouse via inline left/top.
+     Hidden by default (display:none), JS toggles + positions on
+     mouseenter/leave of the sparkline points. */
+  .vc-spark-tooltip {
+    position: absolute;
+    display: none;
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    border-radius: 4px;
+    padding: 4px 7px;
+    font: 10px/1.4 var(--font-mono);
+    color: var(--text);
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 5;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  .vc-spark-tooltip.is-visible { display: block; }
+  .vc-spark-tooltip .tt-bucket {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: 1px;
+  }
+
+  /* Trend stats row — small pills under the sparkline showing
+     uptime%, p50 latency, and a directional arrow. Computed
+     client-side from the history ring buffer (24 entries). */
+  .vc-trend {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+    align-items: center;
+  }
+  .vc-trend-pill {
+    font: 10px/1 var(--font-mono);
+    padding: 3px 6px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+  }
+  .vc-trend-pill.good { color: var(--healthy); border-color: var(--healthy); }
+  .vc-trend-pill.bad  { color: var(--down); border-color: var(--down); }
+  .vc-trend-pill.neutral { color: var(--text-faint); }
+  .vc-trend-empty {
+    font: 10px var(--font-mono);
+    color: var(--text-faint);
+    margin-top: 6px;
   }
 
   .vc-foot {
@@ -479,6 +536,79 @@ function renderVendorHealthCanvas(demoKey: string): string {
     overflow-x: auto;
     white-space: pre-wrap;
     word-break: break-all;
+  }
+  /* Modal time-series chart — drill-down replacement for the textual
+     history dump. Renders the same KV ring-buffer history as the card
+     sparkline but at full size: x-axis sample index, y-axis latency
+     (ms), bucket-colored points, dashed threshold lines for the 2.5s
+     (degraded) and 5s (down) bucket boundaries.
+     Empty-state and stat-row visible always; chart fades in once
+     there's at least 1 datapoint. */
+  .modal-chart-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .modal-chart-stat {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+  .modal-chart-stat-label {
+    font: 9px/1 var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+    margin-bottom: 4px;
+  }
+  .modal-chart-stat-value {
+    font: 600 14px var(--font-mono);
+    color: var(--text);
+  }
+  .modal-chart-stat-value.good  { color: var(--healthy); }
+  .modal-chart-stat-value.bad   { color: var(--down); }
+  .modal-chart-stat-value.neutral { color: var(--text-dim); }
+  .modal-chart-host {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    overflow-x: auto;
+  }
+  .modal-chart-svg {
+    display: block;
+    max-width: 100%;
+    min-width: 600px;
+  }
+  .modal-chart-empty {
+    font: 12px/1.5 var(--font-mono);
+    color: var(--text-faint);
+    padding: 24px 12px;
+    text-align: center;
+  }
+  .modal-chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+    font: 10px/1 var(--font-mono);
+    color: var(--text-faint);
+  }
+  .modal-chart-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .modal-chart-legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+  .modal-chart-legend-dash {
+    display: inline-block;
+    width: 14px;
+    border-top: 1px dashed currentColor;
   }
   .modal-close {
     position: absolute;
@@ -613,7 +743,12 @@ function renderVendorHealthCanvas(demoKey: string): string {
     </div>
     <div class="modal-section">
       <div class="modal-section-title">Recent history</div>
-      <pre id="modal-history">no history</pre>
+      <!-- Stats row computed from KV ring buffer (24-entry, 7-day TTL).
+           Empty until first probe lands. -->
+      <div id="modal-chart-stats"></div>
+      <div class="modal-chart-host" id="modal-chart-host">
+        <div class="modal-chart-empty">No probe history yet.</div>
+      </div>
     </div>
   </div>
 </div>
@@ -645,7 +780,8 @@ function renderVendorHealthCanvas(demoKey: string): string {
   var elModalProbe = document.getElementById("modal-probe");
   var elModalCircuit = document.getElementById("modal-circuit");
   var elModalTools = document.getElementById("modal-tools");
-  var elModalHistory = document.getElementById("modal-history");
+  var elModalChartStats = document.getElementById("modal-chart-stats");
+  var elModalChartHost = document.getElementById("modal-chart-host");
 
   // ── Format helpers ─────────────────────────────────────────────────
   function fmtLatency(ms) {
@@ -678,6 +814,235 @@ function renderVendorHealthCanvas(demoKey: string): string {
       "<div class=\\"agg-card unknown\\"><div class=\\"agg-num unknown\\">" + counts.unknown + "</div><div class=\\"agg-label\\">unknown / roadmap</div></div>";
   }
 
+  // ── Stats + chart helpers ──────────────────────────────────────────
+  // All operate on the per-vendor history ring buffer (24 entries, 7-day
+  // TTL in KV). See src/storage/vendorHealthHistory.ts. These are the
+  // analytical layer that sits on top of the raw datapoint array — the
+  // dashboard card (small) and modal (large) both render through them.
+  function bucketColor(bucket) {
+    if (bucket === "healthy") return "#2ed573";
+    if (bucket === "degraded") return "#f0b400";
+    if (bucket === "down") return "#ff4d5e";
+    return "#6b7689";
+  }
+  function bucketBg(bucket) {
+    // Tinted background variant of bucketColor for stat-pill backgrounds.
+    if (bucket === "healthy") return "rgba(46,213,115,0.10)";
+    if (bucket === "degraded") return "rgba(240,180,0,0.10)";
+    if (bucket === "down") return "rgba(255,77,94,0.10)";
+    return "rgba(107,118,137,0.10)";
+  }
+  function median(arr) {
+    if (!arr || arr.length === 0) return 0;
+    var s = arr.slice().sort(function(a, b) { return a - b; });
+    return s[Math.floor(s.length * 0.5)];
+  }
+  function percentile(arr, p) {
+    if (!arr || arr.length === 0) return 0;
+    var s = arr.slice().sort(function(a, b) { return a - b; });
+    var idx = Math.min(s.length - 1, Math.floor(s.length * p));
+    return s[idx];
+  }
+  // Compute uptime%, p50/p95 latency, trend direction across the
+  // history window. Returns null if history is empty/unprobed.
+  // Trend heuristic: split probed datapoints into thirds; compare the
+  // last third's median latency to the first third's. ±20% = trend
+  // shift, otherwise stable. Need at least 6 probed samples.
+  function computeTrendStats(history) {
+    if (!history || history.length === 0) return null;
+    var probed = [];
+    for (var i = 0; i < history.length; i++) {
+      var dp = history[i];
+      if (dp && (dp.alive === true || dp.alive === false)) probed.push(dp);
+    }
+    if (probed.length === 0) return null;
+
+    var aliveCount = 0;
+    var lats = [];
+    for (var k = 0; k < probed.length; k++) {
+      if (probed[k].alive) aliveCount++;
+      if (typeof probed[k].latency_ms === "number") lats.push(probed[k].latency_ms);
+    }
+    var p50 = lats.length > 0 ? Math.round(percentile(lats, 0.50)) : null;
+    var p95 = lats.length > 0 ? Math.round(percentile(lats, 0.95)) : null;
+    var uptimePct = Math.round((aliveCount / probed.length) * 100);
+
+    var trend = "stable";
+    if (lats.length >= 6) {
+      var third = Math.max(2, Math.floor(lats.length / 3));
+      var firstChunk = lats.slice(0, third);
+      var lastChunk = lats.slice(-third);
+      var firstMed = median(firstChunk);
+      var lastMed = median(lastChunk);
+      // Avoid divide-by-zero with sub-1ms readings.
+      var rel = (lastMed - firstMed) / Math.max(firstMed, 1);
+      if (rel > 0.20) trend = "degrading";
+      else if (rel < -0.20) trend = "improving";
+    }
+
+    return {
+      uptime_pct: uptimePct,
+      p50_ms: p50,
+      p95_ms: p95,
+      samples: probed.length,
+      total_history: history.length,
+      trend: trend,
+      latest_bucket: probed[probed.length - 1].health_bucket || "unknown"
+    };
+  }
+
+  // Small pill row under the card sparkline. Empty if history is unprobed.
+  function renderTrendPills(stats) {
+    if (!stats) {
+      return "<div class=\\"vc-trend-empty\\">awaiting first probe</div>";
+    }
+    var trendIcon = stats.trend === "improving" ? "↘" :
+                    stats.trend === "degrading" ? "↗" : "→";
+    var trendClass = stats.trend === "improving" ? "good" :
+                     stats.trend === "degrading" ? "bad" : "neutral";
+    var trendTitle = stats.trend === "improving" ? "latency improving over recent probes" :
+                     stats.trend === "degrading" ? "latency degrading over recent probes" :
+                     "latency stable over recent probes";
+    var p50Display = stats.p50_ms !== null ? stats.p50_ms + "ms" : "—";
+    var uptimeClass = stats.uptime_pct === 100 ? "good" :
+                      stats.uptime_pct < 70 ? "bad" : "neutral";
+    return "<div class=\\"vc-trend\\">" +
+      "<span class=\\"vc-trend-pill " + uptimeClass + "\\" title=\\"alive in " + Math.round(stats.uptime_pct * stats.samples / 100) + " of " + stats.samples + " probes\\">uptime " + stats.uptime_pct + "%</span>" +
+      "<span class=\\"vc-trend-pill\\" title=\\"median latency, last " + stats.samples + " probes\\">p50 " + p50Display + "</span>" +
+      "<span class=\\"vc-trend-pill " + trendClass + "\\" title=\\"" + trendTitle + "\\">" + trendIcon + "</span>" +
+      "</div>";
+  }
+
+  // Larger time-series chart for the drill-down modal. Renders the SAME
+  // history as the card sparkline at full size with axes, dashed
+  // threshold lines (2.5s = degraded, 5s = down), and bucket-colored
+  // points along the line. Width adapts to the modal but min-width 600.
+  function renderHistoryChart(history) {
+    if (!history || history.length === 0) {
+      return "<div class=\\"modal-chart-empty\\">No probe history yet. Hit \\"Live probe (all)\\" or the per-card re-probe button to start collecting datapoints.</div>";
+    }
+    var w = 700, h = 220;
+    var padX = 50, padTop = 16, padBottom = 32;
+    var plotW = w - padX * 2;
+    var plotH = h - padTop - padBottom;
+
+    // Y-axis scale: max latency, floored at 1s and rounded up to 1s tick.
+    var maxLat = 0;
+    for (var i = 0; i < history.length; i++) {
+      var l = history[i].latency_ms;
+      if (typeof l === "number" && l > maxLat) maxLat = l;
+    }
+    if (maxLat < 1000) maxLat = 1000;
+    maxLat = Math.ceil(maxLat / 1000) * 1000;
+
+    var step = history.length > 1 ? plotW / (history.length - 1) : 0;
+    var pathParts = [];
+    var pointMarkers = [];
+    for (var j = 0; j < history.length; j++) {
+      var x = padX + j * step;
+      var dp = history[j];
+      var y;
+      if (typeof dp.latency_ms === "number") {
+        y = padTop + plotH - (dp.latency_ms / maxLat) * plotH;
+      } else {
+        // Probed but no latency — render at the baseline.
+        y = padTop + plotH;
+      }
+      pathParts.push((j === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1));
+      var color = bucketColor(dp.health_bucket || "unknown");
+      var titleText = (dp.ts || "?") + "\\u000a" +
+        "bucket: " + (dp.health_bucket || "unknown") + "\\u000a" +
+        "latency: " + (typeof dp.latency_ms === "number" ? dp.latency_ms + "ms" : "—") + "\\u000a" +
+        "alive: " + (dp.alive ? "yes" : "no") +
+        (dp.circuit_state ? "\\u000acircuit: " + dp.circuit_state : "");
+      pointMarkers.push(
+        "<circle cx=\\"" + x.toFixed(1) + "\\" cy=\\"" + y.toFixed(1) +
+        "\\" r=\\"3.5\\" fill=\\"" + color +
+        "\\" stroke=\\"#0a0d12\\" stroke-width=\\"1\\"><title>" +
+        escapeHtml(titleText) + "</title></circle>"
+      );
+    }
+
+    // Y-axis ticks (5 ticks: 0, 25%, 50%, 75%, 100%)
+    var ticks = [0, maxLat * 0.25, maxLat * 0.5, maxLat * 0.75, maxLat];
+    var yTicksHtml = "";
+    for (var t = 0; t < ticks.length; t++) {
+      var ty = padTop + plotH - (ticks[t] / maxLat) * plotH;
+      var label = ticks[t] >= 1000 ? (ticks[t] / 1000).toFixed(1) + "s" : Math.round(ticks[t]) + "ms";
+      yTicksHtml += "<text x=\\"" + (padX - 8) + "\\" y=\\"" + (ty + 3) +
+        "\\" text-anchor=\\"end\\" font-size=\\"10\\" fill=\\"#5b6679\\" font-family=\\"monospace\\">" +
+        label + "</text>";
+      yTicksHtml += "<line x1=\\"" + padX + "\\" y1=\\"" + ty +
+        "\\" x2=\\"" + (padX + plotW) + "\\" y2=\\"" + ty +
+        "\\" stroke=\\"#232b38\\" stroke-width=\\"0.5\\" opacity=\\"0.6\\"/>";
+    }
+
+    // Threshold annotations (only render if visible in plot range).
+    var thresh1Y = padTop + plotH - (2500 / maxLat) * plotH;
+    var thresh2Y = padTop + plotH - (5000 / maxLat) * plotH;
+    var threshHtml = "";
+    if (thresh1Y >= padTop && thresh1Y <= padTop + plotH) {
+      threshHtml += "<line x1=\\"" + padX + "\\" y1=\\"" + thresh1Y +
+        "\\" x2=\\"" + (padX + plotW) + "\\" y2=\\"" + thresh1Y +
+        "\\" stroke=\\"#f0b400\\" stroke-width=\\"0.7\\" stroke-dasharray=\\"3,3\\" opacity=\\"0.7\\"/>";
+    }
+    if (thresh2Y >= padTop && thresh2Y <= padTop + plotH) {
+      threshHtml += "<line x1=\\"" + padX + "\\" y1=\\"" + thresh2Y +
+        "\\" x2=\\"" + (padX + plotW) + "\\" y2=\\"" + thresh2Y +
+        "\\" stroke=\\"#ff4d5e\\" stroke-width=\\"0.7\\" stroke-dasharray=\\"3,3\\" opacity=\\"0.7\\"/>";
+    }
+
+    // X-axis label
+    var xLabel = "<text x=\\"" + (padX + plotW / 2) + "\\" y=\\"" + (h - 4) +
+      "\\" text-anchor=\\"middle\\" font-size=\\"10\\" fill=\\"#5b6679\\" font-family=\\"monospace\\">probe sample (oldest → newest, " +
+      history.length + " of 24 max)</text>";
+
+    // Y-axis label (rotated)
+    var yLabel = "<text x=\\"14\\" y=\\"" + (padTop + plotH / 2) +
+      "\\" transform=\\"rotate(-90 14," + (padTop + plotH / 2) +
+      ")\\" text-anchor=\\"middle\\" font-size=\\"10\\" fill=\\"#5b6679\\" font-family=\\"monospace\\">latency</text>";
+
+    var legend = "<div class=\\"modal-chart-legend\\">" +
+      "<span class=\\"modal-chart-legend-item\\"><span class=\\"modal-chart-legend-dot\\" style=\\"background:#2ed573\\"></span>healthy</span>" +
+      "<span class=\\"modal-chart-legend-item\\"><span class=\\"modal-chart-legend-dot\\" style=\\"background:#f0b400\\"></span>degraded</span>" +
+      "<span class=\\"modal-chart-legend-item\\"><span class=\\"modal-chart-legend-dot\\" style=\\"background:#ff4d5e\\"></span>down</span>" +
+      "<span class=\\"modal-chart-legend-item\\"><span class=\\"modal-chart-legend-dot\\" style=\\"background:#6b7689\\"></span>unknown</span>" +
+      "<span class=\\"modal-chart-legend-item\\" style=\\"color:#f0b400\\"><span class=\\"modal-chart-legend-dash\\"></span>2.5s degraded threshold</span>" +
+      "<span class=\\"modal-chart-legend-item\\" style=\\"color:#ff4d5e\\"><span class=\\"modal-chart-legend-dash\\"></span>5s down threshold</span>" +
+      "</div>";
+
+    return "<svg class=\\"modal-chart-svg\\" viewBox=\\"0 0 " + w + " " + h +
+      "\\" preserveAspectRatio=\\"xMidYMid meet\\">" +
+      yTicksHtml +
+      threshHtml +
+      "<path d=\\"" + pathParts.join(" ") +
+      "\\" fill=\\"none\\" stroke=\\"#38b6ff\\" stroke-width=\\"1.5\\"/>" +
+      pointMarkers.join("") +
+      yLabel +
+      xLabel +
+      "</svg>" +
+      legend;
+  }
+
+  // Modal stat row: 4 stats showing uptime, p50/p95 latency, trend.
+  function renderChartStats(stats) {
+    if (!stats) return "";
+    var uptimeClass = stats.uptime_pct === 100 ? "good" :
+                      stats.uptime_pct < 70 ? "bad" : "neutral";
+    var trendIcon = stats.trend === "improving" ? "↘ improving" :
+                    stats.trend === "degrading" ? "↗ degrading" : "→ stable";
+    var trendClass = stats.trend === "improving" ? "good" :
+                     stats.trend === "degrading" ? "bad" : "neutral";
+    var p50 = stats.p50_ms !== null ? stats.p50_ms + " ms" : "—";
+    var p95 = stats.p95_ms !== null ? stats.p95_ms + " ms" : "—";
+    return "<div class=\\"modal-chart-stats\\">" +
+      "<div class=\\"modal-chart-stat\\"><div class=\\"modal-chart-stat-label\\">uptime</div><div class=\\"modal-chart-stat-value " + uptimeClass + "\\">" + stats.uptime_pct + "%</div></div>" +
+      "<div class=\\"modal-chart-stat\\"><div class=\\"modal-chart-stat-label\\">p50 latency</div><div class=\\"modal-chart-stat-value\\">" + p50 + "</div></div>" +
+      "<div class=\\"modal-chart-stat\\"><div class=\\"modal-chart-stat-label\\">p95 latency</div><div class=\\"modal-chart-stat-value\\">" + p95 + "</div></div>" +
+      "<div class=\\"modal-chart-stat\\"><div class=\\"modal-chart-stat-label\\">trend</div><div class=\\"modal-chart-stat-value " + trendClass + "\\">" + trendIcon + "</div></div>" +
+      "</div>";
+  }
+
   // ── Sparkline rendering ────────────────────────────────────────────
   // SVG path drawn from latency history. Color matches most recent
   // health bucket. Path is normalized: x evenly distributed, y inverted
@@ -688,9 +1053,12 @@ function renderVendorHealthCanvas(demoKey: string): string {
     }
     if (history.length === 1) {
       var bucket = history[0].health_bucket || "unknown";
-      var dotColor = bucket === "healthy" ? "#2ed573" : bucket === "degraded" ? "#f0b400" : bucket === "down" ? "#ff4d5e" : "#6b7689";
+      var dpSingle = history[0];
+      var ttSingle = (dpSingle.ts || "?") + " | " + bucket + " | " +
+        (typeof dpSingle.latency_ms === "number" ? dpSingle.latency_ms + "ms" : "—");
       return "<svg class=\\"vc-spark\\" width=\\"100%\\" height=\\"24\\" viewBox=\\"0 0 100 24\\" preserveAspectRatio=\\"none\\">" +
-        "<circle cx=\\"50\\" cy=\\"12\\" r=\\"3\\" fill=\\"" + dotColor + "\\"/></svg>";
+        "<circle cx=\\"50\\" cy=\\"12\\" r=\\"3\\" fill=\\"" + bucketColor(bucket) + "\\"><title>" +
+        escapeHtml(ttSingle) + "</title></circle></svg>";
     }
     var maxLat = 0;
     for (var i = 0; i < history.length; i++) {
@@ -701,18 +1069,33 @@ function renderVendorHealthCanvas(demoKey: string): string {
     var w = 100, h = 24;
     var step = w / (history.length - 1);
     var pts = [];
+    var hoverDots = [];
     for (var j = 0; j < history.length; j++) {
       var x = j * step;
       var lat = history[j].latency_ms;
       var y = (typeof lat === "number") ? (h - (lat / maxLat) * h * 0.85 - 2) : (h / 2);
       pts.push(x.toFixed(1) + "," + y.toFixed(1));
+      // Invisible-but-larger hover targets at each datapoint with a
+      // native SVG <title> for hover tooltip. r=3 gives a generous hit
+      // box; the visible polyline already shows the trend, so the dot
+      // stays at low opacity (0.001 = effectively invisible). Browsers
+      // render <title> as a tooltip on hover.
+      var dpForTitle = history[j];
+      var ttText = (dpForTitle.ts || "?") + " | " +
+        (dpForTitle.health_bucket || "unknown") + " | " +
+        (typeof dpForTitle.latency_ms === "number" ? dpForTitle.latency_ms + "ms" : "—");
+      hoverDots.push(
+        "<circle cx=\\"" + x.toFixed(1) + "\\" cy=\\"" + y.toFixed(1) +
+        "\\" r=\\"3\\" fill=\\"" + bucketColor(dpForTitle.health_bucket || "unknown") +
+        "\\" opacity=\\"0.55\\"><title>" + escapeHtml(ttText) + "</title></circle>"
+      );
     }
     var lastBucket = history[history.length - 1].health_bucket || "unknown";
-    var color = lastBucket === "healthy" ? "#2ed573" :
-                lastBucket === "degraded" ? "#f0b400" :
-                lastBucket === "down" ? "#ff4d5e" : "#6b7689";
+    var color = bucketColor(lastBucket);
     return "<svg class=\\"vc-spark\\" width=\\"100%\\" height=\\"24\\" viewBox=\\"0 0 100 24\\" preserveAspectRatio=\\"none\\">" +
-      "<polyline fill=\\"none\\" stroke=\\"" + color + "\\" stroke-width=\\"1.5\\" points=\\"" + pts.join(" ") + "\\"/></svg>";
+      "<polyline fill=\\"none\\" stroke=\\"" + color + "\\" stroke-width=\\"1.5\\" points=\\"" + pts.join(" ") + "\\"/>" +
+      hoverDots.join("") +
+      "</svg>";
   }
 
   // ── Vendor grid ────────────────────────────────────────────────────
@@ -790,6 +1173,7 @@ function renderVendorHealthCanvas(demoKey: string): string {
       "    </div>" +
       "  </div>" +
       "  " + renderSparkline(history) +
+      "  " + renderTrendPills(computeTrendStats(history)) +
       "  <div class=\\"vc-foot\\">" +
       "    <div class=\\"vc-foot-meta\\">probed " + (r.probed ? fmtRelTime(r.snapshot_ts) : "never (this snapshot)") + "</div>" +
       "    <div class=\\"vc-foot-actions\\">" +
@@ -863,15 +1247,13 @@ function renderVendorHealthCanvas(demoKey: string): string {
       kvRow("success_count", String(r.circuit_success_count || 0)) +
       kvRow("last_event", r.circuit_last_event_ts ? fmtRelTime(new Date(r.circuit_last_event_ts).toISOString()) : "—");
 
+    // Time-series chart + stat row (replaces the old <pre> text dump).
+    // Both render from the same KV ring buffer; the chart fades in the
+    // moment a probe lands.
     var hist = state.histories[r.agent_id] || [];
-    if (hist.length === 0) {
-      elModalHistory.textContent = "no probe history (history fills as you click Live probe)";
-    } else {
-      var lines = hist.map(function(d) {
-        return d.ts + "  " + (d.alive ? "alive" : "dead") + "  " + fmtLatency(d.latency_ms) + "  bucket=" + d.health_bucket + "  circuit=" + (d.circuit_state || "—");
-      });
-      elModalHistory.textContent = lines.join("\\n");
-    }
+    var stats = computeTrendStats(hist);
+    elModalChartStats.innerHTML = renderChartStats(stats);
+    elModalChartHost.innerHTML = renderHistoryChart(hist);
     elModalTools.innerHTML = "<span class=\\"modal-tool\\">tools list captured at probe time, see /agents/registry for full list</span>";
 
     elModalBackdrop.classList.add("is-open");

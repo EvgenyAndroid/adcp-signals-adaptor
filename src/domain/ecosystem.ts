@@ -888,11 +888,21 @@ async function probeAgent(agent: EcosystemAgent): Promise<AgentLiveStatus> {
       signal: ctrl.signal,
     });
     status.last_latency_ms = Date.now() - start;
+    // Liveness semantics: any HTTP response below 500 means the server
+    // is UP and responding. 4xx means the server received the request
+    // and chose to reject it (e.g. needs session-id handshake, or
+    // requires auth, or doesn't accept our exact body shape) — but the
+    // host process is alive. 5xx means the server itself errored. We
+    // distinguish for observability but treat <500 as alive.
     if (r.ok) {
       status.last_status = "ok";
       status.is_live_now = true;
+    } else if (r.status < 500) {
+      status.last_status = "http_" + r.status;
+      status.is_live_now = true; // alive but not accepting our probe shape
     } else {
       status.last_status = "http_" + r.status;
+      status.is_live_now = false;
     }
   } catch (err) {
     status.last_latency_ms = Date.now() - start;

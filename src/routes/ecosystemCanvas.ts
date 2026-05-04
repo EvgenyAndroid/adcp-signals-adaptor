@@ -762,10 +762,13 @@ const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 const bloomPass = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  0.55,   // strength (dialed down from 0.85 — was overloading halos)
-  0.55,   // radius
-  0.30    // threshold — only the brightest emissive contributes,
-          //              so non-firing nodes stay crisp
+  0.35,   // strength — multi-effect stacking (halos + sparks + buyer
+          //            pulse + money particles) overwhelmed even 0.55.
+          //            0.35 keeps glow visible without washing the
+          //            constellation white.
+  0.45,   // radius
+  0.45    // threshold — only firing/active emissive crosses; idle
+          //              nodes stay crisp and readable
 );
 composer.addPass(bloomPass);
 composer.addPass(new OutputPass());
@@ -803,14 +806,14 @@ scene.add(rim);
 }
 
 // Buyer-orchestrator at origin
-const buyerGeo = new THREE.SphereGeometry(1.4, 32, 32);
-const buyerMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.6, metalness: 0.2, roughness: 0.4 });
+const buyerGeo = new THREE.SphereGeometry(1.2, 32, 32);
+const buyerMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.32, metalness: 0.2, roughness: 0.5 });
 const buyerMesh = new THREE.Mesh(buyerGeo, buyerMat);
 scene.add(buyerMesh);
 {
-  // Buyer halo
-  const haloGeo = new THREE.RingGeometry(1.7, 2.1, 64);
-  const haloMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.2 });
+  // Buyer halo — calmer (was 0.20, now 0.10)
+  const haloGeo = new THREE.RingGeometry(1.5, 1.75, 64);
+  const haloMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.10 });
   const halo = new THREE.Mesh(haloGeo, haloMat);
   halo.rotation.x = Math.PI / 2;
   scene.add(halo);
@@ -928,12 +931,15 @@ function flashAgentDramaScatter(agentId) {
 //   decay 0.014-0.026/frame (faster — halos resolve in ~1s)
 // High-lift agents still announce themselves, but readability stays.
 function triggerLiftHalo(agentId, score) {
+  // Second pass dial-back. Multiple lift halos firing at once + bloom
+  // were drowning the constellation. Cut peak intensity ~30%, scale
+  // ~15%, faster decay.
   liftHaloDecay.set(agentId, {
-    intensity: 0.35 + score * 0.35,
-    decayPerFrame: 0.014 + (1 - score) * 0.012,
+    intensity: 0.22 + score * 0.22,    // max 0.44 (was 0.70)
+    decayPerFrame: 0.020 + (1 - score) * 0.012, // resolves in 0.5-1s
     pulseScale: 1.0,
-    pulseGrowth: 0.014 + score * 0.012,
-    pulseScaleMax: 1.15 + score * 0.25,
+    pulseGrowth: 0.014 + score * 0.010,
+    pulseScaleMax: 1.10 + score * 0.18, // max 1.28 (was 1.40)
   });
 }
 
@@ -953,17 +959,17 @@ function getPos(agentId) {
 }
 
 // Beam visual weight by message kind. Governance + measurement messages
-// are the heavy beats of the ceremony — render their pulses larger
-// + brighter. Discovery/product/creative are routine. This makes the
-// rhythm of the cycle readable from the visual alone.
+// are the heavy beats of the ceremony — render their pulses larger.
+// Tone-down pass: line opacities cut ~30% and pulse sizes ~15% so
+// 200 concurrent beams + bloom don't smear the whole scene.
 const BEAM_WEIGHT = {
-  policy:      { pulseSize: 0.30, lineOpacity: 0.85 },
-  measurement: { pulseSize: 0.32, lineOpacity: 0.85 },
-  bid:         { pulseSize: 0.26, lineOpacity: 0.75 },
-  signal:      { pulseSize: 0.20, lineOpacity: 0.65 },
-  product:     { pulseSize: 0.20, lineOpacity: 0.65 },
-  creative:    { pulseSize: 0.18, lineOpacity: 0.60 },
-  discovery:   { pulseSize: 0.18, lineOpacity: 0.55 },
+  policy:      { pulseSize: 0.24, lineOpacity: 0.55 },
+  measurement: { pulseSize: 0.26, lineOpacity: 0.55 },
+  bid:         { pulseSize: 0.22, lineOpacity: 0.50 },
+  signal:      { pulseSize: 0.17, lineOpacity: 0.42 },
+  product:     { pulseSize: 0.17, lineOpacity: 0.42 },
+  creative:    { pulseSize: 0.15, lineOpacity: 0.38 },
+  discovery:   { pulseSize: 0.15, lineOpacity: 0.35 },
 };
 
 function spawnBeam(fromId, toId, colorHint) {
@@ -1072,11 +1078,13 @@ function spawnMoneyFlow(fromId, toId, count) {
       mid.add(perp.multiplyScalar(1.2 + Math.random() * 1.8));
       mid.y += (Math.random() - 0.4) * 1.6;
       const curve = new THREE.CatmullRomCurve3([from.clone(), mid, to.clone()]);
-      const geo = new THREE.SphereGeometry(0.10 + Math.random() * 0.05, 6, 6);
+      // Smaller + dimmer than first pass — particles still readable
+      // but no longer trail-painting the screen.
+      const geo = new THREE.SphereGeometry(0.07 + Math.random() * 0.04, 6, 6);
       const mat = new THREE.MeshBasicMaterial({
         color: 0xffd166,    // gold
         transparent: true,
-        opacity: 0.92,
+        opacity: 0.65,
       });
       const sphere = new THREE.Mesh(geo, mat);
       sphere.position.copy(from);
@@ -1121,32 +1129,35 @@ function spawnMoneyFlow(fromId, toId, count) {
 // chord swell.
 const supernovaRings = [];
 function triggerSupernova() {
-  // Ring
-  const ringGeo = new THREE.RingGeometry(1.5, 1.65, 64);
+  // Ring — slimmer + dimmer than the first pass. Was 0.85 peak white,
+  // now 0.40 — viewer still sees the punctuation beat without the
+  // ring becoming the loudest thing on screen.
+  const ringGeo = new THREE.RingGeometry(1.4, 1.50, 64);
   const ringMat = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     side: THREE.DoubleSide,
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.40,
   });
   const ring = new THREE.Mesh(ringGeo, ringMat);
   ring.position.set(0, 0, 0);
   scene.add(ring);
   supernovaRings.push({ ring, mat: ringMat, scale: 1.0, life: 1.0 });
-  // Radial sparks
-  for (let i = 0; i < 30; i++) {
-    const angle = (i / 30) * Math.PI * 2 + Math.random() * 0.2;
+  // Radial sparks — count cut 30 → 14, smaller geometry, dimmer base.
+  const SPARK_COUNT = 14;
+  for (let i = 0; i < SPARK_COUNT; i++) {
+    const angle = (i / SPARK_COUNT) * Math.PI * 2 + Math.random() * 0.2;
     const elev = (Math.random() - 0.5) * Math.PI * 0.4;
     const dir = new THREE.Vector3(
       Math.cos(angle) * Math.cos(elev),
       Math.sin(elev),
       Math.sin(angle) * Math.cos(elev)
     );
-    const sparkGeo = new THREE.SphereGeometry(0.14, 6, 6);
+    const sparkGeo = new THREE.SphereGeometry(0.10, 6, 6);
     const sparkMat = new THREE.MeshBasicMaterial({
       color: 0xfff0c0,
       transparent: true,
-      opacity: 1.0,
+      opacity: 0.70,
     });
     const spark = new THREE.Mesh(sparkGeo, sparkMat);
     spark.position.set(0, 0, 0);
@@ -1158,8 +1169,8 @@ function triggerSupernova() {
       // ones. We piggyback on the money-particle frame loop using a
       // velocity vector + free-flight semantics; t not used here.
       _isSupernovaSpark: true,
-      velocity: dir.multiplyScalar(0.55 + Math.random() * 0.4),
-      life: 1.0,
+      velocity: dir.multiplyScalar(0.45 + Math.random() * 0.3),
+      life: 0.85,
     });
   }
   // Audio: short chord-like swell
@@ -1636,9 +1647,10 @@ evtSource.onmessage = function (msg) {
           && ev.trace.detail && ev.trace.detail.bid
           && ev.trace.agent_id) {
         const budget = ev.trace.detail.bid.budget_committed || 0;
-        // Particle count scales with budget — small bids get a few,
-        // big bids get a stream. Capped at 28 so we don't drown frames.
-        const count = Math.max(2, Math.min(28, Math.round(budget / 1500)));
+        // Particle count scales with budget. Tone-down pass: capped
+        // at 12 (was 28) and threshold raised to $2.5k per particle
+        // so small bids only get 1-2 particles instead of 3-5.
+        const count = Math.max(1, Math.min(12, Math.round(budget / 2500)));
         spawnMoneyFlow(BUYER_AGENT_ID, ev.trace.agent_id, count);
       }
       break;
@@ -2060,9 +2072,9 @@ function animate() {
     controls.update();
   }
 
-  // Buyer pulse
+  // Buyer pulse — calmer baseline + smaller jitter
   const t = performance.now() * 0.001;
-  buyerMesh.material.emissiveIntensity = 0.5 + 0.18 * Math.sin(t * 1.3);
+  buyerMesh.material.emissiveIntensity = 0.30 + 0.08 * Math.sin(t * 1.3);
 
   // Beam progression
   for (let i = beams.length - 1; i >= 0; i--) {
@@ -2097,8 +2109,10 @@ function animate() {
         const histPos = b.history[j];
         if (histPos) {
           b.trail[j].mesh.position.copy(histPos);
-          // Each ghost fades faster than the last, scaled by overall life
-          b.trail[j].mat.opacity = Math.max(0, b.life * (1 - j / b.trail.length) * 0.7);
+          // Each ghost fades faster than the last, scaled by overall
+          // life. Cut from 0.7 → 0.45 multiplier — trails were
+          // adding measurable bloom contribution at high beam counts.
+          b.trail[j].mat.opacity = Math.max(0, b.life * (1 - j / b.trail.length) * 0.45);
         }
       }
     }
@@ -2133,18 +2147,23 @@ function animate() {
         continue;
       }
       p.sphere.position.copy(p.curve.getPointAt(p.t));
-      // Subtle fade-in over first 10% of journey
-      p.mat.opacity = Math.min(0.92, p.t < 0.1 ? p.t / 0.1 * 0.92 : 0.92);
+      // Subtle fade-in over first 10%, fade-out over last 20% so trails
+      // don't pop at the destination. Cap reduced to 0.65 (from 0.92)
+      // so they don't blow out under bloom.
+      const fadeIn = Math.min(1, p.t / 0.1);
+      const fadeOut = Math.min(1, (1 - p.t) / 0.2);
+      p.mat.opacity = 0.65 * fadeIn * fadeOut;
     }
   }
-  // Supernova rings expand + fade
+  // Supernova rings expand + fade — opacity scaling reduced
+  // (0.6 → 0.35 cap) so the expanding ring doesn't dominate.
   for (let i = supernovaRings.length - 1; i >= 0; i--) {
     const sn = supernovaRings[i];
-    sn.scale += 0.18;
-    sn.life -= 0.018;
+    sn.scale += 0.16;
+    sn.life -= 0.022; // faster decay so the ring is gone before next phase
     sn.ring.scale.set(sn.scale, sn.scale, 1);
     sn.ring.lookAt(camera.position);
-    sn.mat.opacity = Math.max(0, sn.life * 0.6);
+    sn.mat.opacity = Math.max(0, sn.life * 0.35);
     if (sn.life <= 0) {
       scene.remove(sn.ring);
       sn.ring.geometry.dispose();
@@ -2185,20 +2204,22 @@ function animate() {
         m.halo.material.color.setHex(baseColor);
       }
     } else {
-      // Persistent low-intensity halo proportional to long-term lift.
-      // PR G — clipped so even max-lift agents stay subtle (0.04..0.20)
-      // rather than the previous 0.05..0.29 that read as "always glowing"
-      // when bloom layered on top.
-      m.halo.material.opacity = Math.max(0, 0.04 + Math.max(0, m.lift - 0.5) * 0.32);
+      // Persistent halo — further clipped (third pass). Max opacity
+      // now ~0.10 so even top-performing agents keep their halo as
+      // a hint, not a glowing aura. Most agents (lift < 0.6) get
+      // zero — keeps the constellation crisp at idle.
+      m.halo.material.opacity = Math.max(0, Math.max(0, m.lift - 0.6) * 0.22);
       m.halo.scale.set(1, 1, 1);
     }
     m.halo.lookAt(camera.position);
 
-    // Mesh emissive: base + sine-wave pulse + firing-pulse boost
-    let emiBase = (m.agent.stage === "live" ? 0.55 : 0.30) + 0.12 * Math.sin(t * 2 + m.position.x);
+    // Mesh emissive: base + sine-wave pulse + firing-pulse boost.
+    // Tone-down pass: live nodes idle around 0.35 (was 0.55), pulse
+    // amplitude halved, firing boost cut from 0.7 to 0.4 so agents
+    // can't OVER-bloom regardless of bloom threshold tuning.
+    let emiBase = (m.agent.stage === "live" ? 0.35 : 0.20) + 0.08 * Math.sin(t * 2 + m.position.x);
     if (m.firingTimeout > 0) {
-      // Strong glow that decays over ~22 frames (~0.36s @ 60fps)
-      emiBase += 0.7 * (m.firingTimeout / 22);
+      emiBase += 0.40 * (m.firingTimeout / 22);
       m.firingTimeout -= 1;
     }
     m.mesh.material.emissiveIntensity = emiBase;

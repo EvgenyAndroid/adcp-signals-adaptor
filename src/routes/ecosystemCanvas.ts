@@ -789,25 +789,27 @@ export function renderEcosystemCanvas(demoKey: string): string {
   </div>
 </div>
 
+<!-- Trimmed: Cycles row removed (dup of topbar "cycle"), Build row
+     removed (low signal, build version visible at /health),
+     per-role agent counts removed (topbar already shows total
+     "agents 34"; the legend's job is color→meaning, not counts). -->
 <div class="legend">
   <div class="stats-section">
     <div class="legend-title">Live ecosystem</div>
-    <div class="stat-row"><span class="k">Cycles</span><span class="v" id="stat-cycles">0</span></div>
     <div class="stat-row"><span class="k">Avg lift</span><span class="v" id="stat-avg-lift">—</span></div>
     <div class="stat-row"><span class="k">Top agent</span><span class="v" id="stat-top-agent">—</span></div>
     <div class="stat-row"><span class="k">Live probe</span><span class="v live" id="stat-live-probe">—</span></div>
-    <div class="stat-row"><span class="k">Build</span><span class="v" id="stat-build">v—</span></div>
   </div>
   <div class="legend-divider"></div>
   <div class="legend-title">Agent roles</div>
-  <div class="legend-row"><div class="legend-dot" style="background:var(--c-signals)"></div>Signals (5)</div>
-  <div class="legend-row"><div class="legend-dot" style="background:var(--c-identity)"></div>Identity (4)</div>
-  <div class="legend-row"><div class="legend-dot" style="background:var(--c-sales)"></div>Sales (10)</div>
-  <div class="legend-row"><div class="legend-dot" style="background:var(--c-buying)"></div>Buying (5)</div>
-  <div class="legend-row"><div class="legend-dot" style="background:var(--c-creative)"></div>Creative (3)</div>
-  <div class="legend-row"><div class="legend-dot" style="background:var(--c-measurement)"></div>Measurement (3)</div>
-  <div class="legend-row"><div class="legend-dot" style="background:var(--c-cleanroom)"></div>Clean room (1)</div>
-  <div class="legend-row"><div class="legend-dot" style="background:var(--c-governance)"></div>Governance (3)</div>
+  <div class="legend-row"><div class="legend-dot" style="background:var(--c-signals)"></div>Signals</div>
+  <div class="legend-row"><div class="legend-dot" style="background:var(--c-identity)"></div>Identity</div>
+  <div class="legend-row"><div class="legend-dot" style="background:var(--c-sales)"></div>Sales</div>
+  <div class="legend-row"><div class="legend-dot" style="background:var(--c-buying)"></div>Buying</div>
+  <div class="legend-row"><div class="legend-dot" style="background:var(--c-creative)"></div>Creative</div>
+  <div class="legend-row"><div class="legend-dot" style="background:var(--c-measurement)"></div>Measurement</div>
+  <div class="legend-row"><div class="legend-dot" style="background:var(--c-cleanroom)"></div>Clean room</div>
+  <div class="legend-row"><div class="legend-dot" style="background:var(--c-governance)"></div>Governance</div>
   <div class="legend-divider"></div>
   <div class="legend-title">Message colors</div>
   <div class="legend-row"><div class="legend-dot" style="background:var(--c-discovery)"></div>discovery / fanout</div>
@@ -1721,24 +1723,15 @@ function escapeHtml(s) {
   });
 }
 
-// Stats overlay refs
-const statCycles = document.getElementById("stat-cycles");
+// Stats overlay refs (cycle count + build now removed — cycle is in
+// topbar; build version available at /health for diagnostics).
 const statAvgLift = document.getElementById("stat-avg-lift");
 const statTopAgent = document.getElementById("stat-top-agent");
-const statBuild = document.getElementById("stat-build");
-
-// Fetch build version from /health once on load. Provides a visible
-// deploy-traceability marker on the page, useful for confirming
-// "is this the latest build?" without DevTools.
-fetch("/health").then(function (r) { return r.json(); }).then(function (j) {
-  if (j && j.worker_version) statBuild.textContent = "v" + j.worker_version;
-}).catch(function () { /* network blip — leave default */ });
 
 function updateState(state) {
   if (!state) return;
   if (state.cycle_count !== undefined) {
     metaCycle.textContent = state.cycle_count;
-    statCycles.textContent = state.cycle_count;
   }
   if (state.feedback) {
     metaAudio.textContent = state.feedback.audio_pull.toFixed(2);

@@ -289,6 +289,10 @@ ${STYLES}
             <svg class="ico"><use href="#icon-radar"/></svg><span>Vendor Health</span>
             <span class="nav-tag">new</span>
           </a>
+          <a class="nav-item" href="/ecosystem" target="_blank" rel="noopener">
+            <svg class="ico"><use href="#icon-bolt"/></svg><span>Ecosystem</span>
+            <span class="nav-tag">live</span>
+          </a>
         </div>
       </div>
 

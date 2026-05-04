@@ -481,11 +481,67 @@ export function renderEcosystemCanvas(demoKey: string): string {
     position: fixed; inset: 0; pointer-events: none; z-index: 5;
     background: radial-gradient(circle at 50% 50%, transparent, rgba(0,0,0,0.45));
   }
+
+  /* Governance-deny flash — full-screen red pulse signaling cycle abort.
+     Triggered programmatically by JS by toggling .firing class. Used
+     for cinematic drama: the room sees the protocol "fail loud". */
+  .deny-flash {
+    position: fixed; inset: 0; pointer-events: none; z-index: 8;
+    background: radial-gradient(circle at 50% 50%, rgba(255, 70, 70, 0.55), rgba(120, 20, 20, 0.0));
+    opacity: 0;
+    mix-blend-mode: screen;
+  }
+  .deny-flash.firing {
+    animation: deny-pulse 1.4s ease-out;
+  }
+  @keyframes deny-pulse {
+    0%   { opacity: 0;   transform: scale(0.92); }
+    18%  { opacity: 0.85; transform: scale(1.02); }
+    52%  { opacity: 0.40; transform: scale(1.05); }
+    100% { opacity: 0;   transform: scale(1.10); }
+  }
+
+  /* Cinema preset cluster — three buttons sharing space with the audio
+     toggle. Hidden in hide-UI mode along with the rest. */
+  .cinema-cluster {
+    position: fixed; bottom: 18px; left: 350px; z-index: 11;
+    display: flex; gap: 6px;
+    pointer-events: auto;
+  }
+  body.hide-ui .cinema-cluster { opacity: 0; pointer-events: none; transition: opacity 0.4s; }
+  body.hide-ui .cinema-cluster.armed { opacity: 0.45; }
+  body.hide-ui .cinema-cluster:hover { opacity: 1; }
+  .cinema-btn {
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 16px;
+    padding: 6px 12px; font-size: 11px; cursor: pointer; color: var(--text-dim);
+    font-family: inherit;
+  }
+  .cinema-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .cinema-btn.on { color: var(--accent); border-color: var(--accent); background: rgba(56, 182, 255, 0.08); }
+
+  /* Keyboard hint pill — small bottom-right ribbon listing the keys.
+     Fades after 8s on first paint; reappears on '?' keypress. */
+  .kbd-hint {
+    position: fixed; bottom: 18px; right: 18px; z-index: 11;
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 6px;
+    padding: 6px 10px;
+    font: 10.5px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color: var(--text-dim);
+    pointer-events: none;
+    transition: opacity 0.6s;
+  }
+  .kbd-hint.fade-out { opacity: 0; }
+  .kbd-hint kbd {
+    background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 1px 5px; border-radius: 3px; margin: 0 1px;
+    font-family: inherit; color: var(--text);
+  }
 </style>
 </head>
 <body>
 <div id="stage"></div>
 <div class="hero-overlay"></div>
+<div class="deny-flash" id="deny-flash"></div>
 <div id="label-layer"></div>
 
 <div class="brief-banner hidden" id="brief-banner">
@@ -591,8 +647,16 @@ export function renderEcosystemCanvas(demoKey: string): string {
 </div>
 
 <button class="audio-toggle" id="audio-toggle">♪ audio off</button>
-<button class="audio-toggle" id="cinema-toggle" style="left: 350px;">▶ cinema</button>
-<button class="audio-toggle" id="hide-ui-toggle" style="left: 470px;">⌘ hide UI</button>
+<div class="cinema-cluster" id="cinema-cluster">
+  <button class="cinema-btn" data-cinema-preset="15">▶ 15s</button>
+  <button class="cinema-btn" data-cinema-preset="60">▶ 60s</button>
+  <button class="cinema-btn" data-cinema-preset="180">▶ 3min</button>
+</div>
+<button class="audio-toggle" id="hide-ui-toggle" style="left: 540px;">⌘ hide UI</button>
+
+<div class="kbd-hint" id="kbd-hint">
+  <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> cinema · <kbd>U</kbd> hide UI · <kbd>A</kbd> audio · <kbd>?</kbd> show keys
+</div>
 
 <!-- Matrix-rain modal: full-height vertical column of raw JSON-RPC
      frames for a single agent, rendered as scrolling text. Opens on
@@ -789,9 +853,56 @@ function flashAgentFiring(agentId) {
   if (!m) return;
   m.firingTimeout = 22; // frames of enhanced emission
   if (m.label) m.label.classList.add("firing");
-  // De-class the label after a short delay; the mesh emission decays
-  // in the animation loop via firingTimeout.
   setTimeout(function () { if (m.label) m.label.classList.remove("firing"); }, 480);
+}
+
+// PR D — drama beats:
+// (a) Full-screen red flash when governance denies the cycle. The flash
+//     lasts ~1.4s, peaks at 18%, and decays out. Re-arms on every deny
+//     (we cancel the previous animation's class-toggle by reflowing).
+// (b) Per-agent "scatter" — when this agent is the denying gov agent,
+//     spawn a visually distinct expanding red halo to anchor the drama
+//     to that specific node.
+const denyFlashEl = document.getElementById("deny-flash");
+function triggerDenyFlash() {
+  denyFlashEl.classList.remove("firing");
+  void denyFlashEl.offsetWidth; // force restart of the keyframe
+  denyFlashEl.classList.add("firing");
+}
+function flashAgentDramaScatter(agentId) {
+  const m = agentMeshes.get(agentId);
+  if (!m) return;
+  // Inject a bright red halo with steep decay, overrides the lift halo
+  // for a moment.
+  liftHaloDecay.set(agentId, { intensity: 1.4, decayPerFrame: 0.018, dramaColor: 0xff4646 });
+  // Bigger emissive boost than ordinary firing.
+  m.firingTimeout = 50;
+  if (m.label) {
+    m.label.style.color = "#ff7070";
+    m.label.style.borderColor = "rgba(255, 70, 70, 0.7)";
+    setTimeout(function () {
+      // Restore original styling
+      const role = m.agent.role;
+      const c = ROLE_COLORS[role] || 0xffffff;
+      m.label.style.color = "#" + c.toString(16).padStart(6, "0");
+      m.label.style.borderColor = "rgba(" + ((c >> 16) & 0xff) + "," + ((c >> 8) & 0xff) + "," + (c & 0xff) + ",0.35)";
+    }, 1400);
+  }
+}
+
+// PR D — dramatic lift halo amplification.
+// Replaces the previous decay-from-0.8 with an outward-pulse-then-linger
+// curve: spike to 1.5x, then a longer 6s linger proportional to the lift
+// score. Higher lift = bigger pulse + longer tail. Reads as "this agent
+// reported strong lift" cinematically rather than as a brief blip.
+function triggerLiftHalo(agentId, score) {
+  liftHaloDecay.set(agentId, {
+    intensity: 0.7 + score * 0.8,   // peak proportional to lift
+    decayPerFrame: 0.006 + (1 - score) * 0.012, // higher lift decays slower
+    pulseScale: 1.0,
+    pulseGrowth: 0.012 + score * 0.018,
+    pulseScaleMax: 1.4 + score * 0.6,
+  });
 }
 
 // ── Message beams ────────────────────────────────────────────────────────
@@ -809,6 +920,20 @@ function getPos(agentId) {
   return m ? m.position.clone() : null;
 }
 
+// Beam visual weight by message kind. Governance + measurement messages
+// are the heavy beats of the ceremony — render their pulses larger
+// + brighter. Discovery/product/creative are routine. This makes the
+// rhythm of the cycle readable from the visual alone.
+const BEAM_WEIGHT = {
+  policy:      { pulseSize: 0.30, lineOpacity: 0.85 },
+  measurement: { pulseSize: 0.32, lineOpacity: 0.85 },
+  bid:         { pulseSize: 0.26, lineOpacity: 0.75 },
+  signal:      { pulseSize: 0.20, lineOpacity: 0.65 },
+  product:     { pulseSize: 0.20, lineOpacity: 0.65 },
+  creative:    { pulseSize: 0.18, lineOpacity: 0.60 },
+  discovery:   { pulseSize: 0.18, lineOpacity: 0.55 },
+};
+
 function spawnBeam(fromId, toId, colorHint) {
   const from = getPos(fromId);
   const to = getPos(toId);
@@ -818,6 +943,7 @@ function spawnBeam(fromId, toId, colorHint) {
   // an endpoint but doesn't have an agent record — skip it cleanly.
   if (fromId !== BUYER_AGENT_ID) flashAgentFiring(fromId);
   if (toId !== BUYER_AGENT_ID) flashAgentFiring(toId);
+  const weight = BEAM_WEIGHT[colorHint] || { pulseSize: 0.18, lineOpacity: 0.55 };
   const mid = from.clone().add(to).multiplyScalar(0.5);
   const dir = to.clone().sub(from).normalize();
   const perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0,1,0)).normalize();
@@ -829,18 +955,41 @@ function spawnBeam(fromId, toId, colorHint) {
   const points = curve.getPoints(samples);
   const geo = new THREE.BufferGeometry().setFromPoints(points);
   const color = HINT_COLORS[colorHint] || 0x80a0ff;
-  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.55 });
+  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: weight.lineOpacity });
   const line = new THREE.Line(geo, mat);
   scene.add(line);
 
-  // A pulse sprite that travels the curve
-  const pulseGeo = new THREE.SphereGeometry(0.18, 12, 12);
+  // A pulse sprite that travels the curve. Heavy-beat messages get
+  // a bigger sphere so governance + measurement read as the climax
+  // beats of the cycle.
+  const pulseGeo = new THREE.SphereGeometry(weight.pulseSize, 14, 14);
   const pulseMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95 });
   const pulse = new THREE.Mesh(pulseGeo, pulseMat);
   pulse.position.copy(from);
   scene.add(pulse);
 
-  beams.push({ line, mat, pulse, pulseMat, curve, t: 0, life: 1.0, color });
+  // Motion-blur trail: a circular buffer of "ghost" pulse sprites that
+  // each frame inherit the lead pulse's previous position with decaying
+  // opacity. Cheap to render (just N small spheres), creates the comet
+  // look without per-frame texture compositing.
+  const TRAIL_LEN = 6;
+  const trail = [];
+  for (let i = 0; i < TRAIL_LEN; i++) {
+    const trailGeo = new THREE.SphereGeometry(weight.pulseSize * (1 - i * 0.10), 8, 8);
+    const trailMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.0 });
+    const tMesh = new THREE.Mesh(trailGeo, trailMat);
+    tMesh.position.copy(from);
+    scene.add(tMesh);
+    trail.push({ mesh: tMesh, mat: trailMat });
+  }
+
+  beams.push({
+    line, mat, pulse, pulseMat, curve, t: 0, life: 1.0, color,
+    weight, trail,
+    // Ring buffer of recent positions, used to seed the trail meshes
+    // each frame.
+    history: [],
+  });
 
   // Trim if too many
   while (beams.length > MAX_BEAMS) {
@@ -851,6 +1000,13 @@ function spawnBeam(fromId, toId, colorHint) {
       old.line.geometry.dispose();
       old.mat.dispose();
       old.pulseMat.dispose();
+      if (old.trail) {
+        for (const tr of old.trail) {
+          scene.remove(tr.mesh);
+          tr.mesh.geometry.dispose();
+          tr.mat.dispose();
+        }
+      }
     }
   }
 
@@ -1203,6 +1359,13 @@ evtSource.onmessage = function (msg) {
       if (ev.trace && ev.trace.kind) setPhaseFromKind(ev.trace.kind);
       // Stash trace into per-agent log for matrix-rain replay
       if (ev.trace && ev.trace.agent_id) recordAgentFrame(ev.trace.agent_id, ev.trace);
+      // Drama: governance deny → full-screen red flash + scatter the
+      // active agent's halo for cinematic effect.
+      if (ev.trace && ev.trace.kind === "governance_check"
+          && ev.trace.detail && ev.trace.detail.outcome === "deny") {
+        triggerDenyFlash();
+        if (ev.trace.agent_id) flashAgentDramaScatter(ev.trace.agent_id);
+      }
       break;
     case "message":
       if (ev.message) {
@@ -1218,8 +1381,7 @@ evtSource.onmessage = function (msg) {
         const m = agentMeshes.get(ev.lift.agent_id);
         if (m) {
           m.lift = ev.lift.score;
-          // Pulse the halo
-          liftHaloDecay.set(ev.lift.agent_id, { intensity: 0.8, decayPerFrame: 0.012 });
+          triggerLiftHalo(ev.lift.agent_id, ev.lift.score);
           audioLiftBlip(ev.lift.score);
         }
       }
@@ -1373,22 +1535,55 @@ renderer.domElement.addEventListener("click", function (e) {
 //
 // Total duration: 60s. Optimized for a single-take screen recording.
 
-const cinemaToggle = document.getElementById("cinema-toggle");
+const cinemaCluster = document.getElementById("cinema-cluster");
 let cinemaOn = false;
 let cinemaStart = 0;
+let cinemaDuration = 60;
+let cinemaActiveBtn = null;
 
-const CINEMA_KEYFRAMES = [
-  // [t_seconds, camera position (x,y,z), look-at target (x,y,z)]
-  { t:  0, pos: [ 0,  6, 38], look: [ 0,  0,  0] },  // Wide opener
-  { t:  8, pos: [22,  4, 30], look: [ 0,  0,  0] },  // Pan to signals ring
-  { t: 16, pos: [12, -8, 22], look: [ 0,  0,  0] },  // Dive under, looking up at sales ring
-  { t: 24, pos: [-18, 10, 24], look: [ 0,  0,  0] },  // Swing left + up
-  { t: 32, pos: [ 0,  18, 22], look: [ 0, -2,  0] },  // Top-down looking at buyer + governance ring
-  { t: 40, pos: [-22, -2, 28], look: [ 0,  0,  0] },  // Side angle, full constellation
-  { t: 48, pos: [ 6,  4, 44], look: [ 0,  0,  0] },  // Pull back wide
-  { t: 56, pos: [ 0,  6, 38], look: [ 0,  0,  0] },  // Return to opener
-  { t: 60, pos: [ 0,  6, 38], look: [ 0,  0,  0] },  // Hold on opener
-];
+// Three keyframe sets — one per preset duration. Each is normalized
+// over [0..1] internally so we can scale to any duration; here we
+// keep them duration-specific for hand-tuned beats.
+const CINEMA_PRESETS = {
+  // 15s Twitter clip — fast, four hero beats. Ends back at opener
+  // so the loop is seamless.
+  15: [
+    { t:  0, pos: [ 0,  6, 38], look: [ 0,  0,  0] },
+    { t:  4, pos: [18,  6, 28], look: [ 0,  0,  0] },
+    { t:  8, pos: [-12, 12, 24], look: [ 0,  0,  0] },
+    { t: 12, pos: [ 0,  4, 42], look: [ 0,  0,  0] },
+    { t: 15, pos: [ 0,  6, 38], look: [ 0,  0,  0] },
+  ],
+  // 60s default — current keyframes
+  60: [
+    { t:  0, pos: [ 0,  6, 38], look: [ 0,  0,  0] },
+    { t:  8, pos: [22,  4, 30], look: [ 0,  0,  0] },
+    { t: 16, pos: [12, -8, 22], look: [ 0,  0,  0] },
+    { t: 24, pos: [-18, 10, 24], look: [ 0,  0,  0] },
+    { t: 32, pos: [ 0,  18, 22], look: [ 0, -2,  0] },
+    { t: 40, pos: [-22, -2, 28], look: [ 0,  0,  0] },
+    { t: 48, pos: [ 6,  4, 44], look: [ 0,  0,  0] },
+    { t: 56, pos: [ 0,  6, 38], look: [ 0,  0,  0] },
+    { t: 60, pos: [ 0,  6, 38], look: [ 0,  0,  0] },
+  ],
+  // 180s explainer — slower, more rest at each pose, more nuanced
+  // angles. Designed for narration over the top.
+  180: [
+    { t:   0, pos: [ 0,  6, 38], look: [ 0,  0,  0] },
+    { t:  20, pos: [22,  4, 30], look: [ 0,  0,  0] },
+    { t:  35, pos: [22,  4, 22], look: [ 0,  0,  0] },
+    { t:  55, pos: [12, -8, 22], look: [ 0,  0,  0] },
+    { t:  75, pos: [-8,  -10, 22], look: [ 0,  0,  0] },
+    { t:  95, pos: [-22,   2, 24], look: [ 0,  0,  0] },
+    { t: 115, pos: [-18, 12, 22], look: [ 0,  0,  0] },
+    { t: 135, pos: [ 0,  20, 18], look: [ 0, -2,  0] },
+    { t: 155, pos: [ 14, 12, 28], look: [ 0,  0,  0] },
+    { t: 170, pos: [ 6,  4, 44], look: [ 0,  0,  0] },
+    { t: 180, pos: [ 0,  6, 38], look: [ 0,  0,  0] },
+  ],
+};
+
+let activeKeyframes = CINEMA_PRESETS["60"];
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 function lerp3(a, b, t) { return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)]; }
@@ -1396,45 +1591,67 @@ function lerp3(a, b, t) { return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp
 function cinemaTick() {
   if (!cinemaOn) return;
   const elapsed = (performance.now() - cinemaStart) / 1000;
-  if (elapsed >= 60) {
-    // Loop back to start for continuous recordable footage
+  if (elapsed >= cinemaDuration) {
     cinemaStart = performance.now();
     return;
   }
-  // Find the segment we're in
-  let segA = CINEMA_KEYFRAMES[0];
-  let segB = CINEMA_KEYFRAMES[1];
-  for (let i = 0; i < CINEMA_KEYFRAMES.length - 1; i++) {
-    if (elapsed >= CINEMA_KEYFRAMES[i].t && elapsed < CINEMA_KEYFRAMES[i + 1].t) {
-      segA = CINEMA_KEYFRAMES[i];
-      segB = CINEMA_KEYFRAMES[i + 1];
+  let segA = activeKeyframes[0];
+  let segB = activeKeyframes[1];
+  for (let i = 0; i < activeKeyframes.length - 1; i++) {
+    if (elapsed >= activeKeyframes[i].t && elapsed < activeKeyframes[i + 1].t) {
+      segA = activeKeyframes[i];
+      segB = activeKeyframes[i + 1];
       break;
     }
   }
   const segT = (elapsed - segA.t) / (segB.t - segA.t);
-  // Smoothstep for cinematic ease-in/out
   const eased = segT * segT * (3 - 2 * segT);
   const pos = lerp3(segA.pos, segB.pos, eased);
   const look = lerp3(segA.look, segB.look, eased);
   camera.position.set(pos[0], pos[1], pos[2]);
   controls.target.set(look[0], look[1], look[2]);
-  // Don't call controls.update() here — it would re-apply auto-rotate.
-  // Instead, just set the camera matrix directly.
   camera.lookAt(look[0], look[1], look[2]);
 }
 
-cinemaToggle.addEventListener("click", function () {
-  cinemaOn = !cinemaOn;
-  cinemaToggle.textContent = cinemaOn ? "■ stop" : "▶ cinema";
-  cinemaToggle.classList.toggle("on", cinemaOn);
-  if (cinemaOn) {
-    cinemaStart = performance.now();
-    controls.autoRotate = false;
-    controls.enabled = false;
-  } else {
-    controls.autoRotate = true;
-    controls.enabled = true;
-  }
+function startCinema(durationSec) {
+  cinemaOn = true;
+  cinemaDuration = durationSec;
+  activeKeyframes = CINEMA_PRESETS[String(durationSec)] || CINEMA_PRESETS["60"];
+  cinemaStart = performance.now();
+  controls.autoRotate = false;
+  controls.enabled = false;
+  cinemaCluster.classList.add("armed");
+  // Update button visual states
+  Array.from(cinemaCluster.querySelectorAll(".cinema-btn")).forEach(function (b) {
+    b.classList.toggle("on", String(b.dataset.cinemaPreset) === String(durationSec));
+    if (String(b.dataset.cinemaPreset) === String(durationSec)) {
+      b.textContent = "■ stop";
+      cinemaActiveBtn = b;
+    } else {
+      b.textContent = "▶ " + (b.dataset.cinemaPreset === "180" ? "3min" : b.dataset.cinemaPreset + "s");
+    }
+  });
+}
+function stopCinema() {
+  cinemaOn = false;
+  controls.autoRotate = true;
+  controls.enabled = true;
+  cinemaCluster.classList.remove("armed");
+  Array.from(cinemaCluster.querySelectorAll(".cinema-btn")).forEach(function (b) {
+    b.classList.remove("on");
+    b.textContent = "▶ " + (b.dataset.cinemaPreset === "180" ? "3min" : b.dataset.cinemaPreset + "s");
+  });
+  cinemaActiveBtn = null;
+}
+Array.from(cinemaCluster.querySelectorAll(".cinema-btn")).forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    const preset = parseInt(btn.dataset.cinemaPreset, 10);
+    if (cinemaOn && cinemaActiveBtn === btn) {
+      stopCinema();
+    } else {
+      startCinema(preset);
+    }
+  });
 });
 
 // ── Hide-UI mode (clean recordings) ─────────────────────────────────────
@@ -1444,6 +1661,48 @@ hideUIToggle.addEventListener("click", function () {
   hideUIToggle.classList.toggle("on", document.body.classList.contains("hide-ui"));
   hideUIToggle.textContent = document.body.classList.contains("hide-ui") ? "⌘ show UI" : "⌘ hide UI";
 });
+
+// ── Keyboard shortcuts + URL params ─────────────────────────────────────
+//
+// Power-user controls. Press '?' to flash the hint pill again. URL
+// params drive auto-start so you can link to a pre-armed page (e.g.
+// /ecosystem?cinema=15&hide=1&audio=1 → ready-to-record).
+const kbdHint = document.getElementById("kbd-hint");
+function flashKbdHint() {
+  kbdHint.classList.remove("fade-out");
+  setTimeout(function () { kbdHint.classList.add("fade-out"); }, 8000);
+}
+flashKbdHint();
+
+document.addEventListener("keydown", function (e) {
+  // Ignore when typing in an input / contenteditable
+  const tag = e.target && e.target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || (e.target && e.target.isContentEditable)) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return; // skip modifier-key combos
+
+  if (e.key === "1") { e.preventDefault(); cinemaOn ? stopCinema() : startCinema(15); }
+  else if (e.key === "2") { e.preventDefault(); cinemaOn ? stopCinema() : startCinema(60); }
+  else if (e.key === "3") { e.preventDefault(); cinemaOn ? stopCinema() : startCinema(180); }
+  else if (e.key === "u" || e.key === "U") { e.preventDefault(); hideUIToggle.click(); }
+  else if (e.key === "a" || e.key === "A") { e.preventDefault(); document.getElementById("audio-toggle").click(); }
+  else if (e.key === "?") { e.preventDefault(); flashKbdHint(); }
+});
+
+// URL params
+(function () {
+  const sp = new URLSearchParams(window.location.search);
+  const cinemaParam = sp.get("cinema");
+  const hideParam = sp.get("hide");
+  const audioParam = sp.get("audio");
+  if (hideParam === "1") document.body.classList.add("hide-ui");
+  // Audio + cinema need the page to settle first (audio context requires
+  // a user gesture; we trigger via a delayed click that browsers accept
+  // when initiated via a meta refresh-style URL action). Safari may block.
+  if (audioParam === "1") setTimeout(function () { document.getElementById("audio-toggle").click(); }, 1200);
+  if (cinemaParam === "15" || cinemaParam === "60" || cinemaParam === "180") {
+    setTimeout(function () { startCinema(parseInt(cinemaParam, 10)); }, 2200);
+  }
+})();
 
 // ── Audio (Web Audio API) ────────────────────────────────────────────────
 let audioOn = false;
@@ -1538,13 +1797,33 @@ function animate() {
       b.line.geometry.dispose();
       b.mat.dispose();
       b.pulseMat.dispose();
+      if (b.trail) {
+        for (const tr of b.trail) {
+          scene.remove(tr.mesh);
+          tr.mesh.geometry.dispose();
+          tr.mat.dispose();
+        }
+      }
       beams.splice(i, 1);
       continue;
     }
     const p = b.curve.getPointAt(Math.min(b.t, 0.999));
     b.pulse.position.copy(p);
-    b.mat.opacity = Math.max(0, b.life * 0.55);
+    b.mat.opacity = Math.max(0, b.life * (b.weight ? b.weight.lineOpacity : 0.55));
     b.pulseMat.opacity = Math.max(0, b.life);
+    // Push position into history; render trail meshes as receding ghosts
+    if (b.trail) {
+      b.history.unshift(p.clone());
+      if (b.history.length > b.trail.length) b.history.length = b.trail.length;
+      for (let j = 0; j < b.trail.length; j++) {
+        const histPos = b.history[j];
+        if (histPos) {
+          b.trail[j].mesh.position.copy(histPos);
+          // Each ghost fades faster than the last, scaled by overall life
+          b.trail[j].mat.opacity = Math.max(0, b.life * (1 - j / b.trail.length) * 0.7);
+        }
+      }
+    }
   }
 
   // Lift halos + label projection + firing pulse
@@ -1557,13 +1836,32 @@ function animate() {
   for (const [agentId, m] of agentMeshes) {
     const decay = liftHaloDecay.get(agentId);
     if (decay) {
-      m.halo.material.opacity = decay.intensity;
+      m.halo.material.opacity = Math.max(0, Math.min(1, decay.intensity));
       decay.intensity -= decay.decayPerFrame;
-      if (decay.intensity <= 0) liftHaloDecay.delete(agentId);
+      // Outward expansion of the halo ring while it pulses
+      if (decay.pulseScale !== undefined) {
+        decay.pulseScale += decay.pulseGrowth;
+        if (decay.pulseScale > decay.pulseScaleMax) decay.pulseScale = decay.pulseScaleMax;
+        m.halo.scale.set(decay.pulseScale, decay.pulseScale, 1);
+      }
+      // Drama color override (governance deny path)
+      if (decay.dramaColor !== undefined) {
+        m.halo.material.color.setHex(decay.dramaColor);
+      } else {
+        const baseColor = ROLE_COLORS[m.agent.role] || 0xffffff;
+        m.halo.material.color.setHex(baseColor);
+      }
+      if (decay.intensity <= 0) {
+        liftHaloDecay.delete(agentId);
+        m.halo.scale.set(1, 1, 1);
+        const baseColor = ROLE_COLORS[m.agent.role] || 0xffffff;
+        m.halo.material.color.setHex(baseColor);
+      }
     } else {
       // Persistent low-intensity halo proportional to long-term lift
       m.halo.material.opacity = 0.05 + (m.lift - 0.4) * 0.4;
       if (m.halo.material.opacity < 0) m.halo.material.opacity = 0;
+      m.halo.scale.set(1, 1, 1);
     }
     m.halo.lookAt(camera.position);
 

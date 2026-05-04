@@ -253,22 +253,65 @@ export function getAgentsByRole(role: AgentRole): EcosystemAgent[] {
 // ── Brief generator ──────────────────────────────────────────────────────────
 
 const BRIEF_PROMPTS: Array<{ prompt: string; weights: Brief["weights"] }> = [
+  // CTV-leaning
   { prompt: "Affluent CTV viewers 25-44, sports + drama affinity",
     weights: { audience: 0.7, ctv_bias: 0.9, b2b_bias: 0.0, audio_bias: 0.1 } },
-  { prompt: "Podcast listeners 35-54, automotive in-market",
-    weights: { audience: 0.6, ctv_bias: 0.1, b2b_bias: 0.0, audio_bias: 0.95 } },
-  { prompt: "B2B IT decision makers, mid-market SaaS",
-    weights: { audience: 0.5, ctv_bias: 0.0, b2b_bias: 0.95, audio_bias: 0.2 } },
-  { prompt: "New parents 0-12mo, household income > $80k",
-    weights: { audience: 0.85, ctv_bias: 0.5, b2b_bias: 0.0, audio_bias: 0.4 } },
   { prompt: "Cord-cutters 25-44, high streaming affinity, urban",
     weights: { audience: 0.7, ctv_bias: 0.85, b2b_bias: 0.05, audio_bias: 0.3 } },
+  { prompt: "CTV upper-funnel, premium content adjacency, brand-safe",
+    weights: { audience: 0.8, ctv_bias: 0.95, b2b_bias: 0.0, audio_bias: 0.05 } },
+  { prompt: "Live-event CTV viewers, sports + awards seasons",
+    weights: { audience: 0.7, ctv_bias: 0.92, b2b_bias: 0.0, audio_bias: 0.15 } },
+
+  // Audio-leaning
+  { prompt: "Podcast listeners 35-54, automotive in-market",
+    weights: { audience: 0.6, ctv_bias: 0.1, b2b_bias: 0.0, audio_bias: 0.95 } },
+  { prompt: "iHeartMedia audio + simulcast, affluent commuters",
+    weights: { audience: 0.6, ctv_bias: 0.2, b2b_bias: 0.05, audio_bias: 0.9 } },
+  { prompt: "Spoken-word podcast affinity, cooking + lifestyle",
+    weights: { audience: 0.55, ctv_bias: 0.05, b2b_bias: 0.0, audio_bias: 0.92 } },
+  { prompt: "Streaming radio drive-time, urban DMAs",
+    weights: { audience: 0.5, ctv_bias: 0.0, b2b_bias: 0.0, audio_bias: 0.98 } },
+
+  // B2B-leaning
+  { prompt: "B2B IT decision makers, mid-market SaaS",
+    weights: { audience: 0.5, ctv_bias: 0.0, b2b_bias: 0.95, audio_bias: 0.2 } },
+  { prompt: "Account-based: Fortune 500 marketing leadership",
+    weights: { audience: 0.4, ctv_bias: 0.1, b2b_bias: 0.98, audio_bias: 0.1 } },
+  { prompt: "Cybersecurity buying committee, enterprise",
+    weights: { audience: 0.45, ctv_bias: 0.05, b2b_bias: 0.93, audio_bias: 0.15 } },
+
+  // Lifestyle / demographic
+  { prompt: "New parents 0-12mo, household income > $80k",
+    weights: { audience: 0.85, ctv_bias: 0.5, b2b_bias: 0.0, audio_bias: 0.4 } },
   { prompt: "Luxury automotive intenders 45+, top DMAs",
     weights: { audience: 0.8, ctv_bias: 0.7, b2b_bias: 0.1, audio_bias: 0.5 } },
   { prompt: "Health-conscious affluent millennials, urban metros",
     weights: { audience: 0.75, ctv_bias: 0.5, b2b_bias: 0.0, audio_bias: 0.4 } },
+  { prompt: "Empty nesters 55+, premium travel intenders",
+    weights: { audience: 0.7, ctv_bias: 0.6, b2b_bias: 0.0, audio_bias: 0.5 } },
+  { prompt: "Gen Z gamers, console + PC, esports affinity",
+    weights: { audience: 0.7, ctv_bias: 0.5, b2b_bias: 0.0, audio_bias: 0.45 } },
+
+  // Seasonal / retail
   { prompt: "Holiday gift shoppers — Q4 retail, last-mile attribution",
     weights: { audience: 0.6, ctv_bias: 0.4, b2b_bias: 0.0, audio_bias: 0.5 } },
+  { prompt: "Back-to-school parents + students, mid-Aug surge",
+    weights: { audience: 0.65, ctv_bias: 0.4, b2b_bias: 0.0, audio_bias: 0.55 } },
+  { prompt: "Black Friday in-market deal hunters",
+    weights: { audience: 0.55, ctv_bias: 0.35, b2b_bias: 0.0, audio_bias: 0.6 } },
+
+  // Niche
+  { prompt: "DIY home renovators, project budget $5k+",
+    weights: { audience: 0.7, ctv_bias: 0.3, b2b_bias: 0.05, audio_bias: 0.6 } },
+  { prompt: "Sustainable lifestyle buyers, eco-credentials matter",
+    weights: { audience: 0.6, ctv_bias: 0.45, b2b_bias: 0.0, audio_bias: 0.55 } },
+  { prompt: "Pet owners — premium-food intenders, dogs + cats",
+    weights: { audience: 0.7, ctv_bias: 0.3, b2b_bias: 0.0, audio_bias: 0.6 } },
+  { prompt: "First-time home buyers 28-38, suburban migration",
+    weights: { audience: 0.75, ctv_bias: 0.55, b2b_bias: 0.05, audio_bias: 0.45 } },
+  { prompt: "Cookie-less ID-resolved CTV, UID2 + RampID coverage",
+    weights: { audience: 0.65, ctv_bias: 0.85, b2b_bias: 0.15, audio_bias: 0.1 } },
 ];
 
 let briefCounter = 0;
@@ -318,22 +361,73 @@ function syntheticDelay(agent: EcosystemAgent): Promise<void> {
   return new Promise((res) => setTimeout(res, base + jitter));
 }
 
+// Brief-fit score per agent: how well do this agent's specialties match
+// this brief's weight profile? Returns [0..1+]. Used to bias every
+// synthetic responder so agents look like they CARE about the brief
+// rather than randomly responding. Specialty keywords are mapped to
+// brief-weight dimensions; matches multiply the agent's response.
+//
+// e.g. mock_audio_signals (audio_ad_attention, podcast_listenership)
+// scores HIGH on a "podcast listeners" brief, LOW on a CTV brief.
+// Dstillery (behavioral_audiences, ttd_deployment) is balanced.
+const SPECIALTY_TO_DIMENSION: Record<string, keyof Brief["weights"]> = {
+  audio: "audio_bias",
+  audio_first: "audio_bias",
+  audio_ad_attention: "audio_bias",
+  podcast_listenership: "audio_bias",
+  podcast_buying: "audio_bias",
+  audio_attention: "audio_bias",
+  iheart_simulcast: "audio_bias",
+  ctv_premium: "ctv_bias",
+  ctv: "ctv_bias",
+  display_ctv_unified: "ctv_bias",
+  sports: "ctv_bias",
+  live_events: "ctv_bias",
+  b2b_account_based: "b2b_bias",
+  account_based: "b2b_bias",
+  technographic: "b2b_bias",
+  decision_maker_seniority: "b2b_bias",
+  linkedin_inventory: "b2b_bias",
+};
+
+function briefFitScore(agent: EcosystemAgent, brief: Brief): number {
+  const specs = agent.specialties || [];
+  if (specs.length === 0) return 0.6; // generic baseline
+  let score = 0.5; // baseline so no agent goes to zero
+  let matches = 0;
+  for (const spec of specs) {
+    const dim = SPECIALTY_TO_DIMENSION[spec];
+    if (!dim) continue;
+    const w = (brief.weights as Record<string, number>)[dim] ?? 0;
+    score += w * 0.35;
+    matches += 1;
+  }
+  // Universal-relevance specialties (cross-taxonomy etc.) get a small
+  // floor boost so generalist agents like evgeny_signals don't lose
+  // to specialists on every brief.
+  if (matches === 0 && specs.some((s) => s.includes("cross_taxonomy") || s.includes("ucp_") || s.includes("dts_"))) {
+    score += brief.weights.audience * 0.2;
+  }
+  return Math.min(1.4, score);
+}
+
 export async function syntheticSignalsResponse(agent: EcosystemAgent, brief: Brief): Promise<{
   signals: Array<{ name: string; coverage: number; cpm: number }>;
   agent_id: string;
+  fit: number;
 }> {
   await syntheticDelay(agent);
   if (Math.random() < (agent.personality?.failure_rate ?? 0)) throw new Error("simulated network error");
-  const baseCount = 3 + Math.floor(Math.random() * 5);
-  const audioBoost = brief.weights.audio_bias * 1.5;
-  const ctvBoost = brief.weights.ctv_bias * 1.3;
+  const fit = briefFitScore(agent, brief);
+  // Higher fit → more candidates returned + better coverage.
+  const baseCount = Math.max(1, Math.round(3 + fit * 3 + Math.random() * 2));
   const audienceBias = (agent.personality?.audience_size_bias ?? 0.5);
   const signals = Array.from({ length: baseCount }, (_, i) => ({
     name: `${agent.specialties?.[0] ?? "audience"}_seg_${i + 1}`,
-    coverage: Math.min(100, (15 + Math.random() * 40) * (1 + audienceBias)),
-    cpm: Math.max(0.5, (2 + Math.random() * 6) * (1 + audioBoost * 0.1 + ctvBoost * 0.1)),
+    coverage: Math.min(95, (15 + Math.random() * 40 + fit * 25) * (1 + audienceBias * 0.5)),
+    cpm: Math.max(0.5, (2 + Math.random() * 6) * (0.8 + fit * 0.5)),
   }));
-  return { signals, agent_id: agent.id };
+  return { signals, agent_id: agent.id, fit };
 }
 
 export async function syntheticGovernanceResponse(agent: EcosystemAgent, brief: Brief): Promise<{
@@ -352,19 +446,24 @@ export async function syntheticGovernanceResponse(agent: EcosystemAgent, brief: 
 export async function syntheticSalesResponse(agent: EcosystemAgent, brief: Brief): Promise<{
   products: Array<{ id: string; name: string; cpm: number; available_impressions: number }>;
   agent_id: string;
+  fit: number;
 }> {
   await syntheticDelay(agent);
   if (Math.random() < (agent.personality?.failure_rate ?? 0)) throw new Error("simulated sales agent error");
   const aggression = agent.personality?.bid_aggressiveness ?? 0.7;
-  const ctvFit = brief.weights.ctv_bias;
-  const productCount = 2 + Math.floor(Math.random() * 4);
+  const fit = briefFitScore(agent, brief);
+  // Sales agents whose specialty matches the brief return MORE products
+  // with better terms. Off-fit agents return a token 1-2 to show they
+  // tried; that's the "we handle the call but it's not our sweet spot"
+  // signal you'd see in real ecosystems.
+  const productCount = Math.max(1, Math.round(2 + fit * 3 + Math.random() * 1));
   const products = Array.from({ length: productCount }, (_, i) => ({
     id: `${agent.id}_prod_${i + 1}`,
     name: `${agent.specialties?.[0] ?? "premium"}_${i + 1}`,
-    cpm: 8 + Math.random() * 24 * (1 + ctvFit * 0.5),
-    available_impressions: Math.floor((5_000_000 + Math.random() * 30_000_000) * aggression),
+    cpm: (8 + Math.random() * 24) * (0.7 + fit * 0.4),
+    available_impressions: Math.floor((5_000_000 + Math.random() * 30_000_000) * aggression * (0.6 + fit * 0.6)),
   }));
-  return { products, agent_id: agent.id };
+  return { products, agent_id: agent.id, fit };
 }
 
 export async function syntheticCreativeResponse(agent: EcosystemAgent, brief: Brief): Promise<{
@@ -389,42 +488,80 @@ export async function syntheticBuyingBid(agent: EcosystemAgent, brief: Brief): P
   bid_cpm: number;
   budget_committed: number;
   agent_id: string;
+  fit: number;
 }> {
   await syntheticDelay(agent);
   if (Math.random() < (agent.personality?.failure_rate ?? 0)) throw new Error("buying agent timeout");
   const aggression = agent.personality?.bid_aggressiveness ?? 0.7;
-  const briefFit =
-    brief.weights.audio_bias * (agent.specialties?.includes("audio_first") ? 1.4 : 1) +
-    brief.weights.ctv_bias * (agent.specialties?.includes("display_ctv_unified") ? 1.3 : 1) +
-    brief.weights.b2b_bias * (agent.specialties?.includes("b2b_account_based") ? 1.6 : 1);
+  const fit = briefFitScore(agent, brief);
+  // Buying agents commit budget proportionally to brief fit. A b2b
+  // brief gets a $50k commitment from mock_dsp_gamma (b2b specialist)
+  // and a $5k token from mock_dsp_beta (audio specialist).
   return {
-    bid_cpm: 4 + Math.random() * 14 * aggression * briefFit,
-    budget_committed: Math.floor(brief.budget_usd * (0.15 + Math.random() * 0.5) * aggression),
+    bid_cpm: (4 + Math.random() * 14) * aggression * (0.7 + fit * 0.7),
+    budget_committed: Math.floor(brief.budget_usd * (0.10 + fit * 0.55) * aggression),
     agent_id: agent.id,
+    fit,
   };
 }
 
-export async function syntheticMeasurementReport(agent: EcosystemAgent, brief: Brief): Promise<{
-  lift: number;          // [0..1]
-  reach_pct: number;     // [0..100]
-  brand_safety: number;  // [0..1]
+export async function syntheticMeasurementReport(
+  agent: EcosystemAgent,
+  brief: Brief,
+  context?: {
+    avg_signal_fit?: number;
+    avg_sales_fit?: number;
+    avg_bid_cpm?: number;
+    total_budget_committed?: number;
+    bid_count?: number;
+  }
+): Promise<{
+  lift: number;
+  reach_pct: number;
+  brand_safety: number;
   agent_id: string;
+  fit_components?: { signal_fit: number; sales_fit: number; bid_efficiency: number; specialty_match: number };
 }> {
   await syntheticDelay(agent);
   if (Math.random() < (agent.personality?.failure_rate ?? 0)) throw new Error("measurement timeout");
-  // Lift correlates loosely with how well the brief matches an agent's
-  // specialty. This is what drives the feedback loop — measurement
-  // agents that find the brief "fit" their specialty report higher
-  // lift, which biases next-cycle brief generation.
-  const fitToAudio = brief.weights.audio_bias * (agent.id === "triton_attention_mock" ? 1.3 : 1.0);
-  const fitToCtv = brief.weights.ctv_bias * (agent.id === "nielsen_shape_mock" ? 1.2 : 1.0);
-  const baseLift = 0.35 + Math.random() * 0.5;
-  const lift = Math.min(0.99, baseLift * (1 + fitToAudio * 0.15 + fitToCtv * 0.1));
+  // Meaningful lift: weighted product of upstream-phase quality
+  // signals. This replaces the old random + per-agent-tweak pattern
+  // with a CV-style fit function so the feedback loop converges
+  // toward briefs that actually run well end-to-end.
+  //
+  //   signal_fit       = avg fit of signals agents that responded
+  //   sales_fit        = avg fit of sales agents that responded
+  //   bid_efficiency   = (sum bid_cpm / count) normalized — lower CPM at
+  //                      same coverage = more efficient
+  //   specialty_match  = does this measurement agent specialize in the
+  //                      brief's dominant axis?
+  const signalFit = context?.avg_signal_fit ?? 0.6;
+  const salesFit = context?.avg_sales_fit ?? 0.6;
+  const avgCpm = context?.avg_bid_cpm ?? 8;
+  // CPM efficiency: cap at 25 (very expensive) → 0; floor at 4 (cheap) → 1
+  const bidEfficiency = Math.max(0, Math.min(1, (25 - avgCpm) / 21));
+  // Specialty match: which axis does this measurement agent care about?
+  const dominant = brief.weights.audio_bias > brief.weights.ctv_bias && brief.weights.audio_bias > brief.weights.b2b_bias
+    ? "audio"
+    : brief.weights.ctv_bias > brief.weights.b2b_bias ? "ctv" : "b2b";
+  let specialtyMatch = 0.6;
+  if (agent.id === "triton_attention_mock" && dominant === "audio") specialtyMatch = 1.0;
+  else if (agent.id === "nielsen_shape_mock" && dominant === "ctv") specialtyMatch = 0.95;
+  else if (agent.id === "ias_shape_mock") specialtyMatch = 0.75; // generalist viewability + brand-safety
+  // Weighted geometric-ish mean. Falls toward 0.3 if any component is
+  // weak, toward 0.85 if all align. Random component adds ±0.08
+  // jitter — measurement noise.
+  const aligned = (signalFit * 0.30) + (salesFit * 0.25) + (bidEfficiency * 0.25) + (specialtyMatch * 0.20);
+  const jitter = (Math.random() - 0.5) * 0.16;
+  const lift = Math.max(0.15, Math.min(0.97, aligned + jitter));
+  // Reach scales with sales fit (more products = more reach)
+  const reachPct = Math.min(85, 12 + salesFit * 60 + Math.random() * 8);
   return {
     lift,
-    reach_pct: 8 + Math.random() * 60,
+    reach_pct: reachPct,
     brand_safety: 0.85 + Math.random() * 0.14,
     agent_id: agent.id,
+    fit_components: { signal_fit: signalFit, sales_fit: salesFit, bid_efficiency: bidEfficiency, specialty_match: specialtyMatch },
   };
 }
 
@@ -480,6 +617,15 @@ const BUYER_AGENT_ID = "__buyer_orchestrator";
 async function* runCycle(brief: Brief, _liftMap: Map<string, AgentLift>): AsyncGenerator<CycleEvent> {
   const t0 = Date.now();
 
+  // Accumulate quality signals across phases so measurement can do a
+  // real CV-fit-style lift score instead of randomly jittering.
+  const cycleContext = {
+    signal_fits: [] as number[],
+    sales_fits: [] as number[],
+    bid_cpms: [] as number[],
+    total_budget_committed: 0,
+  };
+
   yield {
     kind: "cycle_start",
     brief,
@@ -507,18 +653,19 @@ async function* runCycle(brief: Brief, _liftMap: Map<string, AgentLift>): AsyncG
   );
   for (const r of signalResponses) {
     if (r.status !== "fulfilled") continue;
-    const v = r.value as { agent: EcosystemAgent } & ({ response: { signals: Array<{ name: string; coverage: number; cpm: number }> } } | { error: string });
+    const v = r.value as { agent: EcosystemAgent } & ({ response: { signals: Array<{ name: string; coverage: number; cpm: number }>; fit?: number } } | { error: string });
     if ("error" in v) {
       yield { kind: "trace", trace: { id: nextTraceId(), kind: "signal_response", agent_id: v.agent.id, brief_id: brief.id, ts_ms: Date.now() - t0,
         summary: `${v.agent.name}: ERROR ${v.error}`, detail: { error: v.error } } };
       continue;
     }
+    if (typeof v.response.fit === "number") cycleContext.signal_fits.push(v.response.fit);
     yield { kind: "message", message: { id: nextTraceId(), brief_id: brief.id,
       from_agent_id: v.agent.id, to_agent_id: BUYER_AGENT_ID, kind: "signal_response", ts_ms: Date.now() - t0,
       color_hint: "signal" } };
     yield { kind: "trace", trace: { id: nextTraceId(), kind: "signal_response", agent_id: v.agent.id, brief_id: brief.id, ts_ms: Date.now() - t0,
-      summary: `${v.agent.name}: ${v.response.signals.length} signals, top coverage ${v.response.signals[0]?.coverage.toFixed(1)}%`,
-      detail: { signals: v.response.signals } } };
+      summary: `${v.agent.name}: ${v.response.signals.length} signals, top coverage ${v.response.signals[0]?.coverage.toFixed(1)}%${v.response.fit !== undefined ? ` · fit ${(v.response.fit * 100).toFixed(0)}%` : ""}`,
+      detail: { signals: v.response.signals, fit: v.response.fit } } };
   }
 
   // 2) Governance check (parallel across all governance agents — winner-take-all gate)
@@ -569,15 +716,16 @@ async function* runCycle(brief: Brief, _liftMap: Map<string, AgentLift>): AsyncG
   let productsEvaluated = 0;
   for (const r of salesResponses) {
     if (r.status !== "fulfilled") continue;
-    const v = r.value as { agent: EcosystemAgent } & ({ response: { products: Array<unknown> } } | { error: string });
+    const v = r.value as { agent: EcosystemAgent } & ({ response: { products: Array<unknown>; fit?: number } } | { error: string });
     if ("error" in v) continue;
     productsEvaluated += v.response.products.length;
+    if (typeof v.response.fit === "number") cycleContext.sales_fits.push(v.response.fit);
     yield { kind: "message", message: { id: nextTraceId(), brief_id: brief.id,
       from_agent_id: v.agent.id, to_agent_id: BUYER_AGENT_ID, kind: "sales_response", ts_ms: Date.now() - t0,
       color_hint: "product" } };
     yield { kind: "trace", trace: { id: nextTraceId(), kind: "sales_response", agent_id: v.agent.id, brief_id: brief.id, ts_ms: Date.now() - t0,
-      summary: `${v.agent.name}: ${v.response.products.length} products`,
-      detail: { products: v.response.products } } };
+      summary: `${v.agent.name}: ${v.response.products.length} products${v.response.fit !== undefined ? ` · fit ${(v.response.fit * 100).toFixed(0)}%` : ""}`,
+      detail: { products: v.response.products, fit: v.response.fit } } };
   }
 
   // 4) Creative match
@@ -617,14 +765,16 @@ async function* runCycle(brief: Brief, _liftMap: Map<string, AgentLift>): AsyncG
   let bidsReceived = 0;
   for (const r of bidResponses) {
     if (r.status !== "fulfilled") continue;
-    const v = r.value as { agent: EcosystemAgent } & ({ response: { bid_cpm: number; budget_committed: number } } | { error: string });
+    const v = r.value as { agent: EcosystemAgent } & ({ response: { bid_cpm: number; budget_committed: number; fit?: number } } | { error: string });
     if ("error" in v) continue;
     bidsReceived += 1;
+    cycleContext.bid_cpms.push(v.response.bid_cpm);
+    cycleContext.total_budget_committed += v.response.budget_committed;
     yield { kind: "message", message: { id: nextTraceId(), brief_id: brief.id,
       from_agent_id: v.agent.id, to_agent_id: BUYER_AGENT_ID, kind: "buying_bid", ts_ms: Date.now() - t0,
       color_hint: "bid" } };
     yield { kind: "trace", trace: { id: nextTraceId(), kind: "buying_bid", agent_id: v.agent.id, brief_id: brief.id, ts_ms: Date.now() - t0,
-      summary: `${v.agent.name}: $${v.response.bid_cpm.toFixed(2)} CPM, $${v.response.budget_committed.toLocaleString()} committed`,
+      summary: `${v.agent.name}: $${v.response.bid_cpm.toFixed(2)} CPM, $${v.response.budget_committed.toLocaleString()} committed${v.response.fit !== undefined ? ` · fit ${(v.response.fit * 100).toFixed(0)}%` : ""}`,
       detail: { bid: v.response } } };
   }
 
@@ -635,9 +785,25 @@ async function* runCycle(brief: Brief, _liftMap: Map<string, AgentLift>): AsyncG
       from_agent_id: BUYER_AGENT_ID, to_agent_id: a.id, kind: "measurement_report", ts_ms: Date.now() - t0,
       color_hint: "measurement" } };
   }
+  // Roll up cycle quality signals so measurement can score against
+  // actual upstream-phase outcomes — not random tilt against the brief
+  // weights. This is what makes the feedback loop meaningful.
+  const measurementContext = {
+    avg_signal_fit: cycleContext.signal_fits.length > 0
+      ? cycleContext.signal_fits.reduce((a, b) => a + b, 0) / cycleContext.signal_fits.length
+      : 0.6,
+    avg_sales_fit: cycleContext.sales_fits.length > 0
+      ? cycleContext.sales_fits.reduce((a, b) => a + b, 0) / cycleContext.sales_fits.length
+      : 0.6,
+    avg_bid_cpm: cycleContext.bid_cpms.length > 0
+      ? cycleContext.bid_cpms.reduce((a, b) => a + b, 0) / cycleContext.bid_cpms.length
+      : 8,
+    total_budget_committed: cycleContext.total_budget_committed,
+    bid_count: cycleContext.bid_cpms.length,
+  };
   const measurementResponses = await Promise.allSettled(
     measurementAgents.map(async (a) => {
-      try { return { agent: a, response: await syntheticMeasurementReport(a, brief) }; }
+      try { return { agent: a, response: await syntheticMeasurementReport(a, brief, measurementContext) }; }
       catch (e) { return { agent: a, error: String(e) }; }
     })
   );

@@ -603,6 +603,53 @@ export function renderEcosystemCanvas(demoKey: string): string {
     background: radial-gradient(circle at 50% 50%, transparent, rgba(0,0,0,0.45));
   }
 
+  /* Cinematic phase title — large fade-in/out text at center top
+     when a new phase begins. Designed to read while recording, so
+     viewers without audio context still know what's happening.
+     Auto-fades after 2.4s. */
+  .phase-title-overlay {
+    position: fixed; top: 30vh; left: 50%;
+    transform: translateX(-50%);
+    z-index: 7;
+    pointer-events: none;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  .phase-title-overlay.visible {
+    opacity: 1;
+    animation: phase-title-pulse 2.4s ease forwards;
+  }
+  @keyframes phase-title-pulse {
+    0%   { opacity: 0; transform: translateX(-50%) scale(0.92); }
+    18%  { opacity: 1; transform: translateX(-50%) scale(1.02); }
+    78%  { opacity: 1; transform: translateX(-50%) scale(1.0); }
+    100% { opacity: 0; transform: translateX(-50%) scale(1.0); }
+  }
+  .phase-title-num {
+    font: 11px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    text-transform: uppercase; letter-spacing: 0.32em;
+    color: var(--accent);
+    margin-bottom: 12px;
+    text-shadow: 0 0 16px var(--accent-glow);
+  }
+  .phase-title-name {
+    font-size: 44px; font-weight: 200;
+    letter-spacing: 0.04em;
+    color: var(--text-bright, #ffffff);
+    line-height: 1.1;
+    text-shadow: 0 4px 24px rgba(0,0,0,0.55), 0 0 30px rgba(56, 182, 255, 0.18);
+  }
+  .phase-title-sub {
+    margin-top: 8px;
+    font: 13px ui-monospace, monospace;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+  }
+  body.hide-ui .phase-title-overlay { /* intentionally NOT hidden — works during recording */ }
+  /* User can opt out by passing ?story=0 (handled in JS) */
+  body.story-off .phase-title-overlay { display: none; }
+
   /* Governance-deny flash — full-screen red pulse signaling cycle abort.
      Triggered programmatically by JS by toggling .firing class. Used
      for cinematic drama: the room sees the protocol "fail loud". */
@@ -693,6 +740,12 @@ export function renderEcosystemCanvas(demoKey: string): string {
   <span class="phase-num" id="phase-num">PHASE —</span>
   <span id="phase-title">awaiting first brief</span>
   <span class="phase-meta" id="phase-meta"></span>
+</div>
+
+<div class="phase-title-overlay" id="phase-title-overlay">
+  <div class="phase-title-num" id="phase-title-num">—</div>
+  <div class="phase-title-name" id="phase-title-name">—</div>
+  <div class="phase-title-sub" id="phase-title-sub">—</div>
 </div>
 
 <!-- Trace detail modal — opens when a trace line is clicked. Renders
@@ -1780,14 +1833,37 @@ const phaseNumEl = document.getElementById("phase-num");
 const phaseTitleEl = document.getElementById("phase-title");
 const phaseMetaEl = document.getElementById("phase-meta");
 const PHASE_ORDER = [
+  { kinds: ["identity_resolve", "identity_response"], key: "identity",    title: "Identity resolution", role_count: 4 },
   { kinds: ["signals_fanout", "signal_response"],     key: "signals",     title: "Signals discovery",   role_count: 5 },
   { kinds: ["governance_check"],                      key: "governance",  title: "Governance check",    role_count: 3 },
   { kinds: ["sales_fanout", "sales_response"],        key: "sales",       title: "Sales fan-out",       role_count: 10 },
   { kinds: ["creative_match"],                        key: "creative",    title: "Creative match",      role_count: 3 },
   { kinds: ["buying_bid"],                            key: "buying",      title: "Buying bids",         role_count: 5 },
-  { kinds: ["measurement_report"],                    key: "measurement", title: "Measurement reports", role_count: 3 },
+  { kinds: ["cleanroom_join", "cleanroom_response"],  key: "cleanroom",   title: "Clean room join",     role_count: 1 },
+  { kinds: ["measurement_report", "realtime_push"],   key: "measurement", title: "Measurement reports", role_count: 3 },
 ];
 let currentPhaseIdx = -1;
+// Phase-title overlay (cinematic large text at phase transitions).
+const phaseTitleOverlay = document.getElementById("phase-title-overlay");
+const phaseTitleNumEl = document.getElementById("phase-title-num");
+const phaseTitleNameEl = document.getElementById("phase-title-name");
+const phaseTitleSubEl = document.getElementById("phase-title-sub");
+let phaseTitleResetTimer = null;
+function showPhaseTitle(phaseIdx, ph) {
+  if (!phaseTitleOverlay) return;
+  if (phaseTitleNumEl) phaseTitleNumEl.textContent = "PHASE " + (phaseIdx + 1) + " of " + PHASE_ORDER.length;
+  if (phaseTitleNameEl) phaseTitleNameEl.textContent = ph.title.toUpperCase();
+  if (phaseTitleSubEl) phaseTitleSubEl.textContent = ph.role_count + " " + (ph.role_count === 1 ? "agent" : "agents") + " responding";
+  // Toggle the visible class — animation restart trick via reflow
+  phaseTitleOverlay.classList.remove("visible");
+  void phaseTitleOverlay.offsetWidth;
+  phaseTitleOverlay.classList.add("visible");
+  if (phaseTitleResetTimer) clearTimeout(phaseTitleResetTimer);
+  phaseTitleResetTimer = setTimeout(function () {
+    phaseTitleOverlay.classList.remove("visible");
+  }, 2400);
+}
+
 function setPhaseFromKind(kind) {
   if (!kind) return;
   for (let i = 0; i < PHASE_ORDER.length; i++) {
@@ -1795,11 +1871,14 @@ function setPhaseFromKind(kind) {
       if (i === currentPhaseIdx) return;
       currentPhaseIdx = i;
       const ph = PHASE_ORDER[i];
-      phaseNumEl.textContent = "PHASE " + (i + 1) + " / 6";
+      phaseNumEl.textContent = "PHASE " + (i + 1) + " / " + PHASE_ORDER.length;
       phaseTitleEl.textContent = ph.title;
       phaseMetaEl.textContent = "· " + ph.role_count + " agents";
-      // Swap accent class
       phaseBanner.className = "phase-banner is-phase-" + ph.key;
+      // Cinematic title overlay — fires once per phase transition
+      showPhaseTitle(i, ph);
+      // Audio chord swell tied to the phase root note (defined below)
+      audioPhaseChord(ph.key);
       return;
     }
   }
@@ -2236,6 +2315,8 @@ document.addEventListener("keydown", function (e) {
   // a user gesture; we trigger via a delayed click that browsers accept
   // when initiated via a meta refresh-style URL action). Safari may block.
   if (audioParam === "1") setTimeout(function () { document.getElementById("audio-toggle").click(); }, 1200);
+  // Opt out of phase-title overlay via ?story=0 (default on).
+  if (sp.get("story") === "0") document.body.classList.add("story-off");
   if (cinemaParam === "15" || cinemaParam === "60" || cinemaParam === "180") {
     setTimeout(function () { startCinema(parseInt(cinemaParam, 10)); }, 2200);
   }
@@ -2308,6 +2389,55 @@ function audioLiftBlip(lift) {
   osc.connect(gain).connect(audioCtx.destination);
   osc.start(now);
   osc.stop(now + 0.5);
+}
+
+// Phase-specific chord progression. Each phase gets its own root +
+// triad. Plays a soft 1.6s swell when the phase begins so the audio
+// helps the viewer feel the transition without staring at the
+// banner. Voicings stay in a narrow range to avoid muddying the
+// per-message blips that play on top.
+//
+// Progression (in C-ish for ear continuity):
+//   identity     — Cmaj7   (open + curious)
+//   signals      — Em      (mid-tension, exploration)
+//   governance   — Cm7     (darker — "this is the gate")
+//   sales        — F       (broadening — "many vendors respond")
+//   creative     — Am      (warmer)
+//   buying       — D       (lift — "decisions arrive")
+//   cleanroom    — Bbmaj7  (consonant lift — privacy resolved)
+//   measurement  — Cmaj    (resolution back home)
+const PHASE_CHORDS = {
+  identity:    [261.63, 329.63, 392.00, 493.88], // C, E, G, B
+  signals:     [329.63, 392.00, 493.88],          // E, G, B (Em)
+  governance:  [261.63, 311.13, 392.00, 466.16],  // C, Eb, G, Bb (Cm7)
+  sales:       [349.23, 440.00, 523.25],          // F, A, C
+  creative:    [220.00, 261.63, 329.63],          // A, C, E (Am)
+  buying:      [293.66, 369.99, 440.00],          // D, F#, A
+  cleanroom:   [233.08, 293.66, 349.23, 440.00],  // Bb, D, F, A (Bbmaj7)
+  measurement: [261.63, 329.63, 392.00],          // C, E, G
+};
+
+function audioPhaseChord(phaseKey) {
+  if (!audioOn || !audioCtx) return;
+  const chord = PHASE_CHORDS[phaseKey];
+  if (!chord) return;
+  const now = audioCtx.currentTime;
+  // Play each note slightly delayed (rolled chord) so the swell
+  // reads as harmony rather than a stab. Total duration ~1.6s.
+  chord.forEach(function (freq, i) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    const start = now + i * 0.04;
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(0.022, start + 0.08);  // soft, layered under blips
+    gain.gain.linearRampToValueAtTime(0.018, start + 0.6);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 1.6);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(start);
+    osc.stop(start + 1.7);
+  });
 }
 
 // ── Animation loop ───────────────────────────────────────────────────────

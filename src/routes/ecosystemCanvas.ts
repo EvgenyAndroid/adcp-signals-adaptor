@@ -860,6 +860,24 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
+// fix-render-fix: hoist mutable UI flags here (before scene init +
+// animate() is called) so the animation loop's references can never
+// hit a TDZ even if a later init block throws. Defaults are safe:
+// not paused, all-filter. Using var (truly hoisted) so any position
+// issue from later refactors cannot reintroduce TDZ.
+var globalPaused = false;
+var beamFilter = "all";
+
+// Surface any unhandled error so silent JS failures (the kind that
+// kept the constellation invisible while everything else rendered)
+// become visible in DevTools instead of looking like a black canvas.
+window.addEventListener("error", function (e) {
+  console.error("[ecosystem] uncaught:", e.message, e.filename + ":" + e.lineno + ":" + e.colno);
+});
+window.addEventListener("unhandledrejection", function (e) {
+  console.error("[ecosystem] unhandled promise:", e.reason);
+});
+
 // ── Constants ────────────────────────────────────────────────────────────
 const ROLE_COLORS = {
   sales:       0xffb454,
@@ -2475,45 +2493,51 @@ const obProgress = document.getElementById("ob-progress");
 function showOnboardingStep(i) {
   const s = ONBOARDING_STEPS[i];
   if (!s) return finishOnboarding();
-  obStep.textContent = "STEP " + (i + 1) + " / " + ONBOARDING_STEPS.length;
-  obTitle.textContent = s.title;
-  obBody.innerHTML = s.body;
-  obNext.textContent = i === ONBOARDING_STEPS.length - 1 ? "go ✓" : "next →";
-  Array.from(obProgress.children).forEach(function (el, idx) {
-    el.classList.toggle("active", idx <= i);
-  });
+  if (obStep) obStep.textContent = "STEP " + (i + 1) + " / " + ONBOARDING_STEPS.length;
+  if (obTitle) obTitle.textContent = s.title;
+  if (obBody) obBody.innerHTML = s.body;
+  if (obNext) obNext.textContent = i === ONBOARDING_STEPS.length - 1 ? "go ✓" : "next →";
+  if (obProgress) {
+    Array.from(obProgress.children).forEach(function (el, idx) {
+      el.classList.toggle("active", idx <= i);
+    });
+  }
 }
 function finishOnboarding() {
-  onboardingEl.classList.remove("open");
+  if (onboardingEl) onboardingEl.classList.remove("open");
   try { localStorage.setItem(ONBOARDING_KEY, "1"); } catch (e) {}
 }
-obNext.addEventListener("click", function () {
+// fix-render-fix: every DOM access guarded so a missing element can
+// never break the rest of the script (which would crash agent rendering).
+if (obNext) obNext.addEventListener("click", function () {
   onboardingIdx += 1;
   if (onboardingIdx >= ONBOARDING_STEPS.length) finishOnboarding();
   else showOnboardingStep(onboardingIdx);
 });
-obSkip.addEventListener("click", finishOnboarding);
+if (obSkip) obSkip.addEventListener("click", finishOnboarding);
 // Show on first visit
 try {
-  if (!localStorage.getItem(ONBOARDING_KEY)) {
+  if (onboardingEl && !localStorage.getItem(ONBOARDING_KEY)) {
     onboardingEl.classList.add("open");
     showOnboardingStep(0);
   }
 } catch (e) { /* localStorage blocked — silently skip onboarding */ }
 // Re-trigger via URL ?onboard=1
-if (new URLSearchParams(window.location.search).get("onboard") === "1") {
-  onboardingIdx = 0;
-  onboardingEl.classList.add("open");
-  showOnboardingStep(0);
-}
+try {
+  if (onboardingEl && new URLSearchParams(window.location.search).get("onboard") === "1") {
+    onboardingIdx = 0;
+    onboardingEl.classList.add("open");
+    showOnboardingStep(0);
+  }
+} catch (e) { /* defensive: never let URL parsing crash init */ }
 
 // ── fix-all-gaps: global pause ─────────────────────────────────────────
 // Stops the EventSource (no new events arrive) AND freezes the
 // animation loop's beam/particle/halo updates. Click again resumes
 // from the same SSE stream.
-let globalPaused = false;
+// (var globalPaused = false declared at top of script for hoisting safety)
 const globalPauseBtn = document.getElementById("global-pause");
-globalPauseBtn.addEventListener("click", function () {
+if (globalPauseBtn) globalPauseBtn.addEventListener("click", function () {
   globalPaused = !globalPaused;
   globalPauseBtn.classList.toggle("is-paused", globalPaused);
   globalPauseBtn.textContent = globalPaused ? "▶ resume" : "⏸ pause";
@@ -2541,7 +2565,7 @@ function reconnectStream() {
 // Click a chip to filter beam spawning to one message kind. The
 // filter only affects new beams — already-flying beams complete
 // their journey. Click "all" to clear.
-let beamFilter = "all";
+// (var beamFilter = "all" declared at top of script for hoisting safety)
 Array.from(document.querySelectorAll("[data-filter]")).forEach(function (chip) {
   chip.addEventListener("click", function () {
     beamFilter = chip.dataset.filter;
@@ -2555,7 +2579,7 @@ Array.from(document.querySelectorAll("[data-filter]")).forEach(function (chip) {
 // When user scrolls the trace panel, pause auto-scroll. Resume when
 // they scroll back to top.
 const tracePanelEl = document.getElementById("trace-panel");
-let userScrolledTrace = false;
+var userScrolledTrace = false; // var for hoisting safety (animation loop may grow to read this)
 if (tracePanelEl) {
   tracePanelEl.addEventListener("scroll", function () {
     userScrolledTrace = tracePanelEl.scrollTop > 50;

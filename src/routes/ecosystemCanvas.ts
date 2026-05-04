@@ -178,15 +178,15 @@ export function renderEcosystemCanvas(demoKey: string): string {
   .agent-label {
     position: absolute;
     transform: translate(-50%, -50%);
-    padding: 2px 7px;
-    background: rgba(10, 14, 21, 0.78);
-    border: 1px solid rgba(56, 182, 255, 0.15);
-    border-radius: 4px;
-    font: 10px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    padding: 1px 6px;
+    background: rgba(10, 14, 21, 0.85);
+    border: 1px solid rgba(56, 182, 255, 0.10);
+    border-radius: 3px;
+    font: 9px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     color: var(--text-dim);
     white-space: nowrap;
-    letter-spacing: 0.02em;
-    max-width: 180px;
+    letter-spacing: 0.01em;
+    max-width: 140px;
     overflow: hidden;
     text-overflow: ellipsis;
     transition: opacity 0.18s ease, transform 0.12s ease, border-color 0.2s;
@@ -603,52 +603,21 @@ export function renderEcosystemCanvas(demoKey: string): string {
     background: radial-gradient(circle at 50% 50%, transparent, rgba(0,0,0,0.45));
   }
 
-  /* Cinematic phase title — large fade-in/out text at center top
-     when a new phase begins. Designed to read while recording, so
-     viewers without audio context still know what's happening.
-     Auto-fades after 2.4s. */
-  .phase-title-overlay {
-    position: fixed; top: 30vh; left: 50%;
-    transform: translateX(-50%);
-    z-index: 7;
-    pointer-events: none;
-    text-align: center;
-    opacity: 0;
-    transition: opacity 0.5s ease;
+  /* (phase-title-overlay removed — was covering the constellation.
+     Phase info still surfaces via the small phase-banner pill at top
+     center, the topbar's cycle counter, and audio chord progression.) */
+
+  /* Subtle pulse on the phase banner when phase changes — replaces
+     the giant overlay. Eye catches the transition without losing
+     the constellation. */
+  .phase-banner.pulse-now {
+    animation: phase-banner-tick 0.7s ease;
   }
-  .phase-title-overlay.visible {
-    opacity: 1;
-    animation: phase-title-pulse 2.4s ease forwards;
+  @keyframes phase-banner-tick {
+    0%   { transform: translateX(-50%) scale(1.0); }
+    35%  { transform: translateX(-50%) scale(1.06); box-shadow: 0 0 24px var(--accent-glow); }
+    100% { transform: translateX(-50%) scale(1.0); }
   }
-  @keyframes phase-title-pulse {
-    0%   { opacity: 0; transform: translateX(-50%) scale(0.92); }
-    18%  { opacity: 1; transform: translateX(-50%) scale(1.02); }
-    78%  { opacity: 1; transform: translateX(-50%) scale(1.0); }
-    100% { opacity: 0; transform: translateX(-50%) scale(1.0); }
-  }
-  .phase-title-num {
-    font: 11px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    text-transform: uppercase; letter-spacing: 0.32em;
-    color: var(--accent);
-    margin-bottom: 12px;
-    text-shadow: 0 0 16px var(--accent-glow);
-  }
-  .phase-title-name {
-    font-size: 44px; font-weight: 200;
-    letter-spacing: 0.04em;
-    color: var(--text-bright, #ffffff);
-    line-height: 1.1;
-    text-shadow: 0 4px 24px rgba(0,0,0,0.55), 0 0 30px rgba(56, 182, 255, 0.18);
-  }
-  .phase-title-sub {
-    margin-top: 8px;
-    font: 13px ui-monospace, monospace;
-    color: var(--text-dim);
-    letter-spacing: 0.06em;
-  }
-  body.hide-ui .phase-title-overlay { /* intentionally NOT hidden — works during recording */ }
-  /* User can opt out by passing ?story=0 (handled in JS) */
-  body.story-off .phase-title-overlay { display: none; }
 
   /* Governance-deny flash — full-screen red pulse signaling cycle abort.
      Triggered programmatically by JS by toggling .firing class. Used
@@ -742,11 +711,6 @@ export function renderEcosystemCanvas(demoKey: string): string {
   <span class="phase-meta" id="phase-meta"></span>
 </div>
 
-<div class="phase-title-overlay" id="phase-title-overlay">
-  <div class="phase-title-num" id="phase-title-num">—</div>
-  <div class="phase-title-name" id="phase-title-name">—</div>
-  <div class="phase-title-sub" id="phase-title-sub">—</div>
-</div>
 
 <!-- Trace detail modal — opens when a trace line is clicked. Renders
      the full trace object as syntax-highlighted JSON, plus a synthesized
@@ -1843,26 +1807,8 @@ const PHASE_ORDER = [
   { kinds: ["measurement_report", "realtime_push"],   key: "measurement", title: "Measurement reports", role_count: 3 },
 ];
 let currentPhaseIdx = -1;
-// Phase-title overlay (cinematic large text at phase transitions).
-const phaseTitleOverlay = document.getElementById("phase-title-overlay");
-const phaseTitleNumEl = document.getElementById("phase-title-num");
-const phaseTitleNameEl = document.getElementById("phase-title-name");
-const phaseTitleSubEl = document.getElementById("phase-title-sub");
-let phaseTitleResetTimer = null;
-function showPhaseTitle(phaseIdx, ph) {
-  if (!phaseTitleOverlay) return;
-  if (phaseTitleNumEl) phaseTitleNumEl.textContent = "PHASE " + (phaseIdx + 1) + " of " + PHASE_ORDER.length;
-  if (phaseTitleNameEl) phaseTitleNameEl.textContent = ph.title.toUpperCase();
-  if (phaseTitleSubEl) phaseTitleSubEl.textContent = ph.role_count + " " + (ph.role_count === 1 ? "agent" : "agents") + " responding";
-  // Toggle the visible class — animation restart trick via reflow
-  phaseTitleOverlay.classList.remove("visible");
-  void phaseTitleOverlay.offsetWidth;
-  phaseTitleOverlay.classList.add("visible");
-  if (phaseTitleResetTimer) clearTimeout(phaseTitleResetTimer);
-  phaseTitleResetTimer = setTimeout(function () {
-    phaseTitleOverlay.classList.remove("visible");
-  }, 2400);
-}
+// Phase-title overlay was removed (was covering the constellation).
+// Replaced with a small pulse animation on the phase banner itself.
 
 function setPhaseFromKind(kind) {
   if (!kind) return;
@@ -1874,9 +1820,12 @@ function setPhaseFromKind(kind) {
       phaseNumEl.textContent = "PHASE " + (i + 1) + " / " + PHASE_ORDER.length;
       phaseTitleEl.textContent = ph.title;
       phaseMetaEl.textContent = "· " + ph.role_count + " agents";
+      // Restart the pulse class via reflow trick so transitions
+      // catch the eye without the giant overlay.
       phaseBanner.className = "phase-banner is-phase-" + ph.key;
-      // Cinematic title overlay — fires once per phase transition
-      showPhaseTitle(i, ph);
+      void phaseBanner.offsetWidth;
+      phaseBanner.classList.add("pulse-now");
+      setTimeout(function () { phaseBanner.classList.remove("pulse-now"); }, 720);
       // Audio chord swell tied to the phase root note (defined below)
       audioPhaseChord(ph.key);
       return;
@@ -2619,14 +2568,26 @@ function animate() {
       __projTmp.copy(m.position);
       const toAgent = __projTmp.clone().sub(camera.position);
       const facing = toAgent.dot(camWorldDir);
-      if (facing > 0) {
+      // Hide labels in front-of-camera but only when they're firing
+      // OR when the user is hovering. Off-camera and back-of-sphere
+      // labels stay hidden. Reduces 30+ labels to a tractable
+      // foreground-firing subset.
+      const toBuyer = m.position.length();
+      const cameraDist = camera.position.distanceTo(m.position);
+      const visibleByFacing = facing > 0;
+      const isFiring = m.firingTimeout > 0;
+      const isClicked = (typeof clickedAgentId !== "undefined") && clickedAgentId === agentId;
+      // Show label if: facing AND (firing OR clicked OR camera-distance close enough)
+      const closeEnough = cameraDist < 36;
+      const shouldShow = visibleByFacing && (isFiring || isClicked || closeEnough);
+      if (shouldShow) {
         __projTmp.copy(m.position).project(camera);
         const x = __projTmp.x * halfW + halfW;
         const y = -__projTmp.y * halfH + halfH;
-        // Offset below the node a bit so it doesn't overlap the mesh
         m.label.style.left = x + "px";
-        m.label.style.top = (y + 18) + "px";
-        m.label.style.opacity = String(Math.min(1, 0.55 + facing * 0.6));
+        m.label.style.top = (y + 16) + "px";
+        // Firing/clicked labels fully visible; ambient labels at lower opacity
+        m.label.style.opacity = isFiring || isClicked ? "1" : String(Math.min(0.55, 0.30 + facing * 0.30));
       } else {
         m.label.style.opacity = "0";
       }

@@ -703,7 +703,7 @@ export interface CycleEvent {
   message?: MessageEvent;
   lift?: { agent_id: string; score: number };
   brief?: Brief;
-  cycle_summary?: { brief_id: string; mean_lift: number; products_evaluated: number; bids_received: number };
+  cycle_summary?: { brief_id: string; mean_lift: number; products_evaluated: number; bids_received: number; total_budget_committed?: number };
 }
 
 const BUYER_AGENT_ID = "__buyer_orchestrator";
@@ -1023,7 +1023,13 @@ async function* runCycle(brief: Brief, _liftMap: Map<string, AgentLift>): AsyncG
   const meanLift = lifts.length > 0 ? lifts.reduce((a, b) => a + b, 0) / lifts.length : 0;
   yield {
     kind: "cycle_end",
-    cycle_summary: { brief_id: brief.id, mean_lift: meanLift, products_evaluated: productsEvaluated, bids_received: bidsReceived },
+    cycle_summary: {
+      brief_id: brief.id,
+      mean_lift: meanLift,
+      products_evaluated: productsEvaluated,
+      bids_received: bidsReceived,
+      total_budget_committed: cycleContext.total_budget_committed,
+    },
   };
 }
 
@@ -1154,7 +1160,7 @@ export function getLiveStatusSnapshot(): Array<{ agent_id: string } & AgentLiveS
 class EcosystemState {
   feedback: FeedbackState = new FeedbackState();
   liftByAgent: Map<string, AgentLift> = new Map();
-  lastCycleSummaries: Array<{ brief_id: string; mean_lift: number; products_evaluated: number; bids_received: number; ts: string }> = [];
+  lastCycleSummaries: Array<{ brief_id: string; mean_lift: number; products_evaluated: number; bids_received: number; ts: string; total_budget_committed?: number }> = [];
   cycleCount: number = 0;
 
   applyMeasurement(brief: Brief, lifts: number[]): void {
@@ -1168,7 +1174,7 @@ class EcosystemState {
     this.liftByAgent.set(agent_id, { score: next, samples: prev.samples + 1 });
   }
 
-  recordCycle(summary: { brief_id: string; mean_lift: number; products_evaluated: number; bids_received: number }): void {
+  recordCycle(summary: { brief_id: string; mean_lift: number; products_evaluated: number; bids_received: number; total_budget_committed?: number }): void {
     this.lastCycleSummaries.push({ ...summary, ts: new Date().toISOString() });
     if (this.lastCycleSummaries.length > 50) this.lastCycleSummaries.shift();
     this.cycleCount += 1;
@@ -1178,13 +1184,16 @@ class EcosystemState {
     feedback: { audio_pull: number; ctv_pull: number; b2b_pull: number };
     cycle_count: number;
     lift_by_agent: Array<{ agent_id: string; score: number; samples: number }>;
-    recent_cycles: Array<{ brief_id: string; mean_lift: number; products_evaluated: number; bids_received: number; ts: string }>;
+    recent_cycles: Array<{ brief_id: string; mean_lift: number; products_evaluated: number; bids_received: number; ts: string; total_budget_committed?: number }>;
+    total_budget_committed_lifetime: number;
   } {
+    const lifetime = this.lastCycleSummaries.reduce((s, c) => s + (c.total_budget_committed || 0), 0);
     return {
       feedback: this.feedback.bias(),
       cycle_count: this.cycleCount,
       lift_by_agent: Array.from(this.liftByAgent.entries()).map(([agent_id, v]) => ({ agent_id, ...v })),
-      recent_cycles: this.lastCycleSummaries.slice(-10),
+      recent_cycles: this.lastCycleSummaries.slice(-20),
+      total_budget_committed_lifetime: lifetime,
     };
   }
 }

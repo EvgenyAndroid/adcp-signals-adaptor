@@ -20,6 +20,33 @@ export const explainBadgesJs = `function _explainBadge(topic, decision) {
   return '<button class="explain-badge mono" data-explain-key="' + escapeHtml(key) + '" title="Explain this decision">?</button>';
 }
 
+// Light markdown renderer for LLM-authored text. The /agentic/explain
+// endpoint forwards Claude's reply verbatim; Claude emits **bold**,
+// \`backtick code\`, and newline-separated paragraphs by default. Without
+// this pass, the panel showed literal "**Decision: ALLOW**" with the
+// asterisks visible.
+//
+// Pattern (escape-then-restore, same shape as renderChartExplainer's
+// inline-markup whitelist): escape ALL HTML first, then re-enable a
+// tiny set of markdown patterns into safe whitelisted tags. Inputs are
+// LLM-authored — content is trusted enough for **bold/code/br but NOT
+// for arbitrary tags or attributes. Backtick is matched via \\u0060
+// because a literal backtick inside this template literal would close
+// the outer string (Trap-4).
+function _renderMarkdownLite(s) {
+  if (!s) return "";
+  var t = escapeHtml(s);
+  // **bold** — non-greedy across lines
+  t = t.replace(/\\*\\*([\\s\\S]+?)\\*\\*/g, "<strong>$1</strong>");
+  // \`inline code\`
+  t = t.replace(/\\u0060([^\\u0060]+?)\\u0060/g, "<code>$1</code>");
+  // Paragraph break: blank line → double <br>
+  t = t.replace(/\\n\\n+/g, "<br><br>");
+  // Line break: single newline → <br>
+  t = t.replace(/\\n/g, "<br>");
+  return t;
+}
+
 document.addEventListener("click", function (e) {
   var t = e.target;
   if (!t || !t.closest) return;
@@ -57,7 +84,7 @@ async function _showExplainModal(topic, decision) {
     if (!body) return;
     body.innerHTML =
       '<div class="explain-mode-pill mono">' + escapeHtml(d.mode || "?") + (d.model ? " · " + escapeHtml(d.model) : "") + (d.latency_ms ? " · " + d.latency_ms + "ms" : "") + '</div>' +
-      '<div class="explain-text">' + escapeHtml(d.explanation || "no explanation returned") + '</div>' +
+      '<div class="explain-text">' + _renderMarkdownLite(d.explanation || "no explanation returned") + '</div>' +
       '<details style="margin-top:8px"><summary class="orch-small" style="cursor:pointer">decision payload</summary><pre class="wf-json mono" style="max-height:200px;overflow:auto;font-size:10.5px">' + escapeHtml(JSON.stringify(decision, null, 2).slice(0, 1500)) + '</pre></details>';
   } catch (e) {
     var b = document.getElementById("explain-modal-body");

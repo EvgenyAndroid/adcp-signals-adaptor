@@ -257,6 +257,24 @@ function renderDetailRail() {
 // Sec-39: compact chart explainer block rendered beneath visualizations.
 // Three labelled lines: what / how / read. Keeps explanations close to the
 // chart they describe without cluttering the default view.
+// Whitelist a small set of inline tags inside chart-explainer copy.
+// Callers across the codebase (federation, composer, freshness,
+// expression-tree, planner, portfolio, journey, etc.) author these
+// strings as English prose with <strong>, <em>, <code>, <br> for
+// emphasis on UI element names + key concepts. Without this whitelist,
+// escapeHtml renders the literal "<strong>X</strong>" characters in the
+// panel — that's the bug visible on Federation's "How to read this".
+//
+// Security: all callers pass author-controlled string literals (no user
+// data flows here). Even so, escape EVERYTHING first and then re-enable
+// the safe tags by string replace — never pass attributes, never pass
+// dynamic tag names. If a future caller needs to pass dynamic copy, that
+// caller MUST sanitize at its own source — this whitelist trusts its
+// input is hand-authored copy.
+function _allowInlineMarkup(s) {
+  var escaped = escapeHtml(s);
+  return escaped.replace(/&lt;(\\/?(?:strong|em|code|br))&gt;/g, "<$1>");
+}
 function renderChartExplainer(opts) {
   var what = opts.what || "";
   var how = opts.how || "";
@@ -267,10 +285,10 @@ function renderChartExplainer(opts) {
       '<svg class="ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="7.5"/><line x1="10" y1="9" x2="10" y2="14" stroke-linecap="round"/><circle cx="10" cy="6.5" r="0.8" fill="currentColor"/></svg>' +
       '<span>How to read this</span>' +
     '</div>' +
-    (what ? '<div class="chart-explainer-row"><span class="ce-k">What</span><span class="ce-v">' + escapeHtml(what) + '</span></div>' : '') +
-    (how ? '<div class="chart-explainer-row"><span class="ce-k">How</span><span class="ce-v">' + escapeHtml(how) + '</span></div>' : '') +
-    (read ? '<div class="chart-explainer-row"><span class="ce-k">Read</span><span class="ce-v">' + escapeHtml(read) + '</span></div>' : '') +
-    (limits ? '<div class="chart-explainer-row"><span class="ce-k">Limits</span><span class="ce-v">' + escapeHtml(limits) + '</span></div>' : '') +
+    (what ? '<div class="chart-explainer-row"><span class="ce-k">What</span><span class="ce-v">' + _allowInlineMarkup(what) + '</span></div>' : '') +
+    (how ? '<div class="chart-explainer-row"><span class="ce-k">How</span><span class="ce-v">' + _allowInlineMarkup(how) + '</span></div>' : '') +
+    (read ? '<div class="chart-explainer-row"><span class="ce-k">Read</span><span class="ce-v">' + _allowInlineMarkup(read) + '</span></div>' : '') +
+    (limits ? '<div class="chart-explainer-row"><span class="ce-k">Limits</span><span class="ce-v">' + _allowInlineMarkup(limits) + '</span></div>' : '') +
   '</div>';
 }
 

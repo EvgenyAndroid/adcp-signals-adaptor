@@ -242,6 +242,7 @@ def main() -> int:
         # Separate-page canvases (each their own giant template literal).
         REPO_ROOT / "src" / "routes" / "vendorHealthCanvas.ts",
         REPO_ROOT / "src" / "routes" / "raceCanvas.ts",
+        REPO_ROOT / "src" / "routes" / "ecosystemCanvas.ts",
     ]
     targets = [p for p in targets if p.is_file()]
 

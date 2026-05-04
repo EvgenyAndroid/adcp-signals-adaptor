@@ -140,6 +140,12 @@ import {
 } from "./routes/raceRoutes";
 import { handleVendorHealthCanvas } from "./routes/vendorHealthCanvas";
 import {
+    handleEcosystemPage,
+    handleEcosystemAgents,
+    handleEcosystemState,
+    handleEcosystemStream,
+} from "./routes/ecosystemRoutes";
+import {
   handleVendorHealthSnapshot,
   handleVendorHealthProbeOne,
 } from "./routes/vendorHealthRoutes";
@@ -325,6 +331,13 @@ export default {
             "/vendor-health",
             "/vendor-health/snapshot",
             "/vendor-health/probe-one",
+            // PR A: live AdCP ecosystem orchestration — full-screen
+            // constellation page + SSE stream of cycle events.
+            // Public so anyone can watch the demo without auth gate.
+            "/ecosystem",
+            "/ecosystem/stream",
+            "/ecosystem/agents",
+            "/ecosystem/state",
             "/taxonomy/reverse",
             // Sec-43: audience composer + activation-planning analytics.
             // Read-only — same posture as /portfolio/* and /analytics/*.
@@ -406,6 +419,18 @@ export default {
 
             } else if (method === "POST" && path === "/vendor-health/probe-one") {
                 response = await handleVendorHealthProbeOne(request, env, logger);
+
+            } else if (method === "GET" && path === "/ecosystem") {
+                response = handleEcosystemPage(env);
+
+            } else if (method === "GET" && path === "/ecosystem/stream") {
+                response = handleEcosystemStream();
+
+            } else if (method === "GET" && path === "/ecosystem/agents") {
+                response = handleEcosystemAgents();
+
+            } else if (method === "GET" && path === "/ecosystem/state") {
+                response = handleEcosystemState();
 
             } else if (method === "GET" && path === "/health") {
                 response = jsonResponse({ status: "ok", version: "3.0" });

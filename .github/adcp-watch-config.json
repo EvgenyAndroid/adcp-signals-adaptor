@@ -30,5 +30,14 @@
       "kind": "issue",
       "context": "Filed 2026-05-03. Runner bug: signal_owned/activate_on_agent storyboard step omits required `destinations` and `idempotency_key` per /schemas/3.0.1/signals/activate-signal-request.json. Schema-conformant agents have no signal of intent (agent vs platform). Workshop-insurance defensive heuristic shipped in this repo (correlation_id parsing in src/mcp/server.ts:callActivateSignal — search 'REMOVE WHEN adcp#4009 ships'). When the storyboard fix ships and Addie's evaluator confirms badge issuance, REVERT the heuristic — restore the simpler 2-stage destinationType precedence."
     }
+  ],
+  "external_registries": [
+    {
+      "name": "agenticadvertising_org",
+      "url": "https://agenticadvertising.org/api/registry/agents?capabilities=true",
+      "agent_id_field": "url",
+      "agent_summary_fields": ["name", "type"],
+      "context": "AAO official agent registry (https://agenticadvertising.org/registry/). Fires when agents are added, removed, or rename. Identity = agent URL (stable across renames; surfaces show the new name in the diff). Primary value: catch new ecosystem entrants without manual checks. As of 2026-05-04 the registry has 21 entries; we federate with ~6 of them via /agents/registry — when new agents appear we may want to add them to our local directory."
+    }
   ]
 }

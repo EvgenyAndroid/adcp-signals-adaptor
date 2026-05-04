@@ -266,10 +266,8 @@ export function renderEcosystemCanvas(demoKey: string): string {
   }
   .onboarding-skip:hover { color: var(--text); }
 
-  /* fix-all-gaps: global pause button — top-right with the home link.
-     Stops the entire SSE consumption on click; click again resumes. */
+  /* Global pause — inline in topbar-meta now (was fixed-positioned). */
   .global-pause {
-    position: fixed; top: 18px; right: 130px; z-index: 11;
     background: rgba(0,0,0,0.4); color: var(--text-dim);
     padding: 6px 12px; font-size: 11px; cursor: pointer;
     border: 1px solid rgba(56, 182, 255, 0.16); border-radius: 12px;
@@ -277,7 +275,6 @@ export function renderEcosystemCanvas(demoKey: string): string {
   }
   .global-pause:hover { color: var(--accent); border-color: var(--accent); }
   .global-pause.is-paused { color: #ffb454; border-color: #ffb454; background: rgba(255, 180, 84, 0.12); }
-  body.hide-ui .global-pause { opacity: 0; pointer-events: none; transition: opacity 0.4s; }
 
   /* fix-all-gaps: beam filter chips — inline, just below the
      phase banner. Click a chip to filter beams to that phase only. */
@@ -567,12 +564,16 @@ export function renderEcosystemCanvas(demoKey: string): string {
     100% { opacity: 0.92; transform: translateY(0); }
   }
 
+  /* Home link + pause now flow inline as part of .topbar-meta — was
+     position: fixed before, which overlapped the b2b_pull / back-to-
+     demo pills. Inline keeps the topbar tidy and avoids fixed-element
+     collisions. */
   .home-link {
-    position: fixed; top: 18px; right: 18px; z-index: 11;
     background: rgba(0,0,0,0.4); color: var(--text-dim);
     padding: 6px 12px; font-size: 11px; text-decoration: none;
     border: 1px solid rgba(56, 182, 255, 0.16); border-radius: 12px;
     pointer-events: auto;
+    font-family: inherit;
   }
   .home-link:hover { color: var(--accent); border-color: var(--accent); }
 
@@ -618,24 +619,22 @@ export function renderEcosystemCanvas(demoKey: string): string {
   .cinema-btn:hover { color: var(--accent); border-color: var(--accent); }
   .cinema-btn.on { color: var(--accent); border-color: var(--accent); background: rgba(56, 182, 255, 0.08); }
 
-  /* Stats overlay — left-side rolling totals visible mid-cinema.
-     Sits below the legend, complements the topbar pills. Hides in
-     hide-UI mode like everything else. */
-  .stats-overlay {
-    position: fixed; bottom: 200px; left: 18px; z-index: 10;
-    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 8px;
-    padding: 10px 14px; font: 11px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    backdrop-filter: blur(8px);
-    pointer-events: auto;
-    min-width: 188px;
-  }
-  .stats-title { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-faint); margin-bottom: 6px; }
-  .stat-row { display: flex; justify-content: space-between; padding: 3px 0; gap: 12px; }
+  /* Stats overlay — merged into the legend panel via shared parent.
+     Style for the inline section inside .legend (no longer a fixed
+     panel of its own; was causing stack overlap with the legend). */
+  .stats-section { font: 11px ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .stat-row { display: flex; justify-content: space-between; padding: 2px 0; gap: 12px; font-size: 11px; }
   .stat-row .k { color: var(--text-mut); }
   .stat-row .v { color: var(--text); font-weight: 600; }
   .stat-row .v.live  { color: #5fd9c4; }
   .stat-row .v.stale { color: #ff9080; }
-  body.hide-ui .stats-overlay { opacity: 0; pointer-events: none; transition: opacity 0.4s; }
+  /* Legend panel may grow tall — cap it to viewport so the entire
+     thing scrolls inside its own bounds rather than overlapping
+     other UI when there's lots of agent roles + message kinds. */
+  .legend {
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+  }
 
   /* Keyboard hint pill — small bottom-right ribbon listing the keys.
      Fades after 8s on first paint; reappears on '?' keypress. */
@@ -720,21 +719,27 @@ export function renderEcosystemCanvas(demoKey: string): string {
     <span class="meta-pill">audio_pull <b id="meta-audio">—</b></span>
     <span class="meta-pill">ctv_pull <b id="meta-ctv">—</b></span>
     <span class="meta-pill">b2b_pull <b id="meta-b2b">—</b></span>
+    <button class="global-pause" id="global-pause" type="button">⏸ pause</button>
+    <a href="/" class="home-link">← back to demo</a>
   </div>
 </div>
 
-<a href="/" class="home-link">← back to demo</a>
-<button class="global-pause" id="global-pause" type="button">⏸ pause</button>
-
+<!-- Filter chips: data-filter values are PHASE keys that match the
+     ev.message.kind via substring (e.g. "sales" matches both
+     "sales_fanout" and "sales_response"). Was filtering by color_hint
+     before, which made the "sales" chip filter only response beams
+     and miss the fanout. Now filters the entire phase. -->
 <div class="beam-filter" id="beam-filter">
   <button class="beam-chip active" data-filter="all">all</button>
-  <button class="beam-chip" data-filter="discovery">discovery</button>
+  <button class="beam-chip" data-filter="identity">identity</button>
   <button class="beam-chip" data-filter="signal">signals</button>
-  <button class="beam-chip" data-filter="policy">governance</button>
-  <button class="beam-chip" data-filter="product">sales</button>
+  <button class="beam-chip" data-filter="governance">governance</button>
+  <button class="beam-chip" data-filter="sales">sales</button>
   <button class="beam-chip" data-filter="creative">creative</button>
-  <button class="beam-chip" data-filter="bid">bids</button>
+  <button class="beam-chip" data-filter="buying">bids</button>
+  <button class="beam-chip" data-filter="cleanroom">cleanroom</button>
   <button class="beam-chip" data-filter="measurement">measurement</button>
+  <button class="beam-chip" data-filter="deactivation">deactivation</button>
 </div>
 
 <!-- fix-all-gaps: onboarding walkthrough. Shown once on first visit;
@@ -761,6 +766,15 @@ export function renderEcosystemCanvas(demoKey: string): string {
 </div>
 
 <div class="legend">
+  <div class="stats-section">
+    <div class="legend-title">Live ecosystem</div>
+    <div class="stat-row"><span class="k">Cycles</span><span class="v" id="stat-cycles">0</span></div>
+    <div class="stat-row"><span class="k">Avg lift</span><span class="v" id="stat-avg-lift">—</span></div>
+    <div class="stat-row"><span class="k">Top agent</span><span class="v" id="stat-top-agent">—</span></div>
+    <div class="stat-row"><span class="k">Live probe</span><span class="v live" id="stat-live-probe">—</span></div>
+    <div class="stat-row"><span class="k">Build</span><span class="v" id="stat-build">v—</span></div>
+  </div>
+  <div class="legend-divider"></div>
   <div class="legend-title">Agent roles</div>
   <div class="legend-row"><div class="legend-dot" style="background:var(--c-signals)"></div>Signals (5)</div>
   <div class="legend-row"><div class="legend-dot" style="background:var(--c-identity)"></div>Identity (4)</div>
@@ -817,15 +831,6 @@ export function renderEcosystemCanvas(demoKey: string): string {
   <button class="cinema-btn" data-cinema-preset="180">▶ 3min</button>
 </div>
 <button class="audio-toggle" id="hide-ui-toggle" style="left: 540px;">⌘ hide UI</button>
-
-<div class="stats-overlay" id="stats-overlay">
-  <div class="stats-title">Live ecosystem</div>
-  <div class="stat-row"><span class="k">Cycles</span><span class="v" id="stat-cycles">0</span></div>
-  <div class="stat-row"><span class="k">Avg lift</span><span class="v" id="stat-avg-lift">—</span></div>
-  <div class="stat-row"><span class="k">Top agent</span><span class="v" id="stat-top-agent">—</span></div>
-  <div class="stat-row"><span class="k">Live probe</span><span class="v live" id="stat-live-probe">—</span></div>
-  <div class="stat-row"><span class="k">Build</span><span class="v" id="stat-build">v—</span></div>
-</div>
 
 <div class="kbd-hint" id="kbd-hint">
   <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> cinema · <kbd>U</kbd> hide UI · <kbd>A</kbd> audio · <kbd>?</kbd> show keys
@@ -1821,10 +1826,13 @@ evtSource.onmessage = function (msg) {
       break;
     case "message":
       if (ev.message) {
-        // fix-all-gaps: respect beam filter — only spawn the beam if
-        // its color_hint matches the active filter (or filter is "all").
-        // Trace panel still records every message regardless.
-        if (beamFilter === "all" || ev.message.color_hint === beamFilter) {
+        // Filter by message KIND substring (e.g. "sales" matches
+        // both "sales_fanout" and "sales_response"). Was matching
+        // color_hint, which split the same phase across multiple
+        // chips and made "sales" only show response beams.
+        const kind = ev.message.kind || "";
+        const passes = beamFilter === "all" || kind.indexOf(beamFilter) !== -1;
+        if (passes) {
           spawnBeam(ev.message.from_agent_id, ev.message.to_agent_id, ev.message.color_hint);
         }
         setPhaseFromKind(ev.message.kind);

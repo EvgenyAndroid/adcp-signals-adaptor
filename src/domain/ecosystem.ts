@@ -30,7 +30,9 @@ export type AgentRole =
   | "buying"
   | "creative"
   | "measurement"
-  | "governance";
+  | "governance"
+  | "identity"     // PR I+: ID-resolution providers (LiveRamp, UID2, ID5, RampID)
+  | "cleanroom";   // PR I+: privacy-preserving join surfaces
 
 export type AgentStage = "live" | "synthetic" | "degraded";
 
@@ -64,6 +66,8 @@ export interface Brief {
 
 export type TraceNodeKind =
   | "brief_spawned"
+  | "identity_resolve"
+  | "identity_response"
   | "signals_fanout"
   | "signal_response"
   | "governance_check"
@@ -72,7 +76,11 @@ export type TraceNodeKind =
   | "creative_match"
   | "buying_bid"
   | "media_buy_executed"
+  | "cleanroom_join"
+  | "cleanroom_response"
   | "measurement_report"
+  | "realtime_push"     // Triton-style mid-cycle attention update
+  | "deactivation"      // Governance rescinds an active deployment
   | "feedback_applied";
 
 export interface TraceNode {
@@ -237,12 +245,45 @@ const GOVERNANCE_AGENTS: EcosystemAgent[] = [
     personality: { base_latency_ms: 75, failure_rate: 0.015 } },
 ];
 
+// PR "fix-all-gaps": Identity-resolution sub-ring + clean room.
+// Identity providers feed cookieless/cross-device targeting metadata
+// to signals agents before signals respond — they're a critical real-
+// world layer the original ecosystem missed. Clean rooms feed
+// privacy-preserving joins to measurement.
+const IDENTITY_AGENTS: EcosystemAgent[] = [
+  { id: "id_liveramp", name: "LiveRamp", vendor: "LiveRamp", role: "identity", stage: "synthetic",
+    layout: { ring: 1, theta: 0.4, phi: 1.32 },
+    specialties: ["ramp_id", "deterministic_id_graph", "cookieless_authenticated_traffic"],
+    personality: { base_latency_ms: 120, failure_rate: 0.03 } },
+  { id: "id_uid2", name: "UID2", vendor: "Trade Desk", role: "identity", stage: "synthetic",
+    layout: { ring: 1, theta: 1.65, phi: 1.32 },
+    specialties: ["uid2", "hashed_email_resolution", "open_consortium"],
+    personality: { base_latency_ms: 90, failure_rate: 0.02 } },
+  { id: "id_id5", name: "ID5", vendor: "ID5", role: "identity", stage: "synthetic",
+    layout: { ring: 1, theta: 2.9, phi: 1.32 },
+    specialties: ["id5", "probabilistic_resolution", "first_party_id"],
+    personality: { base_latency_ms: 105, failure_rate: 0.025 } },
+  { id: "id_yahoo_connectid", name: "Yahoo ConnectID", vendor: "Yahoo", role: "identity", stage: "synthetic",
+    layout: { ring: 1, theta: 4.15, phi: 1.32 },
+    specialties: ["connectid", "logged_in_audience"],
+    personality: { base_latency_ms: 130, failure_rate: 0.04 } },
+];
+
+const CLEANROOM_AGENTS: EcosystemAgent[] = [
+  { id: "cleanroom_mock", name: "Clean Room (Habu/InfoSum-shape)", vendor: "Synthetic", role: "cleanroom", stage: "synthetic",
+    layout: { ring: 4, theta: 5.4, phi: 1.93 },
+    specialties: ["pii_safe_join", "differential_privacy", "match_rate_only"],
+    personality: { base_latency_ms: 380, failure_rate: 0.04 } },
+];
+
 export const ECOSYSTEM_AGENTS: EcosystemAgent[] = [
   ...SALES_AGENTS,
   ...SIGNALS_AGENTS,
+  ...IDENTITY_AGENTS,
   ...BUYING_AGENTS,
   ...CREATIVE_AGENTS,
   ...MEASUREMENT_AGENTS,
+  ...CLEANROOM_AGENTS,
   ...GOVERNANCE_AGENTS,
 ];
 
@@ -445,6 +486,42 @@ export async function syntheticSignalsResponse(agent: EcosystemAgent, brief: Bri
     cpm: Math.max(0.5, (2 + Math.random() * 6) * (0.8 + fit * 0.5)),
   }));
   return { signals, agent_id: agent.id, fit };
+}
+
+export async function syntheticIdentityResponse(agent: EcosystemAgent, brief: Brief): Promise<{
+  match_rate: number;
+  resolved_devices: number;
+  cookieless: boolean;
+  agent_id: string;
+}> {
+  await syntheticDelay(agent);
+  if (Math.random() < (agent.personality?.failure_rate ?? 0)) throw new Error("identity provider unavailable");
+  // Match rate variance per provider — LiveRamp leads on auth'd traffic,
+  // ID5 on probabilistic, UID2 on hashed-email, ConnectID on Yahoo logged-in.
+  const baseMatch = agent.id === "id_liveramp" ? 0.78
+    : agent.id === "id_uid2" ? 0.62
+    : agent.id === "id_id5" ? 0.55
+    : 0.48;
+  return {
+    match_rate: Math.min(0.95, baseMatch + (Math.random() - 0.5) * 0.18),
+    resolved_devices: Math.floor(2_500_000 + Math.random() * 8_000_000),
+    cookieless: agent.id === "id_uid2" || agent.id === "id_liveramp",
+    agent_id: agent.id,
+  };
+}
+
+export async function syntheticCleanroomResponse(agent: EcosystemAgent, brief: Brief): Promise<{
+  match_rate: number;
+  privacy_method: string;
+  agent_id: string;
+}> {
+  await syntheticDelay(agent);
+  if (Math.random() < (agent.personality?.failure_rate ?? 0)) throw new Error("cleanroom join failed");
+  return {
+    match_rate: 0.55 + Math.random() * 0.32,
+    privacy_method: Math.random() > 0.5 ? "differential_privacy_eps_1" : "k_anonymity_k_50",
+    agent_id: agent.id,
+  };
 }
 
 export async function syntheticGovernanceResponse(agent: EcosystemAgent, brief: Brief): Promise<{
@@ -655,6 +732,35 @@ async function* runCycle(brief: Brief, _liftMap: Map<string, AgentLift>): AsyncG
       detail: { weights: brief.weights, budget: brief.budget_usd } },
   };
 
+  // 0.5) Identity resolution — runs BEFORE signals so signals agents
+  // can target identity-resolved cohorts. The identity layer was a
+  // gap in the original /ecosystem (real-world flow includes
+  // LiveRamp / UID2 / ID5 / ConnectID before signals discovery).
+  const identityAgents = getAgentsByRole("identity");
+  for (const a of identityAgents) {
+    yield { kind: "message", message: { id: nextTraceId(), brief_id: brief.id,
+      from_agent_id: BUYER_AGENT_ID, to_agent_id: a.id, kind: "identity_resolve", ts_ms: Date.now() - t0,
+      color_hint: "discovery" } };
+    await fanoutPause();
+  }
+  const identityResponses = await Promise.allSettled(
+    identityAgents.map(async (a) => {
+      try { return { agent: a, response: await syntheticIdentityResponse(a, brief) }; }
+      catch (e) { return { agent: a, error: String(e) }; }
+    })
+  );
+  for (const r of identityResponses) {
+    if (r.status !== "fulfilled") continue;
+    const v = r.value as { agent: EcosystemAgent } & ({ response: { match_rate: number; resolved_devices: number; cookieless: boolean } } | { error: string });
+    if ("error" in v) continue;
+    yield { kind: "message", message: { id: nextTraceId(), brief_id: brief.id,
+      from_agent_id: v.agent.id, to_agent_id: BUYER_AGENT_ID, kind: "identity_response", ts_ms: Date.now() - t0,
+      color_hint: "signal" } };
+    yield { kind: "trace", trace: { id: nextTraceId(), kind: "identity_response", agent_id: v.agent.id, brief_id: brief.id, ts_ms: Date.now() - t0,
+      summary: `${v.agent.name}: ${(v.response.match_rate * 100).toFixed(0)}% match, ${(v.response.resolved_devices / 1_000_000).toFixed(1)}M devices${v.response.cookieless ? " · cookieless" : ""}`,
+      detail: { identity: v.response } } };
+  }
+
   // 1) Signals fan-out
   const signalsAgents = getAgentsByRole("signals");
   for (const a of signalsAgents) {
@@ -803,6 +909,52 @@ async function* runCycle(brief: Brief, _liftMap: Map<string, AgentLift>): AsyncG
       detail: { bid: v.response } } };
   }
 
+  // 5.5) Real-time push beat (Triton attention or similar fires
+  // DURING the cycle, not after). 18% of cycles trigger this — when
+  // it does, the visual shows a mid-cycle measurement beam back to
+  // the buyer + a brief "ATTN: lift drop, re-bid" trace. Real
+  // ecosystem primitive that the original /ecosystem missed.
+  if (Math.random() < 0.18) {
+    const attentionAgent = ECOSYSTEM_AGENTS.find((a) => a.id === "triton_attention_mock");
+    if (attentionAgent) {
+      yield { kind: "message", message: { id: nextTraceId(), brief_id: brief.id,
+        from_agent_id: attentionAgent.id, to_agent_id: BUYER_AGENT_ID, kind: "realtime_push", ts_ms: Date.now() - t0,
+        color_hint: "measurement" } };
+      const dropPct = (8 + Math.random() * 12).toFixed(1);
+      yield { kind: "trace", trace: { id: nextTraceId(), kind: "realtime_push", agent_id: attentionAgent.id, brief_id: brief.id, ts_ms: Date.now() - t0,
+        summary: `ATTN PUSH: attention -${dropPct}% mid-flight · re-bid recommended`,
+        detail: { drop_pct: parseFloat(dropPct), source: "triton_realtime" } } };
+    }
+  }
+
+  // 5.7) Cleanroom join — the missing privacy-preserving join layer.
+  // Real flow: measurement agents query a clean room to compare buyer
+  // 1P data with publisher cohort without raw PII transit.
+  const cleanroomAgents = getAgentsByRole("cleanroom");
+  for (const a of cleanroomAgents) {
+    yield { kind: "message", message: { id: nextTraceId(), brief_id: brief.id,
+      from_agent_id: BUYER_AGENT_ID, to_agent_id: a.id, kind: "cleanroom_join", ts_ms: Date.now() - t0,
+      color_hint: "policy" } };
+    await fanoutPause();
+  }
+  const cleanroomResponses = await Promise.allSettled(
+    cleanroomAgents.map(async (a) => {
+      try { return { agent: a, response: await syntheticCleanroomResponse(a, brief) }; }
+      catch (e) { return { agent: a, error: String(e) }; }
+    })
+  );
+  for (const r of cleanroomResponses) {
+    if (r.status !== "fulfilled") continue;
+    const v = r.value as { agent: EcosystemAgent } & ({ response: { match_rate: number; privacy_method: string } } | { error: string });
+    if ("error" in v) continue;
+    yield { kind: "message", message: { id: nextTraceId(), brief_id: brief.id,
+      from_agent_id: v.agent.id, to_agent_id: BUYER_AGENT_ID, kind: "cleanroom_response", ts_ms: Date.now() - t0,
+      color_hint: "policy" } };
+    yield { kind: "trace", trace: { id: nextTraceId(), kind: "cleanroom_response", agent_id: v.agent.id, brief_id: brief.id, ts_ms: Date.now() - t0,
+      summary: `${v.agent.name}: ${(v.response.match_rate * 100).toFixed(0)}% match · ${v.response.privacy_method}`,
+      detail: { cleanroom: v.response } } };
+  }
+
   // 6) Measurement
   const measurementAgents = getAgentsByRole("measurement");
   for (const a of measurementAgents) {
@@ -846,6 +998,26 @@ async function* runCycle(brief: Brief, _liftMap: Map<string, AgentLift>): AsyncG
       summary: `${v.agent.name}: lift ${(v.response.lift * 100).toFixed(0)}%, reach ${v.response.reach_pct.toFixed(1)}%`,
       detail: { measurement: v.response } } };
     yield { kind: "lift_update", lift: { agent_id: v.agent.id, score: v.response.lift } };
+  }
+
+  // 7) Optional deactivation beat — 1-in-6 cycles, governance
+  // retroactively rescinds an active deployment (e.g. consent
+  // revocation, data-source freshness drift, brand-safety re-eval).
+  // Visual: a red beam from a governance agent to a randomly-chosen
+  // sales/buying agent + a deactivation trace. Showcases the missing
+  // teardown half of the activation lifecycle.
+  if (Math.random() < 0.17) {
+    const govAgent = govAgents[Math.floor(Math.random() * govAgents.length)];
+    const targetPool = [...salesAgents, ...buyingAgents];
+    const target = targetPool[Math.floor(Math.random() * targetPool.length)];
+    if (govAgent && target) {
+      yield { kind: "message", message: { id: nextTraceId(), brief_id: brief.id,
+        from_agent_id: govAgent.id, to_agent_id: target.id, kind: "deactivation", ts_ms: Date.now() - t0,
+        color_hint: "policy" } };
+      yield { kind: "trace", trace: { id: nextTraceId(), kind: "deactivation", agent_id: govAgent.id, brief_id: brief.id, ts_ms: Date.now() - t0,
+        summary: `${govAgent.name}: rescinding deployment on ${target.name} (consent drift)`,
+        detail: { rescinded_target: target.id, reason: "consent_drift_post_audit" } } };
+    }
   }
 
   const meanLift = lifts.length > 0 ? lifts.reduce((a, b) => a + b, 0) / lifts.length : 0;

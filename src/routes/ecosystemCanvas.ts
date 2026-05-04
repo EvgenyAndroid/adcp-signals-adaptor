@@ -54,6 +54,8 @@ export function renderEcosystemCanvas(demoKey: string): string {
     --c-creative:    #c98aff;
     --c-measurement: #5fd9c4;
     --c-governance:  #f59e0b;
+    --c-identity:    #80a8ff;   /* fix-all-gaps: ID resolution */
+    --c-cleanroom:   #b8a0ff;   /* fix-all-gaps: privacy-preserving join */
     --c-buyer:       #ffffff;
 
     --c-discovery:   #38b6ff;
@@ -184,6 +186,9 @@ export function renderEcosystemCanvas(demoKey: string): string {
     color: var(--text-dim);
     white-space: nowrap;
     letter-spacing: 0.02em;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
     transition: opacity 0.18s ease, transform 0.12s ease, border-color 0.2s;
     will-change: left, top, opacity;
   }
@@ -202,8 +207,102 @@ export function renderEcosystemCanvas(demoKey: string): string {
     pointer-events: auto;
   }
   .legend-title { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-faint); margin-bottom: 6px; }
-  .legend-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+  .legend-row { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
   .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .legend-divider { height: 1px; background: rgba(56, 182, 255, 0.12); margin: 8px 0 6px; }
+
+  /* fix-all-gaps: onboarding walkthrough modal — shown on first visit
+     (localStorage gates re-show). 5 cards explaining the layout +
+     interactions. Dismissible per-card via "Next" or "Skip". */
+  .onboarding {
+    position: fixed; inset: 0; z-index: 30;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(6px);
+  }
+  .onboarding.open { display: flex; }
+  .onboarding-card {
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 24px 28px;
+    width: min(440px, 86vw);
+    box-shadow: 0 24px 80px rgba(56, 182, 255, 0.30);
+  }
+  .onboarding-step {
+    font: 9.5px ui-monospace, monospace;
+    text-transform: uppercase; letter-spacing: 0.16em;
+    color: var(--accent); margin-bottom: 8px;
+  }
+  .onboarding-title {
+    font-size: 18px; font-weight: 600; margin: 0 0 10px;
+  }
+  .onboarding-body {
+    font-size: 13px; line-height: 1.55; color: var(--text-dim); margin-bottom: 20px;
+  }
+  .onboarding-body kbd {
+    background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16);
+    padding: 1px 5px; border-radius: 3px; font-family: ui-monospace, monospace;
+    color: var(--text); font-size: 11px;
+  }
+  .onboarding-body b { color: var(--text); font-weight: 500; }
+  .onboarding-actions {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  }
+  .onboarding-progress { display: flex; gap: 4px; }
+  .onboarding-progress-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-faint); }
+  .onboarding-progress-dot.active { background: var(--accent); }
+  .onboarding-btn {
+    background: var(--accent); color: #04060a; border: none;
+    padding: 8px 16px; border-radius: 6px;
+    font-family: inherit; font-size: 12px; font-weight: 600;
+    cursor: pointer;
+  }
+  .onboarding-btn:hover { background: var(--accent-hot, #6fa4ff); }
+  .onboarding-skip {
+    background: transparent; color: var(--text-dim); border: none;
+    font: 11px ui-monospace, monospace; cursor: pointer;
+    padding: 4px 8px;
+  }
+  .onboarding-skip:hover { color: var(--text); }
+
+  /* fix-all-gaps: global pause button — top-right with the home link.
+     Stops the entire SSE consumption on click; click again resumes. */
+  .global-pause {
+    position: fixed; top: 18px; right: 130px; z-index: 11;
+    background: rgba(0,0,0,0.4); color: var(--text-dim);
+    padding: 6px 12px; font-size: 11px; cursor: pointer;
+    border: 1px solid rgba(56, 182, 255, 0.16); border-radius: 12px;
+    pointer-events: auto; font-family: inherit;
+  }
+  .global-pause:hover { color: var(--accent); border-color: var(--accent); }
+  .global-pause.is-paused { color: #ffb454; border-color: #ffb454; background: rgba(255, 180, 84, 0.12); }
+  body.hide-ui .global-pause { opacity: 0; pointer-events: none; transition: opacity 0.4s; }
+
+  /* fix-all-gaps: beam filter chips — inline, just below the
+     phase banner. Click a chip to filter beams to that phase only. */
+  .beam-filter {
+    position: fixed; top: 218px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 8;
+    display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;
+    pointer-events: auto;
+  }
+  body.hide-ui .beam-filter { opacity: 0; pointer-events: none; transition: opacity 0.4s; }
+  .beam-chip {
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(56, 182, 255, 0.16);
+    color: var(--text-mut);
+    padding: 3px 9px; border-radius: 10px;
+    font: 10px ui-monospace, monospace; letter-spacing: 0.04em;
+    cursor: pointer;
+  }
+  .beam-chip:hover { color: var(--text); border-color: rgba(56, 182, 255, 0.45); }
+  .beam-chip.active { color: var(--text); background: var(--accent-glow); border-color: var(--accent); }
+
+  /* fix-all-gaps: in-scene click highlight ring on the agent panel. */
+  .agent-panel { transition: box-shadow 0.25s; }
+  .agent-panel.is-clicked-highlight { box-shadow: 0 12px 60px rgba(56, 182, 255, 0.6); }
 
   .trace-panel {
     position: fixed; top: 70px; right: 18px; bottom: 18px; width: 360px; z-index: 10;
@@ -449,10 +548,10 @@ export function renderEcosystemCanvas(demoKey: string): string {
     max-height: 80vh;
     overflow: hidden;
     padding: 60px 24px 60px;
-    color: #2eff6a;
+    color: #6dd089;     /* fix-all-gaps: less saturated — was #2eff6a */
     font: 10.5px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     line-height: 1.45;
-    text-shadow: 0 0 6px rgba(46, 255, 106, 0.55);
+    text-shadow: 0 0 5px rgba(109, 208, 137, 0.4);
     position: relative;
   }
   .matrix-rain pre {
@@ -461,8 +560,8 @@ export function renderEcosystemCanvas(demoKey: string): string {
     opacity: 0.0;
     animation: matrix-fade-in 0.6s ease forwards;
   }
-  .matrix-rain pre:nth-child(odd) { color: #2eff6a; }
-  .matrix-rain pre:nth-child(even) { color: #5eff8e; }
+  .matrix-rain pre:nth-child(odd) { color: #6dd089; }
+  .matrix-rain pre:nth-child(even) { color: #8de0a3; }
   @keyframes matrix-fade-in {
     0% { opacity: 0; transform: translateY(-8px); }
     100% { opacity: 0.92; transform: translateY(0); }
@@ -625,15 +724,61 @@ export function renderEcosystemCanvas(demoKey: string): string {
 </div>
 
 <a href="/" class="home-link">← back to demo</a>
+<button class="global-pause" id="global-pause" type="button">⏸ pause</button>
+
+<div class="beam-filter" id="beam-filter">
+  <button class="beam-chip active" data-filter="all">all</button>
+  <button class="beam-chip" data-filter="discovery">discovery</button>
+  <button class="beam-chip" data-filter="signal">signals</button>
+  <button class="beam-chip" data-filter="policy">governance</button>
+  <button class="beam-chip" data-filter="product">sales</button>
+  <button class="beam-chip" data-filter="creative">creative</button>
+  <button class="beam-chip" data-filter="bid">bids</button>
+  <button class="beam-chip" data-filter="measurement">measurement</button>
+</div>
+
+<!-- fix-all-gaps: onboarding walkthrough. Shown once on first visit;
+     localStorage gate prevents re-show. Skippable via "Skip" button. -->
+<div class="onboarding" id="onboarding">
+  <div class="onboarding-card" id="onboarding-card">
+    <div class="onboarding-step" id="ob-step">STEP 1 / 5</div>
+    <h2 class="onboarding-title" id="ob-title">—</h2>
+    <div class="onboarding-body" id="ob-body">—</div>
+    <div class="onboarding-actions">
+      <div class="onboarding-progress" id="ob-progress">
+        <span class="onboarding-progress-dot active"></span>
+        <span class="onboarding-progress-dot"></span>
+        <span class="onboarding-progress-dot"></span>
+        <span class="onboarding-progress-dot"></span>
+        <span class="onboarding-progress-dot"></span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="onboarding-skip" id="ob-skip">skip</button>
+        <button class="onboarding-btn" id="ob-next">next →</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="legend">
   <div class="legend-title">Agent roles</div>
   <div class="legend-row"><div class="legend-dot" style="background:var(--c-signals)"></div>Signals (5)</div>
+  <div class="legend-row"><div class="legend-dot" style="background:var(--c-identity)"></div>Identity (4)</div>
   <div class="legend-row"><div class="legend-dot" style="background:var(--c-sales)"></div>Sales (10)</div>
   <div class="legend-row"><div class="legend-dot" style="background:var(--c-buying)"></div>Buying (5)</div>
   <div class="legend-row"><div class="legend-dot" style="background:var(--c-creative)"></div>Creative (3)</div>
   <div class="legend-row"><div class="legend-dot" style="background:var(--c-measurement)"></div>Measurement (3)</div>
+  <div class="legend-row"><div class="legend-dot" style="background:var(--c-cleanroom)"></div>Clean room (1)</div>
   <div class="legend-row"><div class="legend-dot" style="background:var(--c-governance)"></div>Governance (3)</div>
+  <div class="legend-divider"></div>
+  <div class="legend-title">Message colors</div>
+  <div class="legend-row"><div class="legend-dot" style="background:var(--c-discovery)"></div>discovery / fanout</div>
+  <div class="legend-row"><div class="legend-dot" style="background:var(--c-signal)"></div>signal response</div>
+  <div class="legend-row"><div class="legend-dot" style="background:var(--c-policy)"></div>governance / cleanroom</div>
+  <div class="legend-row"><div class="legend-dot" style="background:var(--c-product)"></div>products</div>
+  <div class="legend-row"><div class="legend-dot" style="background:var(--c-creative-msg)"></div>creative formats</div>
+  <div class="legend-row"><div class="legend-dot" style="background:var(--c-bid)"></div>buying bids</div>
+  <div class="legend-row"><div class="legend-dot" style="background:var(--c-measure)"></div>measurement / push</div>
 </div>
 
 <div class="trace-panel" id="trace-panel">
@@ -723,6 +868,8 @@ const ROLE_COLORS = {
   creative:    0xc98aff,
   measurement: 0x5fd9c4,
   governance:  0xf59e0b,
+  identity:    0x80a8ff,  // fix-all-gaps: ID-resolution providers
+  cleanroom:   0xb8a0ff,  // fix-all-gaps: privacy-preserving joins
 };
 const HINT_COLORS = {
   discovery:   0x38b6ff,
@@ -1656,9 +1803,13 @@ evtSource.onmessage = function (msg) {
       break;
     case "message":
       if (ev.message) {
-        spawnBeam(ev.message.from_agent_id, ev.message.to_agent_id, ev.message.color_hint);
+        // fix-all-gaps: respect beam filter — only spawn the beam if
+        // its color_hint matches the active filter (or filter is "all").
+        // Trace panel still records every message regardless.
+        if (beamFilter === "all" || ev.message.color_hint === beamFilter) {
+          spawnBeam(ev.message.from_agent_id, ev.message.to_agent_id, ev.message.color_hint);
+        }
         setPhaseFromKind(ev.message.kind);
-        // Both endpoints get the message in their log
         if (ev.message.from_agent_id && ev.message.from_agent_id !== BUYER_AGENT_ID) recordAgentFrame(ev.message.from_agent_id, ev.message);
         if (ev.message.to_agent_id && ev.message.to_agent_id !== BUYER_AGENT_ID) recordAgentFrame(ev.message.to_agent_id, ev.message);
       }
@@ -1784,12 +1935,14 @@ function showAgent(agent) {
 }
 
 // Click strategy:
-//   - Single click on agent → details panel (top-left)
+//   - Single click on agent → details panel (top-left) + in-scene highlight
 //   - Double click on agent → matrix-rain drop-in (full-screen frame stream)
 //   - Click outside → close any open panels
 let lastClickTime = 0;
 let lastClickAgentId = null;
 const DOUBLE_CLICK_MS = 320;
+let clickedAgentId = null;  // fix-all-gaps: in-scene highlight target
+
 renderer.domElement.addEventListener("click", function (e) {
   const rect = renderer.domElement.getBoundingClientRect();
   mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -1808,11 +1961,27 @@ renderer.domElement.addEventListener("click", function (e) {
       lastClickAgentId = null;
     } else {
       showAgent(agent);
+      // fix-all-gaps: in-scene highlight — agent scales up + panel
+      // gets a ring shadow. Restore previously-clicked agent.
+      if (clickedAgentId && clickedAgentId !== id) {
+        const prev = agentMeshes.get(clickedAgentId);
+        if (prev) prev.mesh.scale.set(1, 1, 1);
+      }
+      clickedAgentId = id;
+      const m = agentMeshes.get(id);
+      if (m) m.mesh.scale.set(1.6, 1.6, 1.6);
+      agentPanel.classList.add("is-clicked-highlight");
+      setTimeout(function () { agentPanel.classList.remove("is-clicked-highlight"); }, 800);
       lastClickTime = now;
       lastClickAgentId = id;
     }
   } else {
     agentPanel.classList.remove("open");
+    if (clickedAgentId) {
+      const prev = agentMeshes.get(clickedAgentId);
+      if (prev) prev.mesh.scale.set(1, 1, 1);
+      clickedAgentId = null;
+    }
   }
 });
 
@@ -2071,6 +2240,14 @@ function animate() {
   } else {
     controls.update();
   }
+  // fix-all-gaps: global pause freezes everything that's not the
+  // camera. Beams, particles, halos, label projections all freeze.
+  // The constellation still renders in its current frame, so user
+  // can rotate / zoom and inspect.
+  if (globalPaused) {
+    composer.render();
+    return;
+  }
 
   // Buyer pulse — calmer baseline + smaller jitter
   const t = performance.now() * 0.001;
@@ -2138,18 +2315,19 @@ function animate() {
     } else {
       p.t += p.speed;
       if (p.t >= 0.999) {
-        // Particle reached the destination — small absorption flash
-        // could go here later. For now, despawn.
         scene.remove(p.sphere);
         p.sphere.geometry.dispose();
         p.mat.dispose();
         moneyParticles.splice(i, 1);
         continue;
       }
-      p.sphere.position.copy(p.curve.getPointAt(p.t));
-      // Subtle fade-in over first 10%, fade-out over last 20% so trails
-      // don't pop at the destination. Cap reduced to 0.65 (from 0.92)
-      // so they don't blow out under bloom.
+      // fix-all-gaps: money flow attractor. Particles travel the curve
+      // BUT also drift slightly toward the buyer mesh so the stream
+      // reads as "drawn back to the orchestrator" — gives the visual
+      // an intent rather than just floating along the path.
+      const onCurve = p.curve.getPointAt(p.t);
+      const toBuyer = onCurve.clone().multiplyScalar(-0.04); // small pull toward origin
+      p.sphere.position.copy(onCurve.clone().add(toBuyer));
       const fadeIn = Math.min(1, p.t / 0.1);
       const fadeOut = Math.min(1, (1 - p.t) / 0.2);
       p.mat.opacity = 0.65 * fadeIn * fadeOut;
@@ -2260,6 +2438,129 @@ window.addEventListener("resize", function () {
 
 // Stash the demo key for any future authed fetches.
 window.__DEMO_KEY = ${safeKey};
+
+// ── fix-all-gaps: onboarding walkthrough ────────────────────────────────
+// Shown on first visit (localStorage flag). 5 cards.
+const ONBOARDING_KEY = "ecosystem-onboarded-v1";
+const ONBOARDING_STEPS = [
+  {
+    title: "Welcome to the AdCP ecosystem",
+    body: "What you're watching: <b>30 agents</b> across 8 protocol domains running continuous buying ceremonies. Real Adzymic, Claire, Dstillery, Celtra + schema-conformant synthetics. The system has no script — it self-organizes from measurement feedback.",
+  },
+  {
+    title: "The 6+ phases per cycle",
+    body: "<b>Identity</b> resolves cohorts → <b>Signals</b> propose audiences → <b>Governance</b> gates approve → <b>Sales</b> return products → <b>Creative</b> matches formats → <b>Buying</b> commits bids → <b>Measurement</b> reports lift. Lift biases the next brief.",
+  },
+  {
+    title: "Read the rhythm",
+    body: "Every beam color = a message kind. Heavy beats (governance, measurement) render thicker. Gold particles flow on bid commits. <b>Supernova ring</b> at every cycle complete.",
+  },
+  {
+    title: "Click for detail",
+    body: "<b>Single click</b> any agent → details panel. <b>Double click</b> → matrix-rain feed of its raw frames. <b>Click any trace line</b> on the right → full JSON + reasoning modal.",
+  },
+  {
+    title: "Cinema mode for recording",
+    body: "<kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> for 15s/60s/3min cinema flythrough · <kbd>U</kbd> hide UI · <kbd>A</kbd> audio · <kbd>?</kbd> show keys. URL params <code>?cinema=60&hide=1</code> drop you into recording mode directly.",
+  },
+];
+let onboardingIdx = 0;
+const onboardingEl = document.getElementById("onboarding");
+const obStep = document.getElementById("ob-step");
+const obTitle = document.getElementById("ob-title");
+const obBody = document.getElementById("ob-body");
+const obNext = document.getElementById("ob-next");
+const obSkip = document.getElementById("ob-skip");
+const obProgress = document.getElementById("ob-progress");
+function showOnboardingStep(i) {
+  const s = ONBOARDING_STEPS[i];
+  if (!s) return finishOnboarding();
+  obStep.textContent = "STEP " + (i + 1) + " / " + ONBOARDING_STEPS.length;
+  obTitle.textContent = s.title;
+  obBody.innerHTML = s.body;
+  obNext.textContent = i === ONBOARDING_STEPS.length - 1 ? "go ✓" : "next →";
+  Array.from(obProgress.children).forEach(function (el, idx) {
+    el.classList.toggle("active", idx <= i);
+  });
+}
+function finishOnboarding() {
+  onboardingEl.classList.remove("open");
+  try { localStorage.setItem(ONBOARDING_KEY, "1"); } catch (e) {}
+}
+obNext.addEventListener("click", function () {
+  onboardingIdx += 1;
+  if (onboardingIdx >= ONBOARDING_STEPS.length) finishOnboarding();
+  else showOnboardingStep(onboardingIdx);
+});
+obSkip.addEventListener("click", finishOnboarding);
+// Show on first visit
+try {
+  if (!localStorage.getItem(ONBOARDING_KEY)) {
+    onboardingEl.classList.add("open");
+    showOnboardingStep(0);
+  }
+} catch (e) { /* localStorage blocked — silently skip onboarding */ }
+// Re-trigger via URL ?onboard=1
+if (new URLSearchParams(window.location.search).get("onboard") === "1") {
+  onboardingIdx = 0;
+  onboardingEl.classList.add("open");
+  showOnboardingStep(0);
+}
+
+// ── fix-all-gaps: global pause ─────────────────────────────────────────
+// Stops the EventSource (no new events arrive) AND freezes the
+// animation loop's beam/particle/halo updates. Click again resumes
+// from the same SSE stream.
+let globalPaused = false;
+const globalPauseBtn = document.getElementById("global-pause");
+globalPauseBtn.addEventListener("click", function () {
+  globalPaused = !globalPaused;
+  globalPauseBtn.classList.toggle("is-paused", globalPaused);
+  globalPauseBtn.textContent = globalPaused ? "▶ resume" : "⏸ pause";
+  if (globalPaused) {
+    if (evtSource && evtSource.readyState !== 2) evtSource.close();
+  } else {
+    // Reconnect by mutating the EventSource — simplest is to swap in
+    // a fresh one. Re-binds onmessage/onerror handlers to the new src.
+    reconnectStream();
+  }
+});
+
+function reconnectStream() {
+  // The original const evtSource is captured in closure; this function
+  // creates a NEW EventSource and re-installs the handlers. We don't
+  // need to dispose the old one — paused click already closed it.
+  const fresh = new EventSource("/ecosystem/stream");
+  fresh.onmessage = evtSource.onmessage;
+  fresh.onerror = evtSource.onerror;
+  // Replace the binding so future close() calls hit the new one
+  window.__ecoEvtSource = fresh;
+}
+
+// ── fix-all-gaps: beam filter ──────────────────────────────────────────
+// Click a chip to filter beam spawning to one message kind. The
+// filter only affects new beams — already-flying beams complete
+// their journey. Click "all" to clear.
+let beamFilter = "all";
+Array.from(document.querySelectorAll("[data-filter]")).forEach(function (chip) {
+  chip.addEventListener("click", function () {
+    beamFilter = chip.dataset.filter;
+    Array.from(document.querySelectorAll("[data-filter]")).forEach(function (c) {
+      c.classList.toggle("active", c.dataset.filter === beamFilter);
+    });
+  });
+});
+
+// ── fix-all-gaps: trace panel scroll preservation ─────────────────────
+// When user scrolls the trace panel, pause auto-scroll. Resume when
+// they scroll back to top.
+const tracePanelEl = document.getElementById("trace-panel");
+let userScrolledTrace = false;
+if (tracePanelEl) {
+  tracePanelEl.addEventListener("scroll", function () {
+    userScrolledTrace = tracePanelEl.scrollTop > 50;
+  });
+}
 </script>
 </body>
 </html>`;

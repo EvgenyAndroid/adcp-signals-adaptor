@@ -519,6 +519,25 @@ export function renderEcosystemCanvas(demoKey: string): string {
   .cinema-btn:hover { color: var(--accent); border-color: var(--accent); }
   .cinema-btn.on { color: var(--accent); border-color: var(--accent); background: rgba(56, 182, 255, 0.08); }
 
+  /* Stats overlay — left-side rolling totals visible mid-cinema.
+     Sits below the legend, complements the topbar pills. Hides in
+     hide-UI mode like everything else. */
+  .stats-overlay {
+    position: fixed; bottom: 200px; left: 18px; z-index: 10;
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 8px;
+    padding: 10px 14px; font: 11px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    backdrop-filter: blur(8px);
+    pointer-events: auto;
+    min-width: 188px;
+  }
+  .stats-title { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-faint); margin-bottom: 6px; }
+  .stat-row { display: flex; justify-content: space-between; padding: 3px 0; gap: 12px; }
+  .stat-row .k { color: var(--text-mut); }
+  .stat-row .v { color: var(--text); font-weight: 600; }
+  .stat-row .v.live  { color: #5fd9c4; }
+  .stat-row .v.stale { color: #ff9080; }
+  body.hide-ui .stats-overlay { opacity: 0; pointer-events: none; transition: opacity 0.4s; }
+
   /* Keyboard hint pill — small bottom-right ribbon listing the keys.
      Fades after 8s on first paint; reappears on '?' keypress. */
   .kbd-hint {
@@ -654,6 +673,15 @@ export function renderEcosystemCanvas(demoKey: string): string {
 </div>
 <button class="audio-toggle" id="hide-ui-toggle" style="left: 540px;">⌘ hide UI</button>
 
+<div class="stats-overlay" id="stats-overlay">
+  <div class="stats-title">Live ecosystem</div>
+  <div class="stat-row"><span class="k">Cycles</span><span class="v" id="stat-cycles">0</span></div>
+  <div class="stat-row"><span class="k">Avg lift</span><span class="v" id="stat-avg-lift">—</span></div>
+  <div class="stat-row"><span class="k">Top agent</span><span class="v" id="stat-top-agent">—</span></div>
+  <div class="stat-row"><span class="k">Live probe</span><span class="v live" id="stat-live-probe">—</span></div>
+  <div class="stat-row"><span class="k">Build</span><span class="v" id="stat-build">v—</span></div>
+</div>
+
 <div class="kbd-hint" id="kbd-hint">
   <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> cinema · <kbd>U</kbd> hide UI · <kbd>A</kbd> audio · <kbd>?</kbd> show keys
 </div>
@@ -734,9 +762,10 @@ const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 const bloomPass = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  0.85,   // strength
-  0.6,    // radius
-  0.18    // threshold (only pixels brighter than this contribute)
+  0.55,   // strength (dialed down from 0.85 — was overloading halos)
+  0.55,   // radius
+  0.30    // threshold — only the brightest emissive contributes,
+          //              so non-firing nodes stay crisp
 );
 composer.addPass(bloomPass);
 composer.addPass(new OutputPass());
@@ -891,17 +920,20 @@ function flashAgentDramaScatter(agentId) {
 }
 
 // PR D — dramatic lift halo amplification.
-// Replaces the previous decay-from-0.8 with an outward-pulse-then-linger
-// curve: spike to 1.5x, then a longer 6s linger proportional to the lift
-// score. Higher lift = bigger pulse + longer tail. Reads as "this agent
-// reported strong lift" cinematically rather than as a brief blip.
+// PR G — dialed back: prior settings (peak 1.5, scale 2.0, slow decay)
+// drowned the constellation in glow when bloom amplified them and
+// multiple high-lift halos overlapped. Tuned conservatively now:
+//   peak intensity 0.35-0.70, capped well below 1.0
+//   pulseScaleMax 1.15-1.40 (was up to 2.0)
+//   decay 0.014-0.026/frame (faster — halos resolve in ~1s)
+// High-lift agents still announce themselves, but readability stays.
 function triggerLiftHalo(agentId, score) {
   liftHaloDecay.set(agentId, {
-    intensity: 0.7 + score * 0.8,   // peak proportional to lift
-    decayPerFrame: 0.006 + (1 - score) * 0.012, // higher lift decays slower
+    intensity: 0.35 + score * 0.35,
+    decayPerFrame: 0.014 + (1 - score) * 0.012,
     pulseScale: 1.0,
-    pulseGrowth: 0.012 + score * 0.018,
-    pulseScaleMax: 1.4 + score * 0.6,
+    pulseGrowth: 0.014 + score * 0.012,
+    pulseScaleMax: 1.15 + score * 0.25,
   });
 }
 
@@ -1027,6 +1059,39 @@ document.getElementById("trace-pause").addEventListener("click", function () {
   tracePaused = !tracePaused;
   this.textContent = tracePaused ? "resume" : "pause";
 });
+
+// ── Live probe status integration ───────────────────────────────────────
+// /ecosystem/stream emits live_probe events every ~45s with per-agent
+// liveness results from a real MCP tools/list ping. This updates the
+// agent's stage indicator on the constellation: live ● when the most
+// recent probe within the rolling window succeeded; degraded ● when
+// it failed or hasn't fired yet; synthetic ○ for agents that never
+// claimed a live URL. Updates the agent details panel on next click
+// so the stage line reflects the latest probe result.
+const liveProbeByAgent = new Map();
+function updateLiveProbeStatuses(statuses) {
+  for (const s of statuses) {
+    liveProbeByAgent.set(s.agent_id, s);
+    const m = agentMeshes.get(s.agent_id);
+    if (!m || !m.label) continue;
+    const agent = m.agent;
+    if (agent.stage !== "live") continue;
+    // Update the label badge: ● for live-confirmed, ◑ for degraded,
+    // ○ for never-claimed-live (handled at spawn).
+    const badge = s.is_live_now ? "● " : "◑ ";
+    m.label.textContent = badge + agent.name;
+    if (s.is_live_now) {
+      m.label.style.borderColor = "rgba(95, 217, 196, 0.45)"; // mint = healthy
+    } else {
+      m.label.style.borderColor = "rgba(255, 100, 100, 0.45)"; // dim red = degraded
+    }
+  }
+  // Update the live-probe stats line in the HUD
+  const live = statuses.filter(function (s) { return s.is_live_now; }).length;
+  const total = statuses.length;
+  const probeStat = document.getElementById("stat-live-probe");
+  if (probeStat) probeStat.textContent = live + " / " + total + " live";
+}
 
 // Brief banner — the prominent current-brief display.
 const briefBanner = document.getElementById("brief-banner");
@@ -1272,18 +1337,53 @@ function escapeHtml(s) {
   });
 }
 
+// Stats overlay refs
+const statCycles = document.getElementById("stat-cycles");
+const statAvgLift = document.getElementById("stat-avg-lift");
+const statTopAgent = document.getElementById("stat-top-agent");
+const statBuild = document.getElementById("stat-build");
+
+// Fetch build version from /health once on load. Provides a visible
+// deploy-traceability marker on the page, useful for confirming
+// "is this the latest build?" without DevTools.
+fetch("/health").then(function (r) { return r.json(); }).then(function (j) {
+  if (j && j.worker_version) statBuild.textContent = "v" + j.worker_version;
+}).catch(function () { /* network blip — leave default */ });
+
 function updateState(state) {
   if (!state) return;
-  if (state.cycle_count !== undefined) metaCycle.textContent = state.cycle_count;
+  if (state.cycle_count !== undefined) {
+    metaCycle.textContent = state.cycle_count;
+    statCycles.textContent = state.cycle_count;
+  }
   if (state.feedback) {
     metaAudio.textContent = state.feedback.audio_pull.toFixed(2);
     metaCtv.textContent = state.feedback.ctv_pull.toFixed(2);
     metaB2b.textContent = state.feedback.b2b_pull.toFixed(2);
   }
   if (state.lift_by_agent) {
+    let topAgent = null;
+    let topScore = -1;
+    let total = 0;
+    let count = 0;
     for (const x of state.lift_by_agent) {
       const m = agentMeshes.get(x.agent_id);
       if (m) m.lift = x.score;
+      total += x.score;
+      count += 1;
+      if (x.score > topScore) {
+        topScore = x.score;
+        topAgent = x;
+      }
+    }
+    if (count > 0) {
+      const avg = total / count;
+      statAvgLift.textContent = (avg * 100).toFixed(0) + "%";
+    }
+    if (topAgent) {
+      const a = agents.get(topAgent.agent_id);
+      const name = a ? a.name : topAgent.agent_id;
+      statTopAgent.textContent = name + " · " + (topScore * 100).toFixed(0) + "%";
     }
   }
 }
@@ -1385,6 +1485,9 @@ evtSource.onmessage = function (msg) {
           audioLiftBlip(ev.lift.score);
         }
       }
+      break;
+    case "live_probe":
+      if (Array.isArray(ev.statuses)) updateLiveProbeStatuses(ev.statuses);
       break;
   }
 };
@@ -1858,9 +1961,11 @@ function animate() {
         m.halo.material.color.setHex(baseColor);
       }
     } else {
-      // Persistent low-intensity halo proportional to long-term lift
-      m.halo.material.opacity = 0.05 + (m.lift - 0.4) * 0.4;
-      if (m.halo.material.opacity < 0) m.halo.material.opacity = 0;
+      // Persistent low-intensity halo proportional to long-term lift.
+      // PR G — clipped so even max-lift agents stay subtle (0.04..0.20)
+      // rather than the previous 0.05..0.29 that read as "always glowing"
+      // when bloom layered on top.
+      m.halo.material.opacity = Math.max(0, 0.04 + Math.max(0, m.lift - 0.5) * 0.32);
       m.halo.scale.set(1, 1, 1);
     }
     m.halo.lookAt(camera.position);

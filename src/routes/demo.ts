@@ -2419,21 +2419,51 @@ ${STYLES}
 <div id="kbd-overlay" class="kbd-overlay" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
   <div class="kbd-card">
     <h3>Keyboard shortcuts</h3>
+
+    <div class="kbd-section-title">Signals</div>
     <div class="kbd-row"><span>Open Discover</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">d</span></span></div>
     <div class="kbd-row"><span>Open Catalog</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">c</span></span></div>
-    <div class="kbd-row"><span>Open Builder</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">b</span></span></div>
+    <div class="kbd-row"><span>Open Concepts</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">y</span></span></div>
+
+    <div class="kbd-section-title">Analytics</div>
     <div class="kbd-row"><span>Open Treemap</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">t</span></span></div>
     <div class="kbd-row"><span>Open Overlap</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">o</span></span></div>
     <div class="kbd-row"><span>Open Embedding</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">e</span></span></div>
+    <div class="kbd-row"><span>Open Embedding Lab</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">x</span></span></div>
+    <div class="kbd-row"><span>Open Seasonality</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">s</span></span></div>
+    <div class="kbd-row"><span>Open Freshness</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">w</span></span></div>
+
+    <div class="kbd-section-title">Audience Composition</div>
+    <div class="kbd-row"><span>Open Builder</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">b</span></span></div>
+    <div class="kbd-row"><span>Open Composer</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">m</span></span></div>
+    <div class="kbd-row"><span>Open Expression</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">r</span></span></div>
+    <div class="kbd-row"><span>Open Journey</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">j</span></span></div>
+    <div class="kbd-row"><span>Open Portfolio</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">p</span></span></div>
+    <div class="kbd-row"><span>Open Scenario (Planner)</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">q</span></span></div>
+    <div class="kbd-row"><span>Open Snapshots</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">h</span></span></div>
+
+    <div class="kbd-section-title">Workshop Canvases</div>
+    <div class="kbd-row"><span>Open Brand Canvas</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">1</span></span></div>
+    <div class="kbd-row"><span>Open Campaign Canvas</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">2</span></span></div>
+    <div class="kbd-row"><span>Open Agentic Canvas</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">3</span></span></div>
+
+    <div class="kbd-section-title">Multi-Agent</div>
+    <div class="kbd-row"><span>Open Federation</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">f</span></span></div>
+    <div class="kbd-row"><span>Open Orchestrator</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">u</span></span></div>
+
+    <div class="kbd-section-title">Activations</div>
+    <div class="kbd-row"><span>Open Activations</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">a</span></span></div>
+    <div class="kbd-row"><span>Open Destinations</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">n</span></span></div>
+
+    <div class="kbd-section-title">Reference</div>
     <div class="kbd-row"><span>Open Capabilities</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">k</span></span></div>
     <div class="kbd-row"><span>Open Dev kit</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">v</span></span></div>
-    <div class="kbd-row"><span>Open Destinations</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">n</span></span></div>
-    <div class="kbd-row"><span>Open Embedding Lab</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">x</span></span></div>
-    <div class="kbd-row"><span>Open Portfolio</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">p</span></span></div>
-    <div class="kbd-row"><span>Open Seasonality</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">s</span></span></div>
-    <div class="kbd-row"><span>Open Federation</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">f</span></span></div>
+    <div class="kbd-row"><span>Open Tool Log</span><span class="kbd-keys"><span class="kbd-key">g</span><span class="kbd-key">l</span></span></div>
+
+    <div class="kbd-section-title">Detail panel & UI</div>
+    <div class="kbd-row"><span>Toggle sidebar</span><span class="kbd-keys"><span class="kbd-key">Ctrl/Cmd</span><span class="kbd-key">B</span></span></div>
     <div class="kbd-row"><span>Expand / collapse detail panel</span><span class="kbd-keys"><span class="kbd-key">f</span></span></div>
-    <div class="kbd-row"><span>Close detail panel</span><span class="kbd-keys"><span class="kbd-key">Esc</span></span></div>
+    <div class="kbd-row"><span>Close detail panel / overlay</span><span class="kbd-keys"><span class="kbd-key">Esc</span></span></div>
     <div class="kbd-row"><span>Toggle this sheet</span><span class="kbd-keys"><span class="kbd-key">?</span></span></div>
   </div>
 </div>

@@ -3060,9 +3060,19 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
   background: var(--bg-surface); border: 1px solid var(--border);
   border-radius: var(--radius-md); padding: 20px 24px;
   min-width: 420px; max-width: 640px;
+  max-height: 80vh; overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0,0,0,0.5);
 }
 .kbd-card h3 { margin: 0 0 14px 0; font-size: 15px; font-weight: 600; }
+.kbd-section-title {
+  font: 10px var(--font-mono);
+  text-transform: uppercase; letter-spacing: 0.10em;
+  color: var(--text-mut);
+  margin: 14px 0 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-faint);
+}
+.kbd-section-title:first-of-type { margin-top: 0; }
 .kbd-row {
   display: flex; justify-content: space-between; align-items: center;
   padding: 6px 0; border-bottom: 1px solid var(--border);

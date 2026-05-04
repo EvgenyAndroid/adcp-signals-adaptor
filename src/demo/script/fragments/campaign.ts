@@ -48,12 +48,27 @@ document.addEventListener("keydown", function (ev) {
   }
   if (_kbdPrefix === "g") {
     var map = {
+      // Original Sec-38 mapping
       d: "discover", c: "catalog", b: "builder", t: "treemap", o: "overlap",
       e: "embedding", k: "capabilities", v: "devkit", n: "destinations",
       l: "toollog", a: "activations",
       // Sec-41 new tabs. Bare f is reserved for detail-panel expand; the
       // g f prefix disambiguates.
       x: "lab", p: "portfolio", s: "seasonality", f: "federation",
+      // 2026-05-04 — fill in remaining tabs that lacked shortcuts.
+      // Mnemonics chosen to avoid collision with reserved letters above:
+      //   y → sYnonyms (concept registry is the vocab layer)
+      //   m → coMpose
+      //   r → Rule (expression is rule-AST)
+      //   j → Journey
+      //   q → Query / sQenario (planner is what-if)
+      //   h → History / Hash
+      //   w → Window (freshness window)
+      //   u → Unify agents (orchestrator)
+      //   1/2/3 → Workshop Canvases #1, #2, #3
+      y: "concepts", m: "composer", r: "expression", j: "journey",
+      q: "planner", h: "snapshots", w: "freshness", u: "orchestrator",
+      "1": "canvas", "2": "campaign", "3": "agentic",
     };
     var tab = map[ev.key.toLowerCase()];
     if (tab) { switchTab(tab); _kbdPrefix = null; if (_kbdPrefixTimer) clearTimeout(_kbdPrefixTimer); return; }

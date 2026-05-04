@@ -41,7 +41,13 @@ function _readSidebarState() {
 function _writeSidebarState(state) {
   try { localStorage.setItem(SIDEBAR_STATE_KEY, JSON.stringify(state)); } catch (e) {}
 }
-function _applySidebarGroupState() {
+// forceExpandActive: when true (default), the group containing the
+// currently-active item is force-expanded so the user never lands on a
+// collapsed-active state from a tab switch / first paint. When false
+// (passed by the collapse-all handler), the active group can stay
+// collapsed — explicit user intent overrides the safety net.
+function _applySidebarGroupState(forceExpandActive) {
+  if (forceExpandActive === undefined) forceExpandActive = true;
   const state = _readSidebarState();
   document.querySelectorAll(".nav-group").forEach((g) => {
     const id = g.dataset.groupId;
@@ -51,14 +57,14 @@ function _applySidebarGroupState() {
     const collapsed = state[id] !== false;
     g.classList.toggle("is-collapsed", collapsed);
   });
-  // Force-expand the group containing the currently active item so the
-  // user never opens the page to a collapsed-active state.
   const activeItem = document.querySelector(".nav-item.active");
-  if (activeItem) {
+  if (forceExpandActive && activeItem) {
     const parentGroup = activeItem.closest(".nav-group");
     if (parentGroup) parentGroup.classList.remove("is-collapsed");
   }
-  // Decorate the active group's header icon so it picks up the accent color.
+  // Decorate the active group's header icon so it picks up the accent
+  // color. Decoration is independent of expansion — even a collapsed
+  // active group should still highlight its header icon.
   document.querySelectorAll(".nav-group").forEach((g) => g.classList.remove("has-active"));
   if (activeItem) {
     const parentGroup = activeItem.closest(".nav-group");
@@ -84,33 +90,32 @@ document.querySelectorAll("[data-group-toggle]").forEach((header) => {
 });
 
 // Collapse-all / expand-all master toggle. Two states:
-//   - is-all-collapsed: every non-active group is collapsed → next click expands all
-//   - default:           at least one non-active group is expanded → next click collapses all
+//   - is-all-collapsed: every group is collapsed → next click expands all
+//   - default:           at least one group is expanded → next click collapses all
 //
-// "Active" group is force-expanded by _applySidebarGroupState regardless,
-// so "collapse all" really means "collapse everything except active". We
-// only inspect non-active groups when deciding which state we're in.
-function _everyNonActiveGroupCollapsed() {
+// We inspect EVERY group (including the active one) when computing the
+// state because the collapse-all handler now passes forceExpandActive=false
+// to _applySidebarGroupState — meaning the active group can be collapsed
+// as part of "collapse all". The active group's auto-expand only fires
+// from tab switches / first paint, not from the master toggle.
+function _everyGroupCollapsed() {
   const groups = Array.from(document.querySelectorAll(".nav-group"));
-  const nonActive = groups.filter(function(g) { return !g.classList.contains("has-active"); });
-  if (nonActive.length === 0) return true;
-  return nonActive.every(function(g) { return g.classList.contains("is-collapsed"); });
+  if (groups.length === 0) return true;
+  return groups.every(function(g) { return g.classList.contains("is-collapsed"); });
 }
 function _refreshCollapseAllUi() {
   const btn = document.querySelector("[data-nav-collapse-all]");
   if (!btn) return;
-  const allCollapsed = _everyNonActiveGroupCollapsed();
+  const allCollapsed = _everyGroupCollapsed();
   btn.classList.toggle("is-all-collapsed", allCollapsed);
   const label = btn.querySelector(".nav-collapse-all-label");
   if (label) label.textContent = allCollapsed ? "Expand all" : "Collapse all";
 }
 document.querySelectorAll("[data-nav-collapse-all]").forEach(function(btn) {
   btn.addEventListener("click", function() {
-    const allCollapsed = _everyNonActiveGroupCollapsed();
-    // If all are collapsed → expand all (write false to every group's state).
-    // If any expanded → collapse all (write true to every group's state).
-    // The active group's force-expand happens later in _applySidebarGroupState
-    // regardless, so writing true universally is safe.
+    const allCollapsed = _everyGroupCollapsed();
+    // If all collapsed → expand all (state[id] = false).
+    // If any expanded → collapse all (state[id] = true).
     const nextCollapsedValue = !allCollapsed;
     const state = _readSidebarState();
     document.querySelectorAll(".nav-group").forEach(function(g) {
@@ -118,7 +123,11 @@ document.querySelectorAll("[data-nav-collapse-all]").forEach(function(btn) {
       if (id) state[id] = nextCollapsedValue;
     });
     _writeSidebarState(state);
-    _applySidebarGroupState();
+    // Pass forceExpandActive=false when collapsing so the active group
+    // also collapses (explicit user intent). When expanding (every group
+    // already in expanded state), the param is irrelevant — pass true
+    // to preserve the default behavior.
+    _applySidebarGroupState(!nextCollapsedValue);
     _refreshCollapseAllUi();
   });
 });

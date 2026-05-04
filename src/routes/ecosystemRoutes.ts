@@ -123,9 +123,11 @@ export function handleEcosystemStream(): Response {
             await new Promise((r) => setTimeout(r, 4));
           }
           send({ kind: "ecosystem_state", state: ECOSYSTEM.snapshot() });
-          // Inter-cycle breath. Long enough for the constellation to settle,
-          // short enough that the screen-recorded loop stays "alive".
-          await new Promise((r) => setTimeout(r, 1200));
+          // Inter-cycle breath — bumped from 1.2s to 3s so viewers
+          // can read the supernova + brief banner without the next
+          // cycle stomping over them. Cinema mode loops over 60s, so
+          // a 3s pause still gives plenty of cycle activity in-frame.
+          await new Promise((r) => setTimeout(r, 3000));
         }
       } catch (err) {
         // Client disconnected or controller errored — clean up.

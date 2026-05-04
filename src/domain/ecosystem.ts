@@ -355,10 +355,27 @@ export function generateBrief(feedbackBias?: { audio_pull?: number; ctv_pull?: n
 // When the orchestrator's live-call attempt times out or errors, it
 // falls back to these.
 
+// Visual pacing: synthetic latency multiplier. Real-time agent
+// orchestration would happen in the 100-400ms range per phase, but
+// for visual clarity we stretch by 1.5x so each phase reads as a
+// distinct beat. The constellation otherwise looks like a battlefield —
+// all 10 sales-fanout responses landing in one frame.
+const PACING_MULTIPLIER = 1.5;
+
 function syntheticDelay(agent: EcosystemAgent): Promise<void> {
-  const base = agent.personality?.base_latency_ms ?? 150;
+  const base = (agent.personality?.base_latency_ms ?? 150) * PACING_MULTIPLIER;
   const jitter = Math.random() * base * 0.4;
   return new Promise((res) => setTimeout(res, base + jitter));
+}
+
+// Stagger between message yields inside a fanout. Currently the
+// orchestrator yields N message events for N agents in a tight for
+// loop — they hit the canvas effectively simultaneously. A small
+// inter-yield pause makes the beams sweep across the constellation
+// like a wave instead of arriving as one wall.
+const FANOUT_STAGGER_MS = 70;
+function fanoutPause(): Promise<void> {
+  return new Promise((res) => setTimeout(res, FANOUT_STAGGER_MS));
 }
 
 // Brief-fit score per agent: how well do this agent's specialties match
@@ -644,6 +661,7 @@ async function* runCycle(brief: Brief, _liftMap: Map<string, AgentLift>): AsyncG
     yield { kind: "message", message: { id: nextTraceId(), brief_id: brief.id,
       from_agent_id: BUYER_AGENT_ID, to_agent_id: a.id, kind: "signals_fanout", ts_ms: Date.now() - t0,
       color_hint: "discovery" } };
+    await fanoutPause();
   }
   const signalResponses = await Promise.allSettled(
     signalsAgents.map(async (a) => {
@@ -674,6 +692,7 @@ async function* runCycle(brief: Brief, _liftMap: Map<string, AgentLift>): AsyncG
     yield { kind: "message", message: { id: nextTraceId(), brief_id: brief.id,
       from_agent_id: BUYER_AGENT_ID, to_agent_id: a.id, kind: "governance_check", ts_ms: Date.now() - t0,
       color_hint: "policy" } };
+    await fanoutPause();
   }
   const govResponses = await Promise.allSettled(
     govAgents.map(async (a) => {
@@ -700,12 +719,15 @@ async function* runCycle(brief: Brief, _liftMap: Map<string, AgentLift>): AsyncG
     return;
   }
 
-  // 3) Sales fan-out
+  // 3) Sales fan-out — biggest fanout (10 agents). The stagger
+  // matters most here; without it the screen reads as a wall of
+  // beams arriving in one frame.
   const salesAgents = getAgentsByRole("sales");
   for (const a of salesAgents) {
     yield { kind: "message", message: { id: nextTraceId(), brief_id: brief.id,
       from_agent_id: BUYER_AGENT_ID, to_agent_id: a.id, kind: "sales_fanout", ts_ms: Date.now() - t0,
       color_hint: "discovery" } };
+    await fanoutPause();
   }
   const salesResponses = await Promise.allSettled(
     salesAgents.map(async (a) => {
@@ -734,6 +756,7 @@ async function* runCycle(brief: Brief, _liftMap: Map<string, AgentLift>): AsyncG
     yield { kind: "message", message: { id: nextTraceId(), brief_id: brief.id,
       from_agent_id: BUYER_AGENT_ID, to_agent_id: a.id, kind: "creative_match", ts_ms: Date.now() - t0,
       color_hint: "creative" } };
+    await fanoutPause();
   }
   await Promise.allSettled(
     creativeAgents.map(async (a) => {
@@ -747,6 +770,7 @@ async function* runCycle(brief: Brief, _liftMap: Map<string, AgentLift>): AsyncG
     yield { kind: "message", message: { id: nextTraceId(), brief_id: brief.id,
       from_agent_id: a.id, to_agent_id: BUYER_AGENT_ID, kind: "creative_match", ts_ms: Date.now() - t0,
       color_hint: "creative" } };
+    await fanoutPause();
   }
 
   // 5) Buying bids
@@ -755,6 +779,7 @@ async function* runCycle(brief: Brief, _liftMap: Map<string, AgentLift>): AsyncG
     yield { kind: "message", message: { id: nextTraceId(), brief_id: brief.id,
       from_agent_id: BUYER_AGENT_ID, to_agent_id: a.id, kind: "buying_bid", ts_ms: Date.now() - t0,
       color_hint: "bid" } };
+    await fanoutPause();
   }
   const bidResponses = await Promise.allSettled(
     buyingAgents.map(async (a) => {
@@ -784,6 +809,7 @@ async function* runCycle(brief: Brief, _liftMap: Map<string, AgentLift>): AsyncG
     yield { kind: "message", message: { id: nextTraceId(), brief_id: brief.id,
       from_agent_id: BUYER_AGENT_ID, to_agent_id: a.id, kind: "measurement_report", ts_ms: Date.now() - t0,
       color_hint: "measurement" } };
+    await fanoutPause();
   }
   // Roll up cycle quality signals so measurement can score against
   // actual upstream-phase outcomes — not random tilt against the brief

@@ -84,12 +84,62 @@ export function renderEcosystemCanvas(demoKey: string): string {
   .meta-pill { padding: 5px 10px; background: rgba(0,0,0,0.4); border: 1px solid rgba(56, 182, 255, 0.16); border-radius: 12px; }
   .meta-pill b { color: var(--text); font-weight: 600; }
 
+  /* Brief banner — the single most prominent affordance. Shows what
+     campaign is currently being orchestrated. Spawns with a glow pulse
+     animation; settles to a quieter persistent state during the cycle.
+     Designed to be readable mid-cinema at any camera distance. */
+  .brief-banner {
+    position: fixed; top: 60px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 9;
+    pointer-events: none;
+    width: min(720px, 86vw);
+    padding: 14px 22px 12px;
+    background: linear-gradient(135deg, rgba(56, 182, 255, 0.10), rgba(10, 14, 21, 0.92));
+    border: 1px solid rgba(56, 182, 255, 0.35);
+    border-radius: 10px;
+    box-shadow: 0 8px 36px rgba(56, 182, 255, 0.18);
+    text-align: center;
+    transition: opacity 0.4s, transform 0.4s;
+  }
+  .brief-banner.hidden { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  .brief-banner-label {
+    font: 9.5px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--accent); margin-bottom: 6px;
+    opacity: 0.85;
+  }
+  .brief-banner-prompt {
+    font-size: 16px; font-weight: 500;
+    color: var(--text); line-height: 1.35;
+    letter-spacing: 0.01em;
+  }
+  .brief-banner-meta {
+    margin-top: 8px;
+    display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+    font: 10.5px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color: var(--text-dim);
+  }
+  .brief-meta-pill { padding: 2px 9px; background: rgba(0,0,0,0.35); border: 1px solid rgba(56, 182, 255, 0.16); border-radius: 10px; }
+  .brief-meta-pill b { color: var(--text); font-weight: 600; }
+  .brief-meta-pill.audio-hot { border-color: rgba(95, 217, 196, 0.45); color: #5fd9c4; }
+  .brief-meta-pill.ctv-hot   { border-color: rgba(255, 180, 84, 0.45); color: #ffb454; }
+  .brief-meta-pill.b2b-hot   { border-color: rgba(201, 138, 255, 0.45); color: #c98aff; }
+  .brief-banner.spawn-pulse {
+    animation: brief-spawn 0.9s ease-out;
+  }
+  @keyframes brief-spawn {
+    0%   { transform: translateX(-50%) scale(0.92); box-shadow: 0 0 0 rgba(56, 182, 255, 0); }
+    40%  { transform: translateX(-50%) scale(1.03); box-shadow: 0 8px 60px rgba(56, 182, 255, 0.55); }
+    100% { transform: translateX(-50%) scale(1.0);  box-shadow: 0 8px 36px rgba(56, 182, 255, 0.18); }
+  }
+
   /* Phase banner — sits below the topbar, centered. The single most
      important affordance: tells the viewer WHAT IS HAPPENING right now
      ("PHASE 2 of 6 · governance check"). Updates in real time as cycle
      events arrive over SSE. */
   .phase-banner {
-    position: fixed; top: 64px; left: 50%;
+    position: fixed; top: 178px; left: 50%;
     transform: translateX(-50%);
     z-index: 9;
     pointer-events: none;
@@ -184,7 +234,7 @@ export function renderEcosystemCanvas(demoKey: string): string {
   .trace-summary.review { color: #f59e0b; }
 
   .agent-panel {
-    position: fixed; top: 78px; left: 18px; z-index: 11;
+    position: fixed; top: 220px; left: 18px; z-index: 11;
     width: 340px;
     background: var(--panel); border: 1px solid var(--panel-border); border-radius: 10px;
     padding: 14px 16px;
@@ -238,6 +288,126 @@ export function renderEcosystemCanvas(demoKey: string): string {
   }
   body.hide-ui #hide-ui-toggle:hover,
   body.hide-ui #cinema-toggle:hover { opacity: 1; }
+
+  /* Trace detail modal — opens on click of any trace line. Slides in
+     from the right with a staggered reveal of its sections. JSON is
+     syntax-tinted; reasoning explains the trace in the ceremony's
+     dramaturgy ("why this happened"). */
+  .trace-detail-modal {
+    position: fixed; inset: 0; z-index: 18;
+    display: none; align-items: center; justify-content: flex-end;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+  }
+  .trace-detail-modal.open { display: flex; pointer-events: auto; }
+  .trace-detail-card {
+    width: min(540px, 92vw); max-height: 86vh;
+    margin-right: 18px;
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 18px 22px 22px;
+    overflow-y: auto;
+    box-shadow: 0 18px 80px rgba(56, 182, 255, 0.32);
+    pointer-events: auto;
+    transform: translateX(40px); opacity: 0;
+    transition: transform 0.32s ease-out, opacity 0.28s;
+  }
+  .trace-detail-modal.open .trace-detail-card {
+    transform: translateX(0); opacity: 1;
+  }
+  .trace-detail-head {
+    display: flex; align-items: center; gap: 10px;
+    padding-bottom: 12px; margin-bottom: 14px;
+    border-bottom: 1px solid rgba(56, 182, 255, 0.16);
+  }
+  .trace-detail-kind {
+    font: 10px ui-monospace, monospace;
+    text-transform: uppercase; letter-spacing: 0.10em;
+    padding: 3px 9px;
+    background: var(--accent-glow); color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 3px;
+  }
+  .trace-detail-agent {
+    flex: 1;
+    font-size: 12.5px; color: var(--text-dim);
+  }
+  .trace-detail-close {
+    background: transparent; border: 1px solid rgba(56, 182, 255, 0.32);
+    color: var(--text-dim); width: 26px; height: 26px;
+    border-radius: 4px; cursor: pointer; padding: 0;
+    font-family: inherit; font-size: 16px; line-height: 22px;
+  }
+  .trace-detail-close:hover { color: var(--accent); border-color: var(--accent); }
+  .trace-detail-summary {
+    font-size: 14px; line-height: 1.45;
+    color: var(--text);
+    padding: 10px 0;
+    margin-bottom: 6px;
+    opacity: 0;
+    transform: translateY(8px);
+    animation: td-reveal 0.5s 0.05s ease-out forwards;
+  }
+  .trace-detail-section { margin-top: 14px; opacity: 0; transform: translateY(10px); animation: td-reveal 0.5s ease-out forwards; }
+  .trace-detail-section:nth-of-type(1) { animation-delay: 0.10s; }
+  .trace-detail-section:nth-of-type(2) { animation-delay: 0.18s; }
+  .trace-detail-section:nth-of-type(3) { animation-delay: 0.26s; }
+  .trace-detail-section:nth-of-type(4) { animation-delay: 0.34s; }
+  @keyframes td-reveal {
+    0%   { opacity: 0; transform: translateY(8px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .trace-detail-section-title {
+    font: 9.5px ui-monospace, monospace;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--text-faint); margin-bottom: 6px;
+  }
+  .trace-detail-reasoning {
+    font-size: 12.5px; line-height: 1.55;
+    color: var(--text-dim);
+  }
+  .trace-detail-reasoning b { color: var(--text); font-weight: 500; }
+  .trace-detail-agents {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .trace-detail-agent-pill {
+    font: 10.5px ui-monospace, monospace;
+    padding: 3px 9px;
+    background: rgba(56, 182, 255, 0.08);
+    border: 1px solid rgba(56, 182, 255, 0.22);
+    border-radius: 3px;
+    color: var(--text);
+  }
+  .trace-detail-agent-pill .role { color: var(--text-faint); margin-right: 6px; }
+  .trace-detail-json {
+    font: 11px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    line-height: 1.5;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(56, 182, 255, 0.12);
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin: 0;
+    overflow-x: auto;
+    color: var(--text-dim);
+    max-height: 260px;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .trace-detail-json .k { color: var(--c-signals); }
+  .trace-detail-json .s { color: var(--c-measurement); }
+  .trace-detail-json .n { color: var(--c-sales); }
+  .trace-detail-json .b { color: var(--c-buying); }
+  .trace-detail-brief {
+    font-size: 12px; color: var(--text-dim);
+    padding: 8px 12px;
+    background: rgba(56, 182, 255, 0.05);
+    border-left: 2px solid var(--accent);
+    border-radius: 4px;
+  }
+
+  /* Trace lines are clickable — surface the affordance on hover. */
+  .trace-line { cursor: pointer; transition: background 0.12s; }
+  .trace-line:hover { background: rgba(56, 182, 255, 0.06); }
 
   /* Matrix-rain modal: vertical scroll of raw JSON-RPC frames for one
      agent. Phosphor-green retro aesthetic on top of the constellation. */
@@ -318,11 +488,48 @@ export function renderEcosystemCanvas(demoKey: string): string {
 <div class="hero-overlay"></div>
 <div id="label-layer"></div>
 
+<div class="brief-banner hidden" id="brief-banner">
+  <div class="brief-banner-label">CURRENT BRIEF</div>
+  <div class="brief-banner-prompt" id="brief-prompt">awaiting first brief…</div>
+  <div class="brief-banner-meta" id="brief-meta"></div>
+</div>
+
 <div class="phase-banner" id="phase-banner">
   <span class="phase-dot" aria-hidden="true"></span>
   <span class="phase-num" id="phase-num">PHASE —</span>
   <span id="phase-title">awaiting first brief</span>
   <span class="phase-meta" id="phase-meta"></span>
+</div>
+
+<!-- Trace detail modal — opens when a trace line is clicked. Renders
+     the full trace object as syntax-highlighted JSON, plus a synthesized
+     reasoning paragraph explaining the trace's role in the ceremony.
+     Streams in with cinematic effects. -->
+<div class="trace-detail-modal" id="trace-detail-modal">
+  <div class="trace-detail-card" id="trace-detail-card">
+    <div class="trace-detail-head">
+      <span class="trace-detail-kind" id="td-kind">—</span>
+      <span class="trace-detail-agent" id="td-agent"></span>
+      <button class="trace-detail-close" id="td-close" aria-label="Close">×</button>
+    </div>
+    <div class="trace-detail-summary" id="td-summary">—</div>
+    <div class="trace-detail-section">
+      <div class="trace-detail-section-title">Why this happened</div>
+      <div class="trace-detail-reasoning" id="td-reasoning">—</div>
+    </div>
+    <div class="trace-detail-section">
+      <div class="trace-detail-section-title">Connected agents</div>
+      <div class="trace-detail-agents" id="td-agents">—</div>
+    </div>
+    <div class="trace-detail-section">
+      <div class="trace-detail-section-title">Full payload (JSON)</div>
+      <pre class="trace-detail-json" id="td-json">{}</pre>
+    </div>
+    <div class="trace-detail-section">
+      <div class="trace-detail-section-title">Brief context</div>
+      <div class="trace-detail-brief" id="td-brief">—</div>
+    </div>
+  </div>
 </div>
 
 <div class="topbar">
@@ -411,6 +618,10 @@ export function renderEcosystemCanvas(demoKey: string): string {
 <script type="module">
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
 // ── Constants ────────────────────────────────────────────────────────────
 const ROLE_COLORS = {
@@ -446,6 +657,25 @@ scene.fog = new THREE.FogExp2(0x04060a, 0.018);
 
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
 camera.position.set(0, 6, 38);
+
+// ── Post-processing: bloom the emissive nodes + beams ───────────────────
+//
+// EffectComposer renders the scene into a render target, then applies
+// UnrealBloomPass which threshold-extracts bright pixels and gaussian-
+// blurs them at multiple scales for a glow effect. Tuned conservatively
+// so we don't drown the constellation in glow — just enough to make
+// the firing nodes feel hot. Exposure stays near 1.0 so colors don't
+// shift.
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.85,   // strength
+  0.6,    // radius
+  0.18    // threshold (only pixels brighter than this contribute)
+);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -642,8 +872,53 @@ document.getElementById("trace-pause").addEventListener("click", function () {
   this.textContent = tracePaused ? "resume" : "pause";
 });
 
+// Brief banner — the prominent current-brief display.
+const briefBanner = document.getElementById("brief-banner");
+const briefPromptEl = document.getElementById("brief-prompt");
+const briefMetaEl = document.getElementById("brief-meta");
+
+// Brief-by-id store: lets trace-detail modal show the brief context
+// for any historical trace. Trimmed to the last 20 briefs.
+const briefById = new Map();
+let currentBriefId = null;
+let currentBrief = null;
+
+function updateBriefBanner(brief) {
+  if (!brief) return;
+  briefBanner.classList.remove("hidden");
+  briefBanner.classList.remove("spawn-pulse");
+  // Force reflow so the keyframe restarts
+  void briefBanner.offsetWidth;
+  briefBanner.classList.add("spawn-pulse");
+
+  briefPromptEl.textContent = brief.prompt;
+  // Highlight whichever weight dimension is dominant
+  const weights = brief.weights || {};
+  const hot = (weights.audio_bias > weights.ctv_bias && weights.audio_bias > weights.b2b_bias) ? "audio"
+    : (weights.ctv_bias > weights.b2b_bias) ? "ctv"
+    : (weights.b2b_bias > 0.3) ? "b2b" : null;
+
+  briefMetaEl.innerHTML =
+    "<span class=\\"brief-meta-pill\\">budget <b>$" + (brief.budget_usd || 0).toLocaleString() + "</b></span>" +
+    "<span class=\\"brief-meta-pill" + (hot === "audio" ? " audio-hot" : "") + "\\">audio <b>" + (weights.audio_bias || 0).toFixed(2) + "</b></span>" +
+    "<span class=\\"brief-meta-pill" + (hot === "ctv" ? " ctv-hot" : "") + "\\">ctv <b>" + (weights.ctv_bias || 0).toFixed(2) + "</b></span>" +
+    "<span class=\\"brief-meta-pill" + (hot === "b2b" ? " b2b-hot" : "") + "\\">b2b <b>" + (weights.b2b_bias || 0).toFixed(2) + "</b></span>" +
+    "<span class=\\"brief-meta-pill\\">id <b>" + brief.id.slice(-8) + "</b></span>";
+}
+
 let currentBriefCard = null;
 function appendBrief(brief) {
+  // Always update the prominent banner — even when paused.
+  currentBriefId = brief.id;
+  currentBrief = brief;
+  briefById.set(brief.id, brief);
+  // Trim brief store
+  if (briefById.size > 20) {
+    const oldestKey = briefById.keys().next().value;
+    briefById.delete(oldestKey);
+  }
+  updateBriefBanner(brief);
+
   if (tracePaused) return;
   const card = document.createElement("div");
   card.className = "brief-card";
@@ -660,11 +935,23 @@ function appendBrief(brief) {
   while (traceBody.children.length > 40) traceBody.removeChild(traceBody.lastChild);
 }
 
+// Trace store — keyed by trace.id so the click handler can resolve
+// click → trace object regardless of how many briefs ago it was.
+const traceById = new Map();
+
 function appendTrace(trace) {
+  // Always store, even if visible append is paused, so the modal works.
+  if (trace.id) traceById.set(trace.id, trace);
+  if (traceById.size > 600) {
+    const oldestKey = traceById.keys().next().value;
+    traceById.delete(oldestKey);
+  }
+
   if (tracePaused) return;
   if (!currentBriefCard) return;
   const line = document.createElement("div");
   line.className = "trace-line";
+  if (trace.id) line.dataset.traceId = trace.id;
   const dotColor = (trace.kind && trace.kind.includes("signal")) ? "var(--c-signal)"
     : (trace.kind && trace.kind.includes("governance")) ? "var(--c-policy)"
     : (trace.kind && trace.kind.includes("sales")) ? "var(--c-product)"
@@ -683,6 +970,145 @@ function appendTrace(trace) {
     "<div class=\\"" + summaryClass + "\\">" + escapeHtml(trace.summary || "") + "</div>";
   currentBriefCard.appendChild(line);
 }
+
+// Synthesize a "why this happened" reasoning paragraph for any trace.
+// The prose is templated by trace.kind; the template fills with values
+// from trace.detail + the brief context. Reads as natural English so a
+// non-technical viewer understands the dramaturgy of the moment.
+function reasonForTrace(trace, brief) {
+  if (!trace) return "—";
+  const k = trace.kind || "";
+  const det = trace.detail || {};
+  const briefPrompt = brief && brief.prompt ? "\\u201C" + brief.prompt + "\\u201D" : "the active brief";
+  const agent = trace.agent_id || "an agent";
+
+  if (k === "brief_spawned") {
+    const w = (det.weights || {});
+    const dimSummary = "audio " + (w.audio_bias || 0).toFixed(2) +
+      ", ctv " + (w.ctv_bias || 0).toFixed(2) +
+      ", b2b " + (w.b2b_bias || 0).toFixed(2);
+    return "The buyer orchestrator generated this brief biased toward " + dimSummary +
+      ". The bias comes from the running feedback loop \\u2014 winning briefs in prior cycles pulled the brief generator's weights toward dimensions that measured high lift.";
+  }
+  if (k === "signals_fanout" || k === "signal_response") {
+    const sigCount = (det.signals && det.signals.length) || 0;
+    if (k === "signal_response") {
+      return "<b>" + agent + "</b> received " + briefPrompt + " and returned <b>" + sigCount + "</b> signal candidates. " +
+        "The signals agent matched its catalog against the brief's audience and dimension weights, returning the top-coverage candidates that align with the buyer's intent.";
+    }
+    return "The orchestrator fanned the brief out to all signals agents in parallel. Each signals agent decides independently which of its catalog entries match \\u2014 there's no central planner.";
+  }
+  if (k === "governance_check") {
+    const outcome = (det.outcome || "").toLowerCase();
+    if (outcome === "deny") {
+      return "<b>" + agent + "</b> blocked this brief: <b>" + (det.reason || "policy mismatch") + "</b>. " +
+        "Governance agents act as parallel gates; any single deny aborts the cycle. This protects buyers from stepping into compliance violations downstream.";
+    }
+    if (outcome === "review") {
+      return "<b>" + agent + "</b> flagged this brief for manual review (" + (det.reason || "review required") + "). " +
+        "In a production system, a review verdict would pause the cycle until a human approves; in the demo we let it proceed.";
+    }
+    return "<b>" + agent + "</b> approved this brief. The agent compared its policy ruleset against the brief's audience claims, consent posture, and target geographies, and saw no blockers.";
+  }
+  if (k === "sales_fanout" || k === "sales_response") {
+    if (k === "sales_response") {
+      const prodCount = (det.products && det.products.length) || 0;
+      return "<b>" + agent + "</b> returned <b>" + prodCount + "</b> products that match the brief's audience and budget. " +
+        "Each product carries inventory metadata (CPM, available impressions) that the buying agents use as bid inputs.";
+    }
+    return "The orchestrator fanned the now-governance-cleared brief to all sales agents simultaneously. Sales agents are the supply side \\u2014 they hold media inventory and respond with products that match the audience.";
+  }
+  if (k === "creative_match") {
+    return "Creative agents returned the format manifests they support for this brief's chosen products. " +
+      "Format selection is a downstream concern \\u2014 by this point the audience and inventory are decided; the buyer just needs assembly instructions.";
+  }
+  if (k === "buying_bid") {
+    const bid = det.bid || {};
+    return "<b>" + agent + "</b> committed <b>$" + (bid.budget_committed || 0).toLocaleString() + "</b> at <b>$" + (bid.bid_cpm || 0).toFixed(2) + " CPM</b>. " +
+      "Buying agents are the demand side. They aggregate the brief, signals, products, and creative formats into a bid commitment.";
+  }
+  if (k === "measurement_report") {
+    const m = det.measurement || {};
+    return "<b>" + agent + "</b> reported <b>" + ((m.lift || 0) * 100).toFixed(0) + "%</b> lift, <b>" + (m.reach_pct || 0).toFixed(1) + "%</b> reach, brand-safety <b>" + ((m.brand_safety || 0) * 100).toFixed(0) + "%</b>. " +
+      "This number feeds back into the brief generator: high-lift dimensions get pulled toward in the next cycle's brief weighting. The ecosystem learns from itself.";
+  }
+  return "Step <b>" + (k.replace(/_/g, " ") || "—") + "</b> in the buying ceremony. " +
+    "Each phase fans out to all agents of one role in parallel and waits for responses before advancing.";
+}
+
+// ── Trace detail modal logic ────────────────────────────────────────────
+const traceDetailModal = document.getElementById("trace-detail-modal");
+const tdKindEl = document.getElementById("td-kind");
+const tdAgentEl = document.getElementById("td-agent");
+const tdSummaryEl = document.getElementById("td-summary");
+const tdReasoningEl = document.getElementById("td-reasoning");
+const tdAgentsEl = document.getElementById("td-agents");
+const tdJsonEl = document.getElementById("td-json");
+const tdBriefEl = document.getElementById("td-brief");
+
+function colorizeJson(jsonStr) {
+  // Simple syntax highlighter: keys → cyan, strings → mint,
+  // numbers → gold, booleans → pink. Operates on already-formatted
+  // JSON. Escapes &/</> first so we don't double-encode.
+  const escaped = escapeHtml(jsonStr);
+  return escaped
+    .replace(/(&quot;)([\\w_-]+)(&quot;)(\\s*:)/g, "<span class=\\"k\\">$1$2$3</span>$4")
+    .replace(/:\\s*(&quot;)([^&]*)(&quot;)/g, ": <span class=\\"s\\">$1$2$3</span>")
+    .replace(/:\\s*(-?\\d+\\.?\\d*)/g, ": <span class=\\"n\\">$1</span>")
+    .replace(/:\\s*(true|false|null)/g, ": <span class=\\"b\\">$1</span>");
+}
+
+function openTraceDetail(traceId) {
+  const trace = traceById.get(traceId);
+  if (!trace) return;
+  const brief = briefById.get(trace.brief_id) || currentBrief;
+  tdKindEl.textContent = (trace.kind || "trace").replace(/_/g, " ");
+  tdAgentEl.textContent = trace.agent_id ? ("agent: " + trace.agent_id) : "ceremony-level";
+  tdSummaryEl.textContent = trace.summary || "(no summary)";
+  tdReasoningEl.innerHTML = reasonForTrace(trace, brief);
+
+  // Connected agents pills — agent that owns the trace + buyer.
+  const pills = [];
+  if (trace.agent_id) {
+    const agent = agents.get(trace.agent_id);
+    if (agent) {
+      pills.push("<span class=\\"trace-detail-agent-pill\\"><span class=\\"role\\">" + escapeHtml(agent.role) + "</span>" + escapeHtml(agent.name) + "</span>");
+    }
+  }
+  pills.push("<span class=\\"trace-detail-agent-pill\\"><span class=\\"role\\">orchestrator</span>buyer</span>");
+  tdAgentsEl.innerHTML = pills.join("");
+
+  // Full payload JSON
+  tdJsonEl.innerHTML = colorizeJson(JSON.stringify(trace, null, 2));
+
+  // Brief context
+  if (brief) {
+    tdBriefEl.innerHTML =
+      "<div style=\\"margin-bottom:4px;\\">" + escapeHtml(brief.prompt) + "</div>" +
+      "<div style=\\"font:10.5px ui-monospace,monospace;color:var(--text-faint);\\">id " + escapeHtml(brief.id.slice(-12)) +
+      " · $" + (brief.budget_usd || 0).toLocaleString() + "</div>";
+  } else {
+    tdBriefEl.textContent = "(brief not in store)";
+  }
+
+  traceDetailModal.classList.add("open");
+}
+function closeTraceDetail() {
+  traceDetailModal.classList.remove("open");
+}
+document.getElementById("td-close").addEventListener("click", closeTraceDetail);
+traceDetailModal.addEventListener("click", function (e) { if (e.target === traceDetailModal) closeTraceDetail(); });
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape" && traceDetailModal.classList.contains("open")) closeTraceDetail();
+});
+// Event-delegated click handler on the trace panel — any trace-line gets
+// click-detail behavior. New traces get this for free as they're appended.
+document.getElementById("trace-panel").addEventListener("click", function (e) {
+  const target = e.target && e.target.closest ? e.target.closest(".trace-line") : null;
+  if (!target) return;
+  const id = target.dataset.traceId;
+  if (id) openTraceDetail(id);
+});
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, function (c) {
@@ -1172,7 +1598,7 @@ function animate() {
     }
   }
 
-  renderer.render(scene, camera);
+  composer.render();
 }
 animate();
 
@@ -1180,6 +1606,8 @@ window.addEventListener("resize", function () {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+  bloomPass.setSize(window.innerWidth, window.innerHeight);
 });
 
 // Stash the demo key for any future authed fetches.

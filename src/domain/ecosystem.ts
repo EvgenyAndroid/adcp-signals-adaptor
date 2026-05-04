@@ -829,6 +829,118 @@ async function* runCycle(brief: Brief, _liftMap: Map<string, AgentLift>): AsyncG
   };
 }
 
+// ── Live MCP probe ───────────────────────────────────────────────────────────
+//
+// Best-effort liveness check for agents that declare an mcp_url. Sends
+// a `tools/list` JSON-RPC frame with a 2.5s timeout, accepts any 2xx
+// response (any agent up enough to answer). Result cached per-agent;
+// re-probed on a rolling cadence so the visual reflects current state.
+//
+// Crucially: this never blocks a cycle. The probe runs in the
+// background; cycles continue with synthetic responses regardless.
+// What changes is the agent's visual stage indicator: "live ●" if the
+// last probe was 2xx within ~60s, "stale ●" if the last probe failed
+// or hasn't fired yet, "synthetic ○" for agents we never claimed
+// were live in the first place.
+
+export interface AgentLiveStatus {
+  /** ISO timestamp of the last probe attempt. */
+  last_probed_at: string | null;
+  /** Last probe outcome — "ok" | "timeout" | "http_<code>" | "error" | null. */
+  last_status: string | null;
+  /** Round-trip ms of last successful probe. */
+  last_latency_ms: number | null;
+  /** True iff the most recent probe within ~60s succeeded. */
+  is_live_now: boolean;
+}
+
+const PROBE_TIMEOUT_MS = 2500;
+const PROBE_STALE_AFTER_MS = 60_000;
+const liveStatusByAgent = new Map<string, AgentLiveStatus>();
+
+async function probeAgent(agent: EcosystemAgent): Promise<AgentLiveStatus> {
+  const status: AgentLiveStatus = {
+    last_probed_at: new Date().toISOString(),
+    last_status: null,
+    last_latency_ms: null,
+    is_live_now: false,
+  };
+  if (!agent.mcp_url) {
+    status.last_status = "no_url";
+    return status;
+  }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), PROBE_TIMEOUT_MS);
+  const start = Date.now();
+  try {
+    const r = await fetch(agent.mcp_url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/list",
+        params: {},
+      }),
+      signal: ctrl.signal,
+    });
+    status.last_latency_ms = Date.now() - start;
+    if (r.ok) {
+      status.last_status = "ok";
+      status.is_live_now = true;
+    } else {
+      status.last_status = "http_" + r.status;
+    }
+  } catch (err) {
+    status.last_latency_ms = Date.now() - start;
+    if ((err as Error).name === "AbortError") {
+      status.last_status = "timeout";
+    } else {
+      status.last_status = "error";
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+  return status;
+}
+
+export async function probeAllLive(): Promise<{ probed: number; live: number }> {
+  const liveAgents = ECOSYSTEM_AGENTS.filter((a) => a.stage === "live");
+  let liveCount = 0;
+  await Promise.all(
+    liveAgents.map(async (agent) => {
+      try {
+        const status = await probeAgent(agent);
+        liveStatusByAgent.set(agent.id, status);
+        if (status.is_live_now) liveCount += 1;
+      } catch {
+        // Already wrapped inside probeAgent — defensive.
+      }
+    })
+  );
+  return { probed: liveAgents.length, live: liveCount };
+}
+
+export function getLiveStatusSnapshot(): Array<{ agent_id: string } & AgentLiveStatus> {
+  const now = Date.now();
+  const out: Array<{ agent_id: string } & AgentLiveStatus> = [];
+  for (const [agent_id, status] of liveStatusByAgent.entries()) {
+    // Auto-expire: if the last probe is older than the stale window,
+    // surface as not-live-now even if the probe succeeded back then.
+    const probedAt = status.last_probed_at ? new Date(status.last_probed_at).getTime() : 0;
+    const stale = now - probedAt > PROBE_STALE_AFTER_MS;
+    out.push({
+      agent_id,
+      ...status,
+      is_live_now: status.is_live_now && !stale,
+    });
+  }
+  return out;
+}
+
 // ── Singleton state ──────────────────────────────────────────────────────────
 
 class EcosystemState {

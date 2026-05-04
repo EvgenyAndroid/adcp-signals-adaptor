@@ -1,6 +1,6 @@
 {
   "name": "adcp-signals-adaptor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "AdCP Signals Adaptor Agent - Evgeny Demo Provider for agentic advertising workflows",
   "private": true,
   "scripts": {

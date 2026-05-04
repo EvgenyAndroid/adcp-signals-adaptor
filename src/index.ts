@@ -1,6 +1,15 @@
 // src/index.ts
 // Cloudflare Worker entrypoint for the AdCP Signals Adaptor Agent.
 
+// Worker version. Bumped on substantive feature releases. Surfaced
+// at /health alongside the AdCP protocol version. Mirrors
+// package.json's "version" field — keep in sync.
+const WORKER_VERSION = "1.1.0";
+// Build timestamp — frozen at module-eval time, so a fresh deploy
+// shows a fresh value at /health. Useful for verifying which build
+// is actually serving without checking commit hashes by hand.
+const BUILT_AT = new Date().toISOString();
+
 import type { Env } from "./types/env";
 import { handleGetCapabilities } from "./routes/capabilities";
 import { handleSearchSignals } from "./routes/searchSignals";
@@ -144,6 +153,7 @@ import {
     handleEcosystemAgents,
     handleEcosystemState,
     handleEcosystemStream,
+    handleEcosystemProbe,
 } from "./routes/ecosystemRoutes";
 import {
   handleVendorHealthSnapshot,
@@ -338,6 +348,7 @@ export default {
             "/ecosystem/stream",
             "/ecosystem/agents",
             "/ecosystem/state",
+            "/ecosystem/probe",
             "/taxonomy/reverse",
             // Sec-43: audience composer + activation-planning analytics.
             // Read-only — same posture as /portfolio/* and /analytics/*.
@@ -432,8 +443,17 @@ export default {
             } else if (method === "GET" && path === "/ecosystem/state") {
                 response = handleEcosystemState();
 
+            } else if (method === "GET" && path === "/ecosystem/probe") {
+                response = await handleEcosystemProbe();
+
             } else if (method === "GET" && path === "/health") {
-                response = jsonResponse({ status: "ok", version: "3.0" });
+                response = jsonResponse({
+                    status: "ok",
+                    version: "3.0",          // AdCP protocol version (kept for back-compat)
+                    adcp_version: "3.0",
+                    worker_version: WORKER_VERSION,
+                    built_at: BUILT_AT,
+                });
 
             } else if (method === "GET" && path.startsWith("/.well-known/oauth-protected-resource")) {
                 // RFC 9728: resource path is the suffix after the well-known

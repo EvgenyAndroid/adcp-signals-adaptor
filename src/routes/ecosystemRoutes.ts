@@ -14,7 +14,13 @@
 // feedback + lift across all viewers, so the system as a whole
 // "learns" from collective traffic.
 
-import { ECOSYSTEM, ECOSYSTEM_AGENTS, runOneCycle } from "../domain/ecosystem";
+import {
+    ECOSYSTEM,
+    ECOSYSTEM_AGENTS,
+    runOneCycle,
+    probeAllLive,
+    getLiveStatusSnapshot,
+} from "../domain/ecosystem";
 import { renderEcosystemCanvas } from "./ecosystemCanvas";
 
 export function handleEcosystemPage(env: { DEMO_API_KEY: string }): Response {
@@ -49,6 +55,20 @@ export function handleEcosystemState(): Response {
   });
 }
 
+export async function handleEcosystemProbe(): Promise<Response> {
+  // On-demand probe runner — fires fresh probes against every live agent
+  // and returns the snapshot. Useful for ad-hoc liveness inspection
+  // outside the SSE loop's rolling cadence.
+  const result = await probeAllLive();
+  return new Response(JSON.stringify({
+    ...result,
+    statuses: getLiveStatusSnapshot(),
+  }, null, 2), {
+    status: 200,
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+  });
+}
+
 // SSE stream — runs ceremonies back-to-back until the client disconnects.
 // Each event is a JSON object on a single `data:` line. Cycle boundaries
 // are surfaced as their own kinds so the client can clear visual state
@@ -69,6 +89,21 @@ export function handleEcosystemStream(): Response {
       // Initial frame: tell the client which agents exist so it can
       // pre-allocate the constellation before the first cycle starts.
       send({ kind: "bootstrap", agents: ECOSYSTEM_AGENTS, state: ECOSYSTEM.snapshot() });
+
+      // Kick off a background liveness probe loop. First wave fires
+      // immediately; subsequent waves every 45s. Each completion
+      // emits a `live_probe` event so the client repaints the agent
+      // stage indicators (live ●, stale ●, synthetic ○).
+      const probeLoop = async () => {
+        try {
+          await probeAllLive();
+          send({ kind: "live_probe", statuses: getLiveStatusSnapshot() });
+        } catch {
+          // Probe wave errored — ignore; next wave will retry.
+        }
+      };
+      probeLoop();
+      const probeInterval = setInterval(probeLoop, 45_000);
 
       // Heartbeat to keep CF Workers from idling the connection.
       const heartbeat = setInterval(() => {
@@ -95,6 +130,7 @@ export function handleEcosystemStream(): Response {
       } catch (err) {
         // Client disconnected or controller errored — clean up.
         clearInterval(heartbeat);
+        clearInterval(probeInterval);
         try { controller.close(); } catch { /* already closed */ }
         return;
       }

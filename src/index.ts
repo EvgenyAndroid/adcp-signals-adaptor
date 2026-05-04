@@ -5,10 +5,18 @@
 // at /health alongside the AdCP protocol version. Mirrors
 // package.json's "version" field — keep in sync.
 const WORKER_VERSION = "1.1.0";
-// Build timestamp — frozen at module-eval time, so a fresh deploy
-// shows a fresh value at /health. Useful for verifying which build
-// is actually serving without checking commit hashes by hand.
-const BUILT_AT = new Date().toISOString();
+// Build timestamp — lazily computed on first request, then cached.
+// Cloudflare Workers initialize V8 isolates with Date.now() returning
+// 0 at module-eval time (the runtime hasn't initialized timestamps
+// yet), which made the eager `new Date().toISOString()` evaluate to
+// "1970-01-01". Lazy-init runs at first-request time, when timestamps
+// are available, and the cached value is stable across the lifetime
+// of the isolate (= the lifetime of the deploy on warm requests).
+let _builtAtCache: string | null = null;
+function builtAt(): string {
+  if (_builtAtCache === null) _builtAtCache = new Date().toISOString();
+  return _builtAtCache;
+}
 
 import type { Env } from "./types/env";
 import { handleGetCapabilities } from "./routes/capabilities";
@@ -452,7 +460,7 @@ export default {
                     version: "3.0",          // AdCP protocol version (kept for back-compat)
                     adcp_version: "3.0",
                     worker_version: WORKER_VERSION,
-                    built_at: BUILT_AT,
+                    built_at: builtAt(),
                 });
 
             } else if (method === "GET" && path.startsWith("/.well-known/oauth-protected-resource")) {

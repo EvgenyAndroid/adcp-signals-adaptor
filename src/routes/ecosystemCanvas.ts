@@ -1045,6 +1045,142 @@ function spawnBeam(fromId, toId, colorHint) {
   audioBlip(colorHint);
 }
 
+// ── Money flow particles ────────────────────────────────────────────────
+//
+// Gold particles streaming buyer → agent on each bid commit. Each
+// particle is a tiny sphere with a random arc (similar to beams but
+// thinner + slower + grouped). Particles ride the same Catmull-Rom
+// curve scheme as beams; on completion the particle is recycled.
+//
+// Visual reads as "money is flowing" — adds the missing $ transit
+// to the cycle. Higher commits = more particles. The buyer thus
+// ALSO becomes a visible attractor, not just a still center.
+const moneyParticles = [];
+const MAX_MONEY_PARTICLES = 240;
+
+function spawnMoneyFlow(fromId, toId, count) {
+  const from = getPos(fromId);
+  const to = getPos(toId);
+  if (!from || !to) return;
+  for (let i = 0; i < count; i++) {
+    // Stagger spawn so the stream feels like a flow, not a single burst
+    setTimeout(function () {
+      const mid = from.clone().add(to).multiplyScalar(0.5);
+      // Each particle gets its own arc offset
+      const dir = to.clone().sub(from).normalize();
+      const perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0,1,0)).normalize();
+      mid.add(perp.multiplyScalar(1.2 + Math.random() * 1.8));
+      mid.y += (Math.random() - 0.4) * 1.6;
+      const curve = new THREE.CatmullRomCurve3([from.clone(), mid, to.clone()]);
+      const geo = new THREE.SphereGeometry(0.10 + Math.random() * 0.05, 6, 6);
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xffd166,    // gold
+        transparent: true,
+        opacity: 0.92,
+      });
+      const sphere = new THREE.Mesh(geo, mat);
+      sphere.position.copy(from);
+      scene.add(sphere);
+      moneyParticles.push({
+        sphere, mat, curve,
+        t: 0,
+        speed: 0.012 + Math.random() * 0.008,
+      });
+      while (moneyParticles.length > MAX_MONEY_PARTICLES) {
+        const old = moneyParticles.shift();
+        if (old) {
+          scene.remove(old.sphere);
+          old.sphere.geometry.dispose();
+          old.mat.dispose();
+        }
+      }
+    }, i * 28); // 28ms stagger between particles
+  }
+  // Audio cue for the money stream — short low-pitch coin-clink
+  if (audioOn && audioCtx) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "triangle";
+    osc.frequency.value = 320 + Math.random() * 80;
+    const now = audioCtx.currentTime;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.05, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.65);
+  }
+}
+
+// ── Supernova (cycle-complete finale) ───────────────────────────────────
+//
+// An expanding wireframe ring + radial particle spray from the buyer
+// mesh. Fires once on each cycle_end SSE event. Reads as "the
+// ceremony just resolved" — gives the viewer a sense of climax + a
+// visual rest beat between cycles. Doubles as audio cue: a soft
+// chord swell.
+const supernovaRings = [];
+function triggerSupernova() {
+  // Ring
+  const ringGeo = new THREE.RingGeometry(1.5, 1.65, 64);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.85,
+  });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.position.set(0, 0, 0);
+  scene.add(ring);
+  supernovaRings.push({ ring, mat: ringMat, scale: 1.0, life: 1.0 });
+  // Radial sparks
+  for (let i = 0; i < 30; i++) {
+    const angle = (i / 30) * Math.PI * 2 + Math.random() * 0.2;
+    const elev = (Math.random() - 0.5) * Math.PI * 0.4;
+    const dir = new THREE.Vector3(
+      Math.cos(angle) * Math.cos(elev),
+      Math.sin(elev),
+      Math.sin(angle) * Math.cos(elev)
+    );
+    const sparkGeo = new THREE.SphereGeometry(0.14, 6, 6);
+    const sparkMat = new THREE.MeshBasicMaterial({
+      color: 0xfff0c0,
+      transparent: true,
+      opacity: 1.0,
+    });
+    const spark = new THREE.Mesh(sparkGeo, sparkMat);
+    spark.position.set(0, 0, 0);
+    scene.add(spark);
+    moneyParticles.push({
+      sphere: spark,
+      mat: sparkMat,
+      // Linear-trajectory particle, distinct from money-flow's curve
+      // ones. We piggyback on the money-particle frame loop using a
+      // velocity vector + free-flight semantics; t not used here.
+      _isSupernovaSpark: true,
+      velocity: dir.multiplyScalar(0.55 + Math.random() * 0.4),
+      life: 1.0,
+    });
+  }
+  // Audio: short chord-like swell
+  if (audioOn && audioCtx) {
+    const baseFreq = 528;
+    [1, 1.25, 1.5].forEach(function (mult, idx) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = baseFreq * mult;
+      const now = audioCtx.currentTime + idx * 0.04;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.05, now + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 1.3);
+    });
+  }
+}
+
 // ── SSE wiring ───────────────────────────────────────────────────────────
 const traceBody = document.getElementById("trace-body");
 const brandSub = document.getElementById("brand-sub");
@@ -1076,21 +1212,43 @@ function updateLiveProbeStatuses(statuses) {
     if (!m || !m.label) continue;
     const agent = m.agent;
     if (agent.stage !== "live") continue;
-    // Update the label badge: ● for live-confirmed, ◑ for degraded,
-    // ○ for never-claimed-live (handled at spawn).
-    const badge = s.is_live_now ? "● " : "◑ ";
-    m.label.textContent = badge + agent.name;
-    if (s.is_live_now) {
-      m.label.style.borderColor = "rgba(95, 217, 196, 0.45)"; // mint = healthy
+    // Three-tier liveness indicator:
+    //   ● mint   — HTTP 200 (full handshake)
+    //   ● amber  — alive but rejecting our probe (HTTP 4xx — needs
+    //              session-id, auth, or different body shape)
+    //   ◑ red    — server unreachable / 5xx / timeout
+    const isOk = s.last_status === "ok";
+    const isAlive = s.is_live_now;
+    let badge;
+    let borderColor;
+    if (isOk) {
+      badge = "● ";
+      borderColor = "rgba(95, 217, 196, 0.55)"; // mint
+    } else if (isAlive) {
+      // 4xx — alive but won't accept our probe shape
+      badge = "● ";
+      borderColor = "rgba(245, 158, 11, 0.50)"; // amber
     } else {
-      m.label.style.borderColor = "rgba(255, 100, 100, 0.45)"; // dim red = degraded
+      // 5xx / timeout / unreachable
+      badge = "◑ ";
+      borderColor = "rgba(255, 100, 100, 0.45)"; // dim red
     }
+    m.label.textContent = badge + agent.name;
+    m.label.style.borderColor = borderColor;
   }
-  // Update the live-probe stats line in the HUD
+  // HUD: count probes that responded at all (= alive_now), break out
+  // the "fully OK" subset for a richer line.
   const live = statuses.filter(function (s) { return s.is_live_now; }).length;
+  const ok = statuses.filter(function (s) { return s.last_status === "ok"; }).length;
   const total = statuses.length;
   const probeStat = document.getElementById("stat-live-probe");
-  if (probeStat) probeStat.textContent = live + " / " + total + " live";
+  if (probeStat) {
+    probeStat.textContent = ok + " ok · " + (live - ok) + " 4xx · " + (total - live) + " down";
+    if (probeStat.classList) {
+      probeStat.classList.toggle("live", live === total);
+      probeStat.classList.toggle("stale", live === 0);
+    }
+  }
 }
 
 // Brief banner — the prominent current-brief display.
@@ -1450,6 +1608,10 @@ evtSource.onmessage = function (msg) {
       break;
     case "cycle_end":
       setPhaseIdle("cycle complete · awaiting next brief");
+      // Cinematic finale: a supernova burst from the buyer mesh —
+      // an expanding ring + radial particle spray. Signals "this
+      // ceremony ended; ecosystem is processing." Reads as a beat.
+      triggerSupernova();
       break;
     case "ecosystem_state":
       if (ev.state) updateState(ev.state);
@@ -1465,6 +1627,19 @@ evtSource.onmessage = function (msg) {
           && ev.trace.detail && ev.trace.detail.outcome === "deny") {
         triggerDenyFlash();
         if (ev.trace.agent_id) flashAgentDramaScatter(ev.trace.agent_id);
+      }
+      // Money flow: a buying_bid trace carries detail.bid.budget_committed.
+      // Spawn gold particles flowing from buyer → that buying agent
+      // proportional to the budget committed. Reads as the actual
+      // dollar transit through the ecosystem.
+      if (ev.trace && ev.trace.kind === "buying_bid"
+          && ev.trace.detail && ev.trace.detail.bid
+          && ev.trace.agent_id) {
+        const budget = ev.trace.detail.bid.budget_committed || 0;
+        // Particle count scales with budget — small bids get a few,
+        // big bids get a stream. Capped at 28 so we don't drown frames.
+        const count = Math.max(2, Math.min(28, Math.round(budget / 1500)));
+        spawnMoneyFlow(BUYER_AGENT_ID, ev.trace.agent_id, count);
       }
       break;
     case "message":
@@ -1926,6 +2101,55 @@ function animate() {
           b.trail[j].mat.opacity = Math.max(0, b.life * (1 - j / b.trail.length) * 0.7);
         }
       }
+    }
+  }
+
+  // Money particles + supernova sparks. Two flavors share the same
+  // array via the _isSupernovaSpark flag: curve-following money flow
+  // vs linear-velocity sparks from the buyer.
+  for (let i = moneyParticles.length - 1; i >= 0; i--) {
+    const p = moneyParticles[i];
+    if (p._isSupernovaSpark) {
+      p.life -= 0.018;
+      p.sphere.position.add(p.velocity);
+      // Slight gravity/drag so sparks arc and slow naturally
+      p.velocity.multiplyScalar(0.985);
+      p.mat.opacity = Math.max(0, p.life);
+      if (p.life <= 0) {
+        scene.remove(p.sphere);
+        p.sphere.geometry.dispose();
+        p.mat.dispose();
+        moneyParticles.splice(i, 1);
+      }
+    } else {
+      p.t += p.speed;
+      if (p.t >= 0.999) {
+        // Particle reached the destination — small absorption flash
+        // could go here later. For now, despawn.
+        scene.remove(p.sphere);
+        p.sphere.geometry.dispose();
+        p.mat.dispose();
+        moneyParticles.splice(i, 1);
+        continue;
+      }
+      p.sphere.position.copy(p.curve.getPointAt(p.t));
+      // Subtle fade-in over first 10% of journey
+      p.mat.opacity = Math.min(0.92, p.t < 0.1 ? p.t / 0.1 * 0.92 : 0.92);
+    }
+  }
+  // Supernova rings expand + fade
+  for (let i = supernovaRings.length - 1; i >= 0; i--) {
+    const sn = supernovaRings[i];
+    sn.scale += 0.18;
+    sn.life -= 0.018;
+    sn.ring.scale.set(sn.scale, sn.scale, 1);
+    sn.ring.lookAt(camera.position);
+    sn.mat.opacity = Math.max(0, sn.life * 0.6);
+    if (sn.life <= 0) {
+      scene.remove(sn.ring);
+      sn.ring.geometry.dispose();
+      sn.mat.dispose();
+      supernovaRings.splice(i, 1);
     }
   }
 

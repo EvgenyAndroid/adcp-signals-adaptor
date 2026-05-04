@@ -139,6 +139,20 @@ ${STYLES}
 
     <nav class="sidebar-nav">
 
+      <!-- Collapse-all / expand-all toggle. State semantics: if any group
+           is currently expanded, click → collapse all (except the
+           active-group force-expand). If all groups are collapsed, click
+           → expand all. The button mirrors that state in its label/icon
+           so users know what the next click will do. -->
+      <button class="nav-collapse-all" type="button" data-nav-collapse-all
+              title="Collapse / expand all groups"
+              aria-label="Toggle all sidebar groups">
+        <svg class="ico" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M4 6.5l4 3 4-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="nav-collapse-all-label">Collapse all</span>
+      </button>
+
       <!-- Group: Signals (sell-side discovery + browsing) -->
       <div class="nav-group" data-group-id="signals">
         <button class="nav-group-header" type="button" data-group-toggle>
@@ -336,6 +350,8 @@ ${STYLES}
         <button class="theme-swatch" data-theme-pick="midnight" title="Midnight (dark)" aria-label="Midnight theme"></button>
         <button class="theme-swatch" data-theme-pick="daylight" title="Daylight (light)" aria-label="Daylight theme"></button>
         <button class="theme-swatch" data-theme-pick="solar" title="Solar (warm)" aria-label="Solar theme"></button>
+        <button class="theme-swatch" data-theme-pick="paper" title="Paper (high-contrast white)" aria-label="Paper theme"></button>
+        <button class="theme-swatch" data-theme-pick="forest" title="Forest (deep green)" aria-label="Forest theme"></button>
       </div>
       <!-- Sign out: manual logout button + paired with 5-min idle auto-logout
            wired in src/demo/script/fragments/auth.ts. Both clear the

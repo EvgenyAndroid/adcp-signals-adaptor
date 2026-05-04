@@ -64,6 +64,10 @@ function _applySidebarGroupState() {
     const parentGroup = activeItem.closest(".nav-group");
     if (parentGroup) parentGroup.classList.add("has-active");
   }
+  // Refresh the master collapse-all label/icon to reflect the new
+  // post-paint state. The function may be undefined on the very first
+  // call (defined later in the file), so guard it.
+  if (typeof _refreshCollapseAllUi === "function") _refreshCollapseAllUi();
 }
 // Wire group-header clicks to toggle + persist.
 document.querySelectorAll("[data-group-toggle]").forEach((header) => {
@@ -75,19 +79,62 @@ document.querySelectorAll("[data-group-toggle]").forEach((header) => {
     const state = _readSidebarState();
     state[id] = group.classList.contains("is-collapsed");
     _writeSidebarState(state);
+    _refreshCollapseAllUi();
   });
 });
+
+// Collapse-all / expand-all master toggle. Two states:
+//   - is-all-collapsed: every non-active group is collapsed → next click expands all
+//   - default:           at least one non-active group is expanded → next click collapses all
+//
+// "Active" group is force-expanded by _applySidebarGroupState regardless,
+// so "collapse all" really means "collapse everything except active". We
+// only inspect non-active groups when deciding which state we're in.
+function _everyNonActiveGroupCollapsed() {
+  const groups = Array.from(document.querySelectorAll(".nav-group"));
+  const nonActive = groups.filter(function(g) { return !g.classList.contains("has-active"); });
+  if (nonActive.length === 0) return true;
+  return nonActive.every(function(g) { return g.classList.contains("is-collapsed"); });
+}
+function _refreshCollapseAllUi() {
+  const btn = document.querySelector("[data-nav-collapse-all]");
+  if (!btn) return;
+  const allCollapsed = _everyNonActiveGroupCollapsed();
+  btn.classList.toggle("is-all-collapsed", allCollapsed);
+  const label = btn.querySelector(".nav-collapse-all-label");
+  if (label) label.textContent = allCollapsed ? "Expand all" : "Collapse all";
+}
+document.querySelectorAll("[data-nav-collapse-all]").forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    const allCollapsed = _everyNonActiveGroupCollapsed();
+    // If all are collapsed → expand all (write false to every group's state).
+    // If any expanded → collapse all (write true to every group's state).
+    // The active group's force-expand happens later in _applySidebarGroupState
+    // regardless, so writing true universally is safe.
+    const nextCollapsedValue = !allCollapsed;
+    const state = _readSidebarState();
+    document.querySelectorAll(".nav-group").forEach(function(g) {
+      const id = g.dataset.groupId;
+      if (id) state[id] = nextCollapsedValue;
+    });
+    _writeSidebarState(state);
+    _applySidebarGroupState();
+    _refreshCollapseAllUi();
+  });
+});
+
 // Apply initial state on first paint.
 _applySidebarGroupState();
+_refreshCollapseAllUi();
 
 //────────────────────────────────────────────────────────────────────────
-// Theme switcher (Midnight / Daylight / Solar)
+// Theme switcher (Midnight / Daylight / Solar / Paper / Forest)
 // Sets data-theme on <html>; CSS in :root[data-theme="..."] picks up
-// the palette. Persists to localStorage under "ui-theme". Three themes
-// today; add more by adding a CSS block + a swatch button.
+// the palette. Persists to localStorage under "ui-theme". Add more by
+// adding a CSS block + a swatch button + an entry here.
 //────────────────────────────────────────────────────────────────────────
 const THEME_KEY = "ui-theme";
-const THEME_VALID = { midnight: 1, daylight: 1, solar: 1 };
+const THEME_VALID = { midnight: 1, daylight: 1, solar: 1, paper: 1, forest: 1 };
 
 function _readTheme() {
   try {

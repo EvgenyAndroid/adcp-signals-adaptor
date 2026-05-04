@@ -135,6 +135,84 @@ export const STYLES = `<style>
   --cyan:        #6cd9d2;
 }
 
+/* Paper — pure-white, ultra-high-contrast variant of daylight. Built
+   for projector / boardroom visibility: no off-white tints, charcoal
+   text, navy accent. Borders are stronger than daylight so the surface
+   hierarchy is legible at a distance. */
+:root[data-theme="paper"] {
+  --bg-base:    #ffffff;
+  --bg-sidebar: #fafafa;
+  --bg-top:     #ffffff;
+  --bg-surface: #ffffff;
+  --bg-raised:  #f4f4f5;
+  --bg-input:   #ffffff;
+  --bg-hover:   #ececee;
+
+  --border:         #c0c4cc;
+  --border-faint:   #e2e4ea;
+  --border-strong:  #8b909c;
+  --border-focus:   #1c4faa;
+
+  --text:        #0a0a0a;
+  --text-bright: #000000;
+  --text-dim:    #34373f;
+  --text-mut:    #5a606e;
+  --text-dis:    #9aa0ac;
+
+  --accent:        #1c4faa;
+  --accent-hot:    #2a6bd1;
+  --accent-dim:    rgba(28, 79, 170, 0.10);
+  --accent-border: rgba(28, 79, 170, 0.40);
+
+  --success:     #06703f;
+  --success-dim: rgba(6, 112, 63, 0.10);
+  --warning:     #a85e00;
+  --warning-dim: rgba(168, 94, 0, 0.10);
+  --error:       #b81c1c;
+  --error-dim:   rgba(184, 28, 28, 0.10);
+  --violet:      #5325a8;
+  --cyan:        #00738a;
+}
+
+/* Forest — deep-green dark theme. Calmer than midnight (warmer
+   undertones), distinct from solar (green not amber). Pairs with a
+   pine-needle accent. Useful for long sessions where blue-light
+   reduction matters. */
+:root[data-theme="forest"] {
+  --bg-base:    #0d1411;
+  --bg-sidebar: #0a110d;
+  --bg-top:     #0f1612;
+  --bg-surface: #131c17;
+  --bg-raised:  #182320;
+  --bg-input:   #0c1310;
+  --bg-hover:   #1a2620;
+
+  --border:         #1f3028;
+  --border-faint:   #131e18;
+  --border-strong:  #2e4438;
+  --border-focus:   #4fa074;
+
+  --text:        #e6efe9;
+  --text-bright: #ffffff;
+  --text-dim:    #a8bdb1;
+  --text-mut:    #7a8e83;
+  --text-dis:    #4a5950;
+
+  --accent:        #4fa074;
+  --accent-hot:    #6fb88f;
+  --accent-dim:    rgba(79, 160, 116, 0.15);
+  --accent-border: rgba(79, 160, 116, 0.36);
+
+  --success:     #6fc78a;
+  --success-dim: rgba(111, 199, 138, 0.15);
+  --warning:     #d4a14a;
+  --warning-dim: rgba(212, 161, 74, 0.14);
+  --error:       #d96b6b;
+  --error-dim:   rgba(217, 107, 107, 0.14);
+  --violet:      #9a8bd9;
+  --cyan:        #5fb8c0;
+}
+
 /* Static layout + non-themed tokens */
 :root {
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -331,6 +409,39 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
      stronger affordance than a bg-tint alone, especially in light theme
    - has-active group: header icon goes full-opacity accent
 */
+/* Collapse-all toggle — sits above the first nav-group. Low visual
+   weight (no fill, mut text) so it doesn't compete with the group
+   headers themselves. The chevron rotates 180° in the .all-collapsed
+   state to mirror the next click's intent (expand). */
+.nav-collapse-all {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  margin: 4px 0 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-mut);
+  font: 11px var(--font-mono);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.nav-collapse-all:hover {
+  background: var(--bg-hover);
+  color: var(--text-dim);
+  border-color: var(--border-faint);
+}
+.nav-collapse-all .ico {
+  width: 12px; height: 12px;
+  flex-shrink: 0;
+  transition: transform 0.18s ease;
+}
+.nav-collapse-all.is-all-collapsed .ico {
+  transform: rotate(-90deg);
+}
+.nav-collapse-all-label { flex: 1; text-align: left; }
+
 .nav-group {
   margin-bottom: 2px;
   padding-top: 2px;
@@ -463,6 +574,13 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 .theme-swatch[data-theme-pick="solar"] {
   background: linear-gradient(135deg, #1c1810 0%, #ffaa3a 200%);
 }
+.theme-swatch[data-theme-pick="paper"] {
+  background: linear-gradient(135deg, #ffffff 0%, #c0c4cc 200%);
+  border-color: #b0b4bc;
+}
+.theme-swatch[data-theme-pick="forest"] {
+  background: linear-gradient(135deg, #0d1411 0%, #4fa074 200%);
+}
 
 .sidebar-footer {
   padding-top: 14px; border-top: 1px solid var(--border);
@@ -553,6 +671,7 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 .app.is-sidebar-collapsed .nav-group-header,
 .app.is-sidebar-collapsed .nav-group-chevron,
 .app.is-sidebar-collapsed .nav-group-title,
+.app.is-sidebar-collapsed .nav-collapse-all,
 .app.is-sidebar-collapsed .sidebar-footer .kv,
 .app.is-sidebar-collapsed .sidebar-footer .theme-picker {
   display: none;
@@ -3702,7 +3821,7 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   /* Narrow mode: collapse the group chrome and force all items visible
      as a flat icon list. Group headers + chevrons + titles disappear so
      the user gets a Linear-style icon-only nav. */
-  .nav-group-header, .nav-group-chevron, .nav-group-title { display: none; }
+  .nav-group-header, .nav-group-chevron, .nav-group-title, .nav-collapse-all { display: none; }
   .nav-group.is-collapsed .nav-group-items { display: flex !important; }
   .nav-group { margin-bottom: 0; }
   .sidebar-brand { justify-content: center; padding-bottom: 14px; }

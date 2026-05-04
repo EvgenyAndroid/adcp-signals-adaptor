@@ -502,8 +502,29 @@ export function renderEcosystemCanvas(demoKey: string): string {
   }
 
   /* Trace lines are clickable — surface the affordance on hover. */
-  .trace-line { cursor: pointer; transition: background 0.12s; }
+  .trace-line { cursor: pointer; transition: background 0.12s, opacity 0.2s; }
   .trace-line:hover { background: rgba(56, 182, 255, 0.06); }
+  /* When a beam filter is active, dim trace lines that don't match
+     the active phase. Matching ones get a subtle accent border so
+     the filter affordance is visible in BOTH the constellation and
+     the trace panel. */
+  .trace-line.filter-dim { opacity: 0.32; }
+  .trace-line.filter-match {
+    border-left: 2px solid var(--accent);
+    margin-left: -8px; padding-left: 8px;
+  }
+  /* Filter status hint sits next to the chip row. Subtle. */
+  .filter-status {
+    text-align: center;
+    margin-top: 4px;
+    font: 10px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color: var(--text-faint);
+    pointer-events: none;
+    transition: opacity 0.3s;
+    opacity: 0;
+  }
+  .filter-status.visible { opacity: 1; }
+  .filter-status .matches { color: var(--accent); font-weight: 600; }
 
   /* Matrix-rain modal: vertical scroll of raw JSON-RPC frames for one
      agent. Phosphor-green retro aesthetic on top of the constellation. */
@@ -740,6 +761,9 @@ export function renderEcosystemCanvas(demoKey: string): string {
   <button class="beam-chip" data-filter="cleanroom">cleanroom</button>
   <button class="beam-chip" data-filter="measurement">measurement</button>
   <button class="beam-chip" data-filter="deactivation">deactivation</button>
+  <div class="filter-status" id="filter-status">
+    filtering: <span class="matches" id="filter-status-name">—</span> · <span id="filter-status-count">0</span> matched this cycle
+  </div>
 </div>
 
 <!-- fix-all-gaps: onboarding walkthrough. Shown once on first visit;
@@ -1142,16 +1166,25 @@ const BEAM_WEIGHT = {
   discovery:   { pulseSize: 0.15, lineOpacity: 0.35 },
 };
 
-function spawnBeam(fromId, toId, colorHint) {
+function spawnBeam(fromId, toId, colorHint, intensity) {
   const from = getPos(fromId);
   const to = getPos(toId);
   if (!from || !to) return;
-  // Pulse both endpoints so the viewer can SEE which agents are
-  // currently exchanging the message. The buyer (origin) is always
-  // an endpoint but doesn't have an agent record — skip it cleanly.
-  if (fromId !== BUYER_AGENT_ID) flashAgentFiring(fromId);
-  if (toId !== BUYER_AGENT_ID) flashAgentFiring(toId);
-  const weight = BEAM_WEIGHT[colorHint] || { pulseSize: 0.18, lineOpacity: 0.55 };
+  // Intensity multiplier (default 1.0). When the active beam filter
+  // doesn't match, the caller passes 0.18 so the beam still spawns
+  // (cycle stays visible) but visually recedes.
+  const intens = intensity === undefined ? 1.0 : intensity;
+  // Pulse endpoints only at full intensity — dimmed beams shouldn't
+  // also light up the agents (otherwise the filter affordance is lost).
+  if (intens >= 0.9) {
+    if (fromId !== BUYER_AGENT_ID) flashAgentFiring(fromId);
+    if (toId !== BUYER_AGENT_ID) flashAgentFiring(toId);
+  }
+  const baseWeight = BEAM_WEIGHT[colorHint] || { pulseSize: 0.18, lineOpacity: 0.55 };
+  const weight = {
+    pulseSize: baseWeight.pulseSize * (intens < 0.9 ? 0.7 : 1.0),
+    lineOpacity: baseWeight.lineOpacity * intens,
+  };
   const mid = from.clone().add(to).multiplyScalar(0.5);
   const dir = to.clone().sub(from).normalize();
   const perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0,1,0)).normalize();
@@ -1171,7 +1204,7 @@ function spawnBeam(fromId, toId, colorHint) {
   // a bigger sphere so governance + measurement read as the climax
   // beats of the cycle.
   const pulseGeo = new THREE.SphereGeometry(weight.pulseSize, 14, 14);
-  const pulseMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95 });
+  const pulseMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95 * intens });
   const pulse = new THREE.Mesh(pulseGeo, pulseMat);
   pulse.position.copy(from);
   scene.add(pulse);
@@ -1194,6 +1227,7 @@ function spawnBeam(fromId, toId, colorHint) {
   beams.push({
     line, mat, pulse, pulseMat, curve, t: 0, life: 1.0, color,
     weight, trail,
+    intens,  // intensity multiplier carried through animation
     // Ring buffer of recent positions, used to seed the trail meshes
     // each frame.
     history: [],
@@ -1512,12 +1546,23 @@ function appendTrace(trace) {
   const line = document.createElement("div");
   line.className = "trace-line";
   if (trace.id) line.dataset.traceId = trace.id;
+  // Apply filter-aware classes so matching lines pop and non-matching
+  // dim — same affordance as the beam filter, in the trace panel.
+  const tk = trace.kind || "";
+  if (beamFilter !== "all") {
+    const matches = tk.indexOf(beamFilter) !== -1
+      || (beamFilter === "measurement" && tk === "realtime_push");
+    line.classList.add(matches ? "filter-match" : "filter-dim");
+    if (matches) bumpFilterMatchCount();
+  }
   const dotColor = (trace.kind && trace.kind.includes("signal")) ? "var(--c-signal)"
     : (trace.kind && trace.kind.includes("governance")) ? "var(--c-policy)"
     : (trace.kind && trace.kind.includes("sales")) ? "var(--c-product)"
     : (trace.kind && trace.kind.includes("buying")) ? "var(--c-bid)"
     : (trace.kind && trace.kind.includes("measurement")) ? "var(--c-measure)"
     : (trace.kind && trace.kind.includes("creative")) ? "var(--c-creative-msg)"
+    : (trace.kind && trace.kind.includes("identity")) ? "var(--c-identity, var(--accent))"
+    : (trace.kind && trace.kind.includes("cleanroom")) ? "var(--c-cleanroom, var(--accent))"
     : "var(--accent)";
   let summaryClass = "trace-summary";
   const sum = (trace.summary || "").toUpperCase();
@@ -1786,6 +1831,8 @@ evtSource.onmessage = function (msg) {
     case "cycle_start":
       if (ev.brief) appendBrief(ev.brief);
       setPhaseIdle("brief spawned · " + (ev.brief ? ev.brief.prompt : ""));
+      // Reset the filter match counter so it shows per-cycle match count
+      if (typeof resetFilterMatchCount === "function") resetFilterMatchCount();
       break;
     case "cycle_end":
       setPhaseIdle("cycle complete · awaiting next brief");
@@ -1826,15 +1873,27 @@ evtSource.onmessage = function (msg) {
       break;
     case "message":
       if (ev.message) {
-        // Filter by message KIND substring (e.g. "sales" matches
-        // both "sales_fanout" and "sales_response"). Was matching
-        // color_hint, which split the same phase across multiple
-        // chips and made "sales" only show response beams.
+        // Filter logic: hybrid kind-substring + color_hint match.
+        // Spawn EVERY beam regardless, but matching ones render at
+        // full intensity while non-matching ones render at 0.18
+        // opacity. Keeps the cycle visible (so the viewer sees the
+        // full ceremony rhythm) while making the filtered phase pop.
+        // Was suppressing non-matching beams entirely, which made
+        // 80% of every cycle look like nothing was happening.
         const kind = ev.message.kind || "";
-        const passes = beamFilter === "all" || kind.indexOf(beamFilter) !== -1;
-        if (passes) {
-          spawnBeam(ev.message.from_agent_id, ev.message.to_agent_id, ev.message.color_hint);
-        }
+        const colorHint = ev.message.color_hint || "";
+        const beamMatches = beamFilter === "all"
+          || kind.indexOf(beamFilter) !== -1
+          || colorHint === beamFilter
+          // Special: "measurement" filter also catches realtime_push
+          //          (same domain, different kind name)
+          || (beamFilter === "measurement" && kind === "realtime_push");
+        spawnBeam(
+          ev.message.from_agent_id,
+          ev.message.to_agent_id,
+          ev.message.color_hint,
+          beamMatches ? 1.0 : 0.18  // dim multiplier for non-matching
+        );
         setPhaseFromKind(ev.message.kind);
         if (ev.message.from_agent_id && ev.message.from_agent_id !== BUYER_AGENT_ID) recordAgentFrame(ev.message.from_agent_id, ev.message);
         if (ev.message.to_agent_id && ev.message.to_agent_id !== BUYER_AGENT_ID) recordAgentFrame(ev.message.to_agent_id, ev.message);
@@ -2302,8 +2361,9 @@ function animate() {
     }
     const p = b.curve.getPointAt(Math.min(b.t, 0.999));
     b.pulse.position.copy(p);
+    const intens = b.intens === undefined ? 1.0 : b.intens;
     b.mat.opacity = Math.max(0, b.life * (b.weight ? b.weight.lineOpacity : 0.55));
-    b.pulseMat.opacity = Math.max(0, b.life);
+    b.pulseMat.opacity = Math.max(0, b.life * intens);
     // Push position into history; render trail meshes as receding ghosts
     if (b.trail) {
       b.history.unshift(p.clone());
@@ -2569,17 +2629,41 @@ function reconnectStream() {
   window.__ecoEvtSource = fresh;
 }
 
-// ── fix-all-gaps: beam filter ──────────────────────────────────────────
-// Click a chip to filter beam spawning to one message kind. The
-// filter only affects new beams — already-flying beams complete
-// their journey. Click "all" to clear.
+// ── beam filter ────────────────────────────────────────────────────────
+// Click a chip to focus beam spawning on one phase. Non-matching
+// beams still spawn but at low intensity (cycle stays visible).
+// Trace panel also dims non-matching events + accents matching ones.
+// Click "all" to clear.
 // (var beamFilter = "all" declared at top of script for hoisting safety)
+const filterStatusEl = document.getElementById("filter-status");
+const filterStatusNameEl = document.getElementById("filter-status-name");
+const filterStatusCountEl = document.getElementById("filter-status-count");
+let filterMatchCount = 0;
+function bumpFilterMatchCount() {
+  filterMatchCount += 1;
+  if (filterStatusCountEl) filterStatusCountEl.textContent = String(filterMatchCount);
+}
+function resetFilterMatchCount() {
+  filterMatchCount = 0;
+  if (filterStatusCountEl) filterStatusCountEl.textContent = "0";
+}
+function refreshFilterStatusVisibility() {
+  if (!filterStatusEl) return;
+  if (beamFilter === "all") {
+    filterStatusEl.classList.remove("visible");
+  } else {
+    filterStatusEl.classList.add("visible");
+    if (filterStatusNameEl) filterStatusNameEl.textContent = beamFilter;
+  }
+}
 Array.from(document.querySelectorAll("[data-filter]")).forEach(function (chip) {
   chip.addEventListener("click", function () {
     beamFilter = chip.dataset.filter;
     Array.from(document.querySelectorAll("[data-filter]")).forEach(function (c) {
       c.classList.toggle("active", c.dataset.filter === beamFilter);
     });
+    resetFilterMatchCount();
+    refreshFilterStatusVisibility();
   });
 });
 

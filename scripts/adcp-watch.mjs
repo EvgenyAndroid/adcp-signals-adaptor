@@ -213,6 +213,54 @@ async function buildNewState() {
     }
   }
 
+  // 3c-bis. External agent registries (e.g. agenticadvertising.org).
+  // Identity for diff = config.agent_id_field (default "url"). Stored as
+  // a stable, sorted dict keyed on identity → summary fields, so the
+  // generic walker reports "agent X added/removed" cleanly. Network
+  // errors store as { error } so the watcher's silence-on-no-change
+  // semantics still fire on transient failures.
+  if (Array.isArray(config.external_registries) && config.external_registries.length > 0) {
+    newState.external_registries = {};
+    for (const reg of config.external_registries) {
+      const idField = reg.agent_id_field || "url";
+      const summaryFields = Array.isArray(reg.agent_summary_fields)
+        ? reg.agent_summary_fields
+        : ["name"];
+      try {
+        const r = await fetch(reg.url, { headers: { "Accept": "application/json" } });
+        if (!r.ok) {
+          newState.external_registries[reg.name] = {
+            error: `HTTP ${r.status} ${r.statusText}`,
+          };
+          continue;
+        }
+        const j = await r.json();
+        // Accept both top-level array and { agents } / { data } / { results }.
+        const list = Array.isArray(j) ? j : (j.agents || j.data || j.results || []);
+        const agents = {};
+        for (const a of list) {
+          const id = a?.[idField];
+          if (typeof id !== "string" || id.length === 0) continue;
+          // Pick stable summary fields. Skip absent ones rather than
+          // emitting null — keeps the diff focused on real changes.
+          const summary = {};
+          for (const f of summaryFields) {
+            if (a[f] !== undefined && a[f] !== null) summary[f] = a[f];
+          }
+          agents[id] = summary;
+        }
+        newState.external_registries[reg.name] = {
+          count: Object.keys(agents).length,
+          agents,
+        };
+      } catch (e) {
+        newState.external_registries[reg.name] = {
+          error: String(e?.message ?? e),
+        };
+      }
+    }
+  }
+
   // 3d. Live compliance run
   if (process.env.API_KEY) {
     try {

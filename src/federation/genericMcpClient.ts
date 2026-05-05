@@ -20,6 +20,9 @@
 // Per-isolate session cache keyed by URL. Cloudflare recycles isolates
 // frequently; this is best-effort, we renew on every cold start.
 
+import { AGENT_REGISTRY } from "../domain/agentRegistry";
+import { recordSignalTrace } from "../domain/signalTrace";
+
 const SESSION_TTL_MS = 9 * 60 * 1000;
 /** Sentinel used for agents that negotiate stateless MCP (no mcp-session-id header
  * on initialize). Subsequent calls for these agents don't send the header. */
@@ -311,21 +314,50 @@ export async function callAgentTool(url: string, name: string, args: Record<stri
       catch (e) { return { ok: false, error: String((e as Error).message || e), latency_ms: Date.now() - start }; }
     }
   }
+  let result: ToolCallResult;
   try {
     let session = await ensureSession(url, { timeoutMs });
     if (!session) {
-      return { ok: false, error: "session_init_failed", latency_ms: Date.now() - start };
+      result = { ok: false, error: "session_init_failed", latency_ms: Date.now() - start };
+    } else {
+      let r = await callToolOnce(url, session, name, args, timeoutMs);
+      if (r.error && /session/i.test(r.error)) {
+        invalidateSession(url);
+        session = await ensureSession(url, { timeoutMs });
+        if (session) r = await callToolOnce(url, session, name, args, timeoutMs);
+      }
+      result = r;
     }
-    let r = await callToolOnce(url, session, name, args, timeoutMs);
-    if (r.error && /session/i.test(r.error)) {
-      invalidateSession(url);
-      session = await ensureSession(url, { timeoutMs });
-      if (session) r = await callToolOnce(url, session, name, args, timeoutMs);
-    }
-    return r;
   } catch (e) {
-    return { ok: false, error: String((e as Error).message || e), latency_ms: Date.now() - start };
+    result = { ok: false, error: String((e as Error).message || e), latency_ms: Date.now() - start };
   }
+  // Outbound-call trace for get_signals + activate_signal only — these
+  // are the AdCP signals-protocol surfaces the demo's trace inspector
+  // showcases. Other tools (get_products, list_creative_formats, etc.)
+  // are out-of-scope; they're already captured by the existing
+  // tool-log pipeline.
+  if (name === "get_signals" || name === "activate_signal") {
+    try {
+      // Reverse-lookup the agent from URL prefix to put a friendly
+      // "federation:dstillery" instead of "federation:https://...".
+      const match = AGENT_REGISTRY.find((a) => a.mcp_url && url.startsWith(a.mcp_url.replace(/\/$/, "")));
+      const agentId = match?.id ?? null;
+      recordSignalTrace({
+        tool_name: name as "get_signals" | "activate_signal",
+        direction: "outbound",
+        source: agentId ? "federation:" + agentId : "federation:" + url,
+        caller_agent: agentId,
+        request_payload: args,
+        response_payload: result.ok
+          ? (result.structured_content ?? result.content ?? null)
+          : { error: result.error ?? "unknown_error" },
+        response_status: result.ok ? "ok" : "error",
+        ...(result.error ? { response_error_message: result.error } : {}),
+        duration_ms: result.latency_ms ?? (Date.now() - start),
+      });
+    } catch { /* tracing must never break the call path */ }
+  }
+  return result;
 }
 
 // ── Wave 2: per-agent circuit breaker + retry wrapper ───────────────────────

@@ -34,12 +34,12 @@ async function loadActivations() {
     state.activations.data = data.operations || [];
     document.getElementById("nav-activations-count").textContent = String(data.count || 0);
     if (state.activations.data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No activations yet. Activate a signal from any tab to see it here.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="table-empty">No activations yet. Activate a signal from any tab to see it here.</td></tr>';
       return;
     }
     tbody.innerHTML = state.activations.data.map(renderActivationRow).join("");
   } catch (e) {
-    tbody.innerHTML = '<tr><td colspan="7" class="table-empty" style="color:var(--error)">' + escapeHtml(e.message) + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="table-empty" style="color:var(--error)">' + escapeHtml(e.message) + '</td></tr>';
   }
 }
 
@@ -47,6 +47,12 @@ function renderActivationRow(op) {
   const submittedAt = fmtTime(op.submittedAt);
   const completedAt = op.completedAt ? fmtTime(op.completedAt) : "—";
   const statusClass = (op.status || "submitted").toLowerCase();
+  // {} button → opens the signals trace viewer filtered to this
+  // activation's signal_id (we don't have a correlation_id per row,
+  // so we filter by tool=activate_signal and let the viewer show
+  // the most recent matches; the user clicks the matching row in
+  // the modal to see full request/response JSON).
+  const sigId = (op.signalId || "").replace(/"/g, "&quot;");
   return '' +
     '<tr>' +
       '<td class="td-name">' +
@@ -59,8 +65,26 @@ function renderActivationRow(op) {
       '<td class="td-time">' + escapeHtml(completedAt) + '</td>' +
       '<td class="td-time">' + (op.webhookFired ? '<span style="color:var(--success)">fired</span>' : (op.webhookUrl ? 'queued' : '—')) + '</td>' +
       '<td class="td-time" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml((op.operationId || "").slice(0, 24)) + '</td>' +
+      '<td class="td-time">' +
+        '<button class="btn-secondary btn-mini" data-trace-activation="' + sigId + '" title="View signal request/response JSON">{ } JSON</button>' +
+      '</td>' +
     '</tr>';
 }
+
+// Wire the {} JSON button to open the shared signals trace viewer.
+// Uses event delegation so newly-rendered rows pick up the handler.
+document.addEventListener("click", function (e) {
+  const t = e.target;
+  if (!t || !t.matches || !t.matches("[data-trace-activation]")) return;
+  const sigId = t.getAttribute("data-trace-activation");
+  if (typeof window.openSignalTraceModal !== "function") return;
+  // Filter by tool=activate_signal — the viewer will show recent
+  // activations and the user clicks the relevant one. We can't
+  // pre-filter by signal_id at the API level (the buffer indexes
+  // by correlation_id, agent_id, tool), so client-side filter
+  // happens inside the modal logic.
+  window.openSignalTraceModal({ tool: "activate_signal", limit: 25 });
+});
 
 function fmtTime(iso) {
   if (!iso) return "—";

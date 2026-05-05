@@ -28,6 +28,7 @@ import { getAllSignalsForCatalog } from "../domain/signalService";
 import { handleNLQuery } from "../domain/nlQueryHandler";
 import { handleConceptToolCall } from "../domain/conceptHandler";
 import { compactObj } from "../utils/objects";
+import { recordSignalTrace } from "../domain/signalTrace";
 import { record as recordToolLog, argKeysOf } from "./toolLog";
 import { logCall as d1LogCall, cleanup as d1Cleanup, shouldRunCleanup } from "../storage/toolLogRepo";
 
@@ -450,6 +451,7 @@ async function callGetSignals(
     args: Record<string, unknown>,
     env: Env
 ): Promise<unknown> {
+    const _t0_get_signals = Date.now();
     const filters = args["filters"] as Record<string, unknown> | undefined;
     const pagination = args["pagination"] as Record<string, unknown> | undefined;
 
@@ -634,6 +636,17 @@ async function callGetSignals(
     // structuredContent. Signals discovery is fully synchronous → completed.
     const response = withMcpEnvelope({ status: "completed" }, cleanResponse);
 
+    // Record the get_signals trace for observability across the demo.
+    recordSignalTrace({
+        tool_name: "get_signals",
+        direction: "inbound",
+        source: "mcp_external",
+        request_payload: args,
+        response_payload: response,
+        response_status: "ok",
+        duration_ms: Date.now() - _t0_get_signals,
+    });
+
     return toolResult(JSON.stringify(response, null, 2), response);
 }
 
@@ -642,6 +655,7 @@ async function callActivateSignal(
     env: Env,
     logger: Logger
 ): Promise<unknown> {
+    const _t0_activate = Date.now();
     // Accept three request shapes for the destinations payload:
     //   - args.destinations  (current AdCP signals storyboard / HEAD spec)
     //   - args.deliver_to    (legacy AdCP shape we shipped earlier)
@@ -801,6 +815,16 @@ async function callActivateSignal(
             payload
         );
 
+        recordSignalTrace({
+            tool_name: "activate_signal",
+            direction: "inbound",
+            source: "mcp_external",
+            request_payload: args,
+            response_payload: specResponse,
+            response_status: "ok",
+            duration_ms: Date.now() - _t0_activate,
+        });
+
         return toolResult(JSON.stringify(specResponse, null, 2), specResponse);
     } catch (err) {
         // Sec-31x: Storyboard-safe unknown-signal handling.
@@ -957,8 +981,29 @@ async function callActivateSignal(
                 syntheticPayload
             );
             logger.warn("activate_unknown_signal_synthetic", { signalId });
+            recordSignalTrace({
+                tool_name: "activate_signal",
+                direction: "inbound",
+                source: "mcp_external",
+                request_payload: args,
+                response_payload: syntheticResponse,
+                response_status: "ok",
+                duration_ms: Date.now() - _t0_activate,
+            });
             return toolResult(JSON.stringify(syntheticResponse, null, 2), syntheticResponse);
         }
+        // Record the failure trace too — observability matters when
+        // activation throws as much as when it succeeds.
+        recordSignalTrace({
+            tool_name: "activate_signal",
+            direction: "inbound",
+            source: "mcp_external",
+            request_payload: args,
+            response_payload: { error: String((err as Error).message ?? err) },
+            response_status: "error",
+            response_error_message: String((err as Error).message ?? err),
+            duration_ms: Date.now() - _t0_activate,
+        });
         throw err;
     }
 }

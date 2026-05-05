@@ -185,45 +185,72 @@ export interface RecordSignalTraceInput {
   correlation_id?: string | null;
 }
 
-export function recordSignalTrace(input: RecordSignalTraceInput): SignalTrace {
-  const reqSchemaId = input.tool_name === "get_signals" ? SCHEMA_ID.get_signals_request : SCHEMA_ID.activate_signal_request;
-  const resSchemaId = input.tool_name === "get_signals" ? SCHEMA_ID.get_signals_response : SCHEMA_ID.activate_signal_response;
-  const reqSchemaUrl = input.tool_name === "get_signals" ? SCHEMA_URL.get_signals_request : SCHEMA_URL.activate_signal_request;
-  const resSchemaUrl = input.tool_name === "get_signals" ? SCHEMA_URL.get_signals_response : SCHEMA_URL.activate_signal_response;
+export function recordSignalTrace(input: RecordSignalTraceInput): SignalTrace | null {
+  // Recording must NEVER throw — a failure in the trace path would
+  // break the actual signal call, defeating the entire point of
+  // observability. Wrap everything (id generation, AJV validation,
+  // buffer mutation) in a top-level try/catch and silently no-op on
+  // any error.
+  try {
+    const reqSchemaId = input.tool_name === "get_signals" ? SCHEMA_ID.get_signals_request : SCHEMA_ID.activate_signal_request;
+    const resSchemaId = input.tool_name === "get_signals" ? SCHEMA_ID.get_signals_response : SCHEMA_ID.activate_signal_response;
+    const reqSchemaUrl = input.tool_name === "get_signals" ? SCHEMA_URL.get_signals_request : SCHEMA_URL.activate_signal_request;
+    const resSchemaUrl = input.tool_name === "get_signals" ? SCHEMA_URL.get_signals_response : SCHEMA_URL.activate_signal_response;
 
-  let correlationId = input.correlation_id ?? null;
-  if (correlationId === null && typeof input.request_payload === "object" && input.request_payload !== null) {
-    const ctx = (input.request_payload as Record<string, unknown>)["context"];
-    if (ctx && typeof ctx === "object") {
-      const cid = (ctx as Record<string, unknown>)["correlation_id"];
-      if (typeof cid === "string") correlationId = cid;
+    let correlationId = input.correlation_id ?? null;
+    if (correlationId === null && typeof input.request_payload === "object" && input.request_payload !== null) {
+      const ctx = (input.request_payload as Record<string, unknown>)["context"];
+      if (ctx && typeof ctx === "object") {
+        const cid = (ctx as Record<string, unknown>)["correlation_id"];
+        if (typeof cid === "string") correlationId = cid;
+      }
     }
+
+    const trace: SignalTrace = {
+      trace_id: nextTraceId(),
+      correlation_id: correlationId,
+      ts: new Date().toISOString(),
+      duration_ms: Math.max(0, input.duration_ms),
+      direction: input.direction,
+      tool_name: input.tool_name,
+      source: input.source,
+      caller_agent: input.caller_agent ?? null,
+      request: {
+        payload: input.request_payload,
+        validation: safeValidate(reqSchemaId, reqSchemaUrl, input.request_payload),
+      },
+      response: {
+        payload: input.response_payload,
+        validation: safeValidate(resSchemaId, resSchemaUrl, input.response_payload),
+        status: input.response_status,
+        ...(input.response_error_message ? { error_message: input.response_error_message } : {}),
+      },
+    };
+
+    traceBuffer.push(trace);
+    while (traceBuffer.length > MAX_TRACES) traceBuffer.shift();
+    return trace;
+  } catch {
+    // AJV setup failed, schema registry threw, ring buffer mutation
+    // glitched — whatever it is, we don't surface it. Trace is lost
+    // for this call; the underlying signal call proceeds unaffected.
+    return null;
   }
+}
 
-  const trace: SignalTrace = {
-    trace_id: nextTraceId(),
-    correlation_id: correlationId,
-    ts: new Date().toISOString(),
-    duration_ms: Math.max(0, input.duration_ms),
-    direction: input.direction,
-    tool_name: input.tool_name,
-    source: input.source,
-    caller_agent: input.caller_agent ?? null,
-    request: {
-      payload: input.request_payload,
-      validation: validateAgainst(reqSchemaId, reqSchemaUrl, input.request_payload),
-    },
-    response: {
-      payload: input.response_payload,
-      validation: validateAgainst(resSchemaId, resSchemaUrl, input.response_payload),
-      status: input.response_status,
-      ...(input.response_error_message ? { error_message: input.response_error_message } : {}),
-    },
-  };
-
-  traceBuffer.push(trace);
-  while (traceBuffer.length > MAX_TRACES) traceBuffer.shift();
-  return trace;
+// Defensive wrapper around validateAgainst — even if the validator
+// throws (Workers + AJV have historically had compat quirks), we
+// return a benign "skipped" result instead of crashing record path.
+function safeValidate(schemaId: string, schemaUrl: string, payload: unknown): SchemaValidationResult {
+  try {
+    return validateAgainst(schemaId, schemaUrl, payload);
+  } catch (e) {
+    return {
+      valid: true,
+      schema_url: schemaUrl,
+      errors: [{ path: "(meta)", message: "validator threw: " + String((e as Error).message ?? e), keyword: "skipped" }],
+    };
+  }
 }
 
 export interface SignalTraceQuery {

@@ -6641,4 +6641,152 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   .journey-stage-pools { grid-template-columns: 1fr; }
   .holdout-stats { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── Signals trace viewer modal — shared across pages ────────────────── */
+.signal-trace-modal {
+  position: fixed; inset: 0; z-index: 10000;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  padding: 24px;
+}
+.signal-trace-modal.open { display: flex; }
+.signal-trace-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  width: min(960px, 96vw);
+  max-height: 90vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+.signal-trace-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.signal-trace-head-title { font-weight: 600; font-size: 14px; }
+.signal-trace-head-meta { flex: 1; font: 11px var(--font-mono); color: var(--text-mut); }
+.signal-trace-close {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-dim); width: 28px; height: 28px; border-radius: 4px;
+  cursor: pointer; padding: 0; font-size: 16px; line-height: 24px;
+  font-family: inherit;
+}
+.signal-trace-close:hover { color: var(--text); border-color: var(--accent); }
+.signal-trace-body {
+  flex: 1; overflow-y: auto;
+  padding: 14px 18px;
+}
+.signal-trace-empty {
+  text-align: center; padding: 50px 20px;
+  color: var(--text-mut); font-size: 13px;
+}
+.signal-trace-frame {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px; margin-bottom: 14px;
+}
+.signal-trace-frame-head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  font: 11px var(--font-mono); color: var(--text-mut);
+  margin-bottom: 10px;
+}
+.trace-tool {
+  font-weight: 600; padding: 2px 8px; border-radius: 3px;
+  background: rgba(56, 182, 255, 0.10); color: var(--accent);
+  border: 1px solid rgba(56, 182, 255, 0.25);
+}
+.trace-tool-activate_signal { background: rgba(255, 94, 135, 0.10); color: #ff5e87; border-color: rgba(255, 94, 135, 0.25); }
+.trace-dir { color: var(--text); }
+.trace-ts { margin-left: auto; }
+.trace-dur { color: var(--text-faint); }
+.trace-corr { font-style: italic; }
+.trace-status-ok { color: #5fd9c4; font-weight: 600; }
+.trace-status-err { color: #ff7b7b; font-weight: 600; }
+.signal-trace-section { margin-top: 8px; }
+.signal-trace-section-head {
+  display: flex; align-items: center; gap: 10px;
+  font: 10px var(--font-mono); text-transform: uppercase; letter-spacing: 0.10em;
+  color: var(--text-faint); margin-bottom: 6px;
+}
+.signal-trace-section-label { font-weight: 600; }
+.trace-vbadge {
+  font: 10px var(--font-mono); padding: 1px 6px; border-radius: 3px;
+}
+.trace-vbadge.ok { background: rgba(95, 217, 196, 0.14); color: #5fd9c4; }
+.trace-vbadge.bad { background: rgba(255, 100, 100, 0.14); color: #ff7b7b; }
+.trace-vbadge.skip { background: rgba(255, 255, 255, 0.04); color: var(--text-faint); }
+.signal-trace-schemalink {
+  margin-left: auto;
+  font: 10px var(--font-mono); color: var(--accent); text-decoration: none;
+}
+.signal-trace-schemalink:hover { text-decoration: underline; }
+.signal-trace-copy {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-dim); padding: 1px 8px; border-radius: 3px;
+  font: 10px var(--font-mono); cursor: pointer;
+}
+.signal-trace-copy:hover { color: var(--accent); border-color: var(--accent); }
+.trace-verrors {
+  background: rgba(255, 100, 100, 0.06);
+  border-left: 2px solid #ff7b7b;
+  padding: 6px 10px; margin-bottom: 8px;
+  font: 10.5px var(--font-mono); color: var(--text-dim);
+}
+.trace-verr { padding: 1px 0; }
+.trace-verr code { color: var(--accent); }
+.trace-verr-kw { color: var(--text-faint); }
+.signal-trace-errmsg {
+  background: rgba(255, 100, 100, 0.10); color: #ff9090;
+  padding: 8px 12px; border-radius: 3px; margin-bottom: 8px;
+  font: 11px var(--font-mono);
+}
+.signal-trace-json {
+  background: var(--bg); border: 1px solid var(--border-faint);
+  border-radius: 3px;
+  padding: 10px 12px; margin: 0;
+  font: 11.5px var(--font-mono);
+  color: var(--text);
+  overflow-x: auto;
+  max-height: 360px;
+  white-space: pre;
+  line-height: 1.6;
+}
+.signal-trace-json .json-key { color: var(--accent); }
+.signal-trace-json .json-str { color: #c4eb87; }
+.signal-trace-json .json-num { color: #ffb454; }
+.signal-trace-json .json-bool { color: #c98aff; }
+.signal-trace-json .json-null { color: var(--text-faint); font-style: italic; }
+.signal-trace-json .json-annotation {
+  color: var(--text-faint); font-style: italic;
+  font-size: 0.85em;
+}
+.signal-trace-glossary {
+  border-top: 1px solid var(--border);
+  padding: 12px 18px;
+  font: 11.5px var(--font-mono);
+  background: rgba(0,0,0,0.18);
+}
+.signal-trace-glossary summary {
+  cursor: pointer; color: var(--text-dim); font-weight: 500;
+  padding: 4px 0;
+}
+.signal-trace-glossary summary:hover { color: var(--accent); }
+.signal-trace-glossary-body {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: minmax(180px, auto) minmax(140px, auto) 1fr;
+  gap: 4px 14px;
+  font-size: 11px;
+}
+.glossary-row {
+  display: contents;
+}
+.glossary-row code {
+  color: var(--accent);
+  font-family: var(--font-mono);
+}
+.glossary-row .glossary-label { color: var(--text); }
+.glossary-row .glossary-note { color: var(--text-mut); font-style: italic; }
 </style>`;

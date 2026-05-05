@@ -8,6 +8,7 @@ import { jsonResponse, errorResponse, readJsonBody } from "./shared";
 import { compactObj } from "../utils/objects";
 import { getDb } from "../storage/db";
 import type { Logger } from "../utils/logger";
+import { recordSignalTrace } from "../domain/signalTrace";
 
 export async function handleSearchSignals(
   request: Request,
@@ -58,6 +59,7 @@ export async function handleSearchSignals(
     );
   }
 
+  const _t0 = Date.now();
   try {
     const db = getDb(env);
     const result = await searchSignalsService(db, env.SIGNALS_CACHE, req);
@@ -69,9 +71,31 @@ export async function handleSearchSignals(
       total: result.totalCount,
     });
 
+    // Record the REST trace alongside the MCP one. Keeps signal traces
+    // unified across both transport bindings.
+    recordSignalTrace({
+      tool_name: "get_signals",
+      direction: "inbound",
+      source: "rest_demo",
+      request_payload: req,
+      response_payload: result,
+      response_status: "ok",
+      duration_ms: Date.now() - _t0,
+    });
+
     return jsonResponse(result);
   } catch (err) {
     logger.error("search_signals_error", { error: String(err) });
+    recordSignalTrace({
+      tool_name: "get_signals",
+      direction: "inbound",
+      source: "rest_demo",
+      request_payload: req,
+      response_payload: { error: String(err) },
+      response_status: "error",
+      response_error_message: String(err),
+      duration_ms: Date.now() - _t0,
+    });
     return errorResponse("INTERNAL_ERROR", "Signal search failed", 500);
   }
 }

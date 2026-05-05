@@ -164,6 +164,11 @@ import {
     handleEcosystemProbe,
 } from "./routes/ecosystemRoutes";
 import {
+    handleSignalTracesList,
+    handleSignalTracesSnapshot,
+    handleSignalTraceById,
+} from "./routes/signalTraceRoutes";
+import {
   handleVendorHealthSnapshot,
   handleVendorHealthProbeOne,
 } from "./routes/vendorHealthRoutes";
@@ -357,6 +362,10 @@ export default {
             "/ecosystem/agents",
             "/ecosystem/state",
             "/ecosystem/probe",
+            // Signal protocol trace store — read-only, public (demo posture).
+            // Surfaces full request/response JSON for every get_signals +
+            // activate_signal interaction across MCP / REST / federation.
+            "/api/signal-traces",
             "/taxonomy/reverse",
             // Sec-43: audience composer + activation-planning analytics.
             // Read-only — same posture as /portfolio/* and /analytics/*.
@@ -453,6 +462,16 @@ export default {
 
             } else if (method === "GET" && path === "/ecosystem/probe") {
                 response = await handleEcosystemProbe();
+
+            } else if (method === "GET" && path === "/api/signal-traces") {
+                response = handleSignalTracesList(request);
+
+            } else if (method === "GET" && path === "/api/signal-traces/snapshot") {
+                response = handleSignalTracesSnapshot();
+
+            } else if (method === "GET" && path.startsWith("/api/signal-traces/")) {
+                const traceId = path.slice("/api/signal-traces/".length);
+                response = handleSignalTraceById(traceId);
 
             } else if (method === "GET" && path === "/health") {
                 response = jsonResponse({

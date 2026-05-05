@@ -860,6 +860,7 @@ function renderRaceCanvas(demoKey: string): string {
 <div class="app">
   <header class="header">
     <a class="header-back" href="/">&larr; Back to Signals</a>
+    <button class="try-chip" id="race-signal-traces" style="margin-left:auto;border-color:var(--accent);color:var(--accent)">{ } Signal traces</button>
     <div class="header-title-block">
       <div class="header-title-row">
         <div class="header-title">Race <span class="accent">Canvas</span></div>
@@ -952,6 +953,18 @@ function renderRaceCanvas(demoKey: string): string {
       <div class="modal-section-title">Output</div>
       <pre id="modal-output"></pre>
     </div>
+  </div>
+</div>
+
+<!-- Race Canvas Signal traces overlay — slim version of the demo's
+     shared viewer, fetches /api/signal-traces and renders a list. -->
+<div class="modal-backdrop" id="signal-trace-backdrop" style="display:none">
+  <div class="modal" style="max-width:920px;width:96vw;max-height:88vh;overflow-y:auto">
+    <div class="modal-title">Signal traces · raw protocol JSON</div>
+    <div class="modal-sub" style="opacity:0.7">Get_signals + activate_signal request/response captures with schema validation. Refresh to pull latest.</div>
+    <button class="modal-close" id="signal-trace-modal-close">close</button>
+    <div style="margin-top:14px"><button class="try-chip" id="signal-trace-refresh">↻ refresh</button></div>
+    <div id="signal-trace-list" style="margin-top:12px;font:11.5px ui-monospace,Menlo,Consolas,monospace">loading…</div>
   </div>
 </div>
 
@@ -1557,6 +1570,55 @@ function renderRaceCanvas(demoKey: string): string {
     document.getElementById("race-trace-panel").classList.remove("is-open");
   });
   function escapeHtml(s) { return String(s == null ? "" : s).replace(/[&<>\\"']/g, function (c) { return ({"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"})[c]; }); }
+
+  // ── Signal traces overlay ────────────────────────────────────────────
+  function _raceRenderSignalTrace(t, idx) {
+    var dirIcon = t.direction === "outbound" ? "→" : "←";
+    var sourceShort = t.source.length > 36 ? t.source.slice(0, 33) + "…" : t.source;
+    var statusColor = t.response.status === "ok" ? "#5fd9c4" : "#ff7b7b";
+    var reqValid = t.request.validation && t.request.validation.valid;
+    var resValid = t.response.validation && t.response.validation.valid;
+    function badge(ok) { return ok ? '<span style="color:#5fd9c4">✓ schema</span>' : '<span style="color:#ff9b6b">✗ schema</span>'; }
+    return '<details style="margin-bottom:10px;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:4px">' +
+      '<summary style="cursor:pointer;font-size:12px;line-height:1.7">' +
+        '<strong>' + escapeHtml(t.tool_name) + '</strong> · ' + dirIcon + ' ' + escapeHtml(sourceShort) +
+        ' · <span style="color:' + statusColor + '">' + escapeHtml(t.response.status) + '</span>' +
+        ' · ' + t.duration_ms + 'ms · ' + new Date(t.ts).toLocaleTimeString() +
+        ' · ' + badge(reqValid) + ' req · ' + badge(resValid) + ' res' +
+      '</summary>' +
+      '<div style="margin-top:8px"><strong style="font-size:10px;letter-spacing:0.1em">REQUEST</strong> · <a href="' + escapeHtml(t.request.validation.schema_url) + '" target="_blank" style="color:#38b6ff;font-size:10px">schema↗</a></div>' +
+      '<pre style="background:rgba(0,0,0,0.4);padding:8px;border-radius:3px;max-height:240px;overflow:auto;font-size:10.5px;white-space:pre-wrap;word-break:break-all">' + escapeHtml(JSON.stringify(t.request.payload, null, 2)) + '</pre>' +
+      '<div><strong style="font-size:10px;letter-spacing:0.1em">RESPONSE</strong> · <a href="' + escapeHtml(t.response.validation.schema_url) + '" target="_blank" style="color:#38b6ff;font-size:10px">schema↗</a></div>' +
+      '<pre style="background:rgba(0,0,0,0.4);padding:8px;border-radius:3px;max-height:240px;overflow:auto;font-size:10.5px;white-space:pre-wrap;word-break:break-all">' + escapeHtml(JSON.stringify(t.response.payload, null, 2)) + '</pre>' +
+    '</details>';
+  }
+  async function _raceLoadSignalTraces() {
+    var listEl = document.getElementById("signal-trace-list");
+    listEl.textContent = "loading…";
+    try {
+      var r = await fetch("/api/signal-traces?limit=25");
+      var d = await r.json();
+      var traces = (d && d.traces) || [];
+      if (traces.length === 0) {
+        listEl.innerHTML = '<div style="opacity:0.7;padding:20px;text-align:center">No signal traces buffered yet. Run a race or trigger get_signals/activate_signal from any page.</div>';
+        return;
+      }
+      listEl.innerHTML = traces.map(_raceRenderSignalTrace).join("");
+    } catch (e) {
+      listEl.textContent = "Failed to load: " + (e && e.message || e);
+    }
+  }
+  document.getElementById("race-signal-traces").addEventListener("click", function () {
+    document.getElementById("signal-trace-backdrop").style.display = "flex";
+    _raceLoadSignalTraces();
+  });
+  document.getElementById("signal-trace-modal-close").addEventListener("click", function () {
+    document.getElementById("signal-trace-backdrop").style.display = "none";
+  });
+  document.getElementById("signal-trace-refresh").addEventListener("click", _raceLoadSignalTraces);
+  document.getElementById("signal-trace-backdrop").addEventListener("click", function (e) {
+    if (e.target === this) this.style.display = "none";
+  });
 })();
 </script>
 

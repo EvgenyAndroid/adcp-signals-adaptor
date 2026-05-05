@@ -1469,6 +1469,11 @@ ${STYLES}
             </div>
             <p class="pane-subtitle">Cross-agent search across the AdCP Signals Discovery ecosystem. Live partner: Dstillery. More coming.</p>
           </div>
+          <div class="activations-controls">
+            <button class="btn-secondary" id="fed-signal-traces" title="View raw get_signals + activate_signal request/response JSON for every federated call">
+              <span class="mono">{ }</span><span>Signal traces</span>
+            </button>
+          </div>
         </div>
         <div class="lab-grid">
           <div class="lab-panel">
@@ -1519,6 +1524,9 @@ ${STYLES}
             <p class="pane-subtitle">Live view of every AdCP agent we know about. Probe each MCP endpoint in parallel to see who's up, what they expose, and how fast they respond. Fan out a signals brief to all live signals agents with one click, or compare tool surfaces side-by-side.</p>
           </div>
           <div class="activations-controls">
+            <button class="btn-secondary" id="orch-signal-traces" title="View raw get_signals + activate_signal request/response JSON for every federated call">
+              <span class="mono">{ }</span><span>Signal traces</span>
+            </button>
             <button class="btn-secondary" id="orch-refresh">
               <svg class="ico"><use href="#icon-chart"/></svg><span>Probe all</span>
             </button>
@@ -1603,6 +1611,11 @@ ${STYLES}
           <div>
             <h1 class="pane-title">Brand-Anchored Canvas <span class="pill pill-accent" style="margin-left:8px;font-size:10px">v2 phase 1</span></h1>
             <p class="pane-subtitle">Pick a real brand from the AdCP agentic-advertising registry. The brand's <code>brand.json</code> drives the orchestration: industries fan out to signals, colors+fonts+logos feed creative builds, governance category triggers human review for regulated industries.</p>
+          </div>
+          <div class="activations-controls">
+            <button class="btn-secondary" id="canvas-signal-traces" title="View raw get_signals + activate_signal request/response JSON">
+              <span class="mono">{ }</span><span>Signal traces</span>
+            </button>
           </div>
         </div>
 
@@ -2270,11 +2283,12 @@ ${STYLES}
                 <th>Submitted</th>
                 <th>Completed</th>
                 <th>Webhook</th>
-                <th></th>
+                <th>Operation ID</th>
+                <th>Trace</th>
               </tr>
             </thead>
             <tbody id="activations-tbody">
-              <tr><td colspan="7" class="table-empty"><span class="spinner"></span> loading activations…</td></tr>
+              <tr><td colspan="8" class="table-empty"><span class="spinner"></span> loading activations…</td></tr>
             </tbody>
           </table>
         </div>

@@ -52,8 +52,10 @@ import { federationJs } from "./fragments/federation";
 import { campaignJs } from "./fragments/campaign";
 import { explainBadgesJs } from "./fragments/explain-badges";
 import { agenticStreamJs } from "./fragments/agentic-stream";
+import { signalsGlossaryJs } from "./fragments/signals-glossary";
+import { signalsTraceViewerJs } from "./fragments/signals-trace-viewer";
 
 export function SCRIPT_TAG(safeKey: string): string {
   return `<script type="module">
-${bootstrapJs(safeKey)}${utilsJs}${authJs}${uiStateJs}${traceInspectorJs}${tabsRouterJs}${discoverJs}${catalogJs}${detailPanelJs}${treemapJs}${builderJs}${overlapJs}${capabilitiesJs}${activationsJs}${toolLogJs}${devkitJs}${embeddingLabJs}${portfolioJs}${composerJs}${journeyJs}${plannerJs}${snapshotsJs}${freshnessJs}${expressionTreeJs}${workflowHandlersJs}${orchestratorJs}${workflowCanvasJs}${brandCanvasJs}${federationJs}${campaignJs}${explainBadgesJs}${agenticStreamJs}</script>`;
+${bootstrapJs(safeKey)}${utilsJs}${authJs}${uiStateJs}${traceInspectorJs}${signalsGlossaryJs}${signalsTraceViewerJs}${tabsRouterJs}${discoverJs}${catalogJs}${detailPanelJs}${treemapJs}${builderJs}${overlapJs}${capabilitiesJs}${activationsJs}${toolLogJs}${devkitJs}${embeddingLabJs}${portfolioJs}${composerJs}${journeyJs}${plannerJs}${snapshotsJs}${freshnessJs}${expressionTreeJs}${workflowHandlersJs}${orchestratorJs}${workflowCanvasJs}${brandCanvasJs}${federationJs}${campaignJs}${explainBadgesJs}${agenticStreamJs}</script>`;
 }

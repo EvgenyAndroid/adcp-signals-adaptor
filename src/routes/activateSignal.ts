@@ -7,6 +7,7 @@ import { validateActivateRequest } from "../utils/validation";
 import { jsonResponse, errorResponse, parseJsonBody } from "./shared";
 import { getDb } from "../storage/db";
 import type { Logger } from "../utils/logger";
+import { recordSignalTrace } from "../domain/signalTrace";
 
 export async function handleActivateSignal(
   request: Request,
@@ -24,11 +25,32 @@ export async function handleActivateSignal(
     return errorResponse(validation.error!.code, validation.error!.error, 400);
   }
 
+  const _t0 = Date.now();
   try {
     const db = getDb(env);
     const result = await activateSignalService(db, env.SIGNALS_CACHE, body, logger);
+    recordSignalTrace({
+      tool_name: "activate_signal",
+      direction: "inbound",
+      source: "rest_demo",
+      request_payload: body,
+      response_payload: result,
+      response_status: "ok",
+      duration_ms: Date.now() - _t0,
+    });
     return jsonResponse(result, 202);
   } catch (err) {
+    const errMsg = (err as Error).message ?? String(err);
+    recordSignalTrace({
+      tool_name: "activate_signal",
+      direction: "inbound",
+      source: "rest_demo",
+      request_payload: body,
+      response_payload: { error: errMsg },
+      response_status: "error",
+      response_error_message: errMsg,
+      duration_ms: Date.now() - _t0,
+    });
     if (err instanceof NotFoundError) {
       return errorResponse("NOT_FOUND", err.message, 404);
     }

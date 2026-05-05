@@ -661,6 +661,17 @@ export function renderEcosystemCanvas(demoKey: string): string {
      panel of its own; was causing stack overlap with the legend). */
   .stats-section { font: 11px ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
   .stat-row { display: flex; justify-content: space-between; padding: 2px 0; gap: 12px; font-size: 11px; }
+  .sparkline-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 0 2px; gap: 12px;
+  }
+  .sparkline-label { font-size: 10px; color: var(--text-mut); }
+  .sparkline-svg {
+    width: 90px; height: 18px;
+    background: rgba(0,0,0,0.30);
+    border-radius: 2px;
+    padding: 2px 4px;
+  }
   .stat-row .k { color: var(--text-mut); }
   .stat-row .v { color: var(--text); font-weight: 600; }
   .stat-row .v.live  { color: #5fd9c4; }
@@ -816,6 +827,16 @@ export function renderEcosystemCanvas(demoKey: string): string {
     <div class="stat-row"><span class="k">Avg lift</span><span class="v" id="stat-avg-lift">—</span></div>
     <div class="stat-row"><span class="k">Top agent</span><span class="v" id="stat-top-agent">—</span></div>
     <div class="stat-row"><span class="k">Live probe</span><span class="v live" id="stat-live-probe">—</span></div>
+    <div class="stat-row"><span class="k">$ committed</span><span class="v" id="stat-budget">—</span></div>
+    <!-- Lift sparkline: each tick = one cycle's mean lift. Visualizes
+         the system "learning" over time as the feedback loop biases
+         briefs toward winning dimensions. -->
+    <div class="sparkline-row">
+      <span class="sparkline-label">lift / cycle</span>
+      <svg class="sparkline-svg" id="sparkline" viewBox="0 0 80 16" preserveAspectRatio="none" aria-hidden="true">
+        <polyline id="sparkline-path" fill="none" stroke="var(--accent)" stroke-width="0.6" points=""/>
+      </svg>
+    </div>
   </div>
   <div class="legend-divider"></div>
   <div class="legend-title">Agent roles</div>
@@ -1744,6 +1765,36 @@ function escapeHtml(s) {
 // topbar; build version available at /health for diagnostics).
 const statAvgLift = document.getElementById("stat-avg-lift");
 const statTopAgent = document.getElementById("stat-top-agent");
+const statBudget = document.getElementById("stat-budget");
+const sparklinePathEl = document.getElementById("sparkline-path");
+
+// Compact $ formatter — "$1.2M" / "$320k" / "$8,400".
+function fmtBudget(n) {
+  if (!n || n < 0) return "—";
+  if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 10_000)    return "$" + Math.round(n / 1000) + "k";
+  return "$" + n.toLocaleString();
+}
+
+// Sparkline render: takes an array of mean_lift values [0..1], plots
+// as a polyline in the 80×16 SVG viewBox. Each cycle is one x step.
+function renderSparkline(cycles) {
+  if (!sparklinePathEl) return;
+  if (!cycles || cycles.length === 0) {
+    sparklinePathEl.setAttribute("points", "");
+    return;
+  }
+  const W = 80;
+  const H = 16;
+  const n = cycles.length;
+  const points = cycles.map(function (c, i) {
+    const x = n > 1 ? (i / (n - 1)) * W : W / 2;
+    const lift = Math.max(0, Math.min(1, c.mean_lift || 0));
+    const y = H - lift * H; // higher lift = lower y (top of svg)
+    return x.toFixed(2) + "," + y.toFixed(2);
+  }).join(" ");
+  sparklinePathEl.setAttribute("points", points);
+}
 
 function updateState(state) {
   if (!state) return;
@@ -1754,6 +1805,13 @@ function updateState(state) {
     metaAudio.textContent = state.feedback.audio_pull.toFixed(2);
     metaCtv.textContent = state.feedback.ctv_pull.toFixed(2);
     metaB2b.textContent = state.feedback.b2b_pull.toFixed(2);
+  }
+  // Lifetime budget total + sparkline of recent cycles' lift
+  if (state.total_budget_committed_lifetime !== undefined && statBudget) {
+    statBudget.textContent = fmtBudget(state.total_budget_committed_lifetime);
+  }
+  if (Array.isArray(state.recent_cycles)) {
+    renderSparkline(state.recent_cycles);
   }
   if (state.lift_by_agent) {
     let topAgent = null;

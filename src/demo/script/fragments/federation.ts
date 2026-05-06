@@ -395,15 +395,62 @@ async function _renderOurAdagents() {
   }
 }
 
-function _badgeForProbeStatus(status) {
-  var cls = "pill-mut", icon = "?";
-  if (status === "ok") { cls = "pill-success"; icon = "✓ valid"; }
-  else if (status === "schema_invalid") { cls = "pill-warn"; icon = "⚠ invalid shape"; }
-  else if (status === "not_found") { cls = "pill-mut"; icon = "404 no file"; }
-  else if (status === "http_error") { cls = "pill-warn"; icon = "HTTP error"; }
-  else if (status === "timeout") { cls = "pill-mut"; icon = "timeout"; }
-  else if (status === "network_error") { cls = "pill-mut"; icon = "network err"; }
-  return '<span class="pill ' + cls + '" style="font-size:10.5px">' + icon + '</span>';
+function _probeBadge(status) {
+  // Returns HTML for a status badge with an emoji icon + label. Order
+  // chosen so the workshop centerpieces (✓ ok / ⚠ schema_invalid)
+  // visually dominate; the "no file" / unreachable rows fade into the
+  // background so the audience focuses on the conformance signal.
+  var map = {
+    ok:             { cls: "ok",    label: "✓ published & valid" },
+    schema_invalid: { cls: "bad",   label: "⚠ invalid shape" },
+    not_found:      { cls: "skip",  label: "404 · no file" },
+    http_error:     { cls: "warn",  label: "HTTP error" },
+    timeout:        { cls: "skip",  label: "⌛ timeout" },
+    network_error:  { cls: "skip",  label: "network err" },
+  };
+  var v = map[status] || { cls: "skip", label: status || "unknown" };
+  return '<span class="probe-badge probe-badge-' + v.cls + '">' + v.label + '</span>';
+}
+
+// Status display order for grouping the results list. Workshop story
+// flows: "we publish" (already shown above) → "they publish but
+// invalid" (centerpiece — runtime drift caught) → "they don't
+// publish" (the gap) → "unreachable" (housekeeping).
+var _PROBE_ORDER = ["ok", "schema_invalid", "not_found", "http_error", "timeout", "network_error"];
+
+function _renderProbeRow(p) {
+  var detail = "";
+  if (p.status === "ok" || p.status === "schema_invalid") {
+    var shapeJson = JSON.stringify(p.payload_preview || {}, null, 2);
+    if (shapeJson.length > 1500) shapeJson = shapeJson.slice(0, 1500) + "\\n… (truncated)";
+    var summaryText = p.status === "schema_invalid"
+      ? "show response & " + ((p.validation && p.validation.errors) || []).length + " schema errors"
+      : "show response";
+    detail = '<details class="probe-detail"><summary class="probe-detail-summary">' + escapeHtml(summaryText) + '</summary>' +
+      '<pre class="probe-detail-json">' + escapeHtml(shapeJson) + '</pre>';
+    if (p.validation && p.validation.errors && p.validation.errors.length > 0) {
+      detail += '<div class="probe-detail-errlabel">' + p.validation.errors.length + ' schema error' + (p.validation.errors.length === 1 ? "" : "s") + ':</div>' +
+        '<ul class="probe-detail-errlist">' +
+        p.validation.errors.slice(0, 5).map(function (e) {
+          return '<li><code>' + escapeHtml(e.path || "(root)") + '</code> ' + escapeHtml(e.message || "") + ' <span class="probe-err-kw">[' + escapeHtml(e.keyword || "") + ']</span></li>';
+        }).join("") + '</ul>';
+    }
+    detail += '</details>';
+  } else if (p.error) {
+    detail = '<div class="probe-error-line">' + escapeHtml(p.error) + '</div>';
+  }
+  // Strip protocol from displayed URL so the host pops; full URL
+  // remains in href + title for click-through and hover.
+  var visible = (p.fetched_url || "").replace(/^https?:\\/\\//, "");
+  return '<div class="probe-row probe-row-' + escapeHtml(p.status) + '">' +
+    '<div class="probe-row-head">' +
+      '<span class="probe-row-name">' + escapeHtml(p.agent_name || p.agent_id) + '</span>' +
+      _probeBadge(p.status) +
+      '<a class="probe-row-url" href="' + escapeHtml(p.fetched_url) + '" target="_blank" rel="noopener" title="' + escapeHtml(p.fetched_url) + '">' + escapeHtml(visible) + ' ↗</a>' +
+      '<span class="probe-row-dur">' + (p.duration_ms || 0) + 'ms</span>' +
+    '</div>' +
+    detail +
+  '</div>';
 }
 
 async function _runDiscoveryProbe() {
@@ -412,7 +459,10 @@ async function _runDiscoveryProbe() {
   var resultsHost = document.getElementById("discovery-peer-results");
   var countsEl = document.getElementById("discovery-peer-counts");
   if (!panel || !resultsHost) return;
+  // The panel is a <details> element — open it AND make it visible
+  // (default display:none until first probe so the page stays clean).
   panel.style.display = "block";
+  panel.open = true;
   if (btn) btn.disabled = true;
   resultsHost.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Probing peer adagents.json files…</div></div>';
   await _renderOurAdagents();
@@ -421,44 +471,34 @@ async function _runDiscoveryProbe() {
     var data = await r.json();
     var counts = data.counts || {};
     if (countsEl) {
-      var parts = [];
-      if (counts.ok) parts.push(counts.ok + " published & valid");
-      if (counts.schema_invalid) parts.push(counts.schema_invalid + " published but invalid");
-      if (counts.not_found) parts.push(counts.not_found + " no file (404)");
-      if (counts.http_error || counts.timeout || counts.network_error) {
-        parts.push(((counts.http_error || 0) + (counts.timeout || 0) + (counts.network_error || 0)) + " unreachable");
-      }
-      countsEl.textContent = "· " + parts.join(" · ") + " (" + (data.probed_count || 0) + " peers)";
+      // Render counts as compact pills next to the panel title so the
+      // story ("X published valid · Y published invalid · Z no file")
+      // is visible even when the panel is collapsed.
+      var pills = "";
+      if (counts.ok) pills += '<span class="discovery-count discovery-count-ok">' + counts.ok + ' valid</span>';
+      if (counts.schema_invalid) pills += '<span class="discovery-count discovery-count-bad">' + counts.schema_invalid + ' invalid</span>';
+      if (counts.not_found) pills += '<span class="discovery-count discovery-count-skip">' + counts.not_found + ' 404</span>';
+      var unreach = (counts.http_error || 0) + (counts.timeout || 0) + (counts.network_error || 0);
+      if (unreach) pills += '<span class="discovery-count discovery-count-skip">' + unreach + ' unreachable</span>';
+      countsEl.innerHTML = pills + '<span class="discovery-count-total">' + (data.probed_count || 0) + ' peers</span>';
     }
-    var rows = (data.results || []).map(function (p) {
-      var detail = "";
-      if (p.status === "ok" || p.status === "schema_invalid") {
-        var shapeJson = JSON.stringify(p.payload_preview || {}, null, 2);
-        if (shapeJson.length > 1500) shapeJson = shapeJson.slice(0, 1500) + "\\n… (truncated)";
-        detail = '<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--text-mut);font-size:11px">show response</summary>' +
-          '<pre class="signal-trace-json" style="max-height:240px;margin-top:6px">' + escapeHtml(shapeJson) + '</pre>';
-        if (p.validation && p.validation.errors && p.validation.errors.length > 0) {
-          detail += '<div style="margin-top:6px;color:#ff9b6b;font-size:11px">' + p.validation.errors.length + ' schema error' + (p.validation.errors.length === 1 ? "" : "s") + ':</div>' +
-            '<ul style="margin:4px 0 0 20px;color:#ff9b6b;font-size:10.5px">' +
-            p.validation.errors.slice(0, 5).map(function (e) {
-              return '<li><code>' + escapeHtml(e.path || "(root)") + '</code> ' + escapeHtml(e.message || "") + '</li>';
-            }).join("") + '</ul>';
-        }
-        detail += '</details>';
-      } else if (p.error) {
-        detail = '<div style="margin-top:4px;color:var(--text-mut);font-size:10.5px">' + escapeHtml(p.error) + '</div>';
-      }
-      return '<div class="signal-trace-frame" style="padding:8px 12px">' +
-        '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">' +
-          '<strong style="font-size:12.5px">' + escapeHtml(p.agent_name || p.agent_id) + '</strong>' +
-          _badgeForProbeStatus(p.status) +
-          '<a href="' + escapeHtml(p.fetched_url) + '" target="_blank" rel="noopener" style="color:var(--accent);font-size:10.5px;text-decoration:none">' + escapeHtml(p.fetched_url) + ' ↗</a>' +
-          '<span style="color:var(--text-mut);font-size:10.5px;margin-left:auto">' + (p.duration_ms || 0) + 'ms</span>' +
-        '</div>' +
-        detail +
-      '</div>';
-    }).join("");
-    resultsHost.innerHTML = rows || '<div class="empty-state"><div class="empty-title">No peers in registry</div></div>';
+    // Group results by status using the priority order. Within each
+    // group, results retain server order (which is registry order).
+    var byStatus = {};
+    (data.results || []).forEach(function (p) {
+      var k = p.status || "unknown";
+      if (!byStatus[k]) byStatus[k] = [];
+      byStatus[k].push(p);
+    });
+    var groups = _PROBE_ORDER.filter(function (s) { return byStatus[s] && byStatus[s].length > 0; });
+    if (groups.length === 0) {
+      resultsHost.innerHTML = '<div class="empty-state"><div class="empty-title">No peers in registry</div></div>';
+    } else {
+      resultsHost.innerHTML = groups.map(function (s) {
+        var rows = byStatus[s].map(_renderProbeRow).join("");
+        return rows;
+      }).join("");
+    }
   } catch (e) {
     resultsHost.innerHTML = '<div class="empty-state" style="color:var(--error)"><div class="empty-title">Probe failed: ' + escapeHtml(e && e.message ? e.message : String(e)) + '</div></div>';
   } finally {

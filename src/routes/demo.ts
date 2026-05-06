@@ -1492,16 +1492,25 @@ ${STYLES}
              is clicked. Shows our adagents.json on top and peer probe
              results below. Default closed so the page stays scannable
              until the workshop calls out the discovery anchor. -->
-        <div id="discovery-panel" class="lab-panel" style="display:none;margin-bottom:18px">
-          <div class="lab-panel-title">AdCP discovery anchor · /.well-known/adagents.json</div>
-          <p class="orch-small" style="color:var(--text-mut);margin:6px 0 14px 0">A buyer agent doing "find authorized signals agents for this domain" lands on this file. We publish a 3.0.6-conformant declaration; most peers don't yet — that gap is exactly what the AdCP standardization closes.</p>
-          <div class="lab-section-label">Our declaration</div>
-          <pre id="discovery-our-doc" class="signal-trace-json" style="max-height:300px">loading…</pre>
-          <div class="lab-section-label" style="margin-top:18px">Peer probe results <span id="discovery-peer-counts" style="color:var(--text-mut);font-weight:400;margin-left:8px"></span></div>
-          <div id="discovery-peer-results" style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+        <details id="discovery-panel" class="lab-panel discovery-panel" style="display:none;margin-bottom:18px">
+          <summary class="discovery-panel-summary">
+            <span class="discovery-panel-icon">📡</span>
+            <span class="discovery-panel-title">AdCP discovery anchor · /.well-known/adagents.json</span>
+            <span id="discovery-peer-counts" class="discovery-panel-counts"></span>
+          </summary>
+          <p class="orch-small discovery-panel-intro">A buyer agent doing "find authorized signals agents for this domain" lands on this file. We publish a 3.0.6-conformant declaration; most peers don't yet — that gap is exactly what the AdCP standardization closes.</p>
+          <details class="discovery-our-details">
+            <summary class="discovery-our-summary">
+              <span class="discovery-our-label">Our declaration</span>
+              <span class="discovery-our-meta">3.0.6 conformant · click to view JSON</span>
+            </summary>
+            <pre id="discovery-our-doc" class="signal-trace-json discovery-our-json">loading…</pre>
+          </details>
+          <div class="discovery-peer-label">Peer probe results</div>
+          <div id="discovery-peer-results" class="discovery-peer-list">
             <div class="orch-small" style="color:var(--text-mut)">Click 📡 Discovery probe to fetch each peer's adagents.json (3s timeout per peer).</div>
           </div>
-        </div>
+        </details>
 
         <div class="lab-grid">
           <div class="lab-panel">

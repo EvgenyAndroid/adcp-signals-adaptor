@@ -7072,7 +7072,12 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   padding: 10px 12px; margin: 0;
   font: 11.5px var(--font-mono);
   color: var(--text);
-  overflow-x: auto;
+  /* Both axes must scroll within the box. With only overflow-x: auto
+     the vertical default is visible, so JSON taller than max-height
+     bleeds into the sibling below — caused the 'IAB tags rendered on
+     top of the error list' overlap reported on the BidMachine row in
+     the discovery probe. */
+  overflow: auto;
   max-height: 360px;
   white-space: pre;
   line-height: 1.6;

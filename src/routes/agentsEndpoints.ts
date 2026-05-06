@@ -264,7 +264,7 @@ export async function handleAgentsOrchestrate(request: Request, env: Env, logger
     const res = await callAgentTool(a.mcp_url!, tool, {
       signal_spec: body.brief,
       max_results: maxResults,
-    }, { timeoutMs });
+    }, { timeoutMs, env });
     const structured = res.structured_content as { signals?: unknown[] } | undefined;
     const signals = structured?.signals ?? [];
     const out: OrchestratePerAgent = {
@@ -574,6 +574,7 @@ async function runSignalsStage(
   brief: string,
   maxResults: number,
   timeoutMs: number,
+  env?: Env,
 ): Promise<SignalsStageAgent[]> {
   return Promise.all(agents.map(async (a): Promise<SignalsStageAgent> => {
     const res = await callAgentTool(
@@ -583,7 +584,10 @@ async function runSignalsStage(
       // on why we dropped the `pagination` envelope (Pydantic-strict
       // vendors like Dstillery reject the unknown keyword).
       { signal_spec: brief, max_results: maxResults },
-      { timeoutMs },
+      // Thread env so federation outbound traces persist to KV — without
+      // this, the signal-trace modal shows empty for "src⊃ federation:"
+      // every time the isolate cycles.
+      env ? { timeoutMs, env } : { timeoutMs },
     );
     const signals = extractMcpToolArray<SignalLite>(res.structured_content, res.content, ["signals"])
       .map((s) => ({ source_agent: a.id, ...s }));
@@ -742,7 +746,7 @@ export async function handleWorkflowRun(request: Request, env: Env, logger: Logg
 
   // Stage 1 + Stage 2 in parallel (independent).
   const [signalsResults, creativeResults] = await Promise.all([
-    runSignalsStage(signalsAgents, body.brief, maxSignals, timeoutMs),
+    runSignalsStage(signalsAgents, body.brief, maxSignals, timeoutMs, env),
     creativeAgents.length > 0 ? runCreativeStage(creativeAgents, creativeFilter, timeoutMs) : Promise.resolve([]),
   ]);
 
@@ -952,7 +956,10 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
             "get_signals",
             // Top-level max_results only (see handleAgentsOrchestrate comment).
             { signal_spec: body.brief, max_results: maxSignals },
-            { timeoutMs },
+            // Thread env so federation outbound traces land in KV — without
+            // this they only live in-memory and disappear on isolate cycle,
+            // which is the bug the demo's Federation page hit.
+            { timeoutMs, env },
           );
           const signals = extractMcpToolArray<SignalLite>(res.structured_content, res.content, ["signals"])
             .map((s) => ({ source_agent: a.id, ...s }));

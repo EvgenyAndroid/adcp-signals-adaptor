@@ -365,28 +365,33 @@ async function loadCatalog() {
   tbody.innerHTML = skeletonRows(6, 7);
 
   try {
-    // Page through 100-at-a-time until we have the whole catalog
+    // Page through the whole catalog via cursor pagination per AdCP
+    // 3.0.x. The pagination-request schema (additionalProperties:
+    // false) only permits { max_results, cursor } -- no offset --
+    // so the client walks via pagination.cursor returned by the
+    // server. Server emits cursor only when has_more=true; we stop
+    // when has_more is falsy OR no cursor was returned (defensive
+    // against handlers that forget the cursor on the last page).
     const all = [];
-    let offset = 0;
+    let cursor = undefined;
+    let pages = 0;
     while (true) {
+      const pag = { max_results: 100 };
+      if (cursor) pag.cursor = cursor;
       // get_signals requires anyOf(signal_spec, signal_ids); for a "list
       // everything" catalog walk we pass a wildcard spec so the request
       // remains 3.0-conformant.
-      const data = await callTool("get_signals", _getSignalsArgs("*", {
-        max_results: 100,
-        pagination: { offset },
-      }));
+      const data = await callTool("get_signals", _getSignalsArgs("*", { pagination: pag }));
       const batch = (data.signals || []).filter((s) => s.signal_type !== "custom");
       all.push(...batch);
-      // Sec-31z: read pagination defensively — MCP responses now use
-      // the v3 nested shape (data.pagination.has_more) per AAO
-      // pagination_walk requirements; legacy v2 shape (data.hasMore)
-      // is read as a fallback so this loop survives any future shape
-      // revert. Either shape signals "fetch more" via boolean truthy.
+      // Read pagination defensively. v3 shape is data.pagination.has_more
+      // + data.pagination.cursor; legacy v2 shape (data.hasMore) is read
+      // as a fallback so this loop survives any future shape revert.
       const hasMore = data.pagination?.has_more ?? data.hasMore;
-      if (!hasMore || batch.length === 0) break;
-      offset += 100;
-      if (offset > 1000) break; // safety — catalog shouldn't exceed this
+      cursor = data.pagination?.cursor;
+      if (!hasMore || !cursor || batch.length === 0) break;
+      pages += 1;
+      if (pages > 10) break; // safety — catalog shouldn't exceed 1k rows
     }
     state.catalog.all = all;
     document.getElementById("nav-catalog-count").textContent = String(all.length);

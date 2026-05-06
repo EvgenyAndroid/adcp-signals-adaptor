@@ -14,21 +14,33 @@ export const ADCP_MAJOR_LINE = "3.0 GA";
 /** Specific spec patch version we're tested against. Bump on each
  *  successful conformance pass against a new patch.
  *
+ *  3.0.6 (2026-05-03): prose-only — wire-placement guidance for
+ *  `GOVERNANCE_DENIED` and `GOVERNANCE_UNAVAILABLE`. Use the
+ *  structured rejection arm (e.g. `AcquireRightsRejected`) when one
+ *  exists; populate `errors[].code` + `adcp_error.code` only when
+ *  the task lacks a rejection arm. `GOVERNANCE_UNAVAILABLE` always
+ *  populates both layers regardless. No payload reshape.
+ *
  *  3.0.5 (2026-05-02): three additive changes — relaxed
  *  `identity.additionalProperties` on capabilities responses,
  *  optional `default_agent` field in storyboard YAML, brand-rights
- *  field-name fix in the conformance harness. All forward-compat /
- *  authoring-side; wire format unchanged for any 3.0 agent that
- *  doesn't claim a new optional surface (we don't claim
- *  `identity.brand_json_url`, so we're unaffected).
+ *  field-name fix in the conformance harness.
  *
- *  Compliance state on 2026-05-03: the daily watcher reported 0
- *  scenarios run after the @adcp/client testing-kit floated within
- *  the 5.x range. Production adapter is unchanged from the prior 7/7
- *  passing state; this is a watcher-side artifact, not a deployed
- *  regression. Re-investigate post-workshop.
+ *  3.0.4 (2026-05-02): prose-only — `AUTH_REQUIRED` retry-storm
+ *  guidance. Wire format unchanged.
+ *
+ *  3.0.3 (2026-05-01): docs-fix on creative-channel `tracker_pixel`
+ *  enum + storyboard `provides_state_for` field.
+ *
+ *  3.0.2 (2026-04-30): codegen-only refactor — promoted
+ *  asset-variant `oneOf` to a canonical `core/assets/asset-union.json`
+ *  reference. Wire format unchanged.
+ *
+ *  Schema corpus is vendored at this version via
+ *  scripts/vendor-adcp-schemas.mjs; the trace inspector validates
+ *  every payload against /schemas/<this-version>/ identifiers.
  */
-export const SPEC_VERSION = "3.0.5";
+export const SPEC_VERSION = "3.0.6";
 
 /** Composite label for UI display: "3.0 GA · 3.0.4". */
 export const SPEC_LABEL = ADCP_MAJOR_LINE + " · " + SPEC_VERSION;

@@ -673,10 +673,7 @@ async function activateFromDetail(sig) {
 
   const sid = sig.signal_agent_segment_id || sig.signal_id?.id || "";
   try {
-    const act = await callTool("activate_signal", {
-      signal_agent_segment_id: sid,
-      deliver_to: { deployments: [{ type: "platform", platform: "mock_dsp" }], countries: ["US"] },
-    });
+    const act = await callTool("activate_signal", _activateArgs(sid));
     // Sec-31w-final: AdCP v3 spec moves task_id off the activate-signal
     // response payload (envelope-level per protocol-envelope.json).
     // MCP server now emits it inside ext for clients that need to poll.

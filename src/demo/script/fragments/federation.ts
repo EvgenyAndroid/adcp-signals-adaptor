@@ -297,7 +297,7 @@ async function fedActivateSelected() {
   if (evg.length) {
     showToast("Activating " + evg.length + " Evgeny signals\u2026");
     var results = await Promise.allSettled(evg.map(function (m) {
-      return callTool("activate_signal", { signal_agent_segment_id: m.signal.signal_agent_segment_id, destination_platform: "mock_dsp" });
+      return callTool("activate_signal", _activateArgs(m.signal.signal_agent_segment_id));
     }));
     var ok = results.filter(function (r) { return r.status === "fulfilled"; }).length;
     messages.push(ok + "/" + evg.length + " Evgeny activated");

@@ -191,7 +191,7 @@ function wirePortOptimizer() {
           e.stopPropagation();
           var sid = b.dataset.optActivate;
           b.disabled = true;
-          try { await callTool("activate_signal", { signal_agent_segment_id: sid, destination_platform: "mock_dsp" }); showToast("\u2713 Activated"); b.classList.add("err-activated"); }
+          try { await callTool("activate_signal", _activateArgs(sid)); showToast("\u2713 Activated"); b.classList.add("err-activated"); }
           catch (err) { showToast("Failed: " + err.message, true); b.disabled = false; }
         });
       });
@@ -200,7 +200,7 @@ function wirePortOptimizer() {
           var act = btn.dataset.optAction;
           if (act === "activate-all") {
             showToast("Activating portfolio (" + data.picked.length + " signals)\u2026");
-            var res = await Promise.allSettled(data.picked.map(function (p) { return callTool("activate_signal", { signal_agent_segment_id: p.signal_id, destination_platform: "mock_dsp" }); }));
+            var res = await Promise.allSettled(data.picked.map(function (p) { return callTool("activate_signal", _activateArgs(p.signal_id)); }));
             var ok = res.filter(function (x) { return x.status === "fulfilled"; }).length;
             showToast("\u2713 Portfolio activated: " + ok + "/" + data.picked.length);
           } else if (act === "export") {
@@ -340,7 +340,7 @@ function wirePortFromBrief() {
           e.stopPropagation();
           var sid = b.dataset.briefActivate;
           b.disabled = true;
-          try { await callTool("activate_signal", { signal_agent_segment_id: sid, destination_platform: "mock_dsp" }); showToast("\u2713 Activated " + sid); b.classList.add("err-activated"); }
+          try { await callTool("activate_signal", _activateArgs(sid)); showToast("\u2713 Activated " + sid); b.classList.add("err-activated"); }
           catch (err) { showToast("Failed: " + err.message, true); b.disabled = false; }
         });
       });
@@ -359,7 +359,7 @@ function wirePortFromBrief() {
           if (act === "activate-all") {
             showToast("Activating " + data.portfolio.length + " signals\u2026");
             var res = await Promise.allSettled(data.portfolio.map(function (p) {
-              return callTool("activate_signal", { signal_agent_segment_id: p.signal_id, destination_platform: "mock_dsp" });
+              return callTool("activate_signal", _activateArgs(p.signal_id));
             }));
             var ok = res.filter(function (x) { return x.status === "fulfilled"; }).length;
             showToast("\u2713 Campaign activated: " + ok + "/" + data.portfolio.length + ". Check Activations tab.");
@@ -435,7 +435,7 @@ async function renderSeaRanking() {
           e.stopPropagation();
           var sid = b.dataset.seaActivate;
           b.disabled = true;
-          try { await callTool("activate_signal", { signal_agent_segment_id: sid, destination_platform: "mock_dsp" }); showToast("\u2713 Activated"); b.classList.add("err-activated"); }
+          try { await callTool("activate_signal", _activateArgs(sid)); showToast("\u2713 Activated"); b.classList.add("err-activated"); }
           catch (err) { showToast("Failed: " + err.message, true); b.disabled = false; }
         });
       });
@@ -443,7 +443,7 @@ async function renderSeaRanking() {
         b.addEventListener('click', async function () {
           var picks = topSignals.slice(0, 5);
           showToast("Activating top 5 for " + data.window + "\u2026");
-          await Promise.allSettled(picks.map(function (s) { return callTool("activate_signal", { signal_agent_segment_id: s.signal_id, destination_platform: "mock_dsp" }); }));
+          await Promise.allSettled(picks.map(function (s) { return callTool("activate_signal", _activateArgs(s.signal_id)); }));
           showToast("\u2713 Top 5 activated to mock_dsp");
         });
       });

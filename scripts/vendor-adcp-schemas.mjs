@@ -1,32 +1,83 @@
 #!/usr/bin/env node
 // scripts/vendor-adcp-schemas.mjs
 //
-// Vendors EVERY .json schema from node_modules/@adcp/sdk/dist/lib/
-// schemas-data/3.0/ into src/schemas/adcp/index.ts as a single TS module
-// the worker can bundle without relying on @adcp/sdk's package.json
-// exports map (which omits the schemas-data path).
+// Vendors EVERY .json schema from the pinned AdCP spec release tarball
+// into src/schemas/adcp/index.ts as a single TS module the worker can
+// bundle without relying on @adcp/sdk's package.json exports map (which
+// omits the schemas-data path) or matching the sdk's spec version.
 //
-// Auto-walks the directory tree — no manual SCHEMAS list to maintain.
+// Source of truth: the AdCP GitHub releases page. Each release ships
+// a `<version>.tgz` (signed with cosign) containing the canonical
+// schemas/ tree. We pin a version constant below and download on
+// demand; the tarball + extracted tree are gitignored so re-vendoring
+// is reproducible from source.
+//
+// Auto-walks the schema tree — no manual SCHEMAS list to maintain.
 // Adding a new tool to the recorder no longer requires editing this
 // script; just add the tool's $id to SCHEMA_ID/SCHEMA_URL in
 // src/domain/signalTrace.ts and the validator picks up the schema
 // automatically (since it's already vendored as part of the corpus).
 //
-// Re-run whenever @adcp/sdk bumps and we want a refreshed corpus:
+// Re-run after bumping ADCP_SPEC_VERSION:
 //   node scripts/vendor-adcp-schemas.mjs
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, createWriteStream } from "node:fs";
 import { join, dirname, relative, basename } from "node:path";
 import { fileURLToPath } from "node:url";
+import { execSync } from "node:child_process";
+import { createHash } from "node:crypto";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = dirname(__dirname);
-const SCHEMA_ROOT = join(REPO_ROOT, "node_modules", "@adcp", "sdk", "dist", "lib", "schemas-data", "3.0");
+
+// Pin to a published AdCP spec release. Bump this constant + re-run
+// the script to refresh the vendored corpus.
+const ADCP_SPEC_VERSION = "3.0.6";
+
+const VENDOR_DIR = join(REPO_ROOT, "vendor", "adcp");
+const TGZ_PATH = join(VENDOR_DIR, `${ADCP_SPEC_VERSION}.tgz`);
+const SHA_PATH = join(VENDOR_DIR, `${ADCP_SPEC_VERSION}.tgz.sha256`);
+const EXTRACTED_DIR = join(VENDOR_DIR, `adcp-${ADCP_SPEC_VERSION}`);
+const SCHEMA_ROOT = join(EXTRACTED_DIR, "schemas");
 const OUT_DIR = join(REPO_ROOT, "src", "schemas", "adcp");
 const OUT_FILE = join(OUT_DIR, "index.ts");
 
+const RELEASE_BASE = `https://github.com/adcontextprotocol/adcp/releases/download/v${ADCP_SPEC_VERSION}`;
+
+function sh(cmd) {
+  return execSync(cmd, { stdio: ["ignore", "pipe", "pipe"], encoding: "utf8" }).trim();
+}
+
+function fetchTarball() {
+  if (!existsSync(VENDOR_DIR)) mkdirSync(VENDOR_DIR, { recursive: true });
+  if (existsSync(TGZ_PATH) && existsSync(SHA_PATH)) return;
+  console.log(`[vendor-adcp-schemas] downloading ${ADCP_SPEC_VERSION}.tgz from ${RELEASE_BASE}`);
+  sh(`curl -sL "${RELEASE_BASE}/${ADCP_SPEC_VERSION}.tgz" -o "${TGZ_PATH}"`);
+  sh(`curl -sL "${RELEASE_BASE}/${ADCP_SPEC_VERSION}.tgz.sha256" -o "${SHA_PATH}"`);
+}
+
+function verifyTarball() {
+  const want = readFileSync(SHA_PATH, "utf8").trim().split(/\s+/)[0].toLowerCase();
+  const got = createHash("sha256").update(readFileSync(TGZ_PATH)).digest("hex");
+  if (want !== got) {
+    console.error(`[vendor-adcp-schemas] sha256 mismatch:\n  want ${want}\n  got  ${got}`);
+    process.exit(1);
+  }
+  console.log(`[vendor-adcp-schemas] sha256 OK (${got.slice(0, 12)}…)`);
+}
+
+function extractTarball() {
+  if (existsSync(SCHEMA_ROOT)) return;
+  console.log(`[vendor-adcp-schemas] extracting ${TGZ_PATH} → ${VENDOR_DIR}`);
+  sh(`tar xzf "${TGZ_PATH}" -C "${VENDOR_DIR}"`);
+}
+
+fetchTarball();
+verifyTarball();
+extractTarball();
+
 if (!existsSync(SCHEMA_ROOT)) {
-  console.error(`[vendor-adcp-schemas] schema root missing: ${SCHEMA_ROOT}`);
+  console.error(`[vendor-adcp-schemas] schema root missing after extract: ${SCHEMA_ROOT}`);
   process.exit(1);
 }
 if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
@@ -71,9 +122,11 @@ function toIdentifier(relPath) {
     .map((seg, i) => {
       const safe = seg === "package" ? "packageSchema" : seg;
       // First segment stays lowercase, subsequent segments camelCase.
-      // Hyphens become camel boundaries.
+      // Boundary characters: hyphen (kebab-case) and dot (e.g.
+      // `manifest.schema.json` → `manifestSchema` — required because
+      // 3.0.6 introduced `manifest.schema.json` at the schemas root).
       return safe
-        .split("-")
+        .split(/[-.]/)
         .map((part, j) => (i === 0 && j === 0) ? part : (part.charAt(0).toUpperCase() + part.slice(1)))
         .join("");
     })
@@ -122,16 +175,20 @@ for (const fullPath of files) {
 }
 
 const header = `// AUTO-GENERATED — do not edit by hand.
-// Source: node_modules/@adcp/sdk/dist/lib/schemas-data/3.0/
+// Source: vendor/adcp/adcp-${ADCP_SPEC_VERSION}/schemas/
+// (downloaded from https://github.com/adcontextprotocol/adcp/releases/tag/v${ADCP_SPEC_VERSION})
 // Regenerate with: node scripts/vendor-adcp-schemas.mjs
 //
-// This module vendors EVERY AdCP 3.0.1 JSON schema as TypeScript
+// This module vendors EVERY AdCP ${ADCP_SPEC_VERSION} JSON schema as TypeScript
 // constants so the worker can bundle them without relying on
 // @adcp/sdk's package.json exports map. The trace recorder uses
 // loadAdcpCorpus() to seed @cfworker/json-schema's $ref resolver.
 //
-// Auto-walks the schema-data tree; new schemas vendored on next
-// regenerate without touching this script.
+// Auto-walks the schema tree; new schemas vendored on next regenerate
+// without touching this script. To bump the spec version, edit
+// ADCP_SPEC_VERSION in scripts/vendor-adcp-schemas.mjs and re-run.
+
+export const ADCP_SPEC_VERSION = ${JSON.stringify(ADCP_SPEC_VERSION)};
 
 `;
 

@@ -373,3 +373,8 @@ FodyWeavers.xsd
 
 # Local exploration artifacts (probe dumps, audit scripts)
 tmp-mining/
+
+# Vendored AdCP spec tarballs + extracted schemas. Re-fetched on demand
+# by scripts/vendor-adcp-schemas.mjs (with sha256 verification). The
+# generated TS module at src/schemas/adcp/index.ts IS committed.
+vendor/adcp/

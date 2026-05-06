@@ -6935,6 +6935,19 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .probe-detail-json {
   margin-top: 6px;
   max-height: 240px;
+  /* PR #232 fixed .signal-trace-json but the probe-row pre doesn't
+     carry that class — only .probe-detail-json. Without explicit
+     overflow, vertical content past 240px bleeds onto the schema-
+     error list AND into the rows below. Same fix applied here. */
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--border-faint);
+  border-radius: 3px;
+  padding: 10px 12px;
+  font: 11.5px var(--font-mono);
+  color: var(--text);
+  white-space: pre;
+  line-height: 1.6;
 }
 .probe-detail-errlabel {
   margin-top: 8px;

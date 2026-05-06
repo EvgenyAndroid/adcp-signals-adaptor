@@ -8,8 +8,10 @@
 //   - outbound federation (src/federation/genericMcpClient.ts)
 //
 // Each trace records the full request + response payloads, validates
-// them against the canonical AdCP schemas (@adcp/sdk@3.0.1), and
-// keeps the result in an in-memory ring buffer (last 500 traces).
+// them against the canonical AdCP schemas (vendored at the spec
+// version pinned in scripts/vendor-adcp-schemas.mjs — currently
+// 3.0.6), and keeps the result in an in-memory ring buffer
+// (last 500 traces).
 //
 // Demo surfaces (Recent Activations, Orchestrator, Race Canvas,
 // Federation, Brand Canvas) read traces via GET /api/signal-traces
@@ -145,22 +147,28 @@ export const SCHEMA_URL = {
   create_media_buy_response: "https://adcontextprotocol.org/schemas/v3/media-buy/create-media-buy-response.json",
 } as const;
 
-// Internal $id values @adcp/sdk uses to register schemas. We resolve
+// Internal $id values the AdCP spec uses to register schemas. We resolve
 // validators against these, then surface the public URL to consumers.
+// Bumped from 3.0.1 → 3.0.6 alongside the vendor-adcp-schemas.mjs spec
+// pin. The patch line is wire-compatible (no new required fields, no
+// removed fields), but the $id prefix changes per release so the
+// validator registry has to walk in lockstep with the corpus.
+import { ADCP_SPEC_VERSION } from "../schemas/adcp";
+
 const SCHEMA_ID = {
   // Signals domain
-  get_signals_request:      "/schemas/3.0.1/signals/get-signals-request.json",
-  get_signals_response:     "/schemas/3.0.1/signals/get-signals-response.json",
-  activate_signal_request:  "/schemas/3.0.1/signals/activate-signal-request.json",
-  activate_signal_response: "/schemas/3.0.1/signals/activate-signal-response.json",
+  get_signals_request:      `/schemas/${ADCP_SPEC_VERSION}/signals/get-signals-request.json`,
+  get_signals_response:     `/schemas/${ADCP_SPEC_VERSION}/signals/get-signals-response.json`,
+  activate_signal_request:  `/schemas/${ADCP_SPEC_VERSION}/signals/activate-signal-request.json`,
+  activate_signal_response: `/schemas/${ADCP_SPEC_VERSION}/signals/activate-signal-response.json`,
   // Creative domain
-  list_creative_formats_request:  "/schemas/3.0.1/creative/list-creative-formats-request.json",
-  list_creative_formats_response: "/schemas/3.0.1/creative/list-creative-formats-response.json",
+  list_creative_formats_request:  `/schemas/${ADCP_SPEC_VERSION}/creative/list-creative-formats-request.json`,
+  list_creative_formats_response: `/schemas/${ADCP_SPEC_VERSION}/creative/list-creative-formats-response.json`,
   // Media-Buy domain
-  get_products_request:     "/schemas/3.0.1/media-buy/get-products-request.json",
-  get_products_response:    "/schemas/3.0.1/media-buy/get-products-response.json",
-  create_media_buy_request: "/schemas/3.0.1/media-buy/create-media-buy-request.json",
-  create_media_buy_response: "/schemas/3.0.1/media-buy/create-media-buy-response.json",
+  get_products_request:     `/schemas/${ADCP_SPEC_VERSION}/media-buy/get-products-request.json`,
+  get_products_response:    `/schemas/${ADCP_SPEC_VERSION}/media-buy/get-products-response.json`,
+  create_media_buy_request: `/schemas/${ADCP_SPEC_VERSION}/media-buy/create-media-buy-request.json`,
+  create_media_buy_response: `/schemas/${ADCP_SPEC_VERSION}/media-buy/create-media-buy-response.json`,
 } as const;
 
 // ── Validator setup ──────────────────────────────────────────────────────────

@@ -97,15 +97,16 @@ async function callTool(name, args) {
 }
 
 //────────────────────────────────────────────────────────────────────────
-// AdCP 3.0.1 conformance helpers — replace legacy 2.x shapes the demo
+// AdCP 3.0 conformance helpers — replace legacy 2.x shapes the demo
 // client used to emit. The trace inspector validates every request
-// against the canonical schema; sending the right shape keeps OUR own
-// traces clean (✓ schema valid) so the workshop demonstration of
+// against the canonical schema (currently pinned at 3.0.6 — see
+// scripts/vendor-adcp-schemas.mjs); sending the right shape keeps OUR
+// own traces clean (✓ schema valid) so the workshop demonstration of
 // "validation surfaces drift" stays focused on PEER drift (Dstillery)
 // rather than self-drift in our own client.
 //────────────────────────────────────────────────────────────────────────
 
-// 3.0.1 activate_signal_request requires an idempotency_key matching
+// 3.0.x activate_signal_request requires an idempotency_key matching
 // the pattern ^[A-Za-z0-9_.:-]{16,255}$. Use crypto.randomUUID() — 32
 // hex chars after stripping dashes, satisfies the pattern. Fallback
 // for older browsers uses Date.now() + Math.random() — also valid.
@@ -138,18 +139,37 @@ function _activateArgs(signalAgentSegmentId, opts) {
   };
 }
 
-// Build a 3.0.1-conformant get_signals request body. Note: 3.0.1 has
-// destinations (top-level array) and countries (top-level array)
-// where 2.x had deliver_to.deployments + deliver_to.countries.
+// Build a 3.0.x-conformant get_signals request body. Migration notes:
+//   * 3.0 has top-level destinations + countries arrays (2.x nested them
+//     under deliver_to.deployments / deliver_to.countries).
+//   * signal_ids is an array of discriminated SignalId objects:
+//       { source: "agent", agent_url, id }   — agent-native signals
+//       { source: "catalog", data_provider_domain, id }   — published catalog
+//     Callers may still pass plain string ids; this helper coerces each
+//     to the agent shape using the current origin's /mcp as agent_url.
+//   * Top-level max_results is deprecated in 3.0.1 (removed in 4.0).
+//     Canonical path is pagination.max_results. The helper auto-nests
+//     when callers pass max_results on opts; an explicit
+//     opts.pagination.max_results still wins.
 function _getSignalsArgs(signalSpec, opts) {
   opts = opts || {};
   const out = {};
   if (signalSpec) out.signal_spec = signalSpec;
-  if (opts.signal_ids) out.signal_ids = opts.signal_ids;
+  if (opts.signal_ids) {
+    const agentUrl = (typeof window !== "undefined" ? window.location.origin : "") + "/mcp";
+    out.signal_ids = opts.signal_ids.map(function (s) {
+      if (typeof s === "string") return { source: "agent", agent_url: agentUrl, id: s };
+      return s;
+    });
+  }
   out.destinations = opts.destinations || _mockDestinations();
   out.countries = opts.countries || ["US"];
-  if (opts.max_results != null) out.max_results = opts.max_results;
-  if (opts.pagination) out.pagination = opts.pagination;
+  // 3.0.1 deprecation: nest max_results inside pagination. Caller's
+  // explicit opts.pagination.max_results wins; otherwise we promote the
+  // top-level opts.max_results into the pagination envelope.
+  const pag = opts.pagination ? Object.assign({}, opts.pagination) : {};
+  if (opts.max_results != null && pag.max_results == null) pag.max_results = opts.max_results;
+  if (Object.keys(pag).length > 0) out.pagination = pag;
   return out;
 }
 

@@ -692,7 +692,7 @@ async function callActivateSignal(
     // (3) — REMOVE WHEN adcp#4009 ships — workshop-insurance heuristic.
     // The signal_owned storyboard's `activate_on_agent` step sends a
     // request with NO destinations field (and no idempotency_key — both
-    // required per /schemas/3.0.1/signals/activate-signal-request.json).
+    // required per /schemas/3.0.x/signals/activate-signal-request.json).
     // Filed as runner bug at https://github.com/adcontextprotocol/adcp/issues/4009.
     // Until that ships, we fall back to parsing the storyboard's
     // correlation_id ("signal_owned--activate_on_agent") to recover the
@@ -1190,7 +1190,7 @@ export function toolResult(text: string, structured?: unknown): unknown {
  * fields can override (e.g. `get_operation_status` returns the underlying
  * task's `status`, which must win over a default).
  *
- * Accepted statuses (from /schemas/3.0.1/enums/task-status.json):
+ * Accepted statuses (from /schemas/3.0.x/enums/task-status.json):
  *   submitted | working | input-required | completed | canceled |
  *   failed | rejected | auth-required | unknown
  */

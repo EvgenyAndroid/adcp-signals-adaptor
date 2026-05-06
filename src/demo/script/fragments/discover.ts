@@ -89,11 +89,7 @@ async function runDiscover() {
 
   try {
     const t0 = performance.now();
-    const data = await callTool("get_signals", {
-      signal_spec: brief,
-      deliver_to: { deployments: [{ type: "platform", platform: "mock_dsp" }], countries: ["US"] },
-      max_results: 8,
-    });
+    const data = await callTool("get_signals", _getSignalsArgs(brief, { max_results: 8 }));
     const elapsed = Math.round(performance.now() - t0);
     const catalog = (data.signals || []).filter((s) => s.signal_type !== "custom");
     const proposals = data.proposals || (data.signals || []).filter((s) => s.signal_type === "custom");
@@ -315,11 +311,7 @@ async function openDetailHydrated(sid, fallback) {
   // responsive, then upgrade in place once the full record arrives.
   if (fallback) openDetail(fallback);
   try {
-    const data = await callTool("get_signals", {
-      signal_ids: [sid],
-      deliver_to: { deployments: [{ type: "platform", platform: "mock_dsp" }], countries: ["US"] },
-      max_results: 1,
-    });
+    const data = await callTool("get_signals", _getSignalsArgs(null, { signal_ids: [sid], max_results: 1 }));
     const full = (data?.signals || []).find((s) => (s.signal_agent_segment_id || s.signal_id?.id) === sid);
     if (full && state.detail && (state.detail.signal_agent_segment_id || state.detail.signal_id?.id) === sid) {
       openDetail(full);
@@ -377,11 +369,13 @@ async function loadCatalog() {
     const all = [];
     let offset = 0;
     while (true) {
-      const data = await callTool("get_signals", {
-        deliver_to: { deployments: [{ type: "platform", platform: "mock_dsp" }], countries: ["US"] },
+      // get_signals requires anyOf(signal_spec, signal_ids); for a "list
+      // everything" catalog walk we pass a wildcard spec so the request
+      // remains 3.0-conformant.
+      const data = await callTool("get_signals", _getSignalsArgs("*", {
         max_results: 100,
         pagination: { offset },
-      });
+      }));
       const batch = (data.signals || []).filter((s) => s.signal_type !== "custom");
       all.push(...batch);
       // Sec-31z: read pagination defensively — MCP responses now use

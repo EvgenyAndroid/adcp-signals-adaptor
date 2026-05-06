@@ -500,6 +500,17 @@ async function callGetSignals(
         // Use `!= null` (matches both null and undefined) instead of truthy
         // checks so a literal 0 isn't silently replaced by the default.
         //
+        // AdCP 3.0.1 deprecated top-level `max_results` in favor of
+        // `pagination.max_results`. Per the spec: "When both fields are
+        // present, agents MUST honor pagination.max_results." So we read
+        // pagination.max_results FIRST, then fall back to the deprecated
+        // top-level forms in priority order. Without this, a 3.0.x-shaped
+        // client (which we ship — bootstrap.ts:_getSignalsArgs nests
+        // max_results inside pagination per the deprecation) fell back to
+        // the default 5 because the server only checked the legacy
+        // top-level paths. That collapsed the Catalog tab from 512 to 54
+        // signals (10-page safety-break × 5/page + scraps).
+        //
         // Sec-24b: global default of 5 (was 20 with a probe-shape carve-out
         // to 3). Rich DTS + UCP payloads make 20-row responses >200 KB —
         // breaking the security_baseline runner's 64 KB probe ceiling and
@@ -507,7 +518,13 @@ async function callGetSignals(
         // ~50 KB, leaves headroom, and `hasMore` + `totalCount` in the
         // response make pagination discoverable. Callers who want the
         // bigger page still pass `max_results` explicitly.
-        limit: numArg(args["max_results"], numArg(args["limit"], 5)),
+        limit: numArg(
+            pagination?.["max_results"],          // 3.0.x canonical (preferred)
+            numArg(
+                args["max_results"],              // 3.0.x deprecated top-level
+                numArg(args["limit"], 5)          // legacy alias
+            )
+        ),
         // Sec-31w-cursor: callers can paginate via either explicit
         // pagination.offset (legacy) OR pagination.cursor (v3 / what we
         // emit when has_more=true). Cursor format is "offset:<int>".

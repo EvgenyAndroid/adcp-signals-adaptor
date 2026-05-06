@@ -69,6 +69,7 @@ function renderActivationRow(op) {
       '<td class="td-time">' + (op.webhookFired ? '<span style="color:var(--success)">fired</span>' : (op.webhookUrl ? 'queued' : '—')) + '</td>' +
       '<td class="td-time" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml((op.operationId || "").slice(0, 24)) + '</td>' +
       '<td class="td-time">' +
+        '<button class="btn-secondary btn-mini" data-poll-task-id="' + opId + '" data-poll-row-id="' + opId + '" title="Fire get_operation_status against this task. Records a trace under tool=get_operation_status — useful to demo the poll-loop story (the spec\\'s signed-receipt audit trail).">🔍 Poll</button> ' +
         '<button class="btn-secondary btn-mini" data-trace-activation="' + sigId + '" data-trace-task-id="' + opId + '" title="View signal request/response JSON for this activation">{ } JSON</button>' +
       '</td>' +
     '</tr>';
@@ -92,6 +93,41 @@ document.addEventListener("click", function (e) {
     signal_id: sigId || undefined,
     limit: 25,
   });
+});
+
+// Wire the 🔍 Poll button — fires get_operation_status via callTool so
+// the request goes through /mcp and produces a trace the audience can
+// inspect. Without this, the only path that produces get_operation_status
+// traces is the Detail-Panel activation poll loop (detail-panel.ts), which
+// requires a fresh Activate click in the current session. The Poll button
+// lets the workshop replay the receipt-audit story on any existing row.
+document.addEventListener("click", async function (e) {
+  const t = e.target;
+  if (!t || !t.matches || !t.matches("[data-poll-task-id]")) return;
+  const taskId = t.getAttribute("data-poll-task-id");
+  if (!taskId) return;
+  const orig = t.textContent;
+  t.disabled = true;
+  t.textContent = "🔍 polling…";
+  try {
+    const result = await callTool("get_operation_status", { task_id: taskId });
+    const newStatus = (result && (result.status || (result.ext && result.ext.status))) || "unknown";
+    t.textContent = "🔍 " + newStatus;
+    // Re-color the button briefly to show what came back
+    t.classList.add("poll-flash");
+    setTimeout(function () {
+      t.textContent = orig;
+      t.classList.remove("poll-flash");
+      t.disabled = false;
+    }, 2400);
+    // Trigger a row refresh so the status pill matches what the poll
+    // returned (the in-memory activation may be stale until next /operations).
+    if (typeof loadActivations === "function") loadActivations();
+  } catch (err) {
+    t.textContent = "🔍 ✗";
+    setTimeout(function () { t.textContent = orig; t.disabled = false; }, 2400);
+    if (typeof showToast === "function") showToast("Poll failed: " + (err && err.message ? err.message : err), true);
+  }
 });
 
 function fmtTime(iso) {

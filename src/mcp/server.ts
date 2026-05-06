@@ -1021,6 +1021,7 @@ async function callGetOperation(
     const taskId = (args["task_id"] ?? args["operationId"]) as string;
     if (!taskId) throw new McpToolError("task_id is required");
 
+    const _t0 = Date.now();
     try {
         const db = getDb(env);
         const result = await getOperationService(db, taskId, logger, env.WEBHOOK_SIGNING_SECRET);
@@ -1033,8 +1034,34 @@ async function callGetOperation(
             { status: "completed", task_id: taskId },
             result as unknown as Record<string, unknown>
         );
+        // Record the trace as an "extension" tool (no canonical AdCP
+        // schema for get_operation_status yet). The trace viewer renders
+        // the request/response JSON + the ext badge so the audience can
+        // audit each poll-cycle iteration during an activate_signal demo
+        // — the literal "signed receipts are observable" workshop story.
+        const _trace = safeRecordSignalTrace({
+            tool_name: "get_operation_status",
+            direction: "inbound",
+            source: "mcp_external",
+            request_payload: args,
+            response_payload: response,
+            response_status: "ok",
+            duration_ms: Date.now() - _t0,
+        });
+        await persistSignalTrace(env, _trace);
         return toolResult(JSON.stringify(response, null, 2), response);
     } catch (err) {
+        const _trace = safeRecordSignalTrace({
+            tool_name: "get_operation_status",
+            direction: "inbound",
+            source: "mcp_external",
+            request_payload: args,
+            response_payload: { errors: [{ message: String(err) }] },
+            response_status: "error",
+            response_error_message: String(err),
+            duration_ms: Date.now() - _t0,
+        });
+        await persistSignalTrace(env, _trace);
         if (err instanceof NotFoundError) throw new McpToolError(err.message);
         throw err;
     }
@@ -1125,6 +1152,7 @@ async function callQuerySignalsNl(
 
     const limit = numArg(args["limit"], 10);
 
+    const _t0 = Date.now();
     const db = getDb(env);
     const catalog = await getAllSignalsForCatalog(db);
     const res = await handleNLQuery({ query, limit }, catalog, env);
@@ -1134,12 +1162,32 @@ async function callQuerySignalsNl(
     // MCP transport binding (adcp#3999): when the NL response is a structured
     // object, flat-merge the envelope status. Plain-text responses skip the
     // envelope (no structuredContent emitted; envelope semantics don't apply).
+    let response: unknown;
     if (structured && typeof structured === "object" && !Array.isArray(structured)) {
-        const wrapped = withMcpEnvelope(
+        response = withMcpEnvelope(
             { status: "completed" },
             structured as Record<string, unknown>
         );
-        return toolResult(JSON.stringify(wrapped, null, 2), wrapped);
+    } else {
+        response = structured ?? text;
+    }
+    // Record the trace as an "extension" tool. NL Query is the most
+    // algorithmically rich path our worker exposes (boolean AST
+    // decomposition + multi-method dimension resolution); the workshop
+    // demos it on Discover and the audience needs to see the
+    // request/response JSON to trust the explainability.
+    const _trace = safeRecordSignalTrace({
+        tool_name: "query_signals_nl",
+        direction: "inbound",
+        source: "mcp_external",
+        request_payload: args,
+        response_payload: response,
+        response_status: "ok",
+        duration_ms: Date.now() - _t0,
+    });
+    await persistSignalTrace(env, _trace);
+    if (structured && typeof structured === "object" && !Array.isArray(structured)) {
+        return toolResult(JSON.stringify(response, null, 2), response);
     }
     return toolResult(text, structured);
 }

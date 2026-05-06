@@ -30,7 +30,8 @@ export const detailPanelJs = `function openDetail(sig) {
   // exact request/response on the wire.
   document.getElementById("detail-name").innerHTML =
     escapeHtml(sig.name || "(unnamed)") +
-    ' <button class="mcp-inspect-btn" id="detail-mcp-inspect" title="Inspect MCP exchange">{…}</button>';
+    ' <button class="mcp-inspect-btn" id="detail-mcp-inspect" title="Inspect MCP exchange">{…}</button>' +
+    ' <button class="mcp-inspect-btn" id="detail-signal-traces" title="View raw get_signals request/response JSON for the lookup that hydrated this panel — uses signal_ids (the discriminated SignalId form) so the trace shows the lookup path vs the brief-mode discovery path.">{ }</button>';
 
   const body = document.getElementById("detail-body");
   body.innerHTML = '' +

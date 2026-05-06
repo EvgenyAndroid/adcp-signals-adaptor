@@ -355,6 +355,12 @@ export async function callAgentTool(url: string, name: string, args: Record<stri
     "get_signals", "activate_signal",                  // signals
     "list_creative_formats",                            // creative
     "get_products", "create_media_buy",                 // media-buy
+    "check_governance",                                 // governance
+    // Extension tools — the recorder marks these with an "extension"
+    // badge (no canonical schema yet). Useful when a peer agent
+    // advertises them so the workshop can contrast standardized vs
+    // proposed surfaces in the trace timeline.
+    "query_signals_nl", "get_operation_status",
   ]);
   if (TRACED_TOOLS.has(name)) {
     try {

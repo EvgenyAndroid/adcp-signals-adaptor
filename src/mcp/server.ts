@@ -28,7 +28,7 @@ import { getAllSignalsForCatalog } from "../domain/signalService";
 import { handleNLQuery } from "../domain/nlQueryHandler";
 import { handleConceptToolCall } from "../domain/conceptHandler";
 import { compactObj } from "../utils/objects";
-import { recordSignalTrace } from "../domain/signalTrace";
+import { safeRecordSignalTrace } from "../domain/signalTrace";
 import { record as recordToolLog, argKeysOf } from "./toolLog";
 import { logCall as d1LogCall, cleanup as d1Cleanup, shouldRunCleanup } from "../storage/toolLogRepo";
 
@@ -637,7 +637,7 @@ async function callGetSignals(
     const response = withMcpEnvelope({ status: "completed" }, cleanResponse);
 
     // Record the get_signals trace for observability across the demo.
-    recordSignalTrace({
+    safeRecordSignalTrace({
         tool_name: "get_signals",
         direction: "inbound",
         source: "mcp_external",
@@ -815,7 +815,7 @@ async function callActivateSignal(
             payload
         );
 
-        recordSignalTrace({
+        safeRecordSignalTrace({
             tool_name: "activate_signal",
             direction: "inbound",
             source: "mcp_external",
@@ -981,7 +981,7 @@ async function callActivateSignal(
                 syntheticPayload
             );
             logger.warn("activate_unknown_signal_synthetic", { signalId });
-            recordSignalTrace({
+            safeRecordSignalTrace({
                 tool_name: "activate_signal",
                 direction: "inbound",
                 source: "mcp_external",
@@ -994,7 +994,7 @@ async function callActivateSignal(
         }
         // Record the failure trace too — observability matters when
         // activation throws as much as when it succeeds.
-        recordSignalTrace({
+        safeRecordSignalTrace({
             tool_name: "activate_signal",
             direction: "inbound",
             source: "mcp_external",

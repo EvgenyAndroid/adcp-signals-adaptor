@@ -8,7 +8,7 @@ import { jsonResponse, errorResponse, readJsonBody } from "./shared";
 import { compactObj } from "../utils/objects";
 import { getDb } from "../storage/db";
 import type { Logger } from "../utils/logger";
-import { recordSignalTrace } from "../domain/signalTrace";
+import { safeRecordSignalTrace } from "../domain/signalTrace";
 
 export async function handleSearchSignals(
   request: Request,
@@ -73,7 +73,10 @@ export async function handleSearchSignals(
 
     // Record the REST trace alongside the MCP one. Keeps signal traces
     // unified across both transport bindings.
-    recordSignalTrace({
+    // safeRecordSignalTrace contains its own try/catch + isolate kill
+    // switch — caller doesn't need to wrap. It returns null on any
+    // failure so we discard the result.
+    safeRecordSignalTrace({
       tool_name: "get_signals",
       direction: "inbound",
       source: "rest_demo",
@@ -86,7 +89,7 @@ export async function handleSearchSignals(
     return jsonResponse(result);
   } catch (err) {
     logger.error("search_signals_error", { error: String(err) });
-    recordSignalTrace({
+    safeRecordSignalTrace({
       tool_name: "get_signals",
       direction: "inbound",
       source: "rest_demo",

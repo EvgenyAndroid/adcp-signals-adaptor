@@ -144,6 +144,7 @@ import {
     handleAuthorizationServerMetadata,
     handleOAuthTokenStub,
 } from "./routes/wellKnown";
+import { handleAdAgents, handleAdagentsProbe } from "./routes/adagents";
 import { handleAdminReseed } from "./routes/adminReseed";
 import { handleAdminPurge } from "./routes/adminPurge";
 import { runScheduledPurge } from "./storage/scheduledPurge";
@@ -392,6 +393,13 @@ export default {
             // be reachable without auth so clients following the well-known
             // advertisement get the terminal error rather than 401.
             "/oauth/token",
+            // AdCP discovery anchor — public per the spec (a buyer agent
+            // doing /.well-known/adagents.json discovery wouldn't have a
+            // bearer token yet; that's the whole point of the file).
+            "/.well-known/adagents.json",
+            // Peer-probe endpoint — read-only summary of peer adagents
+            // discovery state. Same demo posture as /api/signal-traces.
+            "/api/adagents-probe",
         ];
         const isPublic = publicPaths.some((p) => path === p || path.startsWith(p + "/"));
 
@@ -488,6 +496,24 @@ export default {
                     worker_version: WORKER_VERSION,
                     built_at: builtAt(),
                 });
+
+            } else if (method === "GET" && path === "/.well-known/adagents.json") {
+                // AdCP discovery anchor — declares this worker as the
+                // authorized signals agent for the Demo Provider catalog.
+                // Public, cacheable, schema-validated against the
+                // vendored 3.0.6 adagents.json schema (see
+                // tests/adagents-self-publish.test.ts).
+                response = handleAdAgents(request, env);
+
+            } else if (method === "GET" && path === "/api/adagents-probe") {
+                // Probe every peer in the agent registry for their own
+                // /.well-known/adagents.json. Surfaces the discovery-anchor
+                // coverage gap visually — most peers (Dstillery is 2.x;
+                // Adzymic / Celtra / Claire / Swivel are sales agents not
+                // data providers) won't publish one, and the workshop
+                // demo can show "we publish, peers don't, here's why
+                // standardization matters."
+                response = await handleAdagentsProbe(request, env);
 
             } else if (method === "GET" && path.startsWith("/.well-known/oauth-protected-resource")) {
                 // RFC 9728: resource path is the suffix after the well-known

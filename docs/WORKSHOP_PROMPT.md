@@ -50,8 +50,11 @@ I can pull up a concrete example instead of hand-waving.
    round-robin — keep it gated behind Block 2; only mention if
    directly asked.)
 6. **Stock answer to "isn't this just OpenRTB DMP segments with new
-   vocab?"** — first peer pushback you'll take. Have this loaded:
-   AdCP adds four primitives OpenRTB never had —
+   vocab?"** — first peer pushback you'll take. Lead with a
+   one-clause concession so the rebuttal sticks without triggering
+   hackles in a room of peers who've shipped real DSP integrations:
+   "On the surface, fair — but AdCP adds four primitives OpenRTB
+   never had —"
    (a) **discoverability** via `adagents.json` (LLM-readable agent
        directory, not a closed seat list);
    (b) **agent-mediated negotiation** — `get_signals` accepts a
@@ -161,7 +164,11 @@ tab demonstrates and the field-level talking points to make:
 - **Rosetta Stone** (signals-glossary, inline in trace viewer):
   Marketing-term ↔ AdCP-field mapping:
   - "Target audience" ↔ `signal_agent_segment_id` (from `get_signals`)
-  - "Segment taxonomy" ↔ signal catalog (`adagents.json`)
+  - "Agent directory" ↔ `adagents.json` (the agent discovery file —
+    think `robots.txt` for agents; reinforces Hard Rule #6's first
+    primitive)
+  - "Segment taxonomy" ↔ signal catalog (the `get_signals` response
+    body — what an agent actually returns when you query it)
   - "Data provider" ↔ `data_provider_domain` (signal source)
   - "Activate on my DSP" ↔ `activate_signal` with `destination`
   - "Audience size" ↔ `coverage_percentage` (response field)
@@ -204,9 +211,9 @@ push back on me — workshop signal is more valuable than my ego.
 - activate-signal-request: https://adcontextprotocol.org/schemas/v3/signals/activate-signal-request.json
 - activate-signal-response: https://adcontextprotocol.org/schemas/v3/signals/activate-signal-response.json
 
-**Verify these 404 the night before** — the public docs site may still
-be on `/v2.6/...` or `/schemas/...` without the `v3` prefix. If `v3`
-URLs aren't live yet, fall back to:
+**Check these don't 404 the night before** — the public docs site may
+still be on `/v2.6/...` or `/schemas/...` without the `v3` prefix. If
+`v3` URLs aren't live yet, fall back to:
 - https://docs.adcontextprotocol.org/docs/signals/get_signals
 - https://docs.adcontextprotocol.org/docs/signals/activate_signal
 …and quote sections by anchor instead of by JSON-Schema URL. The

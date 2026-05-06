@@ -1628,10 +1628,21 @@ function renderRaceCanvas(demoKey: string): string {
       } catch (_) { if (visible.length > 48) visible = visible.slice(0, 45) + "…"; }
       endpointBlock = ' · <a href="' + escapeHtml(t.endpoint_url) + '" target="_blank" rel="noopener" title="' + escapeHtml(t.endpoint_url) + '" style="color:#38b6ff;font-size:10.5px;text-decoration:none">⎘ ' + escapeHtml(visible) + '</a>';
     }
+    // Peer version chip — pulled live from MCP initialize.
+    var peerVerBlock = "";
+    if (t.peer_server_info && (t.peer_server_info.version || t.peer_server_info.name)) {
+      var pv = t.peer_server_info.version || "";
+      var pn = t.peer_server_info.name || "";
+      var pLabel = pv ? "peer v" + pv : "peer";
+      var pTitle = (pn ? pn + " · " : "") + (pv ? "version " + pv : "version unknown") +
+        " (advertised by the peer in the MCP initialize handshake)";
+      peerVerBlock = ' · <span style="color:#ffcb5c;font-size:10.5px;background:rgba(255,203,92,0.12);padding:1px 6px;border-radius:3px" title="' + escapeHtml(pTitle) + '">' + escapeHtml(pLabel) + '</span>';
+    }
     return '<details style="margin-bottom:10px;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:4px">' +
       '<summary style="cursor:pointer;font-size:12px;line-height:1.7">' +
         '<strong>' + escapeHtml(t.tool_name) + '</strong> · ' + dirIcon + ' ' + escapeHtml(sourceShort) +
         endpointBlock +
+        peerVerBlock +
         ' · <span style="color:' + statusColor + '">' + escapeHtml(t.response.status) + '</span>' +
         ' · ' + t.duration_ms + 'ms · ' + new Date(t.ts).toLocaleTimeString() +
         ' · ' + badge(reqValid, reqErrCount) + ' req · ' + badge(resValid, resErrCount) + ' res' +

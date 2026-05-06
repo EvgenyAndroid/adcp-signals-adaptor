@@ -77,6 +77,19 @@ export interface SignalTrace {
    * "federation:dstillery" doesn't tell them where Dstillery LIVES).
    */
   endpoint_url: string | null;
+  /** Peer's advertised serverInfo from the MCP `initialize` handshake.
+   *
+   * Populated only for outbound federation calls — captured live from
+   * the peer's response to `initialize`, NEVER hardcoded. When the peer
+   * advertises e.g. `{ name: "dstillery_signals_agent", version: "2.13.1" }`
+   * the trace viewer can render that next to OUR schema URL ("validating
+   * against /schemas/v3/...") so the audience reads the spec-version
+   * mismatch directly from the data — no narration, no inference.
+   *
+   * Null for inbound traces (we ARE the server) and for any outbound
+   * call where the peer's handshake didn't include serverInfo.
+   */
+  peer_server_info: { name?: string; version?: string } | null;
   request: {
     payload: unknown;
     validation: SchemaValidationResult;
@@ -256,6 +269,13 @@ export interface RecordSignalTraceInput {
    * the trace's endpoint_url as null.
    */
   endpoint_url?: string | null;
+  /**
+   * Optional. Peer's serverInfo from the MCP `initialize` handshake
+   * (federation outbound only). Captured live — never hardcoded. Lets
+   * the trace viewer surface the peer's advertised version next to our
+   * schema URL so version-drift is self-evident.
+   */
+  peer_server_info?: { name?: string; version?: string } | null;
 }
 
 /**
@@ -313,6 +333,7 @@ export function recordSignalTrace(input: RecordSignalTraceInput): SignalTrace | 
       source: input.source,
       caller_agent: input.caller_agent ?? null,
       endpoint_url: input.endpoint_url ?? null,
+      peer_server_info: input.peer_server_info ?? null,
       request: {
         payload: input.request_payload,
         validation: safeValidate(reqSchemaId, reqSchemaUrl, input.request_payload),

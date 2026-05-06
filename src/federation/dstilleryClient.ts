@@ -27,6 +27,11 @@ export const DSTILLERY_MCP_URL = "https://adcp-signals-agent.dstillery.com/mcp";
 // this is best-effort, we renew on every cold start.
 let _sessionId: string | null = null;
 let _sessionAtMs: number = 0;
+// Cache the peer's advertised serverInfo from the initialize handshake
+// so dstillerySearch can plumb it into the trace record (peer version
+// chip in the viewer). Pulled live from Dstillery's response — never
+// hardcoded.
+let _peerServerInfo: { name?: string; version?: string } | null = null;
 const SESSION_TTL_MS = 9 * 60 * 1000;
 
 function parseSSE(text: string): unknown | null {
@@ -59,8 +64,18 @@ async function initializeSession(): Promise<string | null> {
   if (!res.ok) return null;
   const sessionId = res.headers.get("mcp-session-id");
   if (!sessionId) return null;
-  // Read (and discard) the initialize response body so the stream closes
-  await res.text();
+  // Read the initialize response body and pull peer's serverInfo
+  // (e.g. { name: "dstillery_signals_agent", version: "2.13.1" }).
+  // Cached for trace plumbing — never hardcoded; reflects whatever
+  // Dstillery currently advertises. If the peer migrates to 3.0.1
+  // the chip will follow without code changes.
+  try {
+    const bodyText = await res.text();
+    const parsed = parseSSE(bodyText) as { result?: { serverInfo?: { name?: string; version?: string } } } | null;
+    if (parsed?.result?.serverInfo) {
+      _peerServerInfo = parsed.result.serverInfo;
+    }
+  } catch { /* non-critical — fall through with serverInfo unset */ }
   // Send initialized notification
   try {
     await fetch(DSTILLERY_MCP_URL, {
@@ -226,6 +241,11 @@ async function _recordDstilleryTrace(
       source: "federation:dstillery",
       caller_agent: "dstillery",
       endpoint_url: DSTILLERY_MCP_URL,
+      // Peer-advertised serverInfo from the live MCP handshake.
+      // Surfacing this lets the viewer show "v2.13.1" next to our
+      // "validating against /v3/..." banner — version drift is
+      // self-evident, no narration required.
+      peer_server_info: _peerServerInfo,
       request_payload: requestPayload,
       response_payload: responsePayload,
       response_status: result.ok ? "ok" : "error",

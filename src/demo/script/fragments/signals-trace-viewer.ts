@@ -250,11 +250,26 @@ function renderSingleTrace(trace, idx) {
         '<span class="trace-endpoint-url">' + escapeHtml(visible) + '</span>' +
       '</a>';
   }
+  // Peer version chip — pulled live from MCP initialize handshake.
+  // Surfacing this answers the workshop question "why 12 errors? what
+  // version is the peer?" without hardcoding "Dstillery is 2.x". When
+  // a peer migrates, the chip follows automatically.
+  let peerVersionChip = "";
+  if (trace.peer_server_info && (trace.peer_server_info.version || trace.peer_server_info.name)) {
+    const name = trace.peer_server_info.name || "";
+    const version = trace.peer_server_info.version || "";
+    const label = version ? "peer v" + version : "peer";
+    const fullTitle = (name ? name + " · " : "") + (version ? "version " + version : "version unknown") +
+      " (advertised by the peer in the MCP initialize handshake)";
+    peerVersionChip = '<span class="trace-peer-version" title="' + escapeHtml(fullTitle) + '">' +
+      escapeHtml(label) + '</span>';
+  }
   return '<div class="signal-trace-frame" data-trace-id="' + escapeHtml(trace.trace_id) + '">' +
     '<div class="signal-trace-frame-head">' +
       '<span class="trace-tool trace-tool-' + escapeHtml(trace.tool_name) + '">' + escapeHtml(trace.tool_name) + '</span> ' +
       '<span class="trace-dir">' + dirIcon + ' ' + escapeHtml(sourceShort) + '</span>' +
       endpointBlock +
+      peerVersionChip +
       '<span class="trace-ts">' + tsFmt + '</span>' +
       '<span class="trace-dur">' + trace.duration_ms + 'ms</span>' +
       (trace.correlation_id ? '<span class="trace-corr">corr: ' + escapeHtml(trace.correlation_id.slice(-12)) + '</span>' : '') +

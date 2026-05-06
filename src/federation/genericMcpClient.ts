@@ -28,7 +28,15 @@ const SESSION_TTL_MS = 9 * 60 * 1000;
 /** Sentinel used for agents that negotiate stateless MCP (no mcp-session-id header
  * on initialize). Subsequent calls for these agents don't send the header. */
 const STATELESS_SESSION = "__stateless__";
-const _sessions = new Map<string, { id: string; atMs: number }>();
+/** Per-URL session cache, also tracks the peer's advertised serverInfo
+ * from the initialize handshake so callAgentTool can plumb it into the
+ * trace record (peer version chip). Keep cached between calls — peer
+ * shouldn't change versions between session calls. */
+const _sessions = new Map<string, {
+  id: string;
+  atMs: number;
+  serverInfo?: { name?: string; version?: string };
+}>();
 
 /** Parse an SSE response body and return the last `data:` payload as JSON. */
 function parseSSELastData(text: string): unknown | null {
@@ -124,7 +132,11 @@ async function ensureSession(url: string, opts?: InitOptions): Promise<string | 
   if (cached && now - cached.atMs < SESSION_TTL_MS) return cached.id;
   const init = await initializeSession(url, opts);
   if (init.sessionId) {
-    _sessions.set(url, { id: init.sessionId, atMs: now });
+    const entry: { id: string; atMs: number; serverInfo?: { name?: string; version?: string } } = {
+      id: init.sessionId, atMs: now,
+    };
+    if (init.serverInfo) entry.serverInfo = init.serverInfo;
+    _sessions.set(url, entry);
   }
   return init.sessionId;
 }
@@ -343,6 +355,12 @@ export async function callAgentTool(url: string, name: string, args: Record<stri
       // "federation:dstillery" instead of "federation:https://...".
       const match = AGENT_REGISTRY.find((a) => a.mcp_url && url.startsWith(a.mcp_url.replace(/\/$/, "")));
       const agentId = match?.id ?? null;
+      // Read the peer's advertised serverInfo from the session cache
+      // (populated during ensureSession's `initialize` round-trip).
+      // This is LIVE — pulled from what the peer told us on connect,
+      // never hardcoded. Lets the viewer render the peer version chip.
+      const cached = _sessions.get(url);
+      const peerServerInfo = cached?.serverInfo ?? null;
       const trace = safeRecordSignalTrace({
         tool_name: name as "get_signals" | "activate_signal",
         direction: "outbound",
@@ -352,6 +370,7 @@ export async function callAgentTool(url: string, name: string, args: Record<stri
         // of info for the trace viewer — the audience asks "where
         // does Dstillery live?" on every call. Surface the answer.
         endpoint_url: url,
+        peer_server_info: peerServerInfo,
         request_payload: args,
         response_payload: result.ok
           ? (result.structured_content ?? result.content ?? null)

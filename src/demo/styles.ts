@@ -6718,6 +6718,23 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 }
 .trace-endpoint-icon { opacity: 0.7; font-size: 11px; }
 .trace-endpoint-url { color: inherit; }
+/* Peer version chip — surfaces what the federated peer advertised in
+   its MCP initialize handshake (e.g. "peer v2.13.1"). Lives next to
+   the endpoint URL so the audience reads OUR_SCHEMA_URL vs PEER_VERSION
+   side-by-side and the version-drift story is self-evident.
+   Amber-toned to read as spec context, not error. */
+.trace-peer-version {
+  display: inline-flex; align-items: center;
+  font: 10.5px var(--font-mono);
+  color: #c8920b;
+  background: rgba(255, 203, 92, 0.18);
+  border: 1px solid rgba(255, 203, 92, 0.35);
+  padding: 1px 7px; border-radius: 3px;
+  font-weight: 600;
+  cursor: help;
+  transition: background 0.15s;
+}
+.trace-peer-version:hover { background: rgba(255, 203, 92, 0.30); }
 .signal-trace-reset {
   margin-left: auto; margin-right: 8px;
   font: 11px var(--font-mono);

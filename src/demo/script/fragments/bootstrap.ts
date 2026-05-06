@@ -96,5 +96,62 @@ async function callTool(name, args) {
   return body.result?.structuredContent ?? body.result;
 }
 
+//────────────────────────────────────────────────────────────────────────
+// AdCP 3.0.1 conformance helpers — replace legacy 2.x shapes the demo
+// client used to emit. The trace inspector validates every request
+// against the canonical schema; sending the right shape keeps OUR own
+// traces clean (✓ schema valid) so the workshop demonstration of
+// "validation surfaces drift" stays focused on PEER drift (Dstillery)
+// rather than self-drift in our own client.
+//────────────────────────────────────────────────────────────────────────
+
+// 3.0.1 activate_signal_request requires an idempotency_key matching
+// the pattern ^[A-Za-z0-9_.:-]{16,255}$. Use crypto.randomUUID() — 32
+// hex chars after stripping dashes, satisfies the pattern. Fallback
+// for older browsers uses Date.now() + Math.random() — also valid.
+function _makeIdempotencyKey() {
+  try {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID().replace(/-/g, "");
+    }
+  } catch (_) { /* fall through */ }
+  // Fallback: 16+ alphanumeric chars, schema-pattern compliant.
+  return "ik" + Date.now().toString(36) + Math.random().toString(36).slice(2, 14);
+}
+
+// 3.0.1 destinations: top-level array of { type, platform | agent_url, account? }
+// Replaces the legacy 2.x deliver_to.deployments wrapper. mock_dsp is
+// the canonical demo destination — every demo activate_signal call
+// ends up here unless overridden.
+function _mockDestinations() {
+  return [{ type: "platform", platform: "mock_dsp" }];
+}
+
+// Build a 3.0.1-conformant activate_signal request body. Use this from
+// every demo callsite instead of hand-constructing the shape.
+function _activateArgs(signalAgentSegmentId, opts) {
+  opts = opts || {};
+  return {
+    signal_agent_segment_id: signalAgentSegmentId,
+    destinations: opts.destinations || _mockDestinations(),
+    idempotency_key: _makeIdempotencyKey(),
+  };
+}
+
+// Build a 3.0.1-conformant get_signals request body. Note: 3.0.1 has
+// destinations (top-level array) and countries (top-level array)
+// where 2.x had deliver_to.deployments + deliver_to.countries.
+function _getSignalsArgs(signalSpec, opts) {
+  opts = opts || {};
+  const out = {};
+  if (signalSpec) out.signal_spec = signalSpec;
+  if (opts.signal_ids) out.signal_ids = opts.signal_ids;
+  out.destinations = opts.destinations || _mockDestinations();
+  out.countries = opts.countries || ["US"];
+  if (opts.max_results != null) out.max_results = opts.max_results;
+  if (opts.pagination) out.pagination = opts.pagination;
+  return out;
+}
+
 `;
 }

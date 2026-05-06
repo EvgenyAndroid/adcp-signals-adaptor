@@ -605,6 +605,7 @@ async function runCreativeStage(
   agents: RegisteredAgent[],
   creativeFilter: CreativeFilter,
   timeoutMs: number,
+  env?: Env,
 ): Promise<CreativeStageAgent[]> {
   // Sec-48q: pass brief-derived filter args so the catalog is narrowed by
   // intent (video vs display, mobile width cap, etc.). Empty filter == all.
@@ -612,7 +613,7 @@ async function runCreativeStage(
     const res = await callAgentTool(
       a.mcp_url!, "list_creative_formats",
       creativeFilter as unknown as Record<string, unknown>,
-      { timeoutMs },
+      env ? { timeoutMs, env } : { timeoutMs },
     );
     const formats = extractMcpToolArray(res.structured_content, res.content, ["formats", "creative_formats", "items"]);
     const out: CreativeStageAgent = {
@@ -631,6 +632,7 @@ async function runProductsStage(
   productFilter: ProductFilter,
   maxResults: number,
   timeoutMs: number,
+  env?: Env,
 ): Promise<ProductsStageAgent[]> {
   // Sec-48q: products stage now inherits targeting signals + format hints
   // from upstream stages. Vendors that don't honor these keys ignore them;
@@ -638,7 +640,7 @@ async function runProductsStage(
   return Promise.all(agents.map(async (a): Promise<ProductsStageAgent> => {
     const args: Record<string, unknown> = { brief };
     if (Object.keys(productFilter).length > 0) args.filters = productFilter;
-    const res = await callAgentTool(a.mcp_url!, "get_products", args, { timeoutMs });
+    const res = await callAgentTool(a.mcp_url!, "get_products", args, env ? { timeoutMs, env } : { timeoutMs });
     const products = extractMcpToolArray<ProductLite>(
       res.structured_content,
       res.content,
@@ -664,6 +666,7 @@ async function runMediaBuyStage(
   activateSet: Set<string>,
   timeoutMs: number,
   brandContext?: BrandContext,
+  env?: Env,
 ): Promise<MediaBuyStageAgent[]> {
   return Promise.all(agents.map(async (a): Promise<MediaBuyStageAgent> => {
     const chosenProductId = chosenProductByAgent[a.id] ?? null;
@@ -695,7 +698,7 @@ async function runMediaBuyStage(
       a.mcp_url!,
       "create_media_buy",
       wirePayload as unknown as Record<string, unknown>,
-      { timeoutMs },
+      env ? { timeoutMs, env } : { timeoutMs },
     );
     base.fired = true;
     base.ok = res.ok;
@@ -747,7 +750,7 @@ export async function handleWorkflowRun(request: Request, env: Env, logger: Logg
   // Stage 1 + Stage 2 in parallel (independent).
   const [signalsResults, creativeResults] = await Promise.all([
     runSignalsStage(signalsAgents, body.brief, maxSignals, timeoutMs, env),
-    creativeAgents.length > 0 ? runCreativeStage(creativeAgents, creativeFilter, timeoutMs) : Promise.resolve([]),
+    creativeAgents.length > 0 ? runCreativeStage(creativeAgents, creativeFilter, timeoutMs, env) : Promise.resolve([]),
   ]);
 
   // Pick downstream artefacts once upstream stages land.
@@ -758,7 +761,7 @@ export async function handleWorkflowRun(request: Request, env: Env, logger: Logg
   // Sec-48q: products now sequences AFTER signals + creative so it
   // can receive targeting_signals + format hints in its filters arg.
   const productFilter = deriveProductFilter(chosenSignalIds, chosenFormatIds, creativeFilter);
-  const productsResults = await runProductsStage(buyingAgents, body.brief, productFilter, maxProducts, timeoutMs);
+  const productsResults = await runProductsStage(buyingAgents, body.brief, productFilter, maxProducts, timeoutMs, env);
 
   const chosenProductByAgent = pickProductPerAgent(productsResults.map((r) => ({ id: r.id, products: r.payload.products })));
 
@@ -776,6 +779,7 @@ export async function handleWorkflowRun(request: Request, env: Env, logger: Logg
     activateSet,
     timeoutMs,
     body.brand,
+    env,
   );
 
   const totalTimeMs = Date.now() - t0;
@@ -996,7 +1000,7 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
           const res = await callAgentTool(
             a.mcp_url!, "list_creative_formats",
             creativeFilter as unknown as Record<string, unknown>,
-            { timeoutMs },
+            { timeoutMs, env },
           );
           const formats = extractMcpToolArray(res.structured_content, res.content, ["formats", "creative_formats", "items"]);
           const out: CreativeStageAgent = {
@@ -1065,7 +1069,7 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
         const productsResults = await Promise.all(buyingAgents.map(async (a): Promise<ProductsStageAgent> => {
           const args: Record<string, unknown> = { brief: body.brief };
           if (Object.keys(productFilter).length > 0) args.filters = productFilter;
-          const res = await callAgentTool(a.mcp_url!, "get_products", args, { timeoutMs });
+          const res = await callAgentTool(a.mcp_url!, "get_products", args, { timeoutMs, env });
           const products = extractMcpToolArray<ProductLite>(
             res.structured_content,
             res.content,
@@ -1133,7 +1137,7 @@ export async function handleWorkflowRunStream(request: Request, env: Env, logger
             a.mcp_url!,
             "create_media_buy",
             wirePayload as unknown as Record<string, unknown>,
-            { timeoutMs },
+            { timeoutMs, env },
           );
           send({
             type: "agent_complete",
@@ -1375,7 +1379,7 @@ export async function handleWorkflowFireBuy(request: Request, env: Env, logger: 
     agent.mcp_url,
     "create_media_buy",
     wirePayload as unknown as Record<string, unknown>,
-    { timeoutMs },
+    { timeoutMs, env },
   );
   const latency = Date.now() - start;
 

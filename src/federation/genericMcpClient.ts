@@ -21,7 +21,7 @@
 // frequently; this is best-effort, we renew on every cold start.
 
 import { AGENT_REGISTRY } from "../domain/agentRegistry";
-import { safeRecordSignalTrace, persistSignalTrace } from "../domain/signalTrace";
+import { safeRecordSignalTrace, persistSignalTrace, type AdcpToolName } from "../domain/signalTrace";
 import type { Env } from "../types/env";
 
 const SESSION_TTL_MS = 9 * 60 * 1000;
@@ -344,12 +344,19 @@ export async function callAgentTool(url: string, name: string, args: Record<stri
   } catch (e) {
     result = { ok: false, error: String((e as Error).message || e), latency_ms: Date.now() - start };
   }
-  // Outbound-call trace for get_signals + activate_signal only — these
-  // are the AdCP signals-protocol surfaces the demo's trace inspector
-  // showcases. Other tools (get_products, list_creative_formats, etc.)
-  // are out-of-scope; they're already captured by the existing
-  // tool-log pipeline.
-  if (name === "get_signals" || name === "activate_signal") {
+  // Outbound-call trace recording. Originally signals-only; expanded
+  // to cover the workflow's other stages (Creative + Media-Buy domains)
+  // so Brand Canvas + Multi-Agent Orchestrator surfaces show full
+  // request/response JSON + validation across every fanout call. The
+  // recorder filter below is the source of truth for "which AdCP tools
+  // get traced"; adding new tools requires schema vendoring (see
+  // scripts/vendor-adcp-schemas.mjs) + entries in SCHEMA_ID/_URL.
+  const TRACED_TOOLS = new Set<string>([
+    "get_signals", "activate_signal",                  // signals
+    "list_creative_formats",                            // creative
+    "get_products", "create_media_buy",                 // media-buy
+  ]);
+  if (TRACED_TOOLS.has(name)) {
     try {
       // Reverse-lookup the agent from URL prefix to put a friendly
       // "federation:dstillery" instead of "federation:https://...".
@@ -362,7 +369,7 @@ export async function callAgentTool(url: string, name: string, args: Record<stri
       const cached = _sessions.get(url);
       const peerServerInfo = cached?.serverInfo ?? null;
       const trace = safeRecordSignalTrace({
-        tool_name: name as "get_signals" | "activate_signal",
+        tool_name: name as AdcpToolName,
         direction: "outbound",
         source: agentId ? "federation:" + agentId : "federation:" + url,
         caller_agent: agentId,

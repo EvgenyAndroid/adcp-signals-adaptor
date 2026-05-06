@@ -432,7 +432,7 @@ export async function handleDspCampaignFireLive(
   const wirePayload = applyVendorAdapter(agent.id, payload, { brandDomain: c.brand_domain });
 
   const start = Date.now();
-  const r = await callAgentTool(agent.mcp_url, "create_media_buy", wirePayload as unknown as Record<string, unknown>, { timeoutMs: 15_000 });
+  const r = await callAgentTool(agent.mcp_url, "create_media_buy", wirePayload as unknown as Record<string, unknown>, { timeoutMs: 15_000, env });
   const latency = Date.now() - start;
 
   let authGated = false;
@@ -637,7 +637,7 @@ export async function handleDspCampaignProductsLive(
     const r = await callAgentToolWithCircuit(a.mcp_url, "get_products", {
       brief: c.audience_brief,
       brand: { domain: c.brand_domain, name: c.brand_name },
-    }, { timeoutMs: 12_000 });
+    }, { timeoutMs: 12_000, env });
     const latency = Date.now() - start;
     interface ProductShape { product_id?: string; id?: string; name?: string; description?: string; cpm_floor?: number; pricing_options?: Array<{ id?: string; cpm?: number }> }
     const sc = (r.structured_content as { products?: ProductShape[] } | undefined) ?? {};

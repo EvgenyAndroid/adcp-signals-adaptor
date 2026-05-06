@@ -28,11 +28,21 @@ const OUT_FILE = join(OUT_DIR, "index.ts");
 // updates would surface as "missing_schema" warnings in the validator
 // and prompt a re-run of this script.
 const SCHEMAS = [
-  // Request/response schemas we validate against
+  // Request/response schemas we validate against — Signals domain
   { id: "getSignalsReq",       path: "signals/get-signals-request.json" },
   { id: "getSignalsRes",       path: "signals/get-signals-response.json" },
   { id: "activateReq",         path: "signals/activate-signal-request.json" },
   { id: "activateRes",         path: "signals/activate-signal-response.json" },
+  // Creative domain — list_creative_formats is what the workflow's
+  // creative stage fans out across creative agents.
+  { id: "listCreativeFormatsReq",  path: "creative/list-creative-formats-request.json" },
+  { id: "listCreativeFormatsRes",  path: "creative/list-creative-formats-response.json" },
+  // Media-buy domain — get_products + create_media_buy are the
+  // workflow's products + media-buy stages.
+  { id: "getProductsReq",          path: "media-buy/get-products-request.json" },
+  { id: "getProductsRes",          path: "media-buy/get-products-response.json" },
+  { id: "createMediaBuyReq",       path: "media-buy/create-media-buy-request.json" },
+  { id: "createMediaBuyRes",       path: "media-buy/create-media-buy-response.json" },
   // Cross-file $refs
   { id: "signalId",            path: "core/signal-id.json" },
   { id: "deployment",          path: "core/deployment.json" },
@@ -59,6 +69,35 @@ const SCHEMAS = [
   // Brand-related $refs that signal-filters or sales schemas pull in
   { id: "brandId",             path: "core/brand-id.json" },
   { id: "brandRef",            path: "core/brand-ref.json" },
+  // Cross-domain core $refs needed by creative + media-buy validation
+  // (added when extending the recorder beyond signals — workflow's
+  // creative + products + media-buy stages each have their own schemas).
+  { id: "account",             path: "core/account.json" },
+  { id: "businessEntity",      path: "core/business-entity.json" },
+  { id: "catalog",             path: "core/catalog.json" },
+  { id: "duration",            path: "core/duration.json" },
+  { id: "formatId",            path: "core/format-id.json" },
+  { id: "format",              path: "core/format.json" },
+  { id: "packageSchema",       path: "core/package.json" },
+  { id: "plannedDelivery",     path: "core/planned-delivery.json" },
+  { id: "productFilters",      path: "core/product-filters.json" },
+  { id: "product",             path: "core/product.json" },
+  { id: "propertyListRef",     path: "core/property-list-ref.json" },
+  { id: "proposal",            path: "core/proposal.json" },
+  { id: "pushNotificationConfig", path: "core/push-notification-config.json" },
+  { id: "reportingWebhook",    path: "core/reporting-webhook.json" },
+  { id: "startTiming",         path: "core/start-timing.json" },
+  { id: "packageRequest",      path: "media-buy/package-request.json" },
+  // Enums referenced by creative + media-buy schemas
+  { id: "advertiserIndustry",  path: "enums/advertiser-industry.json" },
+  { id: "authScheme",          path: "enums/auth-scheme.json" },
+  { id: "creativeAgentCapability", path: "enums/creative-agent-capability.json" },
+  { id: "deliveryType",        path: "enums/delivery-type.json" },
+  { id: "disclosurePersistence", path: "enums/disclosure-persistence.json" },
+  { id: "disclosurePosition",  path: "enums/disclosure-position.json" },
+  { id: "mediaBuyStatus",      path: "enums/media-buy-status.json" },
+  { id: "mediaBuyValidAction", path: "enums/media-buy-valid-action.json" },
+  { id: "wcagLevel",           path: "enums/wcag-level.json" },
 ];
 
 if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });

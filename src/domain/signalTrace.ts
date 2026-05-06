@@ -40,7 +40,27 @@ import type { Env } from "../types/env";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type SignalToolName = "get_signals" | "activate_signal";
+/**
+ * AdCP tools the trace recorder validates request/response payloads
+ * against. Started as Signals-only (get_signals + activate_signal);
+ * expanded to cover the workflow's other stages (Creative + Media-Buy
+ * domains) so Brand Canvas + Multi-Agent Orchestrator surfaces show
+ * full request/response JSON + validation across every fanout call,
+ * not just the signals leg.
+ *
+ * Adding a new tool: vendor its request + response schemas via
+ * scripts/vendor-adcp-schemas.mjs, then add an entry to SCHEMA_URL
+ * + SCHEMA_ID + getValidators() below.
+ */
+export type AdcpToolName =
+  | "get_signals"
+  | "activate_signal"
+  | "list_creative_formats"
+  | "get_products"
+  | "create_media_buy";
+
+/** Backward-compat alias — older imports referenced SignalToolName. */
+export type SignalToolName = AdcpToolName;
 export type TraceDirection = "inbound" | "outbound";
 
 export interface SchemaValidationResult {
@@ -110,19 +130,37 @@ export interface SignalTrace {
 // the locally-installed @adcp/sdk schemas which mirror them.
 
 export const SCHEMA_URL = {
+  // Signals domain
   get_signals_request:    "https://adcontextprotocol.org/schemas/v3/signals/get-signals-request.json",
   get_signals_response:   "https://adcontextprotocol.org/schemas/v3/signals/get-signals-response.json",
   activate_signal_request:  "https://adcontextprotocol.org/schemas/v3/signals/activate-signal-request.json",
   activate_signal_response: "https://adcontextprotocol.org/schemas/v3/signals/activate-signal-response.json",
+  // Creative domain
+  list_creative_formats_request:  "https://adcontextprotocol.org/schemas/v3/creative/list-creative-formats-request.json",
+  list_creative_formats_response: "https://adcontextprotocol.org/schemas/v3/creative/list-creative-formats-response.json",
+  // Media-Buy domain
+  get_products_request:     "https://adcontextprotocol.org/schemas/v3/media-buy/get-products-request.json",
+  get_products_response:    "https://adcontextprotocol.org/schemas/v3/media-buy/get-products-response.json",
+  create_media_buy_request: "https://adcontextprotocol.org/schemas/v3/media-buy/create-media-buy-request.json",
+  create_media_buy_response: "https://adcontextprotocol.org/schemas/v3/media-buy/create-media-buy-response.json",
 } as const;
 
 // Internal $id values @adcp/sdk uses to register schemas. We resolve
 // validators against these, then surface the public URL to consumers.
 const SCHEMA_ID = {
+  // Signals domain
   get_signals_request:      "/schemas/3.0.1/signals/get-signals-request.json",
   get_signals_response:     "/schemas/3.0.1/signals/get-signals-response.json",
   activate_signal_request:  "/schemas/3.0.1/signals/activate-signal-request.json",
   activate_signal_response: "/schemas/3.0.1/signals/activate-signal-response.json",
+  // Creative domain
+  list_creative_formats_request:  "/schemas/3.0.1/creative/list-creative-formats-request.json",
+  list_creative_formats_response: "/schemas/3.0.1/creative/list-creative-formats-response.json",
+  // Media-Buy domain
+  get_products_request:     "/schemas/3.0.1/media-buy/get-products-request.json",
+  get_products_response:    "/schemas/3.0.1/media-buy/get-products-response.json",
+  create_media_buy_request: "/schemas/3.0.1/media-buy/create-media-buy-request.json",
+  create_media_buy_response: "/schemas/3.0.1/media-buy/create-media-buy-response.json",
 } as const;
 
 // ── Validator setup ──────────────────────────────────────────────────────────
@@ -137,10 +175,19 @@ const SCHEMA_ID = {
 // option). We pre-register the entire corpus so any $ref resolves.
 
 interface ValidatorBundle {
+  // Signals
   get_signals_request: Validator;
   get_signals_response: Validator;
   activate_signal_request: Validator;
   activate_signal_response: Validator;
+  // Creative
+  list_creative_formats_request: Validator;
+  list_creative_formats_response: Validator;
+  // Media-Buy
+  get_products_request: Validator;
+  get_products_response: Validator;
+  create_media_buy_request: Validator;
+  create_media_buy_response: Validator;
 }
 
 let _validators: ValidatorBundle | null = null;
@@ -170,10 +217,19 @@ function getValidators(): ValidatorBundle | null {
       return v;
     };
     _validators = {
+      // Signals
       get_signals_request:    buildValidator(SCHEMA_ID.get_signals_request),
       get_signals_response:   buildValidator(SCHEMA_ID.get_signals_response),
       activate_signal_request:  buildValidator(SCHEMA_ID.activate_signal_request),
       activate_signal_response: buildValidator(SCHEMA_ID.activate_signal_response),
+      // Creative
+      list_creative_formats_request:  buildValidator(SCHEMA_ID.list_creative_formats_request),
+      list_creative_formats_response: buildValidator(SCHEMA_ID.list_creative_formats_response),
+      // Media-Buy
+      get_products_request:     buildValidator(SCHEMA_ID.get_products_request),
+      get_products_response:    buildValidator(SCHEMA_ID.get_products_response),
+      create_media_buy_request: buildValidator(SCHEMA_ID.create_media_buy_request),
+      create_media_buy_response: buildValidator(SCHEMA_ID.create_media_buy_response),
     };
     return _validators;
   } catch {
@@ -187,10 +243,19 @@ function getValidators(): ValidatorBundle | null {
 
 function pickValidator(bundle: ValidatorBundle, schemaId: string): Validator | null {
   switch (schemaId) {
+    // Signals
     case SCHEMA_ID.get_signals_request: return bundle.get_signals_request;
     case SCHEMA_ID.get_signals_response: return bundle.get_signals_response;
     case SCHEMA_ID.activate_signal_request: return bundle.activate_signal_request;
     case SCHEMA_ID.activate_signal_response: return bundle.activate_signal_response;
+    // Creative
+    case SCHEMA_ID.list_creative_formats_request: return bundle.list_creative_formats_request;
+    case SCHEMA_ID.list_creative_formats_response: return bundle.list_creative_formats_response;
+    // Media-Buy
+    case SCHEMA_ID.get_products_request: return bundle.get_products_request;
+    case SCHEMA_ID.get_products_response: return bundle.get_products_response;
+    case SCHEMA_ID.create_media_buy_request: return bundle.create_media_buy_request;
+    case SCHEMA_ID.create_media_buy_response: return bundle.create_media_buy_response;
     default: return null;
   }
 }
@@ -309,10 +374,13 @@ export function recordSignalTrace(input: RecordSignalTraceInput): SignalTrace | 
   // buffer mutation) in a top-level try/catch and silently no-op on
   // any error.
   try {
-    const reqSchemaId = input.tool_name === "get_signals" ? SCHEMA_ID.get_signals_request : SCHEMA_ID.activate_signal_request;
-    const resSchemaId = input.tool_name === "get_signals" ? SCHEMA_ID.get_signals_response : SCHEMA_ID.activate_signal_response;
-    const reqSchemaUrl = input.tool_name === "get_signals" ? SCHEMA_URL.get_signals_request : SCHEMA_URL.activate_signal_request;
-    const resSchemaUrl = input.tool_name === "get_signals" ? SCHEMA_URL.get_signals_response : SCHEMA_URL.activate_signal_response;
+    // Tool → schema lookup. Adding a new tool: vendor its schemas via
+    // scripts/vendor-adcp-schemas.mjs, add to SCHEMA_ID + SCHEMA_URL +
+    // ValidatorBundle + pickValidator, and add an entry here.
+    const reqSchemaId = SCHEMA_ID[`${input.tool_name}_request` as keyof typeof SCHEMA_ID];
+    const resSchemaId = SCHEMA_ID[`${input.tool_name}_response` as keyof typeof SCHEMA_ID];
+    const reqSchemaUrl = SCHEMA_URL[`${input.tool_name}_request` as keyof typeof SCHEMA_URL];
+    const resSchemaUrl = SCHEMA_URL[`${input.tool_name}_response` as keyof typeof SCHEMA_URL];
 
     let correlationId = input.correlation_id ?? null;
     if (correlationId === null && typeof input.request_payload === "object" && input.request_payload !== null) {

@@ -47,8 +47,26 @@ export async function searchSignalsService(
   const limit = Math.min(req.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
   const offset = req.offset ?? 0;
 
+  // Normalize the brief field. AdCP 3.0.x's get_signals request schema
+  // requires anyOf(signal_spec, signal_ids), so callers doing a
+  // "list-everything" catalog walk pass a wildcard signal_spec ("*"
+  // or empty string) to satisfy validation. Treat those as no-brief
+  // here so we hit the catalog page-walk path (offset-honored, no
+  // re-ranking) instead of the relevance-rank path (which would
+  // keyword-match against the literal "*" and return ~33 of 512
+  // signals — the regression that broke the Catalog tab).
+  //
+  // We don't reassign req.brief because SearchSignalsRequest types it as
+  // a non-optional string under exactOptionalPropertyTypes; instead we
+  // derive a local `brief` value and use it in every downstream check.
+  const normalizedBrief = (typeof req.brief === "string"
+    && req.brief.trim() !== ""
+    && req.brief.trim() !== "*")
+    ? req.brief
+    : undefined;
+
   // When a brief is present, fetch a larger window so we can re-rank by relevance
-  const fetchLimit = req.brief ? Math.min(200, MAX_LIMIT * 4) : limit;
+  const fetchLimit = normalizedBrief ? Math.min(200, MAX_LIMIT * 4) : limit;
 
   const tDb0 = Date.now();
   const { signals, totalCount } = await searchSignals(db, {
@@ -61,14 +79,14 @@ export async function searchSignalsService(
       activationSupported: req.activationSupported,
     }),
     limit: fetchLimit,
-    offset: req.brief ? 0 : offset,  // always fetch from top when re-ranking
+    offset: normalizedBrief ? 0 : offset,  // always fetch from top when re-ranking
   });
   performance.db_read = Date.now() - tDb0;
   traceSteps.push({
     id: "fetch",
     label: "Fetch candidates from D1",
     duration_ms: performance.db_read,
-    note: req.brief
+    note: normalizedBrief
       ? "Wide window (up to 200) so we can re-rank by relevance after."
       : `Catalog window of ${fetchLimit} starting at offset ${offset}.`,
     details: [
@@ -86,14 +104,14 @@ export async function searchSignalsService(
   // If brief/signal_spec present, re-rank catalog results by relevance to brief
   // Fetch broader window, score, sort, then slice to limit
   const tRank0 = Date.now();
-  const ranked = req.brief ? rankByRelevance(signals, req.brief).slice(0, limit) : signals;
+  const ranked = normalizedBrief ? rankByRelevance(signals, normalizedBrief).slice(0, limit) : signals;
   performance.rank = Date.now() - tRank0;
 
-  if (req.brief) {
+  if (normalizedBrief) {
     // Build a detailed trace step for the keyword scoring pass. We re-run
     // the scorer here so the panel has access to the per-signal scores +
     // matched keywords that the production scorer doesn't normally surface.
-    const traceData = explainKeywordRanking(signals, req.brief, limit);
+    const traceData = explainKeywordRanking(signals, normalizedBrief, limit);
     traceSteps.push({
       id: "keyword_score",
       label: "Score by keyword match (current implementation)",
@@ -142,8 +160,8 @@ export async function searchSignalsService(
   // proposal in KV (not D1) so activate_signal can promote it lazily on
   // demand — see src/storage/proposalCache.ts for rationale.
   let proposals: CustomSignalProposal[] | undefined;
-  if (req.brief) {
-    const generated = generateProposalsFromBrief(req.brief);
+  if (normalizedBrief) {
+    const generated = generateProposalsFromBrief(normalizedBrief);
     if (generated.length > 0) {
       const now = new Date().toISOString();
       await Promise.all(
@@ -155,15 +173,15 @@ export async function searchSignalsService(
     }
   }
 
-  const filterDesc = req.brief
-    ? `matching brief "${req.brief.slice(0, 50)}"`
+  const filterDesc = normalizedBrief
+    ? `matching brief "${normalizedBrief.slice(0, 50)}"`
     : req.query
     ? `matching "${req.query}"`
     : req.categoryType
     ? `in category "${req.categoryType}"`
     : "from catalog";
 
-  if (req.brief && proposals && proposals.length > 0) {
+  if (normalizedBrief && proposals && proposals.length > 0) {
     traceSteps.push({
       id: "proposal",
       label: "Custom proposal generation",
@@ -180,8 +198,8 @@ export async function searchSignalsService(
   performance.other = Math.max(0, performance.total - (performance.db_read ?? 0) - (performance.rank ?? 0));
 
   const trace: TraceData = {
-    operation: req.brief ? "Discover query · brief mode" : "Discover query · catalog mode",
-    input: req.brief ?? req.query ?? "(no input)",
+    operation: normalizedBrief ? "Discover query · brief mode" : "Discover query · catalog mode",
+    input: normalizedBrief ?? req.query ?? "(no input)",
     duration_ms: performance.total,
     steps: traceSteps,
     performance,

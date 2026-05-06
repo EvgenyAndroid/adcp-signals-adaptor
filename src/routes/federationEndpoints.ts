@@ -11,6 +11,7 @@ import { jsonResponse, errorResponse } from "./shared";
 import { dstillerySearch, DSTILLERY_MCP_URL } from "../federation/dstilleryClient";
 import { searchSignalsService } from "../domain/signalService";
 import { getDb } from "../storage/db";
+import { safeRecordSignalTrace, persistSignalTrace } from "../domain/signalTrace";
 
 const SELF_URL = "https://adcp-signals-adaptor.evgeny-193.workers.dev";
 
@@ -133,24 +134,58 @@ export async function handleFederatedSearch(
   if (targetAgents.includes("evgeny_signals")) {
     tasks.push((async () => {
       const t0 = Date.now();
+      const reqPayload = { signal_spec: body.brief, max_results: maxPerAgent };
       try {
         const db = getDb(env);
         const r = await searchSignalsService(db, env.SIGNALS_CACHE, {
           brief: body.brief, limit: maxPerAgent, offset: 0,
         });
+        const elapsed = Date.now() - t0;
+        // Record federation:evgeny_signals trace so the modal shows
+        // BOTH peers (Evgeny + Dstillery) from a single fanout. The
+        // call is in-process (no network hop) but semantically the
+        // Federation page is treating us as one of N peers, so the
+        // trace is correct from the demo's POV.
+        const trace = safeRecordSignalTrace({
+          tool_name: "get_signals",
+          direction: "outbound",
+          source: "federation:evgeny_signals",
+          caller_agent: "evgeny_signals",
+          endpoint_url: new URL(request.url).origin + "/signals/search",
+          request_payload: reqPayload,
+          response_payload: { signals: r.signals },
+          response_status: "ok",
+          duration_ms: elapsed,
+        });
+        if (trace) await persistSignalTrace(env, trace);
         return {
           agent: "evgeny_signals",
           ok: true,
           signals: r.signals,
-          elapsed_ms: Date.now() - t0,
+          elapsed_ms: elapsed,
         };
       } catch (e) {
+        const elapsed = Date.now() - t0;
+        const errMsg = String((e as Error).message || e);
+        const trace = safeRecordSignalTrace({
+          tool_name: "get_signals",
+          direction: "outbound",
+          source: "federation:evgeny_signals",
+          caller_agent: "evgeny_signals",
+          endpoint_url: new URL(request.url).origin + "/signals/search",
+          request_payload: reqPayload,
+          response_payload: { error: errMsg },
+          response_status: "error",
+          response_error_message: errMsg,
+          duration_ms: elapsed,
+        });
+        if (trace) await persistSignalTrace(env, trace);
         return {
           agent: "evgeny_signals",
           ok: false,
           signals: [],
-          error: String((e as Error).message || e),
-          elapsed_ms: Date.now() - t0,
+          error: errMsg,
+          elapsed_ms: elapsed,
         };
       }
     })());
@@ -159,7 +194,12 @@ export async function handleFederatedSearch(
 
   if (targetAgents.includes("dstillery")) {
     tasks.push((async () => {
-      const r = await dstillerySearch(body.brief, maxPerAgent);
+      // Thread env so the dstilleryClient's internal trace recorder
+      // can persist outbound federation traces to KV. Without env they
+      // only land in the in-memory ring buffer and disappear on isolate
+      // cycle — which is the bug the user reported on the Federation
+      // page's "Fan out" button (modal showed empty after the run).
+      const r = await dstillerySearch(body.brief, maxPerAgent, env);
       return {
         agent: "dstillery",
         ok: r.ok,

@@ -479,7 +479,7 @@ export async function callAgentToolWithCircuit(
   url: string,
   name: string,
   args: Record<string, unknown>,
-  opts?: { timeoutMs?: number; retries?: number },
+  opts?: { timeoutMs?: number; retries?: number; env?: Env },
 ): Promise<CircuitToolCallResult> {
   const circuit = getCircuit(url);
 
@@ -501,8 +501,14 @@ export async function callAgentToolWithCircuit(
   const maxRetries = Math.max(0, opts?.retries ?? RETRY_MAX_DEFAULT);
   let attempts = 0;
   let lastResult: ToolCallResult = { ok: false, error: "no_attempt", latency_ms: 0 };
+  // Pass through env so the underlying callAgentTool can persist
+  // outbound traces to KV. Without this, every DSP-side get_signals
+  // (handleDspCampaignSignalsLive) is silent.
+  const innerOpts: { timeoutMs?: number; env?: Env } = {};
+  if (opts?.timeoutMs) innerOpts.timeoutMs = opts.timeoutMs;
+  if (opts?.env) innerOpts.env = opts.env;
   while (attempts <= maxRetries) {
-    lastResult = await callAgentTool(url, name, args, opts?.timeoutMs ? { timeoutMs: opts.timeoutMs } : {});
+    lastResult = await callAgentTool(url, name, args, innerOpts);
     if (lastResult.ok) {
       onCircuitSuccess(url);
       return { ...lastResult, retries: attempts, circuit_state: "closed" };

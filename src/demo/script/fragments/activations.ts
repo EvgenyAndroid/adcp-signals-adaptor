@@ -47,12 +47,15 @@ function renderActivationRow(op) {
   const submittedAt = fmtTime(op.submittedAt);
   const completedAt = op.completedAt ? fmtTime(op.completedAt) : "—";
   const statusClass = (op.status || "submitted").toLowerCase();
-  // {} button → opens the signals trace viewer filtered to this
-  // activation's signal_id (we don't have a correlation_id per row,
-  // so we filter by tool=activate_signal and let the viewer show
-  // the most recent matches; the user clicks the matching row in
-  // the modal to see full request/response JSON).
+  // {} button → opens the signals trace viewer filtered to THIS row's
+  // activation. We pass both signal_id and operation_id (= task_id in
+  // the trace's response payload) so the viewer can match a single
+  // trace exactly. The previous behaviour swallowed the row id and
+  // always opened the same "all activate_signal" view, making every
+  // click look identical — fixed by threading data-trace-task-id
+  // through the click handler.
   const sigId = (op.signalId || "").replace(/"/g, "&quot;");
+  const opId = (op.operationId || "").replace(/"/g, "&quot;");
   return '' +
     '<tr>' +
       '<td class="td-name">' +
@@ -66,7 +69,7 @@ function renderActivationRow(op) {
       '<td class="td-time">' + (op.webhookFired ? '<span style="color:var(--success)">fired</span>' : (op.webhookUrl ? 'queued' : '—')) + '</td>' +
       '<td class="td-time" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml((op.operationId || "").slice(0, 24)) + '</td>' +
       '<td class="td-time">' +
-        '<button class="btn-secondary btn-mini" data-trace-activation="' + sigId + '" title="View signal request/response JSON">{ } JSON</button>' +
+        '<button class="btn-secondary btn-mini" data-trace-activation="' + sigId + '" data-trace-task-id="' + opId + '" title="View signal request/response JSON for this activation">{ } JSON</button>' +
       '</td>' +
     '</tr>';
 }
@@ -77,13 +80,18 @@ document.addEventListener("click", function (e) {
   const t = e.target;
   if (!t || !t.matches || !t.matches("[data-trace-activation]")) return;
   const sigId = t.getAttribute("data-trace-activation");
+  const taskId = t.getAttribute("data-trace-task-id");
   if (typeof window.openSignalTraceModal !== "function") return;
-  // Filter by tool=activate_signal — the viewer will show recent
-  // activations and the user clicks the relevant one. We can't
-  // pre-filter by signal_id at the API level (the buffer indexes
-  // by correlation_id, agent_id, tool), so client-side filter
-  // happens inside the modal logic.
-  window.openSignalTraceModal({ tool: "activate_signal", limit: 25 });
+  // Pass task_id as the primary filter so the viewer can pinpoint the
+  // single activate_signal trace whose response.payload.task_id ===
+  // this row's operation_id. signal_id is a secondary filter (handles
+  // the legacy case where task_id wasn't captured).
+  window.openSignalTraceModal({
+    tool: "activate_signal",
+    task_id: taskId || undefined,
+    signal_id: sigId || undefined,
+    limit: 25,
+  });
 });
 
 function fmtTime(iso) {

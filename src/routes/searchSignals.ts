@@ -8,7 +8,7 @@ import { jsonResponse, errorResponse, readJsonBody } from "./shared";
 import { compactObj } from "../utils/objects";
 import { getDb } from "../storage/db";
 import type { Logger } from "../utils/logger";
-import { safeRecordSignalTrace } from "../domain/signalTrace";
+import { safeRecordSignalTrace, persistSignalTrace } from "../domain/signalTrace";
 
 export async function handleSearchSignals(
   request: Request,
@@ -72,33 +72,38 @@ export async function handleSearchSignals(
     });
 
     // Record the REST trace alongside the MCP one. Keeps signal traces
-    // unified across both transport bindings.
-    // safeRecordSignalTrace contains its own try/catch + isolate kill
-    // switch — caller doesn't need to wrap. It returns null on any
-    // failure so we discard the result.
-    safeRecordSignalTrace({
+    // unified across both transport bindings. safeRecordSignalTrace
+    // contains its own try/catch + isolate kill switch. Persist the
+    // resulting trace to KV so it survives isolate cycles — the
+    // in-memory ring buffer dies with the isolate, which broke the
+    // workshop demo when users reopened the trace modal.
+    const _trace = safeRecordSignalTrace({
       tool_name: "get_signals",
       direction: "inbound",
       source: "rest_demo",
+      endpoint_url: request.url,
       request_payload: req,
       response_payload: result,
       response_status: "ok",
       duration_ms: Date.now() - _t0,
     });
+    await persistSignalTrace(env, _trace);
 
     return jsonResponse(result);
   } catch (err) {
     logger.error("search_signals_error", { error: String(err) });
-    safeRecordSignalTrace({
+    const _trace = safeRecordSignalTrace({
       tool_name: "get_signals",
       direction: "inbound",
       source: "rest_demo",
+      endpoint_url: request.url,
       request_payload: req,
       response_payload: { error: String(err) },
       response_status: "error",
       response_error_message: String(err),
       duration_ms: Date.now() - _t0,
     });
+    await persistSignalTrace(env, _trace);
     return errorResponse("INTERNAL_ERROR", "Signal search failed", 500);
   }
 }

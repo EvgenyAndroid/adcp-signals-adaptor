@@ -6702,6 +6702,35 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .trace-ts { margin-left: auto; }
 .trace-dur { color: var(--text-faint); }
 .trace-corr { font-style: italic; }
+.trace-endpoint {
+  display: inline-flex; align-items: center; gap: 4px;
+  font: 10.5px var(--font-mono);
+  color: var(--accent); text-decoration: none;
+  padding: 1px 6px; border-radius: 3px;
+  background: rgba(56, 182, 255, 0.06);
+  border: 1px solid rgba(56, 182, 255, 0.18);
+  transition: background 0.15s, border-color 0.15s;
+}
+.trace-endpoint:hover {
+  background: rgba(56, 182, 255, 0.14);
+  border-color: rgba(56, 182, 255, 0.40);
+  text-decoration: underline;
+}
+.trace-endpoint-icon { opacity: 0.7; font-size: 11px; }
+.trace-endpoint-url { color: inherit; }
+.signal-trace-reset {
+  margin-left: auto; margin-right: 8px;
+  font: 11px var(--font-mono);
+  background: transparent; color: var(--text-mut);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 4px 10px; cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.signal-trace-reset:hover {
+  background: rgba(255, 100, 100, 0.10);
+  color: #ff7b7b;
+  border-color: rgba(255, 100, 100, 0.30);
+}
 .trace-status-ok { color: #5fd9c4; font-weight: 600; }
 .trace-status-err { color: #ff7b7b; font-weight: 600; }
 .signal-trace-section { margin-top: 8px; }

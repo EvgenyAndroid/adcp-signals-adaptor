@@ -21,14 +21,22 @@
 // stateless posture. KV/D1 layering is a future PR if you want a
 // permanent audit log.
 
-import Ajv from "ajv";
-import addFormats from "ajv-formats";
+// JSON-Schema validator that works inside Cloudflare Workers' V8
+// isolate. AJV (the obvious choice) compiles validators via
+// `new Function()`, which Workers blocks with "Code generation from
+// strings disallowed for this context" — so traces validated against
+// a real-shape schema all returned `[skipped]`. @cfworker/json-schema
+// is a Workers-native interpreter (no eval/Function), drop-in for the
+// fields we need. See: https://github.com/cfworker/cfworker
+import { Validator } from "@cfworker/json-schema";
 
 // Vendored AdCP schema corpus. Imported as a single TS module to
 // sidestep @adcp/sdk's package.json `exports` field that doesn't
 // expose the schemas-data path. Regenerate via:
 //   node scripts/vendor-adcp-schemas.mjs
 import { loadAdcpCorpus } from "../schemas/adcp";
+
+import type { Env } from "../types/env";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,6 +64,19 @@ export interface SignalTrace {
   source: string;
   /** For outbound calls, the agent we called. Null for inbound. */
   caller_agent: string | null;
+  /** Endpoint URL the request actually hit.
+   *
+   * - Outbound (federation): the URL we POSTed to (peer's /mcp endpoint).
+   * - Inbound REST: our public URL for the matched route, e.g.
+   *   "https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/search".
+   * - Inbound MCP: our public /mcp endpoint URL.
+   *
+   * Surfacing this in the trace viewer answers "where did this request
+   * actually go?" — important for the workshop because the audience
+   * asks it on every call (and the source tag alone like
+   * "federation:dstillery" doesn't tell them where Dstillery LIVES).
+   */
+  endpoint_url: string | null;
   request: {
     payload: unknown;
     validation: SchemaValidationResult;
@@ -91,35 +112,59 @@ const SCHEMA_ID = {
   activate_signal_response: "/schemas/3.0.1/signals/activate-signal-response.json",
 } as const;
 
-// ── AJV setup ────────────────────────────────────────────────────────────────
+// ── Validator setup ──────────────────────────────────────────────────────────
 //
-// Lazy-init: the schema corpus is sizeable. Built on first record() call
-// so cold isolates don't pay the cost up-front. After init the validators
+// One Validator per request/response shape. Lazy-init on first record() call
+// so cold isolates don't pay the cost up-front; after init the validators
 // are cached for the lifetime of the isolate.
+//
+// @cfworker/json-schema's Validator constructor takes the root schema
+// + draft + a list of additional schemas the root may $ref (for
+// cross-file resolution like signal-id, deployment, vendor-pricing-
+// option). We pre-register the entire corpus so any $ref resolves.
 
-let _ajv: Ajv | null = null;
-let _ajvInitFailed = false;
+interface ValidatorBundle {
+  get_signals_request: Validator;
+  get_signals_response: Validator;
+  activate_signal_request: Validator;
+  activate_signal_response: Validator;
+}
 
-function getAjv(): Ajv | null {
-  if (_ajv !== null) return _ajv;
-  if (_ajvInitFailed) return null;
+let _validators: ValidatorBundle | null = null;
+let _validatorInitFailed = false;
+
+function findInCorpus(corpus: Array<{ $id?: string }>, id: string): Record<string, unknown> | null {
+  return (corpus.find((s) => s.$id === id) as Record<string, unknown> | undefined) ?? null;
+}
+
+function getValidators(): ValidatorBundle | null {
+  if (_validators !== null) return _validators;
+  if (_validatorInitFailed) return null;
   try {
-    const ajv = new Ajv({ strict: false, allErrors: true });
-    addFormats(ajv);
-    // Load every schema in @adcp/sdk's 3.0 directory so cross-file $ref
-    // resolution works (signal-id, deployment, vendor-pricing-option,
-    // etc. are all referenced from the request/response schemas).
-    // We import a flat manifest of schemas, registering each by $id.
-    // NOTE: Workers bundlers can statically resolve a JSON manifest;
-    // we generate it via a small build helper at module load.
-    const corpus = loadAdcpCorpus();
-    for (const s of corpus) {
-      try { ajv.addSchema(s); } catch { /* duplicate / partial — skip */ }
-    }
-    _ajv = ajv;
-    return _ajv;
+    const corpus = loadAdcpCorpus() as Array<Record<string, unknown> & { $id?: string }>;
+    const buildValidator = (rootId: string): Validator => {
+      const root = findInCorpus(corpus, rootId);
+      if (!root) throw new Error(`schema not in corpus: ${rootId}`);
+      // Draft-07 matches @adcp/sdk's $schema pragma. Pass shortCircuit
+      // = false so we collect all errors (ajv allErrors equivalent).
+      const v = new Validator(root, "7", false);
+      // Register every other corpus schema so cross-file $refs resolve.
+      for (const s of corpus) {
+        if (s.$id && s.$id !== rootId) {
+          try { v.addSchema(s); } catch { /* tolerate */ }
+        }
+      }
+      return v;
+    };
+    _validators = {
+      get_signals_request:    buildValidator(SCHEMA_ID.get_signals_request),
+      get_signals_response:   buildValidator(SCHEMA_ID.get_signals_response),
+      activate_signal_request:  buildValidator(SCHEMA_ID.activate_signal_request),
+      activate_signal_response: buildValidator(SCHEMA_ID.activate_signal_response),
+    };
+    return _validators;
   } catch {
-    _ajvInitFailed = true;
+    _validatorInitFailed = true;
     return null;
   }
 }
@@ -127,16 +172,26 @@ function getAjv(): Ajv | null {
 // loadAdcpCorpus() lives in src/schemas/adcp/index.ts — vendored from
 // @adcp/sdk by scripts/vendor-adcp-schemas.mjs. Imported above.
 
+function pickValidator(bundle: ValidatorBundle, schemaId: string): Validator | null {
+  switch (schemaId) {
+    case SCHEMA_ID.get_signals_request: return bundle.get_signals_request;
+    case SCHEMA_ID.get_signals_response: return bundle.get_signals_response;
+    case SCHEMA_ID.activate_signal_request: return bundle.activate_signal_request;
+    case SCHEMA_ID.activate_signal_response: return bundle.activate_signal_response;
+    default: return null;
+  }
+}
+
 function validateAgainst(schemaId: string, schemaUrl: string, payload: unknown): SchemaValidationResult {
-  const ajv = getAjv();
-  if (!ajv) {
+  const bundle = getValidators();
+  if (!bundle) {
     return {
       valid: true,  // can't validate — don't claim invalid
       schema_url: schemaUrl,
       errors: [{ path: "(meta)", message: "schema validator unavailable in this runtime", keyword: "skipped" }],
     };
   }
-  const validator = ajv.getSchema(schemaId);
+  const validator = pickValidator(bundle, schemaId);
   if (!validator) {
     return {
       valid: true,
@@ -144,12 +199,12 @@ function validateAgainst(schemaId: string, schemaUrl: string, payload: unknown):
       errors: [{ path: "(meta)", message: `schema not registered: ${schemaId}`, keyword: "missing_schema" }],
     };
   }
-  const ok = validator(payload);
-  if (ok) return { valid: true, schema_url: schemaUrl, errors: [] };
-  const errs = (validator.errors || []).slice(0, 12).map((e) => ({
-    path: e.instancePath || "(root)",
-    message: e.message || "validation failed",
-    keyword: e.keyword || "unknown",
+  const result = validator.validate(payload);
+  if (result.valid) return { valid: true, schema_url: schemaUrl, errors: [] };
+  const errs = (result.errors || []).slice(0, 12).map((e: { instanceLocation?: string; error?: string; keyword?: string; keywordLocation?: string }) => ({
+    path: e.instanceLocation || "(root)",
+    message: e.error || "validation failed",
+    keyword: e.keyword || (e.keywordLocation ? e.keywordLocation.split("/").pop() ?? "unknown" : "unknown"),
   }));
   return { valid: false, schema_url: schemaUrl, errors: errs };
 }
@@ -194,6 +249,13 @@ export interface RecordSignalTraceInput {
    * fallback.
    */
   correlation_id?: string | null;
+  /**
+   * Optional. The endpoint URL this request actually hit. For outbound
+   * federation calls, the peer's /mcp URL. For inbound REST/MCP, the
+   * full request.url at the worker. When omitted, the recorder leaves
+   * the trace's endpoint_url as null.
+   */
+  endpoint_url?: string | null;
 }
 
 /**
@@ -250,6 +312,7 @@ export function recordSignalTrace(input: RecordSignalTraceInput): SignalTrace | 
       tool_name: input.tool_name,
       source: input.source,
       caller_agent: input.caller_agent ?? null,
+      endpoint_url: input.endpoint_url ?? null,
       request: {
         payload: input.request_payload,
         validation: safeValidate(reqSchemaId, reqSchemaUrl, input.request_payload),
@@ -319,6 +382,180 @@ export function getSignalTraceById(traceId: string): SignalTrace | null {
 
 export function clearSignalTraces(): void {
   traceBuffer.length = 0;
+}
+
+// ── KV-backed persistence ────────────────────────────────────────────────────
+//
+// The in-memory ring buffer above survives request-to-request within an
+// isolate but Cloudflare cycles isolates frequently — so a trace recorded
+// at T0 may "disappear" at T0+30s when the user reopens the modal on a
+// fresh isolate. That's user-visible during a workshop demo (we hit it!).
+//
+// Layered fix: write each trace to KV with a TTL and maintain a
+// fixed-size index of recent trace IDs. Reads merge in-memory + KV
+// (in-memory wins for freshest, KV fills the gap when isolate cycled).
+//
+// Posture:
+//   - Writes are fire-and-forget via ctx.waitUntil where available, or
+//     plain unawaited Promise otherwise. Failure must never break the
+//     calling signal call.
+//   - TTL = 6 hours. Long enough for a workshop session, short enough
+//     to keep the index file small.
+//   - Index key holds [trace_id, ts] tuples capped at 200 newest. List
+//     reads fetch the index, fall through to per-id KV gets.
+//
+// We avoid making recordSignalTrace itself async (would force every
+// call site to await) — instead, callers fire persistSignalTrace
+// alongside recordSignalTrace.
+
+const KV_KEY_PREFIX = "sigtrace:";
+const KV_INDEX_KEY = "sigtrace:index";
+const KV_TTL_SECONDS = 6 * 60 * 60; // 6h
+const KV_INDEX_CAP = 200;
+
+interface KvIndexEntry {
+  id: string;
+  ts: string;
+  tool: SignalToolName;
+  source: string;
+  status: "ok" | "error";
+}
+
+/**
+ * Best-effort: persist one trace + bump the recent-traces index. Never
+ * throws — caller's side-effect, must not break the call path. Pass
+ * the trace returned by safeRecordSignalTrace; if null, no-op.
+ *
+ * Awaiting this in the request path adds ~5-30ms (two KV writes). For
+ * non-blocking, use ctx.waitUntil(persistSignalTrace(env, trace)).
+ */
+export async function persistSignalTrace(env: Env, trace: SignalTrace | null): Promise<void> {
+  if (!trace) return;
+  if (!env || !env.SIGNALS_CACHE) return;
+  try {
+    const key = KV_KEY_PREFIX + trace.trace_id;
+    // Write the full trace under its id key.
+    await env.SIGNALS_CACHE.put(key, JSON.stringify(trace), { expirationTtl: KV_TTL_SECONDS });
+    // Read-modify-write the index. Eventual consistency — concurrent
+    // writes can clobber each other; we accept that for a demo-grade
+    // audit log. The next put restores ordering on the next call.
+    const existing = await env.SIGNALS_CACHE.get(KV_INDEX_KEY, "json") as KvIndexEntry[] | null;
+    const list = existing ?? [];
+    // De-dupe by id (in case of retry), prepend newest, cap.
+    const filtered = list.filter((e) => e.id !== trace.trace_id);
+    const next: KvIndexEntry[] = [
+      { id: trace.trace_id, ts: trace.ts, tool: trace.tool_name, source: trace.source, status: trace.response.status },
+      ...filtered,
+    ].slice(0, KV_INDEX_CAP);
+    await env.SIGNALS_CACHE.put(KV_INDEX_KEY, JSON.stringify(next), { expirationTtl: KV_TTL_SECONDS });
+  } catch {
+    // KV unavailable, quota exhausted, JSON serialise threw on a
+    // circular ref — none of these should affect the call path.
+  }
+}
+
+/**
+ * KV-backed read. Returns the union of in-memory + KV traces, dedup'd
+ * by trace_id (in-memory wins on conflict — it's freshest), filtered
+ * by query, newest first.
+ *
+ * Used by /api/signal-traces when in-memory is empty (cold isolate).
+ */
+export async function listSignalTracesPersisted(env: Env, q: SignalTraceQuery = {}): Promise<SignalTrace[]> {
+  const inMemory = getSignalTraces({ ...q, limit: 500 });
+  if (!env || !env.SIGNALS_CACHE) return inMemory.slice(0, q.limit ?? 100);
+  let kvTraces: SignalTrace[] = [];
+  try {
+    const index = await env.SIGNALS_CACHE.get(KV_INDEX_KEY, "json") as KvIndexEntry[] | null;
+    if (!index || index.length === 0) {
+      return inMemory.slice(0, q.limit ?? 100);
+    }
+    // Pre-filter by index metadata (tool, source) before fetching the
+    // full payloads — saves KV reads on tool-specific queries.
+    const candidates = index.filter((e) => {
+      if (q.tool && e.tool !== q.tool) return false;
+      if (q.source_prefix && !e.source.startsWith(q.source_prefix)) return false;
+      return true;
+    });
+    // Fetch in parallel. Cap at 100 to keep KV-read fanout bounded.
+    const fetchN = Math.min(100, candidates.length);
+    const fetched = await Promise.all(
+      candidates.slice(0, fetchN).map((e) =>
+        env.SIGNALS_CACHE.get(KV_KEY_PREFIX + e.id, "json") as Promise<SignalTrace | null>
+      )
+    );
+    kvTraces = fetched.filter((t): t is SignalTrace => t !== null);
+  } catch {
+    // Fall back to in-memory only.
+  }
+  // Merge by trace_id, in-memory wins on conflict.
+  const seen = new Set(inMemory.map((t) => t.trace_id));
+  const merged = [...inMemory];
+  for (const t of kvTraces) {
+    if (!seen.has(t.trace_id)) {
+      merged.push(t);
+      seen.add(t.trace_id);
+    }
+  }
+  // Apply the post-fetch filter that index couldn't pre-filter
+  // (correlation_id, agent_id, since_ms — fields not in index).
+  const sinceMs = q.since_ms ?? 0;
+  const filtered = merged.filter((t) => {
+    if (q.tool && t.tool_name !== q.tool) return false;
+    if (q.source_prefix && !t.source.startsWith(q.source_prefix)) return false;
+    if (q.correlation_id && t.correlation_id !== q.correlation_id) return false;
+    if (q.agent_id && t.caller_agent !== q.agent_id) return false;
+    if (sinceMs > 0 && new Date(t.ts).getTime() < sinceMs) return false;
+    return true;
+  });
+  // Sort newest first.
+  filtered.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
+  return filtered.slice(0, Math.max(1, Math.min(500, q.limit ?? 100)));
+}
+
+/** KV-backed single-trace read. Falls back to in-memory if not in KV. */
+export async function getSignalTraceByIdPersisted(env: Env, traceId: string): Promise<SignalTrace | null> {
+  const inMem = getSignalTraceById(traceId);
+  if (inMem) return inMem;
+  if (!env || !env.SIGNALS_CACHE) return null;
+  try {
+    return (await env.SIGNALS_CACHE.get(KV_KEY_PREFIX + traceId, "json")) as SignalTrace | null;
+  } catch {
+    return null;
+  }
+}
+
+/** KV-backed snapshot. Reads index size + per-tool counts. */
+export async function snapshotSignalTracesPersisted(env: Env): Promise<{
+  total_buffered: number;
+  total_persisted: number;
+  earliest_ts: string | null;
+  latest_ts: string | null;
+  by_tool: Record<string, number>;
+  by_source: Record<string, number>;
+  schema_valid_pct: number;
+}> {
+  const inMem = snapshotSignalTraces();
+  if (!env || !env.SIGNALS_CACHE) {
+    return { ...inMem, total_persisted: 0 };
+  }
+  try {
+    const index = await env.SIGNALS_CACHE.get(KV_INDEX_KEY, "json") as KvIndexEntry[] | null;
+    if (!index) return { ...inMem, total_persisted: 0 };
+    const byTool: Record<string, number> = { ...inMem.by_tool };
+    const bySource: Record<string, number> = { ...inMem.by_source };
+    for (const e of index) {
+      byTool[e.tool] = (byTool[e.tool] || 0) + 0; // index just informs presence
+    }
+    return {
+      ...inMem,
+      total_persisted: index.length,
+      by_tool: byTool,
+      by_source: bySource,
+    };
+  } catch {
+    return { ...inMem, total_persisted: 0 };
+  }
 }
 
 export function snapshotSignalTraces(): {

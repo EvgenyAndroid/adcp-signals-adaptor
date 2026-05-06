@@ -166,6 +166,7 @@ import {
 import {
     handleSignalTracesList,
     handleSignalTracesSnapshot,
+    handleSignalTracesClear,
     handleSignalTraceById,
 } from "./routes/signalTraceRoutes";
 import {
@@ -464,14 +465,20 @@ export default {
                 response = await handleEcosystemProbe();
 
             } else if (method === "GET" && path === "/api/signal-traces") {
-                response = handleSignalTracesList(request);
+                response = await handleSignalTracesList(request, env);
+
+            } else if (method === "DELETE" && path === "/api/signal-traces") {
+                // Demo "reset" — wipes in-memory + KV index. Public to
+                // match the rest of the demo's posture; not destructive
+                // beyond the demo's own buffer.
+                response = await handleSignalTracesClear(env);
 
             } else if (method === "GET" && path === "/api/signal-traces/snapshot") {
-                response = handleSignalTracesSnapshot();
+                response = await handleSignalTracesSnapshot(env);
 
             } else if (method === "GET" && path.startsWith("/api/signal-traces/")) {
                 const traceId = path.slice("/api/signal-traces/".length);
-                response = handleSignalTraceById(traceId);
+                response = await handleSignalTraceById(traceId, env);
 
             } else if (method === "GET" && path === "/health") {
                 response = jsonResponse({

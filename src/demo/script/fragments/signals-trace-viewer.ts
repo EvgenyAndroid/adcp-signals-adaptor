@@ -38,6 +38,7 @@ function ensureSignalTraceModalEl() {
       '<div class="signal-trace-head">' +
         '<div class="signal-trace-head-title">Signal trace</div>' +
         '<div class="signal-trace-head-meta" id="signal-trace-head-meta">—</div>' +
+        '<button class="signal-trace-reset" id="signal-trace-reset" title="Wipe trace buffer (in-memory + KV) — useful between demo segments">⟲ reset</button>' +
         '<button class="signal-trace-close" id="signal-trace-close" aria-label="Close">×</button>' +
       '</div>' +
       '<div class="signal-trace-body" id="signal-trace-body">' +
@@ -56,6 +57,26 @@ function ensureSignalTraceModalEl() {
   });
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && wrap.classList.contains("open")) closeSignalTraceModal();
+  });
+  // Reset button — wipes in-memory + KV index. Confirms before firing
+  // since the workshop demo doesn't want accidental wipes mid-demo.
+  wrap.querySelector("#signal-trace-reset").addEventListener("click", async function () {
+    if (!confirm("Wipe trace buffer? This clears in-memory + KV index for this demo. Per-trace KV entries TTL out at 6h regardless.")) return;
+    try {
+      const r = await fetch("/api/signal-traces", { method: "DELETE" });
+      const j = await r.json().catch(function () { return null; });
+      if (j && j.ok) {
+        // Re-render with the now-empty filter so the user sees the
+        // "no traces match this filter yet" empty state confirming
+        // the wipe.
+        const body = document.getElementById("signal-trace-body");
+        if (body) body.innerHTML = '<div class="signal-trace-empty">Trace buffer wiped. Trigger a get_signals or activate_signal call to see new traces appear.</div>';
+      } else {
+        alert("Reset failed: " + (j && j.error ? j.error : "unknown"));
+      }
+    } catch (e) {
+      alert("Reset failed: " + (e && e.message ? e.message : String(e)));
+    }
   });
   _signalTraceModalEl = wrap;
   return wrap;
@@ -99,13 +120,17 @@ function renderJsonWithGlossary(value, indent) {
 }
 
 function renderValidationBadge(validation) {
-  if (!validation) return '<span class="trace-vbadge skip">no schema</span>';
+  if (!validation) return '<span class="trace-vbadge skip" title="No schema attached to this trace">no schema</span>';
+  // "skipped" or "missing_schema" — the validator couldn't run on the
+  // payload (e.g. corpus didn't load, runtime quirk). Distinct from
+  // "ran and found 0 errors" — be honest about it. Kept short for
+  // the badge; full reason shown in the meta line below the JSON.
   if (validation.errors && validation.errors.some(function (e) { return e.keyword === "skipped" || e.keyword === "missing_schema"; })) {
-    return '<span class="trace-vbadge skip">schema unavailable</span>';
+    return '<span class="trace-vbadge skip" title="Validator could not run; schema URL link still works">⊘ validation skipped</span>';
   }
-  if (validation.valid) return '<span class="trace-vbadge ok">✓ schema valid</span>';
+  if (validation.valid) return '<span class="trace-vbadge ok" title="Payload validates against the canonical AdCP schema">✓ schema valid</span>';
   const n = (validation.errors || []).length;
-  return '<span class="trace-vbadge bad">✗ ' + n + ' schema error' + (n === 1 ? "" : "s") + '</span>';
+  return '<span class="trace-vbadge bad" title="Payload does not validate — see errors below">✗ ' + n + ' schema error' + (n === 1 ? "" : "s") + '</span>';
 }
 
 function renderValidationErrors(validation) {
@@ -120,10 +145,32 @@ function renderSingleTrace(trace, idx) {
   const tsFmt = new Date(trace.ts).toLocaleTimeString();
   const dirIcon = trace.direction === "outbound" ? "→" : "←";
   const sourceShort = trace.source.length > 36 ? trace.source.slice(0, 33) + "…" : trace.source;
+  // Endpoint URL — render as a clickable link with the full URL in
+  // the title attribute so the audience can hover to confirm exactly
+  // where the request hit. For long URLs, show only the host:path tail
+  // in the visible text. Outbound (federation) URLs are external; we
+  // open in a new tab. No-render if missing (legacy traces).
+  let endpointBlock = "";
+  if (trace.endpoint_url) {
+    let visible = trace.endpoint_url;
+    try {
+      const u = new URL(trace.endpoint_url);
+      visible = u.host + u.pathname;
+      if (visible.length > 48) visible = visible.slice(0, 45) + "…";
+    } catch (_) { /* not a parseable URL — show as-is, truncated */
+      if (visible.length > 48) visible = visible.slice(0, 45) + "…";
+    }
+    endpointBlock =
+      '<a class="trace-endpoint" href="' + escapeHtml(trace.endpoint_url) + '" target="_blank" rel="noopener" title="' + escapeHtml(trace.endpoint_url) + '">' +
+        '<span class="trace-endpoint-icon">⎘</span>' +
+        '<span class="trace-endpoint-url">' + escapeHtml(visible) + '</span>' +
+      '</a>';
+  }
   return '<div class="signal-trace-frame" data-trace-id="' + escapeHtml(trace.trace_id) + '">' +
     '<div class="signal-trace-frame-head">' +
       '<span class="trace-tool trace-tool-' + escapeHtml(trace.tool_name) + '">' + escapeHtml(trace.tool_name) + '</span> ' +
       '<span class="trace-dir">' + dirIcon + ' ' + escapeHtml(sourceShort) + '</span>' +
+      endpointBlock +
       '<span class="trace-ts">' + tsFmt + '</span>' +
       '<span class="trace-dur">' + trace.duration_ms + 'ms</span>' +
       (trace.correlation_id ? '<span class="trace-corr">corr: ' + escapeHtml(trace.correlation_id.slice(-12)) + '</span>' : '') +
@@ -163,7 +210,16 @@ function renderGlossarySection() {
 }
 
 // Open the modal with traces matching the given filter. Filter shape:
-//   { correlationId?, agentId?, tool?, traceIds?, sourcePrefix? }
+//   {
+//     correlationId?, agentId?, tool?, traceIds?, sourcePrefix?,
+//     task_id?,    // matches trace.response.payload.task_id (activate)
+//     signal_id?,  // matches trace.request.payload.signal_agent_segment_id
+//     limit?
+//   }
+//
+// Both task_id + signal_id are server-fetched broadly (by tool/source
+// prefix) and narrowed client-side, since neither field is indexed
+// in the in-memory ring buffer or the KV index.
 async function openSignalTraceModal(filter) {
   const wrap = ensureSignalTraceModalEl();
   _signalTraceCurrentFilter = filter || {};
@@ -175,24 +231,49 @@ async function openSignalTraceModal(filter) {
   // Populate glossary section once per modal open
   const gloss = document.getElementById("signal-trace-glossary-body");
   if (gloss) gloss.innerHTML = renderGlossarySection();
-  // Build query string from filter
+  // Build query string from filter — server-side filters first, then
+  // client-side narrowing for fields not in the index (task_id,
+  // signal_id, traceIds).
   const qs = new URLSearchParams();
   if (filter && filter.correlationId) qs.set("correlation_id", filter.correlationId);
   if (filter && filter.agentId) qs.set("agent_id", filter.agentId);
   if (filter && filter.tool) qs.set("tool", filter.tool);
   if (filter && filter.sourcePrefix) qs.set("source_prefix", filter.sourcePrefix);
-  qs.set("limit", String((filter && filter.limit) || 25));
+  // Over-fetch a bit if we'll narrow client-side. 25 server-side is
+  // plenty for a one-row drill-in (the row is almost always the most
+  // recent matching trace).
+  const limit = (filter && filter.limit) || 25;
+  qs.set("limit", String(limit));
   try {
     const r = await fetch("/api/signal-traces?" + qs.toString());
     const data = await r.json();
     let traces = (data && data.traces) || [];
-    // If specific traceIds were requested, filter client-side
+    // Specific trace IDs (Race Canvas / orchestrator drill-in).
     if (filter && filter.traceIds && filter.traceIds.length > 0) {
       const wanted = new Set(filter.traceIds);
       traces = traces.filter(function (t) { return wanted.has(t.trace_id); });
     }
+    // Client-side narrowing for activations row drill-in.
+    if (filter && filter.task_id) {
+      traces = traces.filter(function (t) {
+        const p = t && t.response && t.response.payload;
+        if (!p || typeof p !== "object") return false;
+        // task_id can live at the top level OR inside ext.task_id
+        // (MCP envelope binding). Match either.
+        return p.task_id === filter.task_id || (p.ext && p.ext.task_id === filter.task_id);
+      });
+    }
+    if (filter && filter.signal_id && (!filter.task_id || traces.length === 0)) {
+      // Fallback to signal_id matching when task_id didn't pin a row
+      // (legacy data, or task_id wasn't captured at trace time).
+      traces = ((data && data.traces) || []).filter(function (t) {
+        const p = t && t.request && t.request.payload;
+        if (!p || typeof p !== "object") return false;
+        return p.signal_agent_segment_id === filter.signal_id;
+      });
+    }
     if (traces.length === 0) {
-      body.innerHTML = '<div class="signal-trace-empty">No traces match this filter yet.<br/><small>Traces buffer the last 500 signal interactions in-memory; older ones are evicted.</small></div>';
+      body.innerHTML = '<div class="signal-trace-empty">No traces match this filter yet.<br/><small>Traces buffer the last 500 signal interactions in-memory + 6h in KV; older ones are evicted.</small></div>';
       return;
     }
     body.innerHTML = traces.map(function (t, i) { return renderSingleTrace(t, i); }).join("");

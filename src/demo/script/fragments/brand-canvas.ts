@@ -609,6 +609,11 @@ async function _canvasRunWorkflow() {
 
   // Reset lanes to running state.
   _canvasResetLanes();
+  // Also clear the universal trace trigger + any cached signal-trace
+  // modal state so the previous run's traces don't bleed into this
+  // one. The trigger will re-illuminate when this run's trace lands.
+  if (typeof _resetTrace === "function") _resetTrace();
+  if (typeof window.closeSignalTraceModal === "function") window.closeSignalTraceModal();
 
   // Refinement: thread the brand BrandRef through to the workflow.
   // Pulls domain + name + industries from the resolved brand_manifest;

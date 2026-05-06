@@ -133,12 +133,96 @@ function renderValidationBadge(validation) {
   return '<span class="trace-vbadge bad" title="Payload does not validate — see errors below">✗ ' + n + ' schema error' + (n === 1 ? "" : "s") + '</span>';
 }
 
+// Promoted schema URL banner — shown above the errors block (not a
+// tiny ↗ icon hidden in the section head). Surfacing the canonical
+// schema URL prominently is the answer to the workshop question
+// "what schema are we comparing against?". Click-through opens the
+// raw schema in a new tab so the audience can see the contract.
+function renderSchemaBanner(validation) {
+  if (!validation || !validation.schema_url) return "";
+  // Compact display — show the trailing path segments (e.g.
+  // "v3/signals/get-signals-response.json"). Full URL is in the
+  // href + title attribute for click-through and hover.
+  let visible = validation.schema_url;
+  try {
+    const u = new URL(validation.schema_url);
+    visible = u.host + u.pathname;
+  } catch (_) { /* not a parseable URL — keep raw */ }
+  if (visible.length > 64) visible = "…" + visible.slice(-62);
+  return '<div class="trace-schema-banner">' +
+    '<span class="trace-schema-banner-label">validating against</span>' +
+    '<a class="trace-schema-banner-link" href="' + escapeHtml(validation.schema_url) +
+    '" target="_blank" rel="noopener" title="' + escapeHtml(validation.schema_url) + '">' +
+    escapeHtml(visible) + ' ↗</a>' +
+  '</div>';
+}
+
+// Friendly translations for the dense JSON-Schema vocabulary that
+// surfaces in validator errors. The audience shouldn't need to learn
+// JSON-Pointer + JSON-Schema keywords on the spot to read a trace.
+function _humanizeErrorMessage(msg) {
+  if (!msg) return "(no detail)";
+  // "Instance does not have required property "X"" -> "missing required \"X\""
+  const reqMatch = msg.match(/^Instance does not have required property "([^"]+)"\.?$/);
+  if (reqMatch) return 'missing required "' + reqMatch[1] + '"';
+  // "Property "X" does not match schema." -> "\"X\" doesn't match expected shape"
+  const propMatch = msg.match(/^Property "([^"]+)" does not match schema\.?$/);
+  if (propMatch) return '"' + propMatch[1] + '" doesn\\'t match expected shape';
+  // "Items did not match schema." -> "array items don't match expected shape"
+  if (/^Items did not match schema\.?$/.test(msg)) return "array items don\\'t match expected shape";
+  // "Instance does not match exactly one subschema (0 matches)." -> "doesn't match any of the expected variants"
+  if (/^Instance does not match exactly one subschema/.test(msg)) return "doesn\\'t match any of the expected variants (oneOf)";
+  // "A subschema had errors." -> swallow — it's just bookkeeping
+  if (/^A subschema had errors\.?$/.test(msg)) return "(see nested errors below)";
+  return msg;
+}
+
+function _humanizeKeyword(k) {
+  switch (k) {
+    case "required":   return "missing required field";
+    case "oneOf":      return "no schema variant matched";
+    case "properties": return "wrong shape for a property";
+    case "items":      return "wrong shape for an array item";
+    case "$ref":       return "referenced subschema failed";
+    case "type":       return "wrong type";
+    case "enum":       return "value not in enum";
+    case "pattern":    return "string didn\\'t match pattern";
+    case "additionalProperties": return "unknown property";
+    default:           return k || "unknown";
+  }
+}
+
 function renderValidationErrors(validation) {
   if (!validation || !validation.errors || validation.errors.length === 0) return "";
-  return '<div class="trace-verrors">' +
-    validation.errors.map(function (e) {
-      return '<div class="trace-verr"><code>' + escapeHtml(e.path || "(root)") + '</code> · ' + escapeHtml(e.message) + ' <span class="trace-verr-kw">[' + escapeHtml(e.keyword) + ']</span></div>';
-    }).join("") + '</div>';
+  // Per-error rows now show a humanized message + the keyword as a
+  // tooltip-explained chip. Keep the raw path as <code> so workshop
+  // attendees can map it to the JSON pretty-print below.
+  const rows = validation.errors.map(function (e) {
+    const human = _humanizeErrorMessage(e.message);
+    const kwHuman = _humanizeKeyword(e.keyword);
+    return '<div class="trace-verr">' +
+      '<code class="trace-verr-path">' + escapeHtml(e.path || "(root)") + '</code>' +
+      '<span class="trace-verr-msg">' + escapeHtml(human) + '</span>' +
+      '<span class="trace-verr-kw" title="' + escapeHtml(kwHuman) + '">[' + escapeHtml(e.keyword) + ']</span>' +
+      '</div>';
+  }).join("");
+  // Collapsed legend explains the JSON-Pointer + keyword vocabulary in
+  // one click. Defaults to closed so the trace stays scannable; first-
+  // time viewers click to expand. Workshop demo: open it once at the
+  // top of Block 2 so the audience knows what they're reading.
+  const legend = '<details class="trace-verr-legend">' +
+    '<summary>How to read these errors</summary>' +
+    '<div class="trace-verr-legend-body">' +
+      '<div><strong>Path</strong> (e.g. <code>#/signals/0</code>): JSON-Pointer into the payload below. ' +
+        '<code>#</code> is the root, <code>#/signals</code> is the <code>signals</code> array, ' +
+        '<code>#/signals/0</code> is its first item.</div>' +
+      '<div><strong>Keyword</strong> (e.g. <code>[required]</code>, <code>[oneOf]</code>): which JSON-Schema rule the validator applied. ' +
+        'Hover the keyword chip for a plain-English meaning.</div>' +
+      '<div><strong>Schema link</strong> above the errors: opens the canonical AdCP schema we validated against. ' +
+        'Click through to see exactly what shape was expected.</div>' +
+    '</div>' +
+  '</details>';
+  return '<div class="trace-verrors">' + legend + rows + '</div>';
 }
 
 function renderSingleTrace(trace, idx) {
@@ -180,9 +264,9 @@ function renderSingleTrace(trace, idx) {
       '<div class="signal-trace-section-head">' +
         '<span class="signal-trace-section-label">REQUEST</span>' +
         renderValidationBadge(trace.request.validation) +
-        '<a class="signal-trace-schemalink" href="' + escapeHtml(trace.request.validation.schema_url) + '" target="_blank" rel="noopener">schema ↗</a>' +
         '<button class="signal-trace-copy" data-copy-target="req-' + idx + '">copy</button>' +
       '</div>' +
+      renderSchemaBanner(trace.request.validation) +
       renderValidationErrors(trace.request.validation) +
       '<pre class="signal-trace-json" id="req-' + idx + '">' + renderJsonWithGlossary(trace.request.payload) + '</pre>' +
     '</div>' +
@@ -190,9 +274,9 @@ function renderSingleTrace(trace, idx) {
       '<div class="signal-trace-section-head">' +
         '<span class="signal-trace-section-label">RESPONSE</span>' +
         renderValidationBadge(trace.response.validation) +
-        '<a class="signal-trace-schemalink" href="' + escapeHtml(trace.response.validation.schema_url) + '" target="_blank" rel="noopener">schema ↗</a>' +
         '<button class="signal-trace-copy" data-copy-target="res-' + idx + '">copy</button>' +
       '</div>' +
+      renderSchemaBanner(trace.response.validation) +
       renderValidationErrors(trace.response.validation) +
       (trace.response.error_message ? '<div class="signal-trace-errmsg">' + escapeHtml(trace.response.error_message) + '</div>' : '') +
       '<pre class="signal-trace-json" id="res-' + idx + '">' + renderJsonWithGlossary(trace.response.payload) + '</pre>' +

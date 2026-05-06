@@ -1572,23 +1572,77 @@ function renderRaceCanvas(demoKey: string): string {
   function escapeHtml(s) { return String(s == null ? "" : s).replace(/[&<>\\"']/g, function (c) { return ({"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"})[c]; }); }
 
   // ── Signal traces overlay ────────────────────────────────────────────
+  // Friendly translations matching the main signals-trace-viewer so
+  // Race Canvas + the rest of the demo speak the same vocabulary.
+  function _raceHumanizeErr(msg) {
+    if (!msg) return "(no detail)";
+    var m1 = msg.match(/^Instance does not have required property "([^"]+)"\\.?$/);
+    if (m1) return 'missing required "' + m1[1] + '"';
+    var m2 = msg.match(/^Property "([^"]+)" does not match schema\\.?$/);
+    if (m2) return '"' + m2[1] + '" doesn\\'t match expected shape';
+    if (/^Items did not match schema\\.?$/.test(msg)) return "array items don\\'t match expected shape";
+    if (/^Instance does not match exactly one subschema/.test(msg)) return "doesn\\'t match any of the expected variants (oneOf)";
+    if (/^A subschema had errors\\.?$/.test(msg)) return "(see nested errors below)";
+    return msg;
+  }
+  function _raceRenderErrorList(validation) {
+    if (!validation || !validation.errors || validation.errors.length === 0) return "";
+    var rows = validation.errors.map(function (e) {
+      var human = _raceHumanizeErr(e.message);
+      return '<div style="font-size:10.5px;line-height:1.55;padding:2px 0;color:#ffbfa3">' +
+        '<code style="background:rgba(255,123,123,0.14);color:#ffd7c8;padding:0 4px;border-radius:2px">' + escapeHtml(e.path || "(root)") + '</code> ' +
+        escapeHtml(human) +
+        ' <span style="color:#ff9b6b;opacity:0.7">[' + escapeHtml(e.keyword) + ']</span>' +
+      '</div>';
+    }).join("");
+    var legend = '<details style="margin:6px 0;font-size:10.5px;color:#9aa6b3">' +
+      '<summary style="cursor:pointer">How to read these errors</summary>' +
+      '<div style="padding:6px 0 6px 12px;line-height:1.55">' +
+        '<div><strong>Path</strong> (e.g. <code>#/signals/0</code>): JSON-Pointer into the payload below. <code>#</code> is the root.</div>' +
+        '<div><strong>Keyword</strong> (e.g. <code>[required]</code>, <code>[oneOf]</code>): which JSON-Schema rule the validator applied.</div>' +
+        '<div><strong>Schema link</strong> above: opens the canonical AdCP schema we validated against.</div>' +
+      '</div>' +
+    '</details>';
+    return legend + rows;
+  }
   function _raceRenderSignalTrace(t, idx) {
     var dirIcon = t.direction === "outbound" ? "→" : "←";
     var sourceShort = t.source.length > 36 ? t.source.slice(0, 33) + "…" : t.source;
     var statusColor = t.response.status === "ok" ? "#5fd9c4" : "#ff7b7b";
     var reqValid = t.request.validation && t.request.validation.valid;
     var resValid = t.response.validation && t.response.validation.valid;
-    function badge(ok) { return ok ? '<span style="color:#5fd9c4">✓ schema</span>' : '<span style="color:#ff9b6b">✗ schema</span>'; }
+    var reqErrCount = (t.request.validation && t.request.validation.errors || []).length;
+    var resErrCount = (t.response.validation && t.response.validation.errors || []).length;
+    function badge(ok, errCount) {
+      if (ok) return '<span style="color:#5fd9c4">✓ schema</span>';
+      return '<span style="color:#ff9b6b">✗ ' + errCount + ' err</span>';
+    }
+    // Endpoint URL (outbound only) — clickable, matches the main viewer.
+    var endpointBlock = "";
+    if (t.endpoint_url) {
+      var visible = t.endpoint_url;
+      try {
+        var u = new URL(t.endpoint_url);
+        visible = u.host + u.pathname;
+        if (visible.length > 48) visible = visible.slice(0, 45) + "…";
+      } catch (_) { if (visible.length > 48) visible = visible.slice(0, 45) + "…"; }
+      endpointBlock = ' · <a href="' + escapeHtml(t.endpoint_url) + '" target="_blank" rel="noopener" title="' + escapeHtml(t.endpoint_url) + '" style="color:#38b6ff;font-size:10.5px;text-decoration:none">⎘ ' + escapeHtml(visible) + '</a>';
+    }
     return '<details style="margin-bottom:10px;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:4px">' +
       '<summary style="cursor:pointer;font-size:12px;line-height:1.7">' +
         '<strong>' + escapeHtml(t.tool_name) + '</strong> · ' + dirIcon + ' ' + escapeHtml(sourceShort) +
+        endpointBlock +
         ' · <span style="color:' + statusColor + '">' + escapeHtml(t.response.status) + '</span>' +
         ' · ' + t.duration_ms + 'ms · ' + new Date(t.ts).toLocaleTimeString() +
-        ' · ' + badge(reqValid) + ' req · ' + badge(resValid) + ' res' +
+        ' · ' + badge(reqValid, reqErrCount) + ' req · ' + badge(resValid, resErrCount) + ' res' +
       '</summary>' +
-      '<div style="margin-top:8px"><strong style="font-size:10px;letter-spacing:0.1em">REQUEST</strong> · <a href="' + escapeHtml(t.request.validation.schema_url) + '" target="_blank" style="color:#38b6ff;font-size:10px">schema↗</a></div>' +
+      '<div style="margin-top:8px"><strong style="font-size:10px;letter-spacing:0.1em">REQUEST</strong>' +
+        ' · validating against <a href="' + escapeHtml(t.request.validation.schema_url) + '" target="_blank" style="color:#38b6ff;font-size:10px">' + escapeHtml(t.request.validation.schema_url.split("/").slice(-2).join("/")) + ' ↗</a></div>' +
+      _raceRenderErrorList(t.request.validation) +
       '<pre style="background:rgba(0,0,0,0.4);padding:8px;border-radius:3px;max-height:240px;overflow:auto;font-size:10.5px;white-space:pre-wrap;word-break:break-all">' + escapeHtml(JSON.stringify(t.request.payload, null, 2)) + '</pre>' +
-      '<div><strong style="font-size:10px;letter-spacing:0.1em">RESPONSE</strong> · <a href="' + escapeHtml(t.response.validation.schema_url) + '" target="_blank" style="color:#38b6ff;font-size:10px">schema↗</a></div>' +
+      '<div><strong style="font-size:10px;letter-spacing:0.1em">RESPONSE</strong>' +
+        ' · validating against <a href="' + escapeHtml(t.response.validation.schema_url) + '" target="_blank" style="color:#38b6ff;font-size:10px">' + escapeHtml(t.response.validation.schema_url.split("/").slice(-2).join("/")) + ' ↗</a></div>' +
+      _raceRenderErrorList(t.response.validation) +
       '<pre style="background:rgba(0,0,0,0.4);padding:8px;border-radius:3px;max-height:240px;overflow:auto;font-size:10.5px;white-space:pre-wrap;word-break:break-all">' + escapeHtml(JSON.stringify(t.response.payload, null, 2)) + '</pre>' +
     '</details>';
   }

@@ -6763,9 +6763,69 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   padding: 6px 10px; margin-bottom: 8px;
   font: 10.5px var(--font-mono); color: var(--text-dim);
 }
-.trace-verr { padding: 1px 0; }
-.trace-verr code { color: var(--accent); }
-.trace-verr-kw { color: var(--text-faint); }
+.trace-verr {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 2px 0; line-height: 1.55;
+}
+.trace-verr-path {
+  flex-shrink: 0;
+  background: rgba(255, 123, 123, 0.14);
+  color: #ffd7c8;
+  padding: 0 5px; border-radius: 2px;
+}
+.trace-verr-msg { color: #ffbfa3; }
+.trace-verr-kw {
+  margin-left: auto;
+  color: var(--text-faint);
+  cursor: help;
+  white-space: nowrap;
+}
+/* Schema-URL banner — promotes the "what we validated against" answer
+   from a tiny ↗ link to a proper labeled banner. Sits between the
+   validation badge and the errors block. */
+.trace-schema-banner {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 4px 10px; margin-bottom: 6px;
+  font: 10.5px var(--font-mono);
+  background: rgba(56, 182, 255, 0.05);
+  border-left: 2px solid rgba(56, 182, 255, 0.40);
+  border-radius: 0 3px 3px 0;
+  color: var(--text-mut);
+}
+.trace-schema-banner-label {
+  font-size: 9.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-faint);
+}
+.trace-schema-banner-link {
+  color: var(--accent); text-decoration: none;
+  word-break: break-all;
+}
+.trace-schema-banner-link:hover { text-decoration: underline; }
+/* "How to read these errors" expandable legend */
+.trace-verr-legend {
+  margin-bottom: 6px; padding-bottom: 4px;
+  border-bottom: 1px dashed rgba(255, 100, 100, 0.20);
+  font: 10.5px var(--font-mono); color: var(--text-mut);
+}
+.trace-verr-legend > summary {
+  cursor: pointer;
+  color: var(--text-dim);
+  padding: 2px 0;
+  user-select: none;
+}
+.trace-verr-legend > summary:hover { color: var(--accent); }
+.trace-verr-legend-body {
+  padding: 6px 0 4px 16px;
+  display: flex; flex-direction: column; gap: 4px;
+  line-height: 1.55;
+}
+.trace-verr-legend-body code {
+  background: rgba(56, 182, 255, 0.10);
+  color: var(--accent);
+  padding: 0 4px; border-radius: 2px;
+  font-size: 10.5px;
+}
+.trace-verr-legend-body strong { color: var(--text); }
 .signal-trace-errmsg {
   background: rgba(255, 100, 100, 0.10); color: #ff9090;
   padding: 8px 12px; border-radius: 3px; margin-bottom: 8px;

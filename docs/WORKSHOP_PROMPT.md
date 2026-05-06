@@ -69,6 +69,18 @@ I can pull up a concrete example instead of hand-waving.
    None of those are in OpenRTB. Don't accept "it's just DMP segments"
    without naming all four.
 
+   **Live proof — pull up the Dstillery 12-error trace** (see "THE
+   strongest live demo" below in the adapter cheat-sheet). One pane
+   shows our 3.0.1-conformant request landing at Dstillery's 2.x-
+   shaped response with 12 specific validator errors against the
+   canonical schema. That trace pair makes the four primitives
+   tangible: the spec is observable (uniform rejection contract),
+   buyers can audit drift at the trace boundary (signed receipts +
+   discoverability), and Dstillery's non-conformance is detectable
+   without docs-trust (agent-mediated negotiation against schema).
+   If a peer pushes "isn't this OpenRTB?" — open that trace, don't
+   debate.
+
 ### Agenda (memorize this — questions come back to it)
 
 **Block 1 — What is a signal? (producer/consumer + real-time-vs-batch)**
@@ -158,6 +170,41 @@ tab demonstrates and the field-level talking points to make:
   vendor-rejection response (e.g. Dstillery's Pydantic 422 on an
   unknown field). Talking point: "vendors disagree on schema today —
   this is exactly what AdCP is trying to standardize."
+
+#### ⭐ THE strongest live demo — Dstillery 12-error trace (use as Block 1 closer or Block 2 opener)
+
+  Path: Discover tab → run any beverage/CPG brief
+  ("food and drink + beverages buyers in Coca-Cola core markets" works) →
+  trace modal → scroll to the `federation:dstillery` outbound trace.
+
+  What the audience sees in ONE pane:
+
+    REQUEST  ✓ schema valid       ← we send 3.0.1-conformant
+    RESPONSE ✗ 12 schema errors   ← Dstillery returns 2.x shape
+
+  The 12 errors decode as:
+    1. Missing `signal_id` (3.0.1's discriminated oneOf wrapper)
+    2. Missing `pricing_options` array — Dstillery sends a flat
+       `pricing` object instead
+    3-12. `deployments[].type` discriminator missing — Dstillery's
+       deployment shape predates the `oneOf platform/agent`
+       discriminator, plus the legacy
+       `decisioning_platform_segment_id` field where 3.0.1 expects
+       a structured `activation_key`.
+
+  **Workshop one-liner** (deliver verbatim, then pause):
+
+  > "Look at the direction arrow — this is OUR adapter calling
+  > Dstillery's federation endpoint. We sent a 3.0.1-conformant
+  > request, Dstillery returned a 2.x-shaped response, and the
+  > validator caught 12 specific schema deviations. Dstillery isn't
+  > 3.0.1 yet. **You couldn't see that without runtime validation
+  > at the trace boundary.** Doc-trust would have hidden it. Now
+  > imagine you're a buyer running 50 federation calls a day — you
+  > need this signal automatically, not in a quarterly post-mortem."
+
+  That trace is the entire AdCP value pitch in one screen. It's
+  THE demo moment — protect it.
 - **Race Canvas**: same fanout, head-to-head latency view. Shows the
   cost of going real-time vs. accepting batch.
 - **Agent Federation page**: `/agents/probe` results and circuit

@@ -1,20 +1,22 @@
 #!/usr/bin/env node
 // scripts/vendor-adcp-schemas.mjs
 //
-// Vendors the AdCP Signals schemas from node_modules/@adcp/sdk into
-// src/schemas/adcp/ as a single TS module that the worker can import
-// directly. @adcp/sdk's package.json `exports` field doesn't expose
-// the schemas-data path, so we can't `import x from "@adcp/sdk/.../foo.json"`
-// at TypeScript compile-time.
+// Vendors EVERY .json schema from node_modules/@adcp/sdk/dist/lib/
+// schemas-data/3.0/ into src/schemas/adcp/index.ts as a single TS module
+// the worker can bundle without relying on @adcp/sdk's package.json
+// exports map (which omits the schemas-data path).
 //
-// Re-run whenever @adcp/sdk bumps and we want a refreshed schema corpus:
+// Auto-walks the directory tree — no manual SCHEMAS list to maintain.
+// Adding a new tool to the recorder no longer requires editing this
+// script; just add the tool's $id to SCHEMA_ID/SCHEMA_URL in
+// src/domain/signalTrace.ts and the validator picks up the schema
+// automatically (since it's already vendored as part of the corpus).
+//
+// Re-run whenever @adcp/sdk bumps and we want a refreshed corpus:
 //   node scripts/vendor-adcp-schemas.mjs
-//
-// Output: src/schemas/adcp/index.ts — TS module exporting every
-// schema we use as a typed const + a loadAdcpCorpus() helper.
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
+import { join, dirname, relative, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -23,118 +25,113 @@ const SCHEMA_ROOT = join(REPO_ROOT, "node_modules", "@adcp", "sdk", "dist", "lib
 const OUT_DIR = join(REPO_ROOT, "src", "schemas", "adcp");
 const OUT_FILE = join(OUT_DIR, "index.ts");
 
-// The schemas we need for signal trace validation. Order matches the
-// imports in src/domain/signalTrace.ts. New refs introduced by spec
-// updates would surface as "missing_schema" warnings in the validator
-// and prompt a re-run of this script.
-const SCHEMAS = [
-  // Request/response schemas we validate against — Signals domain
-  { id: "getSignalsReq",       path: "signals/get-signals-request.json" },
-  { id: "getSignalsRes",       path: "signals/get-signals-response.json" },
-  { id: "activateReq",         path: "signals/activate-signal-request.json" },
-  { id: "activateRes",         path: "signals/activate-signal-response.json" },
-  // Creative domain — list_creative_formats is what the workflow's
-  // creative stage fans out across creative agents.
-  { id: "listCreativeFormatsReq",  path: "creative/list-creative-formats-request.json" },
-  { id: "listCreativeFormatsRes",  path: "creative/list-creative-formats-response.json" },
-  // Media-buy domain — get_products + create_media_buy are the
-  // workflow's products + media-buy stages.
-  { id: "getProductsReq",          path: "media-buy/get-products-request.json" },
-  { id: "getProductsRes",          path: "media-buy/get-products-response.json" },
-  { id: "createMediaBuyReq",       path: "media-buy/create-media-buy-request.json" },
-  { id: "createMediaBuyRes",       path: "media-buy/create-media-buy-response.json" },
-  // Cross-file $refs
-  { id: "signalId",            path: "core/signal-id.json" },
-  { id: "deployment",          path: "core/deployment.json" },
-  { id: "destination",         path: "core/destination.json" },
-  { id: "accountRef",          path: "core/account-ref.json" },
-  { id: "context",             path: "core/context.json" },
-  { id: "ext",                 path: "core/ext.json" },
-  { id: "error",               path: "core/error.json" },
-  { id: "paginationReq",       path: "core/pagination-request.json" },
-  { id: "paginationRes",       path: "core/pagination-response.json" },
-  { id: "signalFilters",       path: "core/signal-filters.json" },
-  { id: "vendorPricingOption", path: "core/vendor-pricing-option.json" },
-  // Pricing schemas — get-signals-response references these via $ref.
-  // Missing them caused the validator to throw "Unresolved $ref
-  // signal-pricing.json" and return "validation skipped" on every
-  // get_signals response. Adding all three for safety.
-  { id: "signalPricing",       path: "core/signal-pricing.json" },
-  { id: "signalPricingOption", path: "core/signal-pricing-option.json" },
-  { id: "pricingOption",       path: "core/pricing-option.json" },
-  { id: "activationKey",       path: "core/activation-key.json" },
-  { id: "signalValueType",     path: "enums/signal-value-type.json" },
-  { id: "signalCatalogType",   path: "enums/signal-catalog-type.json" },
-  { id: "taskStatus",          path: "enums/task-status.json" },
-  // Brand-related $refs that signal-filters or sales schemas pull in
-  { id: "brandId",             path: "core/brand-id.json" },
-  { id: "brandRef",            path: "core/brand-ref.json" },
-  // Cross-domain core $refs needed by creative + media-buy validation
-  // (added when extending the recorder beyond signals — workflow's
-  // creative + products + media-buy stages each have their own schemas).
-  { id: "account",             path: "core/account.json" },
-  { id: "businessEntity",      path: "core/business-entity.json" },
-  { id: "catalog",             path: "core/catalog.json" },
-  { id: "duration",            path: "core/duration.json" },
-  { id: "formatId",            path: "core/format-id.json" },
-  { id: "format",              path: "core/format.json" },
-  { id: "packageSchema",       path: "core/package.json" },
-  { id: "plannedDelivery",     path: "core/planned-delivery.json" },
-  { id: "productFilters",      path: "core/product-filters.json" },
-  { id: "product",             path: "core/product.json" },
-  { id: "propertyListRef",     path: "core/property-list-ref.json" },
-  { id: "proposal",            path: "core/proposal.json" },
-  { id: "pushNotificationConfig", path: "core/push-notification-config.json" },
-  { id: "reportingWebhook",    path: "core/reporting-webhook.json" },
-  { id: "startTiming",         path: "core/start-timing.json" },
-  { id: "packageRequest",      path: "media-buy/package-request.json" },
-  // Enums referenced by creative + media-buy schemas
-  { id: "advertiserIndustry",  path: "enums/advertiser-industry.json" },
-  { id: "authScheme",          path: "enums/auth-scheme.json" },
-  { id: "creativeAgentCapability", path: "enums/creative-agent-capability.json" },
-  { id: "deliveryType",        path: "enums/delivery-type.json" },
-  { id: "disclosurePersistence", path: "enums/disclosure-persistence.json" },
-  { id: "disclosurePosition",  path: "enums/disclosure-position.json" },
-  { id: "mediaBuyStatus",      path: "enums/media-buy-status.json" },
-  { id: "mediaBuyValidAction", path: "enums/media-buy-valid-action.json" },
-  { id: "wcagLevel",           path: "enums/wcag-level.json" },
-];
-
+if (!existsSync(SCHEMA_ROOT)) {
+  console.error(`[vendor-adcp-schemas] schema root missing: ${SCHEMA_ROOT}`);
+  process.exit(1);
+}
 if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
 
+// Recursively collect every .json file under SCHEMA_ROOT.
+function walk(dir) {
+  const out = [];
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name);
+    const st = statSync(full);
+    if (st.isDirectory()) out.push(...walk(full));
+    else if (st.isFile() && name.endsWith(".json")) out.push(full);
+  }
+  return out;
+}
+
+// Skip "bundled" copies and any other meta files — bundled schemas
+// inline their refs and would create duplicate $id collisions with the
+// non-bundled originals. We want the source-of-truth flat schemas.
+function shouldSkip(relPath) {
+  if (relPath.startsWith("bundled/")) return true;  // pre-bundled copies
+  if (relPath === "index.json") return true;        // manifest, not a schema
+  return false;
+}
+
+// Generate a stable, unique JS identifier from the relative file path.
+// e.g. "core/format-id.json" -> "core_formatId"
+//      "creative/list-creative-formats-request.json" -> "creative_listCreativeFormatsRequest"
+//      "enums/wcag-level.json" -> "enums_wcagLevel"
+//
+// "package" is a reserved word in ESM; the path-prefix scheme avoids
+// the collision (we get "core_packageSchema" -> oh wait it's just
+// "core_package" which IS still reserved). Special-case the rename
+// at the leaf level.
+function toIdentifier(relPath) {
+  const noExt = relPath.replace(/\.json$/, "");
+  // Reserved-word safety: rename leaf "package" specifically (only
+  // place it occurs in the corpus). All other path-segments are safe
+  // ECMAScript identifiers after camelCase.
+  return noExt
+    .split(/[/\\]/)
+    .map((seg, i) => {
+      const safe = seg === "package" ? "packageSchema" : seg;
+      // First segment stays lowercase, subsequent segments camelCase.
+      // Hyphens become camel boundaries.
+      return safe
+        .split("-")
+        .map((part, j) => (i === 0 && j === 0) ? part : (part.charAt(0).toUpperCase() + part.slice(1)))
+        .join("");
+    })
+    .join("_");
+}
+
+const files = walk(SCHEMA_ROOT);
 const blocks = [];
 const exports = [];
 const seenIds = new Set();
+const seenIdents = new Set();
+let skipped = 0;
+let errored = 0;
 
-for (const s of SCHEMAS) {
-  const fullPath = join(SCHEMA_ROOT, s.path);
-  if (!existsSync(fullPath)) {
-    console.warn(`[vendor-adcp-schemas] missing: ${s.path} — skipped`);
+for (const fullPath of files) {
+  const rel = relative(SCHEMA_ROOT, fullPath).split("\\").join("/");
+  if (shouldSkip(rel)) { skipped++; continue; }
+  let raw, parsed;
+  try {
+    raw = readFileSync(fullPath, "utf8");
+    parsed = JSON.parse(raw);
+  } catch (_) {
+    console.warn(`[vendor-adcp-schemas] parse error: ${rel}`);
+    errored++;
     continue;
   }
-  const raw = readFileSync(fullPath, "utf8");
-  let parsed;
-  try { parsed = JSON.parse(raw); } catch (e) { console.warn(`[vendor-adcp-schemas] parse error: ${s.path}`); continue; }
   if (parsed.$id && seenIds.has(parsed.$id)) {
-    // Some schemas may share $ids (rare); skip duplicates.
-    console.warn(`[vendor-adcp-schemas] duplicate $id: ${parsed.$id} — skipping ${s.path}`);
+    // Two files with the same $id — keep the first, skip the rest.
+    skipped++;
     continue;
   }
+  let ident = toIdentifier(rel);
+  // Guarantee uniqueness even if two paths collapse to the same ident
+  // (shouldn't happen for AdCP's flat schema naming, but defensive).
+  let suffix = 1;
+  const baseIdent = ident;
+  while (seenIdents.has(ident)) {
+    suffix++;
+    ident = `${baseIdent}_${suffix}`;
+  }
+  seenIdents.add(ident);
   if (parsed.$id) seenIds.add(parsed.$id);
   const literal = JSON.stringify(parsed, null, 2);
-  blocks.push(`export const ${s.id} = ${literal} as const;\n`);
-  exports.push(s.id);
+  blocks.push(`export const ${ident} = ${literal} as const;\n`);
+  exports.push(ident);
 }
 
 const header = `// AUTO-GENERATED — do not edit by hand.
 // Source: node_modules/@adcp/sdk/dist/lib/schemas-data/3.0/
 // Regenerate with: node scripts/vendor-adcp-schemas.mjs
 //
-// This module vendors AdCP signal-protocol JSON schemas as TypeScript
+// This module vendors EVERY AdCP 3.0.1 JSON schema as TypeScript
 // constants so the worker can bundle them without relying on
-// @adcp/sdk's package.json exports map (which omits the schemas-data
-// path). Used by src/domain/signalTrace.ts for AJV-based runtime
-// validation of get_signals + activate_signal request/response payloads.
+// @adcp/sdk's package.json exports map. The trace recorder uses
+// loadAdcpCorpus() to seed @cfworker/json-schema's $ref resolver.
+//
+// Auto-walks the schema-data tree; new schemas vendored on next
+// regenerate without touching this script.
 
 `;
 
@@ -147,4 +144,4 @@ export function loadAdcpCorpus(): Array<{ $id?: string; [k: string]: unknown }> 
 `;
 
 writeFileSync(OUT_FILE, header + blocks.join("\n") + corpus, "utf8");
-console.log(`[vendor-adcp-schemas] wrote ${OUT_FILE} with ${exports.length} schemas`);
+console.log(`[vendor-adcp-schemas] wrote ${OUT_FILE} with ${exports.length} schemas (skipped ${skipped}, errored ${errored})`);

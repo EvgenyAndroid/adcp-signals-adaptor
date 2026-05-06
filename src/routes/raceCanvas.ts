@@ -1583,6 +1583,17 @@ function renderRaceCanvas(demoKey: string): string {
     if (/^Items did not match schema\\.?$/.test(msg)) return "array items don\\'t match expected shape";
     if (/^Instance does not match exactly one subschema/.test(msg)) return "doesn\\'t match any of the expected variants (oneOf)";
     if (/^A subschema had errors\\.?$/.test(msg)) return "(see nested errors below)";
+    // Truncate huge "validator threw: Unresolved $ref ... Known schemas: -foo -bar..."
+    // dumps so they don't blow up the error row.
+    if (/^validator threw: /.test(msg)) {
+      var stripped = msg.replace(/^validator threw: /, "");
+      var knownIdx = stripped.indexOf(". Known schemas:");
+      if (knownIdx > 0 && knownIdx < stripped.length - 10) {
+        return "validator threw: " + stripped.slice(0, knownIdx).trim() + " (full schema list in raw trace)";
+      }
+      if (stripped.length <= 240) return "validator threw: " + stripped;
+      return "validator threw: " + stripped.slice(0, 240).trim() + "\\u2026";
+    }
     return msg;
   }
   function _raceRenderErrorList(validation) {

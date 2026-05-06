@@ -423,6 +423,9 @@ ${STYLES}
               <span>NL Query</span>
               <span class="mode-tool mono">query_signals_nl</span>
             </button>
+            <button class="btn-secondary" id="discover-signal-traces" title="View raw get_signals + activate_signal request/response JSON for the most-recent calls (filtered to inbound MCP — what your brief sent to /mcp)" style="margin-left:8px">
+              <span class="mono">{ }</span><span>Signal traces</span>
+            </button>
           </div>
         </div>
 

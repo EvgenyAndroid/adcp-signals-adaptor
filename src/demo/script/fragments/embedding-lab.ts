@@ -111,7 +111,7 @@ function wireResultList(host, onRerender) {
       btn.disabled = true;
       btn.classList.add("err-activating");
       try {
-        var data = await callTool("activate_signal", { signal_agent_segment_id: sid, destination_platform: "mock_dsp" });
+        var data = await callTool("activate_signal", _activateArgs(sid));
         showToast("\u2713 Activated " + sid + (data.operation_id ? " \u00b7 " + data.operation_id : ""));
         btn.classList.remove("err-activating");
         btn.classList.add("err-activated");
@@ -164,7 +164,7 @@ async function handleResultAction(action, onRerender) {
     if (_shortlist.length === 0) return;
     showToast("Activating " + _shortlist.length + " signals\u2026");
     var results = await Promise.allSettled(_shortlist.map(function (s) {
-      return callTool("activate_signal", { signal_agent_segment_id: s.sid, destination_platform: "mock_dsp" });
+      return callTool("activate_signal", _activateArgs(s.sid));
     }));
     var ok = results.filter(function (r) { return r.status === "fulfilled"; }).length;
     showToast("\u2713 Activated " + ok + "/" + _shortlist.length + ". See Activations tab for status.");

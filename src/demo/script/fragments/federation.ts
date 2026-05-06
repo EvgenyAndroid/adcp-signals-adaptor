@@ -281,7 +281,7 @@ function openDstilleryDetail(sig) {
 async function fedActivateSignal(sid) {
   showToast("Activating " + sid + " to mock_dsp\u2026");
   try {
-    var data = await callTool("activate_signal", { signal_agent_segment_id: sid, destination_platform: "mock_dsp" });
+    var data = await callTool("activate_signal", _activateArgs(sid));
     showToast("\u2713 Activation submitted: " + (data.operation_id || "op pending"));
   } catch (e) {
     showToast("Activation failed: " + e.message, true);

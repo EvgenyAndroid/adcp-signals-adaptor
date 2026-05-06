@@ -28,7 +28,7 @@ import { getAllSignalsForCatalog } from "../domain/signalService";
 import { handleNLQuery } from "../domain/nlQueryHandler";
 import { handleConceptToolCall } from "../domain/conceptHandler";
 import { compactObj } from "../utils/objects";
-import { safeRecordSignalTrace } from "../domain/signalTrace";
+import { safeRecordSignalTrace, persistSignalTrace } from "../domain/signalTrace";
 import { record as recordToolLog, argKeysOf } from "./toolLog";
 import { logCall as d1LogCall, cleanup as d1Cleanup, shouldRunCleanup } from "../storage/toolLogRepo";
 
@@ -637,7 +637,8 @@ async function callGetSignals(
     const response = withMcpEnvelope({ status: "completed" }, cleanResponse);
 
     // Record the get_signals trace for observability across the demo.
-    safeRecordSignalTrace({
+    // Persist to KV so it survives isolate cycles.
+    const _trace_get = safeRecordSignalTrace({
         tool_name: "get_signals",
         direction: "inbound",
         source: "mcp_external",
@@ -646,6 +647,7 @@ async function callGetSignals(
         response_status: "ok",
         duration_ms: Date.now() - _t0_get_signals,
     });
+    await persistSignalTrace(env, _trace_get);
 
     return toolResult(JSON.stringify(response, null, 2), response);
 }
@@ -815,7 +817,7 @@ async function callActivateSignal(
             payload
         );
 
-        safeRecordSignalTrace({
+        const _trace_act_ok = safeRecordSignalTrace({
             tool_name: "activate_signal",
             direction: "inbound",
             source: "mcp_external",
@@ -824,6 +826,7 @@ async function callActivateSignal(
             response_status: "ok",
             duration_ms: Date.now() - _t0_activate,
         });
+        await persistSignalTrace(env, _trace_act_ok);
 
         return toolResult(JSON.stringify(specResponse, null, 2), specResponse);
     } catch (err) {
@@ -981,7 +984,7 @@ async function callActivateSignal(
                 syntheticPayload
             );
             logger.warn("activate_unknown_signal_synthetic", { signalId });
-            safeRecordSignalTrace({
+            const _trace_act_synth = safeRecordSignalTrace({
                 tool_name: "activate_signal",
                 direction: "inbound",
                 source: "mcp_external",
@@ -990,11 +993,12 @@ async function callActivateSignal(
                 response_status: "ok",
                 duration_ms: Date.now() - _t0_activate,
             });
+            await persistSignalTrace(env, _trace_act_synth);
             return toolResult(JSON.stringify(syntheticResponse, null, 2), syntheticResponse);
         }
         // Record the failure trace too — observability matters when
         // activation throws as much as when it succeeds.
-        safeRecordSignalTrace({
+        const _trace_act_err = safeRecordSignalTrace({
             tool_name: "activate_signal",
             direction: "inbound",
             source: "mcp_external",
@@ -1004,6 +1008,7 @@ async function callActivateSignal(
             response_error_message: String((err as Error).message ?? err),
             duration_ms: Date.now() - _t0_activate,
         });
+        await persistSignalTrace(env, _trace_act_err);
         throw err;
     }
 }

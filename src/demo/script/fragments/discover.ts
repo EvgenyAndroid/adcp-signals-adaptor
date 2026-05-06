@@ -65,6 +65,11 @@ async function runDiscover() {
   btn.disabled = true;
   status.innerHTML = '<span class="spinner"></span>scanning catalog + generating proposals…';
   results.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Searching…</div></div>';
+  // Reset trace state before kicking off a new search — otherwise the
+  // floating trace trigger keeps pointing at the previous brief's
+  // results, which is the bug the user reported.
+  if (typeof _resetTrace === "function") _resetTrace();
+  if (typeof window.closeSignalTraceModal === "function") window.closeSignalTraceModal();
 
   // Fire a parallel /signals/search call to capture the universal _trace
   // payload. Doesn't block the main UI render — when it lands we light up
@@ -134,6 +139,9 @@ async function runNlQuery() {
   btn.disabled = true;
   status.innerHTML = '<span class="spinner"></span>decomposing query + resolving dimensions…';
   results.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Running NL query…</div></div>';
+  // Same trace-reset as runDiscover — fresh query = fresh trace.
+  if (typeof _resetTrace === "function") _resetTrace();
+  if (typeof window.closeSignalTraceModal === "function") window.closeSignalTraceModal();
 
   try {
     const t0 = performance.now();

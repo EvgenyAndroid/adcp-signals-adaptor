@@ -7,7 +7,7 @@ import { validateActivateRequest } from "../utils/validation";
 import { jsonResponse, errorResponse, parseJsonBody } from "./shared";
 import { getDb } from "../storage/db";
 import type { Logger } from "../utils/logger";
-import { safeRecordSignalTrace } from "../domain/signalTrace";
+import { safeRecordSignalTrace, persistSignalTrace } from "../domain/signalTrace";
 
 export async function handleActivateSignal(
   request: Request,
@@ -29,28 +29,32 @@ export async function handleActivateSignal(
   try {
     const db = getDb(env);
     const result = await activateSignalService(db, env.SIGNALS_CACHE, body, logger);
-    safeRecordSignalTrace({
+    const _traceOk = safeRecordSignalTrace({
       tool_name: "activate_signal",
       direction: "inbound",
       source: "rest_demo",
+      endpoint_url: request.url,
       request_payload: body,
       response_payload: result,
       response_status: "ok",
       duration_ms: Date.now() - _t0,
     });
+    await persistSignalTrace(env, _traceOk);
     return jsonResponse(result, 202);
   } catch (err) {
     const errMsg = (err as Error).message ?? String(err);
-    safeRecordSignalTrace({
+    const _traceErr = safeRecordSignalTrace({
       tool_name: "activate_signal",
       direction: "inbound",
       source: "rest_demo",
+      endpoint_url: request.url,
       request_payload: body,
       response_payload: { error: errMsg },
       response_status: "error",
       response_error_message: errMsg,
       duration_ms: Date.now() - _t0,
     });
+    await persistSignalTrace(env, _traceErr);
     if (err instanceof NotFoundError) {
       return errorResponse("NOT_FOUND", err.message, 404);
     }

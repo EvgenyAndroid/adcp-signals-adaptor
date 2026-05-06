@@ -21,7 +21,8 @@
 // frequently; this is best-effort, we renew on every cold start.
 
 import { AGENT_REGISTRY } from "../domain/agentRegistry";
-import { safeRecordSignalTrace } from "../domain/signalTrace";
+import { safeRecordSignalTrace, persistSignalTrace } from "../domain/signalTrace";
+import type { Env } from "../types/env";
 
 const SESSION_TTL_MS = 9 * 60 * 1000;
 /** Sentinel used for agents that negotiate stateless MCP (no mcp-session-id header
@@ -302,7 +303,7 @@ type SelfToolHook = (url: string, name: string, args: Record<string, unknown>) =
 let SELF_TOOL_HOOK: SelfToolHook | null = null;
 export function installSelfToolHook(hook: SelfToolHook | null): void { SELF_TOOL_HOOK = hook; }
 
-export async function callAgentTool(url: string, name: string, args: Record<string, unknown>, opts?: { timeoutMs?: number }): Promise<ToolCallResult> {
+export async function callAgentTool(url: string, name: string, args: Record<string, unknown>, opts?: { timeoutMs?: number; env?: Env }): Promise<ToolCallResult> {
   const timeoutMs = opts?.timeoutMs ?? 20_000;
   const start = Date.now();
   // Sec-48b: if this is a call against our own URL, use the in-process hook
@@ -342,11 +343,15 @@ export async function callAgentTool(url: string, name: string, args: Record<stri
       // "federation:dstillery" instead of "federation:https://...".
       const match = AGENT_REGISTRY.find((a) => a.mcp_url && url.startsWith(a.mcp_url.replace(/\/$/, "")));
       const agentId = match?.id ?? null;
-      safeRecordSignalTrace({
+      const trace = safeRecordSignalTrace({
         tool_name: name as "get_signals" | "activate_signal",
         direction: "outbound",
         source: agentId ? "federation:" + agentId : "federation:" + url,
         caller_agent: agentId,
+        // The actual URL we POSTed to. This is the most useful piece
+        // of info for the trace viewer — the audience asks "where
+        // does Dstillery live?" on every call. Surface the answer.
+        endpoint_url: url,
         request_payload: args,
         response_payload: result.ok
           ? (result.structured_content ?? result.content ?? null)
@@ -355,6 +360,14 @@ export async function callAgentTool(url: string, name: string, args: Record<stri
         ...(result.error ? { response_error_message: result.error } : {}),
         duration_ms: result.latency_ms ?? (Date.now() - start),
       });
+      // Persist outbound traces too if the caller threaded an env
+      // (the orchestrator, brand canvas, race canvas pages do — they
+      // pass opts.env through to the federation client). Without env,
+      // outbound traces stay in-memory only (fine — they'll appear
+      // in the modal during the same isolate's lifetime).
+      if (opts && opts.env && trace) {
+        await persistSignalTrace(opts.env, trace);
+      }
     } catch { /* tracing must never break the call path */ }
   }
   return result;

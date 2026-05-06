@@ -21,7 +21,7 @@
 // frequently; this is best-effort, we renew on every cold start.
 
 import { AGENT_REGISTRY } from "../domain/agentRegistry";
-import { recordSignalTrace } from "../domain/signalTrace";
+import { safeRecordSignalTrace } from "../domain/signalTrace";
 
 const SESSION_TTL_MS = 9 * 60 * 1000;
 /** Sentinel used for agents that negotiate stateless MCP (no mcp-session-id header
@@ -342,7 +342,7 @@ export async function callAgentTool(url: string, name: string, args: Record<stri
       // "federation:dstillery" instead of "federation:https://...".
       const match = AGENT_REGISTRY.find((a) => a.mcp_url && url.startsWith(a.mcp_url.replace(/\/$/, "")));
       const agentId = match?.id ?? null;
-      recordSignalTrace({
+      safeRecordSignalTrace({
         tool_name: name as "get_signals" | "activate_signal",
         direction: "outbound",
         source: agentId ? "federation:" + agentId : "federation:" + url,

@@ -7,7 +7,7 @@ import { validateActivateRequest } from "../utils/validation";
 import { jsonResponse, errorResponse, parseJsonBody } from "./shared";
 import { getDb } from "../storage/db";
 import type { Logger } from "../utils/logger";
-import { recordSignalTrace } from "../domain/signalTrace";
+import { safeRecordSignalTrace } from "../domain/signalTrace";
 
 export async function handleActivateSignal(
   request: Request,
@@ -29,7 +29,7 @@ export async function handleActivateSignal(
   try {
     const db = getDb(env);
     const result = await activateSignalService(db, env.SIGNALS_CACHE, body, logger);
-    recordSignalTrace({
+    safeRecordSignalTrace({
       tool_name: "activate_signal",
       direction: "inbound",
       source: "rest_demo",
@@ -41,7 +41,7 @@ export async function handleActivateSignal(
     return jsonResponse(result, 202);
   } catch (err) {
     const errMsg = (err as Error).message ?? String(err);
-    recordSignalTrace({
+    safeRecordSignalTrace({
       tool_name: "activate_signal",
       direction: "inbound",
       source: "rest_demo",

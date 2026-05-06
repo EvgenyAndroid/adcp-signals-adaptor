@@ -160,6 +160,17 @@ const MAX_TRACES = 500;
 const traceBuffer: SignalTrace[] = [];
 let traceCounter = 0;
 
+// ── Isolate kill switch ──────────────────────────────────────────────────────
+//
+// If the recorder ever observes a thrown error path that escapes the inner
+// try/catch (shouldn't be possible after hotfix #209, but defense in depth
+// because PR #209 didn't actually unstick prod), we flip this and become a
+// no-op for the remainder of the isolate's lifetime. Cheaper than risking
+// a recurrence on every call.
+let _recorderDisabled = false;
+export function isRecorderDisabled(): boolean { return _recorderDisabled; }
+export function disableRecorderForIsolate(): void { _recorderDisabled = true; }
+
 function nextTraceId(): string {
   traceCounter += 1;
   return `st_${Date.now().toString(36)}_${traceCounter.toString(36)}`;
@@ -185,7 +196,31 @@ export interface RecordSignalTraceInput {
   correlation_id?: string | null;
 }
 
+/**
+ * Caller-safe wrapper. Use this from every call site instead of
+ * recordSignalTrace directly. If anything in the recorder throws —
+ * even something we haven't seen yet — we catch it here, flip the
+ * isolate kill switch so subsequent calls short-circuit, and return
+ * null. The calling code never sees the throw.
+ *
+ * This is the belt-and-suspenders to the inner try/catch in
+ * recordSignalTrace itself. Hotfix #209 wrapped the body but didn't
+ * stop /signals/search from 500ing in prod — defense in depth.
+ */
+export function safeRecordSignalTrace(input: RecordSignalTraceInput): SignalTrace | null {
+  if (_recorderDisabled) return null;
+  try {
+    return recordSignalTrace(input);
+  } catch {
+    _recorderDisabled = true;
+    return null;
+  }
+}
+
 export function recordSignalTrace(input: RecordSignalTraceInput): SignalTrace | null {
+  // Isolate kill switch — once we've seen one throw escape, we stop
+  // trying. This is the belt to hotfix #209's suspenders.
+  if (_recorderDisabled) return null;
   // Recording must NEVER throw — a failure in the trace path would
   // break the actual signal call, defeating the entire point of
   // observability. Wrap everything (id generation, AJV validation,

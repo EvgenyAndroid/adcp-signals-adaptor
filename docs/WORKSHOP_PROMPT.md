@@ -95,15 +95,27 @@ get parked for Block 2. Three things only:
 **Block 2 — Trust, gaps & spec proposal close-out**
 
 Trust IS the centerpiece here. This is where it can run.
-- **Trust = observable contract.** Ground it in protocol primitives:
-  `data_provider_domain`, `signal_id.agent`, `pricing_options`,
+- **Trust = observable contract.** Ground it in protocol primitives.
+  `signal_id` is a `oneOf` discriminated by `source` —
+  `source: "catalog"` carries `data_provider_domain` (externally
+  verifiable via `adagents.json`); `source: "agent"` carries
+  `agent_url` (agent-claimed, NOT externally verifiable; buyer
+  trusts the agent's claim). Other primitives: `pricing_options`,
   `coverage_percentage`, `validity_period`, activation receipts
   (`task_id`, signed webhook, `activation_key`), and what
   `adagents.json` advertises. Trust is the gap between what the
-  agent CLAIMS and what a buyer can VERIFY out-of-band.
+  agent CLAIMS and what a buyer can VERIFY out-of-band — and
+  catalog-source signals are verifiable; agent-source signals
+  are not.
 - **Where signals END (now safe to discuss).**
-  - → **measurement** (post-campaign): same protocol, different
-    surface (`get_account_signals`, brief reports).
+  - → **measurement** (post-campaign): same `get_signals` surface,
+    different signal-type — measurement vendors act as producers
+    emitting outcome-shaped signals (lift, reach, frequency)
+    consumed in the next planning cycle. There is **no separate
+    `get_account_signals` task in 3.0.1**; outcome signals ride
+    the same `Signal` shell. (Closest first-party-CRM upsert
+    surface is `sync_audiences` in the media-buy domain — different
+    primitive, often confused.)
   - → **governance**: who is allowed to consume which signal, under
     which terms (`adagents.json`, `pricing_options.scope`).
   - → **identity**: reconciliation between `signal_agent_segment_id`

@@ -28,7 +28,13 @@ export interface RegisteredAgent {
 }
 
 export const SELF_AGENT_ID = "evgeny_signals";
-export const SELF_URL = "https://adcp-signals-adaptor.evgeny-193.workers.dev";
+// Canonical user-facing URL. The worker is reachable via both this
+// custom domain (adcp.signal-stack.io, primary) and the underlying
+// workers.dev URL (legacy / fallback). We use the canonical one in
+// the registry so peer probes + federation calls hit the same domain
+// the user sees in the browser — and adagents.json's authorized_agents
+// array points at consistent origins.
+export const SELF_URL = "https://adcp.signal-stack.io";
 
 export const AGENT_REGISTRY: RegisteredAgent[] = [
   {

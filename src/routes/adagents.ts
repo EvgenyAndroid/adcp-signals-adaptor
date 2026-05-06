@@ -332,10 +332,18 @@ export async function handleAdagentsProbe(_request: Request, _env: Env): Promise
   // Lazy-import the registry to avoid a circular module load with the
   // federation client (which depends on agentRegistry). The probe is
   // demo-only so the slight import cost on first call is fine.
-  const { AGENT_REGISTRY } = await import("../domain/agentRegistry");
+  const { AGENT_REGISTRY, SELF_AGENT_ID } = await import("../domain/agentRegistry");
+  // Filter to (a) external peers only — we already render our own doc
+  // above the peer-probe panel; including self produces a redundant
+  // row and, worse, an HTTP error if the worker can't fetch its own
+  // /.well-known path through Cloudflare's edge routing — and
+  // (b) HTTPS-only URLs since /.well-known/adagents.json discovery is
+  // explicitly an HTTPS-only protocol.
   const probeable = AGENT_REGISTRY.filter(
-    (a: { mcp_url?: string | null }) =>
-      typeof a.mcp_url === "string" && a.mcp_url.startsWith("https://"),
+    (a: { id: string; mcp_url?: string | null }) =>
+      a.id !== SELF_AGENT_ID &&
+      typeof a.mcp_url === "string" &&
+      a.mcp_url.startsWith("https://"),
   ) as Array<{ id: string; name: string; mcp_url: string }>;
   // Run all probes in parallel — each has its own timeout so the
   // worst-case latency of the response is the slowest probe (3s).

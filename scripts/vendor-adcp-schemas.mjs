@@ -45,6 +45,13 @@ const SCHEMAS = [
   { id: "paginationRes",       path: "core/pagination-response.json" },
   { id: "signalFilters",       path: "core/signal-filters.json" },
   { id: "vendorPricingOption", path: "core/vendor-pricing-option.json" },
+  // Pricing schemas — get-signals-response references these via $ref.
+  // Missing them caused the validator to throw "Unresolved $ref
+  // signal-pricing.json" and return "validation skipped" on every
+  // get_signals response. Adding all three for safety.
+  { id: "signalPricing",       path: "core/signal-pricing.json" },
+  { id: "signalPricingOption", path: "core/signal-pricing-option.json" },
+  { id: "pricingOption",       path: "core/pricing-option.json" },
   { id: "activationKey",       path: "core/activation-key.json" },
   { id: "signalValueType",     path: "enums/signal-value-type.json" },
   { id: "signalCatalogType",   path: "enums/signal-catalog-type.json" },

@@ -6758,72 +6758,99 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 }
 .signal-trace-copy:hover { color: var(--accent); border-color: var(--accent); }
 .trace-verrors {
-  background: rgba(255, 100, 100, 0.06);
-  border-left: 2px solid #ff7b7b;
-  padding: 6px 10px; margin-bottom: 8px;
-  font: 10.5px var(--font-mono); color: var(--text-dim);
+  /* Slightly stronger pink so the block reads as "warning zone" but
+     don't tint the text — let each row's contents control its own
+     contrast. Color reset to var(--text) so each row's text stays
+     readable on light AND dark themes. */
+  background: rgba(255, 100, 100, 0.08);
+  border: 1px solid rgba(255, 100, 100, 0.22);
+  border-left: 3px solid #d04040;
+  padding: 8px 12px; margin-bottom: 8px;
+  font: 11.5px var(--font-mono);
+  color: var(--text);
+  border-radius: 0 4px 4px 0;
 }
 .trace-verr {
-  display: flex; align-items: baseline; gap: 8px;
-  padding: 2px 0; line-height: 1.55;
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 3px 0; line-height: 1.6;
+  border-bottom: 1px solid rgba(255, 100, 100, 0.10);
 }
+.trace-verr:last-child { border-bottom: 0; }
 .trace-verr-path {
   flex-shrink: 0;
-  background: rgba(255, 123, 123, 0.14);
-  color: #ffd7c8;
-  padding: 0 5px; border-radius: 2px;
+  /* Strong dark-red on a stronger pink chip — readable on light
+     theme; on dark theme the dark text stays legible against the
+     same chip background because the chip itself stands out. */
+  background: rgba(208, 64, 64, 0.20);
+  color: #b72020;
+  padding: 1px 7px; border-radius: 3px;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.01em;
 }
-.trace-verr-msg { color: #ffbfa3; }
+.trace-verr-msg {
+  /* Inherit theme text color for max contrast. No tint. */
+  color: var(--text);
+  flex: 1;
+}
 .trace-verr-kw {
   margin-left: auto;
-  color: var(--text-faint);
+  color: var(--text-mut);
+  background: rgba(0, 0, 0, 0.05);
+  padding: 1px 7px;
+  border-radius: 3px;
   cursor: help;
   white-space: nowrap;
+  font-size: 10.5px;
 }
 /* Schema-URL banner — promotes the "what we validated against" answer
    from a tiny ↗ link to a proper labeled banner. Sits between the
    validation badge and the errors block. */
 .trace-schema-banner {
-  display: flex; align-items: baseline; gap: 8px;
-  padding: 4px 10px; margin-bottom: 6px;
-  font: 10.5px var(--font-mono);
-  background: rgba(56, 182, 255, 0.05);
-  border-left: 2px solid rgba(56, 182, 255, 0.40);
-  border-radius: 0 3px 3px 0;
-  color: var(--text-mut);
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 6px 12px; margin-bottom: 6px;
+  font: 11px var(--font-mono);
+  background: rgba(56, 182, 255, 0.08);
+  border: 1px solid rgba(56, 182, 255, 0.22);
+  border-left: 3px solid rgba(56, 182, 255, 0.65);
+  border-radius: 0 4px 4px 0;
+  color: var(--text);
 }
 .trace-schema-banner-label {
-  font-size: 9.5px; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--text-faint);
+  font-size: 10px; letter-spacing: 0.08em; font-weight: 600;
+  text-transform: uppercase; color: var(--text-mut);
 }
 .trace-schema-banner-link {
   color: var(--accent); text-decoration: none;
-  word-break: break-all;
+  word-break: break-all; font-weight: 500;
 }
 .trace-schema-banner-link:hover { text-decoration: underline; }
 /* "How to read these errors" expandable legend */
 .trace-verr-legend {
-  margin-bottom: 6px; padding-bottom: 4px;
-  border-bottom: 1px dashed rgba(255, 100, 100, 0.20);
-  font: 10.5px var(--font-mono); color: var(--text-mut);
+  margin-bottom: 8px; padding-bottom: 6px;
+  border-bottom: 1px dashed rgba(255, 100, 100, 0.30);
+  font: 11px var(--font-mono); color: var(--text);
 }
 .trace-verr-legend > summary {
   cursor: pointer;
-  color: var(--text-dim);
-  padding: 2px 0;
+  color: var(--text);
+  font-weight: 600;
+  padding: 3px 0;
   user-select: none;
 }
 .trace-verr-legend > summary:hover { color: var(--accent); }
 .trace-verr-legend-body {
-  padding: 6px 0 4px 16px;
-  display: flex; flex-direction: column; gap: 4px;
-  line-height: 1.55;
+  padding: 8px 0 4px 16px;
+  display: flex; flex-direction: column; gap: 6px;
+  line-height: 1.6;
+  color: var(--text-mut);
 }
 .trace-verr-legend-body code {
-  background: rgba(56, 182, 255, 0.10);
+  background: rgba(56, 182, 255, 0.12);
   color: var(--accent);
-  padding: 0 4px; border-radius: 2px;
+  padding: 1px 5px; border-radius: 2px;
   font-size: 10.5px;
+  font-weight: 500;
 }
 .trace-verr-legend-body strong { color: var(--text); }
 .signal-trace-errmsg {

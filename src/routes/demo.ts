@@ -471,6 +471,11 @@ ${STYLES}
               <span style="color:var(--text-mut)">Filter by <strong>vertical</strong> (data-provider grouping) and <strong>category type</strong> (AdCP 5-enum) — two independent axes.</span>
             </p>
           </div>
+          <div>
+            <button class="btn-secondary" id="catalog-signal-traces" title="View raw get_signals request/response JSON for the cursor-paged catalog walk. Each page-fetch is its own trace; the chained pagination.cursor values demonstrate AdCP 3.0.x cursor pagination end-to-end.">
+              <svg class="ico"><use href="#icon-braces"/></svg>{ } Signal traces
+            </button>
+          </div>
         </div>
 
         <div class="kpi-row">
@@ -2269,6 +2274,9 @@ ${STYLES}
             <p class="pane-subtitle">All activation jobs written to D1. Polls every 10s while this tab is visible so in-flight statuses auto-update.</p>
           </div>
           <div class="activations-controls">
+            <button class="btn-secondary" id="activation-signal-traces" title="View raw activate_signal + get_operation_status request/response JSON for every recent activation. Each row's poll loop (pending → working → completed) emits one trace per iteration so you can audit the receipt sequence.">
+              <svg class="ico"><use href="#icon-braces"/></svg>{ } Signal traces
+            </button>
             <button class="btn-secondary" id="refresh-activations">
               <svg class="ico"><use href="#icon-activations"/></svg>
               <span>Refresh</span>

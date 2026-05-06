@@ -55,11 +55,33 @@ import type { Env } from "../types/env";
  * + SCHEMA_ID + getValidators() below.
  */
 export type AdcpToolName =
+  // Standardized in AdCP 3.0.x — schema-validated against the vendored corpus
   | "get_signals"
   | "activate_signal"
   | "list_creative_formats"
   | "get_products"
-  | "create_media_buy";
+  | "create_media_buy"
+  | "check_governance"
+  // Extension tools — implemented in our worker but not yet in the
+  // published AdCP spec. Recorded with an "extension" badge instead of
+  // ✓/✗ schema valid; lets the workshop trace inspector still show
+  // request/response JSON + correlation_id chains for these calls.
+  | "query_signals_nl"
+  | "get_operation_status";
+
+/**
+ * Tools that are recorded but not validated (extensions / not yet in the
+ * published spec). Surfaces an "extension" badge in the trace viewer
+ * instead of ✓/✗ schema valid.
+ */
+const EXTENSION_TOOLS: ReadonlySet<string> = new Set<string>([
+  "query_signals_nl",
+  "get_operation_status",
+]);
+
+export function isExtensionTool(toolName: string): boolean {
+  return EXTENSION_TOOLS.has(toolName);
+}
 
 /** Backward-compat alias — older imports referenced SignalToolName. */
 export type SignalToolName = AdcpToolName;
@@ -145,6 +167,16 @@ export const SCHEMA_URL = {
   get_products_response:    "https://adcontextprotocol.org/schemas/v3/media-buy/get-products-response.json",
   create_media_buy_request: "https://adcontextprotocol.org/schemas/v3/media-buy/create-media-buy-request.json",
   create_media_buy_response: "https://adcontextprotocol.org/schemas/v3/media-buy/create-media-buy-response.json",
+  // Governance domain
+  check_governance_request:  "https://adcontextprotocol.org/schemas/v3/governance/check-governance-request.json",
+  check_governance_response: "https://adcontextprotocol.org/schemas/v3/governance/check-governance-response.json",
+  // Extension tools — point at the AdCP issue tracker so the audience
+  // can see the spec proposal status. These DON'T go through the
+  // validator; the recorder marks them as "extension" instead.
+  query_signals_nl_request:  "https://github.com/adcontextprotocol/adcp/issues?q=query_signals_nl",
+  query_signals_nl_response: "https://github.com/adcontextprotocol/adcp/issues?q=query_signals_nl",
+  get_operation_status_request:  "https://adcontextprotocol.org/docs/reference/protocol-envelope#operation-status",
+  get_operation_status_response: "https://adcontextprotocol.org/docs/reference/protocol-envelope#operation-status",
 } as const;
 
 // Internal $id values the AdCP spec uses to register schemas. We resolve
@@ -169,6 +201,13 @@ const SCHEMA_ID = {
   get_products_response:    `/schemas/${ADCP_SPEC_VERSION}/media-buy/get-products-response.json`,
   create_media_buy_request: `/schemas/${ADCP_SPEC_VERSION}/media-buy/create-media-buy-request.json`,
   create_media_buy_response: `/schemas/${ADCP_SPEC_VERSION}/media-buy/create-media-buy-response.json`,
+  // Governance domain
+  check_governance_request:  `/schemas/${ADCP_SPEC_VERSION}/governance/check-governance-request.json`,
+  check_governance_response: `/schemas/${ADCP_SPEC_VERSION}/governance/check-governance-response.json`,
+  // NOTE: Extension tools (query_signals_nl, get_operation_status) have
+  // no canonical $id in the published spec corpus. They're intentionally
+  // absent here — the recorder routes them through the "extension" path
+  // (validator.ts:safeValidate handles the missing-schema case).
 } as const;
 
 // ── Validator setup ──────────────────────────────────────────────────────────
@@ -196,6 +235,9 @@ interface ValidatorBundle {
   get_products_response: Validator;
   create_media_buy_request: Validator;
   create_media_buy_response: Validator;
+  // Governance
+  check_governance_request: Validator;
+  check_governance_response: Validator;
 }
 
 let _validators: ValidatorBundle | null = null;
@@ -238,6 +280,9 @@ function getValidators(): ValidatorBundle | null {
       get_products_response:    buildValidator(SCHEMA_ID.get_products_response),
       create_media_buy_request: buildValidator(SCHEMA_ID.create_media_buy_request),
       create_media_buy_response: buildValidator(SCHEMA_ID.create_media_buy_response),
+      // Governance
+      check_governance_request:  buildValidator(SCHEMA_ID.check_governance_request),
+      check_governance_response: buildValidator(SCHEMA_ID.check_governance_response),
     };
     return _validators;
   } catch {
@@ -264,6 +309,9 @@ function pickValidator(bundle: ValidatorBundle, schemaId: string): Validator | n
     case SCHEMA_ID.get_products_response: return bundle.get_products_response;
     case SCHEMA_ID.create_media_buy_request: return bundle.create_media_buy_request;
     case SCHEMA_ID.create_media_buy_response: return bundle.create_media_buy_response;
+    // Governance
+    case SCHEMA_ID.check_governance_request: return bundle.check_governance_request;
+    case SCHEMA_ID.check_governance_response: return bundle.check_governance_response;
     default: return null;
   }
 }
@@ -390,6 +438,20 @@ export function recordSignalTrace(input: RecordSignalTraceInput): SignalTrace | 
     const reqSchemaUrl = SCHEMA_URL[`${input.tool_name}_request` as keyof typeof SCHEMA_URL];
     const resSchemaUrl = SCHEMA_URL[`${input.tool_name}_response` as keyof typeof SCHEMA_URL];
 
+    // Extension tools (query_signals_nl, get_operation_status) aren't
+    // standardized in the AdCP corpus yet — short-circuit validation to
+    // a clearly-labeled "extension" result so the trace viewer can
+    // render a distinct badge ("ext: not in spec") instead of "⊘
+    // validation skipped" (which connotes runtime failure). The audience
+    // gets to see request/response JSON for these calls without us
+    // implying they're spec-broken.
+    const reqValidation = isExtensionTool(input.tool_name)
+      ? extensionValidationResult(reqSchemaUrl, "request")
+      : safeValidate(reqSchemaId, reqSchemaUrl, input.request_payload);
+    const resValidation = isExtensionTool(input.tool_name)
+      ? extensionValidationResult(resSchemaUrl, "response")
+      : safeValidate(resSchemaId, resSchemaUrl, input.response_payload);
+
     let correlationId = input.correlation_id ?? null;
     if (correlationId === null && typeof input.request_payload === "object" && input.request_payload !== null) {
       const ctx = (input.request_payload as Record<string, unknown>)["context"];
@@ -412,11 +474,11 @@ export function recordSignalTrace(input: RecordSignalTraceInput): SignalTrace | 
       peer_server_info: input.peer_server_info ?? null,
       request: {
         payload: input.request_payload,
-        validation: safeValidate(reqSchemaId, reqSchemaUrl, input.request_payload),
+        validation: reqValidation,
       },
       response: {
         payload: input.response_payload,
-        validation: safeValidate(resSchemaId, resSchemaUrl, input.response_payload),
+        validation: resValidation,
         status: input.response_status,
         ...(input.response_error_message ? { error_message: input.response_error_message } : {}),
       },
@@ -446,6 +508,29 @@ function safeValidate(schemaId: string, schemaUrl: string, payload: unknown): Sc
       errors: [{ path: "(meta)", message: "validator threw: " + String((e as Error).message ?? e), keyword: "skipped" }],
     };
   }
+}
+
+/**
+ * Build the validation-result shell for an extension tool (one whose
+ * schema isn't in the published AdCP corpus). Surfaces a distinct
+ * `extension` keyword so the trace viewer can render an "ext: spec
+ * proposal" badge instead of "⊘ validation skipped" (which would
+ * imply runtime failure rather than intentional skip).
+ *
+ * The schema_url points at the spec issue / proposal so the workshop
+ * audience can click through to see where the standardization
+ * conversation lives.
+ */
+function extensionValidationResult(schemaUrl: string | undefined, leg: "request" | "response"): SchemaValidationResult {
+  return {
+    valid: true,  // we don't claim invalid for an unstandardized tool
+    schema_url: schemaUrl ?? "",
+    errors: [{
+      path: "(meta)",
+      message: `${leg} not standardized in AdCP yet — recorded for audit, schema link goes to the proposal`,
+      keyword: "extension",
+    }],
+  };
 }
 
 export interface SignalTraceQuery {

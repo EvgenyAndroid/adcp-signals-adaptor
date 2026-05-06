@@ -6763,6 +6763,7 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .trace-vbadge.ok { background: rgba(95, 217, 196, 0.14); color: #5fd9c4; }
 .trace-vbadge.bad { background: rgba(255, 100, 100, 0.14); color: #ff7b7b; }
 .trace-vbadge.skip { background: rgba(255, 255, 255, 0.04); color: var(--text-faint); }
+.trace-vbadge.ext  { background: rgba(255, 196, 95, 0.14); color: #ffc45f; }
 .signal-trace-schemalink {
   margin-left: auto;
   font: 10px var(--font-mono); color: var(--accent); text-decoration: none;

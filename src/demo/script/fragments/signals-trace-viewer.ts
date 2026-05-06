@@ -121,6 +121,13 @@ function renderJsonWithGlossary(value, indent) {
 
 function renderValidationBadge(validation) {
   if (!validation) return '<span class="trace-vbadge skip" title="No schema attached to this trace">no schema</span>';
+  // "extension" — tool isn't standardized in the published AdCP spec
+  // yet, so we record the trace but skip validation. Distinct badge so
+  // the audience doesn't read this as a runtime failure. The schema
+  // URL banner still renders (pointing at the spec proposal / issue).
+  if (validation.errors && validation.errors.some(function (e) { return e.keyword === "extension"; })) {
+    return '<span class="trace-vbadge ext" title="Recorded for audit. Tool not yet standardized in published AdCP spec — schema link goes to the proposal.">⚙ extension</span>';
+  }
   // "skipped" or "missing_schema" — the validator couldn't run on the
   // payload (e.g. corpus didn't load, runtime quirk). Distinct from
   // "ran and found 0 errors" — be honest about it. Kept short for
@@ -352,6 +359,9 @@ async function openSignalTraceModal(filter) {
   const qs = new URLSearchParams();
   if (filter && filter.correlationId) qs.set("correlation_id", filter.correlationId);
   if (filter && filter.agentId) qs.set("agent_id", filter.agentId);
+  // Single-tool filter: pushed to server. Multi-tool (tools: [...]):
+  // we fetch unfiltered and narrow client-side below since the index
+  // backing /api/signal-traces only takes one tool name at a time.
   if (filter && filter.tool) qs.set("tool", filter.tool);
   if (filter && filter.sourcePrefix) qs.set("source_prefix", filter.sourcePrefix);
   // Over-fetch a bit if we'll narrow client-side. 25 server-side is
@@ -363,6 +373,12 @@ async function openSignalTraceModal(filter) {
     const r = await fetch("/api/signal-traces?" + qs.toString());
     const data = await r.json();
     let traces = (data && data.traces) || [];
+    // Multi-tool filter (tools: ["a", "b"]) — narrow client-side since
+    // the server index keys on a single tool name.
+    if (filter && Array.isArray(filter.tools) && filter.tools.length > 0) {
+      const want = new Set(filter.tools);
+      traces = traces.filter(function (t) { return want.has(t.tool_name); });
+    }
     // Specific trace IDs (Race Canvas / orchestrator drill-in).
     if (filter && filter.traceIds && filter.traceIds.length > 0) {
       const wanted = new Set(filter.traceIds);
@@ -415,6 +431,7 @@ function describeFilter(f) {
   if (!f) return "all recent";
   const parts = [];
   if (f.tool) parts.push("tool=" + f.tool);
+  if (Array.isArray(f.tools) && f.tools.length > 0) parts.push("tool ∈ {" + f.tools.join(", ") + "}");
   if (f.correlationId) parts.push("corr=" + f.correlationId.slice(-12));
   if (f.agentId) parts.push("agent=" + f.agentId);
   if (f.sourcePrefix) parts.push("src⊃ " + f.sourcePrefix);
@@ -438,9 +455,35 @@ document.addEventListener("click", function (e) {
   }
   // Discover tab: the brief sends a get_signals to OUR /mcp (mcp_external
   // direction is inbound from the demo's POV — the demo browser is
-  // calling our worker). Filter by tool to keep the modal scoped.
+  // calling our worker). Filter by tool to keep the modal scoped. The
+  // Discover NL Query mode dispatches query_signals_nl too — open with
+  // a multi-tool filter so the audience sees both the Brief mode
+  // (get_signals) and NL Query mode (query_signals_nl) traces in one
+  // pane and can compare the algorithmic surfaces side by side.
   if (t.closest("#discover-signal-traces")) {
+    return openSignalTraceModal({ tools: ["get_signals", "query_signals_nl"], limit: 25 });
+  }
+  // Catalog tab: the page-walk fires get_signals with a wildcard spec
+  // and pagination cursors. Showing the trace exposes the cursor
+  // mechanics — multiple traces with chained pagination.cursor values
+  // — which is the cleanest pagination story we can tell.
+  if (t.closest("#catalog-signal-traces")) {
     return openSignalTraceModal({ tool: "get_signals", limit: 25 });
+  }
+  // Detail Panel: the row drill-in fires get_signals with signal_ids
+  // (the discriminated SignalId form), so the trace shows the lookup
+  // path vs the spec/discovery path. Useful contrast for audience
+  // questions about "what does signal_id ACTUALLY look like".
+  if (t.closest("#detail-signal-traces")) {
+    return openSignalTraceModal({ tool: "get_signals", limit: 10 });
+  }
+  // Activations tab: the demo polls activate_signal then chains
+  // get_operation_status calls until the underlying task flips to
+  // completed. Wire the chip so the audience can audit the poll
+  // sequence (each iteration is its own trace with the same task_id
+  // in the request payload).
+  if (t.closest("#activation-signal-traces")) {
+    return openSignalTraceModal({ tools: ["activate_signal", "get_operation_status"], limit: 25 });
   }
 });
 `;

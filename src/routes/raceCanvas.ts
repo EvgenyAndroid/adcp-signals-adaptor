@@ -957,11 +957,16 @@ function renderRaceCanvas(demoKey: string): string {
 </div>
 
 <!-- Race Canvas Signal traces overlay — slim version of the demo's
-     shared viewer, fetches /api/signal-traces and renders a list. -->
+     shared viewer, fetches /api/signal-traces and renders a list.
+     Shares the rendering primitives (schema banner, peer version chip,
+     humanized errors, extension badge) with the main demo's
+     signals-trace-viewer.ts via _raceRender* helpers below — kept
+     inline because /race is a standalone HTML page that doesn't load
+     the full demo bundle. -->
 <div class="modal-backdrop" id="signal-trace-backdrop" style="display:none">
   <div class="modal" style="max-width:920px;width:96vw;max-height:88vh;overflow-y:auto">
     <div class="modal-title">Signal traces · raw protocol JSON</div>
-    <div class="modal-sub" style="opacity:0.7">Get_signals + activate_signal request/response captures with schema validation. Refresh to pull latest.</div>
+    <div class="modal-sub" style="opacity:0.7">Every recorded AdCP tool call (get_signals, activate_signal, query_signals_nl, get_operation_status, list_creative_formats, get_products, create_media_buy, check_governance) with schema validation against the vendored 3.0.6 corpus. Refresh to pull latest.</div>
     <button class="modal-close" id="signal-trace-modal-close">close</button>
     <div style="margin-top:14px"><button class="try-chip" id="signal-trace-refresh">↻ refresh</button></div>
     <div id="signal-trace-list" style="margin-top:12px;font:11.5px ui-monospace,Menlo,Consolas,monospace">loading…</div>
@@ -1622,9 +1627,17 @@ function renderRaceCanvas(demoKey: string): string {
     var statusColor = t.response.status === "ok" ? "#5fd9c4" : "#ff7b7b";
     var reqValid = t.request.validation && t.request.validation.valid;
     var resValid = t.response.validation && t.response.validation.valid;
-    var reqErrCount = (t.request.validation && t.request.validation.errors || []).length;
-    var resErrCount = (t.response.validation && t.response.validation.errors || []).length;
-    function badge(ok, errCount) {
+    var reqErrs = (t.request.validation && t.request.validation.errors) || [];
+    var resErrs = (t.response.validation && t.response.validation.errors) || [];
+    var reqErrCount = reqErrs.length;
+    var resErrCount = resErrs.length;
+    var reqIsExt = reqErrs.some(function (e) { return e.keyword === "extension"; });
+    var resIsExt = resErrs.some(function (e) { return e.keyword === "extension"; });
+    var reqIsSkip = reqErrs.some(function (e) { return e.keyword === "skipped" || e.keyword === "missing_schema"; });
+    var resIsSkip = resErrs.some(function (e) { return e.keyword === "skipped" || e.keyword === "missing_schema"; });
+    function badge(ok, errCount, isExt, isSkip) {
+      if (isExt) return '<span style="color:#ffc45f" title="Tool not yet standardized in published AdCP spec — recorded for audit, schema link goes to the proposal.">⚙ ext</span>';
+      if (isSkip) return '<span style="color:#9aa6b3" title="Validator could not run; schema URL link still works">⊘ skip</span>';
       if (ok) return '<span style="color:#5fd9c4">✓ schema</span>';
       return '<span style="color:#ff9b6b">✗ ' + errCount + ' err</span>';
     }
@@ -1656,7 +1669,7 @@ function renderRaceCanvas(demoKey: string): string {
         peerVerBlock +
         ' · <span style="color:' + statusColor + '">' + escapeHtml(t.response.status) + '</span>' +
         ' · ' + t.duration_ms + 'ms · ' + new Date(t.ts).toLocaleTimeString() +
-        ' · ' + badge(reqValid, reqErrCount) + ' req · ' + badge(resValid, resErrCount) + ' res' +
+        ' · ' + badge(reqValid, reqErrCount, reqIsExt, reqIsSkip) + ' req · ' + badge(resValid, resErrCount, resIsExt, resIsSkip) + ' res' +
       '</summary>' +
       '<div style="margin-top:8px"><strong style="font-size:10px;letter-spacing:0.1em">REQUEST</strong>' +
         ' · validating against <a href="' + escapeHtml(t.request.validation.schema_url) + '" target="_blank" style="color:#38b6ff;font-size:10px">' + escapeHtml(t.request.validation.schema_url.split("/").slice(-2).join("/")) + ' ↗</a></div>' +

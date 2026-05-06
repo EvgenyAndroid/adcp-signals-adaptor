@@ -169,7 +169,7 @@ export async function handleAgenticExecute(request: Request, env: Env, logger: L
             // on get_signals (rejected by Dstillery). See agenticArgsSanitizer.
             const args = sanitizeArgsForVendor(step.tool, rawArgs, plan.brief);
             const start = Date.now();
-            const r = await callAgentTool(a.mcp_url!, step.tool, args, { timeoutMs: 12_000 });
+            const r = await callAgentTool(a.mcp_url!, step.tool, args, { timeoutMs: 12_000, env });
             return { agent_id: a.id, agent_name: a.name, vendor: a.vendor, ok: r.ok, latency_ms: Date.now() - start, error: r.error, structured_content: r.structured_content, content: r.content };
           }));
 

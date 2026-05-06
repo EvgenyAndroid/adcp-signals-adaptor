@@ -174,6 +174,22 @@ function _humanizeErrorMessage(msg) {
   if (/^Instance does not match exactly one subschema/.test(msg)) return "doesn\\'t match any of the expected variants (oneOf)";
   // "A subschema had errors." -> swallow — it's just bookkeeping
   if (/^A subschema had errors\.?$/.test(msg)) return "(see nested errors below)";
+  // "validator threw: Unresolved $ref ..." — the @cfworker/json-schema
+  // error includes a multi-kilobyte dump of every known schema, which
+  // turns the modal into a wall of text. Truncate to just the actual
+  // error clause (everything before "Known schemas:") and append a
+  // hint that the rest is in the raw payload.
+  if (/^validator threw: /.test(msg)) {
+    const stripped = msg.replace(/^validator threw: /, "");
+    const knownIdx = stripped.indexOf(". Known schemas:");
+    if (knownIdx > 0 && knownIdx < stripped.length - 10) {
+      const head = stripped.slice(0, knownIdx).trim();
+      return "validator threw: " + head + " (full schema list in raw trace)";
+    }
+    // No "Known schemas:" boilerplate — short error, return as-is.
+    if (stripped.length <= 240) return "validator threw: " + stripped;
+    return "validator threw: " + stripped.slice(0, 240).trim() + "…";
+  }
   return msg;
 }
 
@@ -419,6 +435,12 @@ document.addEventListener("click", function (e) {
   }
   if (t.closest("#canvas-signal-traces")) {
     return openSignalTraceModal({ limit: 25 });
+  }
+  // Discover tab: the brief sends a get_signals to OUR /mcp (mcp_external
+  // direction is inbound from the demo's POV — the demo browser is
+  // calling our worker). Filter by tool to keep the modal scoped.
+  if (t.closest("#discover-signal-traces")) {
+    return openSignalTraceModal({ tool: "get_signals", limit: 25 });
   }
 });
 `;

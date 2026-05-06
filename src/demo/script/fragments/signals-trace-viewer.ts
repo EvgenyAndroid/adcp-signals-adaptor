@@ -215,6 +215,130 @@ function _humanizeKeyword(k) {
   }
 }
 
+// ── "What would the peer need to fix" — synthesized JSON-Patch ops ──────
+//
+// Walks validator errors and infers a minimal set of RFC 6902 patch
+// operations that would make the payload conformant. The workshop
+// centerpiece: turns "Dstillery returned 12 errors" from a finger-point
+// into an actionable migration ticket. For each error keyword we apply
+// a focused heuristic:
+//
+//   required              -> add op with <TBD> placeholder value
+//   additionalProperties  -> remove op
+//   const                 -> replace op with "<expected const>" placeholder
+//   enum                  -> replace op with "<one of the enum values>"
+//   type                  -> replace op with "<correct type>"
+//   oneOf / anyOf         -> rely on nested error rows (those carry the
+//                            actionable required/type failures)
+//
+// Values are intentionally placeholders unless the schema specifies a
+// const. The point isn't to reconstruct the perfect payload (which
+// would require the schema in the browser) — it's to show the SHAPE of
+// the fix: which fields to add, which to remove, where each lives in
+// the JSON tree. Concrete enough that a peer's engineer can read the
+// trace and write the migration.
+function inferFixOps(errors) {
+  if (!errors || errors.length === 0) return [];
+  const ops = [];
+  const seen = new Set();
+  function push(op) {
+    const key = op.op + ":" + op.path;
+    if (seen.has(key)) return;
+    seen.add(key);
+    ops.push(op);
+  }
+  function jsonPointer(parent, child) {
+    // cfworker emits empty-string for root, "/signals/0" otherwise. Our
+    // recorder defaults missing instanceLocation to "(root)" for the
+    // viewer; normalize both to the JSON-Pointer convention.
+    const base = (parent === "(root)" || parent === "") ? "" : parent;
+    return base + "/" + child;
+  }
+  for (let i = 0; i < errors.length; i++) {
+    const e = errors[i];
+    const path = e.path || "";
+    const msg = e.message || "";
+    if (e.keyword === "required") {
+      const m = msg.match(/required (?:property )?["']([^"']+)["']/);
+      if (m) {
+        push({
+          op: "add",
+          path: jsonPointer(path, m[1]),
+          value: "<TBD>",
+          reason: "schema requires this field",
+        });
+      }
+      continue;
+    }
+    if (e.keyword === "additionalProperties") {
+      const m = msg.match(/property ["']([^"']+)["']/) || msg.match(/Additional property ["']([^"']+)["']/);
+      if (m) {
+        push({
+          op: "remove",
+          path: jsonPointer(path, m[1]),
+          reason: "field not in schema (additionalProperties: false)",
+        });
+      }
+      continue;
+    }
+    if (e.keyword === "const") {
+      push({ op: "replace", path: path, value: "<expected const>", reason: "must equal a specific value" });
+      continue;
+    }
+    if (e.keyword === "enum") {
+      push({ op: "replace", path: path, value: "<one of the enum values>", reason: "not in allowed values" });
+      continue;
+    }
+    if (e.keyword === "type") {
+      push({ op: "replace", path: path, value: "<correct type>", reason: "wrong type for this field" });
+      continue;
+    }
+    if (e.keyword === "pattern") {
+      push({ op: "replace", path: path, value: "<value matching pattern>", reason: "string didn\\'t match the regex constraint" });
+      continue;
+    }
+    // oneOf/anyOf/$ref/properties/items intentionally skipped — their
+    // actionable detail lives in the nested error rows we already
+    // surfaced. Showing a top-level "fix oneOf" op would be noise.
+  }
+  return ops;
+}
+
+function renderFixPanel(validation) {
+  // Don't render when validation passed, was skipped, or is an
+  // extension tool — there's nothing to "fix" in those cases.
+  if (!validation || validation.valid) return "";
+  const errs = validation.errors || [];
+  if (errs.length === 0) return "";
+  if (errs.some(function (e) { return e.keyword === "skipped" || e.keyword === "missing_schema" || e.keyword === "extension"; })) return "";
+  const ops = inferFixOps(errs);
+  if (ops.length === 0) return "";
+  const rows = ops.map(function (op) {
+    const opLabel = op.op === "add" ? "+ ADD" : op.op === "remove" ? "− REMOVE" : "↻ REPLACE";
+    const opClass = "trace-fix-op-" + op.op;
+    const valueBlock = op.op === "remove"
+      ? ""
+      : ' <span class="trace-fix-op-value">→ ' + escapeHtml(op.value || "") + '</span>';
+    return '<li class="trace-fix-op ' + opClass + '">' +
+      '<span class="trace-fix-op-kind">' + opLabel + '</span>' +
+      ' <code class="trace-fix-op-path">' + escapeHtml(op.path) + '</code>' +
+      valueBlock +
+      ' <span class="trace-fix-op-reason">— ' + escapeHtml(op.reason) + '</span>' +
+    '</li>';
+  }).join("");
+  // RFC 6902 reference for engineers in the audience who recognize the
+  // shape but haven't internalized the spec name.
+  return '<details class="trace-fix-panel" open>' +
+    '<summary class="trace-fix-summary">' +
+      '<span class="trace-fix-icon">🔧</span>' +
+      '<span class="trace-fix-title">Suggested fix · ' + ops.length + ' operation' + (ops.length === 1 ? "" : "s") + '</span>' +
+      '<span class="trace-fix-sublabel">RFC 6902 JSON-Patch the peer would need to apply</span>' +
+    '</summary>' +
+    '<ul class="trace-fix-ops">' + rows + '</ul>' +
+    '<p class="trace-fix-foot">Generated from the validator\\'s keyword + path. Values are placeholders unless the schema specifies a const — the workshop point is the SHAPE of the fix, not the literal values.</p>' +
+  '</details>';
+}
+
 function renderValidationErrors(validation) {
   if (!validation || !validation.errors || validation.errors.length === 0) return "";
   // Per-error rows now show a humanized message + the keyword as a
@@ -248,7 +372,53 @@ function renderValidationErrors(validation) {
   return '<div class="trace-verrors">' + legend + rows + '</div>';
 }
 
-function renderSingleTrace(trace, idx) {
+// ── Latency percentiles ───────────────────────────────────────────────
+//
+// Compute per-group percentiles across the loaded trace list so the
+// trace head row can show "180ms (p72)" instead of just "180ms". Group
+// by (tool_name, source) which is the semantically right grain — a
+// federation:dstillery get_signals call should compare against other
+// federation:dstillery get_signals, not against an inbound mcp_external
+// activate_signal. Percentiles are honest only within a group; mixing
+// would mislead.
+function computeLatencyPercentiles(traces) {
+  const buckets = {};
+  for (let i = 0; i < traces.length; i++) {
+    const t = traces[i];
+    const key = t.tool_name + "::" + t.source;
+    if (!buckets[key]) buckets[key] = [];
+    buckets[key].push(t.duration_ms);
+  }
+  const out = {};
+  Object.keys(buckets).forEach(function (k) {
+    const sorted = buckets[k].slice().sort(function (a, b) { return a - b; });
+    out[k] = sorted; // store sorted so each trace can compute its rank
+  });
+  return out;
+}
+function percentileFor(durationMs, sorted) {
+  if (!sorted || sorted.length === 0) return null;
+  // Largest index whose value <= durationMs. Standard nearest-rank
+  // percentile with the rank-of-value definition.
+  let idx = 0;
+  for (let i = 0; i < sorted.length; i++) { if (sorted[i] <= durationMs) idx = i; else break; }
+  // p = (rank / N) * 100, where rank is 1-indexed for display purposes.
+  return Math.round(((idx + 1) / sorted.length) * 100);
+}
+function renderLatencyChip(durationMs, sorted) {
+  // Hide chip when the group has fewer than 3 samples — percentile
+  // claims would be noise-not-signal at that bucket size.
+  if (!sorted || sorted.length < 3) return '<span class="trace-dur">' + durationMs + 'ms</span>';
+  const p = percentileFor(durationMs, sorted);
+  // Color-code: fast (≤p25) green, ≤p75 neutral, slow (>p75) warm.
+  let cls = "neutral";
+  if (p <= 25) cls = "fast";
+  else if (p > 75) cls = "slow";
+  const title = "Within this group (same tool + source, " + sorted.length + " samples), this call is the " + p + "th percentile by latency. p50 = " + sorted[Math.floor(sorted.length / 2)] + "ms.";
+  return '<span class="trace-dur trace-dur-' + cls + '" title="' + escapeHtml(title) + '">' + durationMs + 'ms · p' + p + '</span>';
+}
+
+function renderSingleTrace(trace, idx, percentileBuckets) {
   const tsFmt = new Date(trace.ts).toLocaleTimeString();
   const dirIcon = trace.direction === "outbound" ? "→" : "←";
   const sourceShort = trace.source.length > 36 ? trace.source.slice(0, 33) + "…" : trace.source;
@@ -287,6 +457,30 @@ function renderSingleTrace(trace, idx) {
     peerVersionChip = '<span class="trace-peer-version" title="' + escapeHtml(fullTitle) + '">' +
       escapeHtml(label) + '</span>';
   }
+  // Latency chip with percentile rank within (tool, source) group.
+  const groupKey = trace.tool_name + "::" + trace.source;
+  const sortedDurations = percentileBuckets ? percentileBuckets[groupKey] : null;
+  const latencyChip = renderLatencyChip(trace.duration_ms, sortedDurations);
+  // Correlation chain — when the trace has a correlation_id, the chip
+  // becomes a clickable link that re-opens the modal scoped to the
+  // chain (every other trace in that workflow). Lets the audience walk
+  // a multi-call workflow (signals → products → media_buy) as a
+  // single timeline instead of clicking around for orphan traces.
+  let corrChip = "";
+  if (trace.correlation_id) {
+    const cid = trace.correlation_id;
+    const tail = cid.slice(-12);
+    corrChip = '<button class="trace-corr trace-corr-link" data-correlation-id="' + escapeHtml(cid) +
+      '" title="Show every other trace with the same correlation_id — see the full workflow chain (signals → products → media_buy etc)">' +
+      'corr: ' + escapeHtml(tail) + ' ⛓</button>';
+  }
+  // Replay-as-curl button — generates a curl command for the recorded
+  // request and copies it to clipboard. For outbound (federation), this
+  // points at the peer's /mcp endpoint so the audience can verify
+  // independently. For inbound, it points at our worker.
+  const replayBlock = trace.endpoint_url
+    ? '<button class="trace-replay" data-replay-target="' + idx + '" title="Copy a curl command that re-fires this exact request to the same endpoint. Verify the peer\\'s response without leaving the room.">↻ curl</button>'
+    : '';
   return '<div class="signal-trace-frame" data-trace-id="' + escapeHtml(trace.trace_id) + '">' +
     '<div class="signal-trace-frame-head">' +
       '<span class="trace-tool trace-tool-' + escapeHtml(trace.tool_name) + '">' + escapeHtml(trace.tool_name) + '</span> ' +
@@ -294,8 +488,9 @@ function renderSingleTrace(trace, idx) {
       endpointBlock +
       peerVersionChip +
       '<span class="trace-ts">' + tsFmt + '</span>' +
-      '<span class="trace-dur">' + trace.duration_ms + 'ms</span>' +
-      (trace.correlation_id ? '<span class="trace-corr">corr: ' + escapeHtml(trace.correlation_id.slice(-12)) + '</span>' : '') +
+      latencyChip +
+      corrChip +
+      replayBlock +
       (trace.response.status === "error" ? '<span class="trace-status-err">ERROR</span>' : '<span class="trace-status-ok">OK</span>') +
     '</div>' +
     '<div class="signal-trace-section">' +
@@ -306,6 +501,7 @@ function renderSingleTrace(trace, idx) {
       '</div>' +
       renderSchemaBanner(trace.request.validation) +
       renderValidationErrors(trace.request.validation) +
+      renderFixPanel(trace.request.validation) +
       '<pre class="signal-trace-json" id="req-' + idx + '">' + renderJsonWithGlossary(trace.request.payload) + '</pre>' +
     '</div>' +
     '<div class="signal-trace-section">' +
@@ -316,6 +512,7 @@ function renderSingleTrace(trace, idx) {
       '</div>' +
       renderSchemaBanner(trace.response.validation) +
       renderValidationErrors(trace.response.validation) +
+      renderFixPanel(trace.response.validation) +
       (trace.response.error_message ? '<div class="signal-trace-errmsg">' + escapeHtml(trace.response.error_message) + '</div>' : '') +
       '<pre class="signal-trace-json" id="res-' + idx + '">' + renderJsonWithGlossary(trace.response.payload) + '</pre>' +
     '</div>' +
@@ -407,7 +604,12 @@ async function openSignalTraceModal(filter) {
       body.innerHTML = '<div class="signal-trace-empty">No traces match this filter yet.<br/><small>Traces buffer the last 500 signal interactions in-memory + 6h in KV; older ones are evicted.</small></div>';
       return;
     }
-    body.innerHTML = traces.map(function (t, i) { return renderSingleTrace(t, i); }).join("");
+    // Pre-compute (tool, source) percentile buckets across the loaded
+    // set so each row's latency chip can show its rank within its peer
+    // group. Honest only within a group; mixing federation:dstillery
+    // get_signals against inbound activate_signal would mislead.
+    const percentileBuckets = computeLatencyPercentiles(traces);
+    body.innerHTML = traces.map(function (t, i) { return renderSingleTrace(t, i, percentileBuckets); }).join("");
     // Wire copy buttons
     body.querySelectorAll(".signal-trace-copy").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -420,6 +622,48 @@ async function openSignalTraceModal(filter) {
             setTimeout(function () { btn.textContent = "copy"; }, 1400);
           }).catch(function () { /* clipboard blocked */ });
         }
+      });
+    });
+    // Wire correlation-chain links — clicking the corr-id chip re-opens
+    // the modal scoped to every trace sharing that correlation_id.
+    body.querySelectorAll(".trace-corr-link").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        const cid = btn.dataset.correlationId;
+        if (cid) openSignalTraceModal({ correlationId: cid, limit: 50 });
+      });
+    });
+    // Wire replay-as-curl buttons — generate a curl command for the
+    // recorded request and copy to clipboard. Audience can paste into
+    // a terminal to verify the peer's response independently.
+    body.querySelectorAll(".trace-replay").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const replayIdx = parseInt(btn.dataset.replayTarget, 10);
+        const t = traces[replayIdx];
+        if (!t || !t.endpoint_url) return;
+        // For MCP-flavored endpoints, the payload is the inner tool
+        // arguments — wrap it back into JSON-RPC tools/call so the
+        // curl actually hits a working endpoint shape. For REST, post
+        // the payload as-is. Heuristic: endpoint_url ends with /mcp.
+        let body, method = "POST";
+        if (/\\/mcp\\/?$/.test(t.endpoint_url) || t.source.indexOf("mcp") >= 0 || t.source.indexOf("federation") >= 0) {
+          body = JSON.stringify({
+            jsonrpc: "2.0", id: 1, method: "tools/call",
+            params: { name: t.tool_name, arguments: t.request.payload || {} }
+          });
+        } else {
+          body = JSON.stringify(t.request.payload || {});
+        }
+        // Single-quoted curl body. Escape single quotes inside the JSON
+        // for shell safety.
+        const safeBody = body.replace(/'/g, "'\\\\\\''");
+        const curl = "curl -X " + method + " '" + t.endpoint_url + "' \\\\\\n" +
+          "  -H 'Content-Type: application/json' \\\\\\n" +
+          "  -d '" + safeBody + "'";
+        navigator.clipboard.writeText(curl).then(function () {
+          btn.textContent = "↻ copied ✓";
+          setTimeout(function () { btn.textContent = "↻ curl"; }, 1600);
+        }).catch(function () { /* clipboard blocked — leave label */ });
       });
     });
   } catch (e) {

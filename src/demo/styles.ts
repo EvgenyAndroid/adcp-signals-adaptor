@@ -6700,8 +6700,27 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .trace-tool-activate_signal { background: rgba(255, 94, 135, 0.10); color: #ff5e87; border-color: rgba(255, 94, 135, 0.25); }
 .trace-dir { color: var(--text); }
 .trace-ts { margin-left: auto; }
-.trace-dur { color: var(--text-faint); }
+.trace-dur { color: var(--text-faint); font: 10.5px var(--font-mono); padding: 1px 6px; border-radius: 3px; background: rgba(255,255,255,0.04); }
+.trace-dur-fast    { color: #5fd9c4; background: rgba(95,217,196,0.10); }
+.trace-dur-neutral { color: var(--text-mut); }
+.trace-dur-slow    { color: #ffaf6b; background: rgba(255,175,107,0.10); }
 .trace-corr { font-style: italic; }
+.trace-corr-link {
+  font-style: italic; cursor: pointer;
+  background: rgba(56,182,255,0.08); color: #38b6ff;
+  border: 1px solid rgba(56,182,255,0.25);
+  padding: 1px 6px; border-radius: 3px;
+  font: 10.5px var(--font-mono);
+}
+.trace-corr-link:hover { background: rgba(56,182,255,0.16); }
+.trace-replay {
+  cursor: pointer;
+  background: rgba(255,196,95,0.08); color: #ffc45f;
+  border: 1px solid rgba(255,196,95,0.25);
+  padding: 1px 6px; border-radius: 3px;
+  font: 10.5px var(--font-mono);
+}
+.trace-replay:hover { background: rgba(255,196,95,0.16); }
 .trace-endpoint {
   display: inline-flex; align-items: center; gap: 4px;
   font: 10.5px var(--font-mono);
@@ -6764,6 +6783,46 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
 .trace-vbadge.bad { background: rgba(255, 100, 100, 0.14); color: #ff7b7b; }
 .trace-vbadge.skip { background: rgba(255, 255, 255, 0.04); color: var(--text-faint); }
 .trace-vbadge.ext  { background: rgba(255, 196, 95, 0.14); color: #ffc45f; }
+/* "Suggested fix" panel — synthesized JSON-Patch ops the peer would need
+   to apply. Distinct accent color (warm yellow) so it visually separates
+   from the bad-validation errors above (which are red) and the JSON
+   payload below (which is monochrome). */
+.trace-fix-panel {
+  margin: 8px 0;
+  background: rgba(255, 196, 95, 0.06);
+  border: 1px solid rgba(255, 196, 95, 0.2);
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+.trace-fix-summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffc45f;
+  list-style: none;
+}
+.trace-fix-summary::-webkit-details-marker { display: none; }
+.trace-fix-icon { font-size: 14px; }
+.trace-fix-title { flex: 0 0 auto; }
+.trace-fix-sublabel { color: var(--text-mut); font-weight: 400; font-size: 10.5px; margin-left: auto; }
+.trace-fix-ops { list-style: none; margin: 8px 0 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.trace-fix-op {
+  display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
+  font: 11px var(--font-mono);
+  padding: 3px 6px; border-radius: 3px;
+  background: rgba(0, 0, 0, 0.18);
+}
+.trace-fix-op-kind { font-weight: 700; flex: 0 0 auto; min-width: 78px; }
+.trace-fix-op-add .trace-fix-op-kind { color: #5fd9c4; }
+.trace-fix-op-remove .trace-fix-op-kind { color: #ff7b7b; }
+.trace-fix-op-replace .trace-fix-op-kind { color: #ffc45f; }
+.trace-fix-op-path { color: var(--text); background: rgba(255, 255, 255, 0.05); padding: 1px 4px; border-radius: 2px; }
+.trace-fix-op-value { color: var(--text-mut); }
+.trace-fix-op-reason { color: var(--text-faint); font-size: 10.5px; font-style: italic; }
+.trace-fix-foot { color: var(--text-faint); font-size: 10.5px; margin: 6px 0 0 0; line-height: 1.5; }
 .signal-trace-schemalink {
   margin-left: auto;
   font: 10px var(--font-mono); color: var(--accent); text-decoration: none;

@@ -18,6 +18,9 @@
 //   - Session id expires after idle period (~10 min observed). Retry
 //     once on session error.
 
+import { safeRecordSignalTrace, persistSignalTrace } from "../domain/signalTrace";
+import type { Env } from "../types/env";
+
 export const DSTILLERY_MCP_URL = "https://adcp-signals-agent.dstillery.com/mcp";
 
 // Per-isolate session cache. Cloudflare recycles isolates frequently;
@@ -146,11 +149,24 @@ async function callGetSignalsOnce(
 export async function dstillerySearch(
   brief: string,
   maxResults: number = 10,
+  env?: Env,
 ): Promise<DstillerySearchResult> {
   const start = Date.now();
+  // Track the request payload separately so we can record it even when
+  // the network call throws. The trace recorder captures both successful
+  // and failed federation outbounds — same posture as callAgentTool's
+  // recorder in genericMcpClient.ts.
+  const requestPayload = { signal_spec: brief, max_results: maxResults };
   try {
     let session = await ensureSession();
-    if (!session) return { ok: false, signals: [], error: "session_init_failed", elapsed_ms: Date.now() - start };
+    if (!session) {
+      const failResult: DstillerySearchResult = {
+        ok: false, signals: [], error: "session_init_failed",
+        elapsed_ms: Date.now() - start,
+      };
+      await _recordDstilleryTrace(env, requestPayload, failResult);
+      return failResult;
+    }
 
     let r = await callGetSignalsOnce(session, brief, maxResults);
 
@@ -167,13 +183,56 @@ export async function dstillerySearch(
       elapsed_ms: Date.now() - start,
     };
     if (r.error) result.error = r.error;
+    await _recordDstilleryTrace(env, requestPayload, result, r);
     return result;
   } catch (e) {
-    return {
+    const errResult: DstillerySearchResult = {
       ok: false,
       signals: [],
       error: String((e as Error).message || e),
       elapsed_ms: Date.now() - start,
     };
+    await _recordDstilleryTrace(env, requestPayload, errResult);
+    return errResult;
   }
+}
+
+/**
+ * Helper: record + persist a Dstillery federation trace using the same
+ * shape as callAgentTool's recorder in genericMcpClient.ts. Without
+ * this, the Federation page's "Fan out" button produces results but
+ * the signal-trace modal stays empty for federation:dstillery — which
+ * is exactly the bug the user reported pre-workshop.
+ *
+ * Failures are silent — the trace is observability, not load-bearing.
+ */
+async function _recordDstilleryTrace(
+  env: Env | undefined,
+  requestPayload: Record<string, unknown>,
+  result: DstillerySearchResult,
+  rawCall?: { signals?: unknown[]; error?: string },
+): Promise<void> {
+  try {
+    // Build a response payload that mirrors what the wire actually
+    // returned. When the call succeeded, the structuredContent is
+    // { signals: [...] }. When it failed, surface the error string
+    // so the trace's response section shows context.
+    const responsePayload: Record<string, unknown> = result.ok
+      ? { signals: result.signals }
+      : { error: result.error ?? "unknown_error" };
+    const trace = safeRecordSignalTrace({
+      tool_name: "get_signals",
+      direction: "outbound",
+      source: "federation:dstillery",
+      caller_agent: "dstillery",
+      endpoint_url: DSTILLERY_MCP_URL,
+      request_payload: requestPayload,
+      response_payload: responsePayload,
+      response_status: result.ok ? "ok" : "error",
+      ...(result.error ? { response_error_message: result.error } : {}),
+      duration_ms: result.elapsed_ms,
+    });
+    if (env && trace) await persistSignalTrace(env, trace);
+    void rawCall;
+  } catch { /* observability never breaks the call path */ }
 }

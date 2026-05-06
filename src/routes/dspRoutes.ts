@@ -579,7 +579,7 @@ export async function handleDspCampaignSignalsLive(
       // pagination envelope intentionally NOT sent — see agentsEndpoints
       // comment about Pydantic-strict vendors rejecting unknown keywords.
       deliver_to: { deployments: [{ type: "platform", platform: "mock_dsp" }], countries: ["US"] },
-    }, { timeoutMs: 10_000 });
+    }, { timeoutMs: 10_000, env });
     const latency = Date.now() - start;
     interface SignalShape { signal_agent_segment_id?: string; id?: string; name?: string; coverage_percentage?: number; estimated_audience_size?: number }
     const sc = (r.structured_content as { signals?: SignalShape[] } | undefined) ?? {};

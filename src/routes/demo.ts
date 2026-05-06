@@ -349,6 +349,7 @@ ${STYLES}
       <div class="kv"><span class="k">Client</span><span class="v mono">@adcp/5.25.1</span></div>
       <div class="kv"><span class="k">Status</span><span class="v"><span class="status-dot ok"></span>live</span></div>
       <div class="kv"><span class="k">Conformance</span><span class="v"><span class="pill pill-success">7 / 7</span></span></div>
+      <div class="kv"><span class="k">Discovery</span><span class="v"><a href="/.well-known/adagents.json" target="_blank" rel="noopener" class="mono" style="color:var(--accent);text-decoration:none" title="Our published AdCP discovery anchor — declares this worker as the authorized signals agent. The trust anchor a buyer agent reads to discover us.">📡 adagents.json ↗</a></span></div>
       <div class="theme-picker" role="group" aria-label="Theme">
         <span class="theme-picker-label">Theme</span>
         <button class="theme-swatch" data-theme-pick="midnight" title="Midnight (dark)" aria-label="Midnight theme"></button>
@@ -1481,8 +1482,27 @@ ${STYLES}
             <button class="btn-secondary" id="fed-signal-traces" title="View raw get_signals + activate_signal request/response JSON for every federated call">
               <span class="mono">{ }</span><span>Signal traces</span>
             </button>
+            <button class="btn-secondary" id="fed-discovery-probe" title="Probe each peer's /.well-known/adagents.json — surfaces which peers publish the AdCP discovery anchor (we do, most don't yet). Click to fan out a 3-second-timeout probe across the registry and render results.">
+              📡 Discovery probe
+            </button>
           </div>
         </div>
+
+        <!-- Discovery panel — slides open when "📡 Discovery probe"
+             is clicked. Shows our adagents.json on top and peer probe
+             results below. Default closed so the page stays scannable
+             until the workshop calls out the discovery anchor. -->
+        <div id="discovery-panel" class="lab-panel" style="display:none;margin-bottom:18px">
+          <div class="lab-panel-title">AdCP discovery anchor · /.well-known/adagents.json</div>
+          <p class="orch-small" style="color:var(--text-mut);margin:6px 0 14px 0">A buyer agent doing "find authorized signals agents for this domain" lands on this file. We publish a 3.0.6-conformant declaration; most peers don't yet — that gap is exactly what the AdCP standardization closes.</p>
+          <div class="lab-section-label">Our declaration</div>
+          <pre id="discovery-our-doc" class="signal-trace-json" style="max-height:300px">loading…</pre>
+          <div class="lab-section-label" style="margin-top:18px">Peer probe results <span id="discovery-peer-counts" style="color:var(--text-mut);font-weight:400;margin-left:8px"></span></div>
+          <div id="discovery-peer-results" style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+            <div class="orch-small" style="color:var(--text-mut)">Click 📡 Discovery probe to fetch each peer's adagents.json (3s timeout per peer).</div>
+          </div>
+        </div>
+
         <div class="lab-grid">
           <div class="lab-panel">
             <div class="lab-panel-title">Federated search</div>

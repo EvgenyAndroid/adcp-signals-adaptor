@@ -377,6 +377,101 @@ function fedCompareSelected() {
   host.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+// ── Discovery probe panel ───────────────────────────────────────────────
+//
+// Workshop overdeliver: visible at top of Federation tab. Shows OUR
+// /.well-known/adagents.json + each peer's probe result side-by-side.
+// "We publish, peers don't, here's the gap" -- the discovery-anchor
+// coverage story in one click.
+async function _renderOurAdagents() {
+  var pre = document.getElementById("discovery-our-doc");
+  if (!pre) return;
+  try {
+    var r = await fetch("/.well-known/adagents.json");
+    var doc = await r.json();
+    pre.textContent = JSON.stringify(doc, null, 2);
+  } catch (e) {
+    pre.textContent = "Failed to fetch our adagents.json: " + (e && e.message ? e.message : e);
+  }
+}
+
+function _badgeForProbeStatus(status) {
+  var cls = "pill-mut", icon = "?";
+  if (status === "ok") { cls = "pill-success"; icon = "✓ valid"; }
+  else if (status === "schema_invalid") { cls = "pill-warn"; icon = "⚠ invalid shape"; }
+  else if (status === "not_found") { cls = "pill-mut"; icon = "404 no file"; }
+  else if (status === "http_error") { cls = "pill-warn"; icon = "HTTP error"; }
+  else if (status === "timeout") { cls = "pill-mut"; icon = "timeout"; }
+  else if (status === "network_error") { cls = "pill-mut"; icon = "network err"; }
+  return '<span class="pill ' + cls + '" style="font-size:10.5px">' + icon + '</span>';
+}
+
+async function _runDiscoveryProbe() {
+  var btn = document.getElementById("fed-discovery-probe");
+  var panel = document.getElementById("discovery-panel");
+  var resultsHost = document.getElementById("discovery-peer-results");
+  var countsEl = document.getElementById("discovery-peer-counts");
+  if (!panel || !resultsHost) return;
+  panel.style.display = "block";
+  if (btn) btn.disabled = true;
+  resultsHost.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Probing peer adagents.json files…</div></div>';
+  await _renderOurAdagents();
+  try {
+    var r = await fetch("/api/adagents-probe");
+    var data = await r.json();
+    var counts = data.counts || {};
+    if (countsEl) {
+      var parts = [];
+      if (counts.ok) parts.push(counts.ok + " published & valid");
+      if (counts.schema_invalid) parts.push(counts.schema_invalid + " published but invalid");
+      if (counts.not_found) parts.push(counts.not_found + " no file (404)");
+      if (counts.http_error || counts.timeout || counts.network_error) {
+        parts.push(((counts.http_error || 0) + (counts.timeout || 0) + (counts.network_error || 0)) + " unreachable");
+      }
+      countsEl.textContent = "· " + parts.join(" · ") + " (" + (data.probed_count || 0) + " peers)";
+    }
+    var rows = (data.results || []).map(function (p) {
+      var detail = "";
+      if (p.status === "ok" || p.status === "schema_invalid") {
+        var shapeJson = JSON.stringify(p.payload_preview || {}, null, 2);
+        if (shapeJson.length > 1500) shapeJson = shapeJson.slice(0, 1500) + "\\n… (truncated)";
+        detail = '<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--text-mut);font-size:11px">show response</summary>' +
+          '<pre class="signal-trace-json" style="max-height:240px;margin-top:6px">' + escapeHtml(shapeJson) + '</pre>';
+        if (p.validation && p.validation.errors && p.validation.errors.length > 0) {
+          detail += '<div style="margin-top:6px;color:#ff9b6b;font-size:11px">' + p.validation.errors.length + ' schema error' + (p.validation.errors.length === 1 ? "" : "s") + ':</div>' +
+            '<ul style="margin:4px 0 0 20px;color:#ff9b6b;font-size:10.5px">' +
+            p.validation.errors.slice(0, 5).map(function (e) {
+              return '<li><code>' + escapeHtml(e.path || "(root)") + '</code> ' + escapeHtml(e.message || "") + '</li>';
+            }).join("") + '</ul>';
+        }
+        detail += '</details>';
+      } else if (p.error) {
+        detail = '<div style="margin-top:4px;color:var(--text-mut);font-size:10.5px">' + escapeHtml(p.error) + '</div>';
+      }
+      return '<div class="signal-trace-frame" style="padding:8px 12px">' +
+        '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">' +
+          '<strong style="font-size:12.5px">' + escapeHtml(p.agent_name || p.agent_id) + '</strong>' +
+          _badgeForProbeStatus(p.status) +
+          '<a href="' + escapeHtml(p.fetched_url) + '" target="_blank" rel="noopener" style="color:var(--accent);font-size:10.5px;text-decoration:none">' + escapeHtml(p.fetched_url) + ' ↗</a>' +
+          '<span style="color:var(--text-mut);font-size:10.5px;margin-left:auto">' + (p.duration_ms || 0) + 'ms</span>' +
+        '</div>' +
+        detail +
+      '</div>';
+    }).join("");
+    resultsHost.innerHTML = rows || '<div class="empty-state"><div class="empty-title">No peers in registry</div></div>';
+  } catch (e) {
+    resultsHost.innerHTML = '<div class="empty-state" style="color:var(--error)"><div class="empty-title">Probe failed: ' + escapeHtml(e && e.message ? e.message : String(e)) + '</div></div>';
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+document.addEventListener("click", function (e) {
+  var t = e.target;
+  if (!t || !t.closest) return;
+  if (t.closest("#fed-discovery-probe")) _runDiscoveryProbe();
+});
+
 // Sec-38 A7: keyboard shortcuts. Two-key "go to" prefix (g+x). Single
 // keys: ? toggles the cheat sheet, Esc closes overlays + detail panel.
 // Ignore shortcuts while typing in an input/textarea.

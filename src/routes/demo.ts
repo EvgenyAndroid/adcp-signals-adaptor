@@ -348,7 +348,7 @@ ${STYLES}
       <div class="kv"><span class="k">Version</span><span class="v mono">${SPEC_LABEL}</span></div>
       <div class="kv"><span class="k">Client</span><span class="v mono">@adcp/5.25.1</span></div>
       <div class="kv"><span class="k">Status</span><span class="v"><span class="status-dot ok"></span>live</span></div>
-      <div class="kv"><span class="k">Conformance</span><span class="v"><span class="pill pill-success">7 / 7</span></span></div>
+      <div class="kv"><span class="k">Conformance</span><span class="v"><span class="pill pill-success" id="footer-conformance-pill" title="Loading from /capabilities ext.compliance.results…">7 / 7</span></span></div>
       <div class="kv"><span class="k">Discovery</span><span class="v"><a href="/.well-known/adagents.json" target="_blank" rel="noopener" class="mono" style="color:var(--accent);text-decoration:none" title="Our published AdCP discovery anchor — declares this worker as the authorized signals agent. The trust anchor a buyer agent reads to discover us.">📡 adagents.json ↗</a></span></div>
       <div class="theme-picker" role="group" aria-label="Theme">
         <span class="theme-picker-label">Theme</span>

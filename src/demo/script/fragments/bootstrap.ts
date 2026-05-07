@@ -96,6 +96,36 @@ async function callTool(name, args) {
   return body.result?.structuredContent ?? body.result;
 }
 
+// Sidebar footer conformance pill — data-driven. Reads
+// ext.compliance.results from GET /capabilities so the displayed
+// "passed/applicable" count auto-updates when the daily watcher
+// refreshes capabilityService's in-band block. Falls back to the
+// HTML-hardcoded value when the fetch fails (e.g. on offline demo
+// or transient 5xx). Public endpoint — no auth header needed.
+async function _refreshConformancePill() {
+  const el = document.getElementById("footer-conformance-pill");
+  if (!el) return;
+  try {
+    const r = await fetch("/capabilities");
+    if (!r.ok) return;
+    const data = await r.json();
+    const c = data && data.ext && data.ext.compliance && data.ext.compliance.results;
+    if (!c || typeof c.passed !== "number" || typeof c.applicable !== "number") return;
+    const txt = c.passed + " / " + c.applicable;
+    el.textContent = txt;
+    // Color-code: green when all pass, yellow on partial, red on any fail.
+    el.classList.remove("pill-success", "pill-warn", "pill-error");
+    if (c.failed > 0) el.classList.add("pill-error");
+    else if (c.passed < c.applicable) el.classList.add("pill-warn");
+    else el.classList.add("pill-success");
+    const last = (data.ext.compliance.last_run) || "—";
+    const runner = (data.ext.compliance.client_runner) || "—";
+    const skipped = (typeof c.skipped === "number" ? c.skipped : 0);
+    el.title = "AdCP conformance: " + txt + " applicable scenarios · " + skipped + " non-applicable · last run " + last + " · " + runner;
+  } catch (_) { /* leave the hardcoded fallback */ }
+}
+_refreshConformancePill();
+
 //────────────────────────────────────────────────────────────────────────
 // AdCP 3.0 conformance helpers — replace legacy 2.x shapes the demo
 // client used to emit. The trace inspector validates every request

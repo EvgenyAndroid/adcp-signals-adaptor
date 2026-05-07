@@ -357,26 +357,40 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       // Updated manually after each `npm run compliance` against prod.
       compliance: {
         spec_version: "adcp_3.0",
-        client_runner: "@adcp/client@5.21.1",
-        last_run: "2026-04-27",
-        // 5.21 runner restructured into 48 tool-gated scenarios. A
-        // signals-only agent has 4 applicable; the rest skip because they
-        // require get_products / create_media_buy / sync_creatives /
-        // build_creative / si_* / governance / brand-rights tools we do
-        // not (and should not) advertise.
+        client_runner: "@adcp/client@5.25.1",
+        last_run: "2026-05-07",
+        // The 5.25 runner restored the error_handling / schema_compliance
+        // / validation scenario tracks for signals-only agents — adcp
+        // issue #2916 was effectively unblocked by capability-aware
+        // skip_if logic landing in the runner. Applicable count is now
+        // 7/7 (was 4/4 under the 5.21 regression).
+        //
+        // Refreshed by the AdCP daily watcher (.github/adcp-watch-config.json)
+        // on each spec/SDK/scenario change; last sync 2026-05-07.
         results: {
-          applicable: 4,
-          passed: 4,
+          applicable: 7,
+          passed: 7,
           failed: 0,
-          skipped: 35,
-          scenarios_run: ["health_check", "discovery", "capability_discovery", "signals_flow"],
+          skipped: 32,
+          scenarios_run: [
+            "capability_discovery",
+            "discovery",
+            "error_handling",
+            "health_check",
+            "schema_compliance",
+            "signals_flow",
+            "validation",
+          ],
         },
+        // Non-applicable scenarios are now exclusively the media-buy /
+        // creative / governance / brand-rights tracks that require tools
+        // a signals-only agent does not (and should not) advertise.
         non_applicable_scenarios: [
           {
-            scenario: "error_handling / validation / schema_compliance",
-            reason: "5.21 runner gates these behind get_products, conflating 'media-buy agent' with 'any agent' in applicability logic. Signals-only agents lose error/schema track entirely — regression vs the 5.6-era track structure where these ran on every protocol.",
+            scenario: "media-buy / creative / governance / brand-rights tracks",
+            reason: "Require get_products, create_media_buy, sync_creatives, build_creative, si_*, check_governance, check_brand_rights tools that a signals-only agent does not expose. 32 scenarios skip cleanly per the runner's tool-gated applicability logic.",
             upstream_issue: "https://github.com/adcontextprotocol/adcp/issues/2916",
-            upstream_status: "deferred → adcp 3.1.0 (capability-derived skip_if grammar lands runner-side first)",
+            upstream_status: "resolved — 5.25 runner emits capability-aware skip_if; signals-only agents no longer lose the error/schema/validation tracks.",
           },
         ],
         report: "docs/SEC42_ADCP_30_GA_COMPLIANCE.md",

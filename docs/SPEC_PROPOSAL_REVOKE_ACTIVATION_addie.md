@@ -1,12 +1,17 @@
-# Proposal for Addie / AAO: `revoke_activation` (signals domain)
+# Proposal for Addie / AAO: `revoke_activation` (signals domain) — v2
 
-Hey Addie — workshop close-out from the May 7 round-robin surfaced a gap I'd like to push through the working group. Sharing the proposal here so you can route it to whoever owns the signals-domain backlog.
+Hey Addie — thanks for the prior-art check + the two corrections (`tasks/get` not `get_operation_status`; the `action: "deactivate"` field has GDPR/CCPA intent, not a stub). Both verified against `vendor/adcp/adcp-3.0.6/schemas/`. Reframed proposal below.
 
 ## TL;DR
 
-**Gap:** AdCP 3.0.6 has no protocol-level way for a buyer to stop using a signal mid-campaign once it's been activated to a destination. The buyer's only options today are manual destination action (out-of-band, untraceable) or producer-set `validity_period` (which isn't buyer-triggered and isn't implemented in any 3.0.x adapter I've seen).
+**Gap (reframed):** AdCP 3.0.6 declares `action: "deactivate"` on `activate-signal-request.json` with GDPR/CCPA-driven intent — *"Deactivating removes the segment from downstream platforms, required when campaigns end to comply with data governance policies (GDPR, CCPA)."* The intent is real. Four things are missing for the field to actually work end-to-end:
 
-**Proposal:** add a new tool `revoke_activation` to the signals domain. Async-by-default, reason-coded, reason-scoped authorization, reuses `get_operation_status` + the existing webhook signing contract. Clean greenfield, additive only, backwards-compatible.
+1. **No per-activation scoping** — request takes signal_id + destinations, no way to address "the activation I started yesterday."
+2. **No reason codes** — binary action; can't distinguish buyer cleanup from consent-withdrawal from fraud.
+3. **No async chain linking** — the deactivate task isn't linked back to the original activation `task_id` for audit-chain correlation.
+4. **No published implementation** — per the AdCP directory + this adaptor's federation probe (May 7), no 3.0.x agent honors `action: "deactivate"` on `activate_signal` today.
+
+**Proposal:** add a new tool `revoke_activation` that sharpens the existing intent into a first-class primitive — explicit per-activation scoping, reason codes, async chain linking, conformance harness. Reuses `tasks/get` for polling + the existing webhook signing contract. Additive, backwards-compatible.
 
 **Why now:** demonstrably missing on the wire today. Walked through the workshop crowd, every adopter recognized it. Cleanest spec-proposal candidate from the round-robin.
 
@@ -15,7 +20,7 @@ Hey Addie — workshop close-out from the May 7 round-robin surfaced a gap I'd l
 ## Design choices (1 line each)
 
 1. **Name: `revoke_activation`** — not `deactivate_signal` (conflicts with existing `action: "deactivate"` discriminator), not `retract_signal` (kills it for everyone, wrong scope), not `cancel_activation` (implies pre-completion). Revocation targets a specific `task_id`; the signal itself stays in catalog; other buyers' activations untouched.
-2. **Async-by-default** — same lifecycle as `activate_signal`. Returns a new `task_id`; buyers poll via `get_operation_status` or receive webhook. Sync return permitted when every destination supports immediate revocation.
+2. **Async-by-default** — same lifecycle as `activate_signal`. Returns a new `task_id`; buyers poll via `tasks/get` (the spec primitive — confirmed in `vendor/adcp/adcp-3.0.6/schemas/bundled/core/tasks-get-response.json`) or receive webhook. Sync return permitted when every destination supports immediate revocation.
 3. **Reason codes are required** — eight values covering buyer + producer + governance + privacy + fraud + housekeeping triggers. Audit-grade.
 4. **Reason-scoped authorization** — `buyer_decision` is buyer-only; `producer_revoke` requires DNS-verified producer ownership; `governance_denied` requires governance-domain auth. The trust gradient gets enforced at the action layer for the first time.
 5. **Per-destination acks** — response carries one entry per affected destination with `is_revoked` + `ack_received` + optional `error`. Partial-failure semantics are explicit.
@@ -223,7 +228,7 @@ The reason-code-scoped check is the centerpiece — the *first* place AdCP enfor
 }
 ```
 
-Buyer polls `get_operation_status(op_1778079111234_a7d9c1e3b5f0a2c4)` or receives the existing HMAC-signed completion webhook.
+Buyer polls `tasks/get` with `task_id = op_1778079111234_a7d9c1e3b5f0a2c4` or receives the existing HMAC-signed completion webhook.
 
 ---
 
@@ -261,7 +266,7 @@ steps:
     expect_envelope_field_present: original_task_id
 
   - id: verify_chain
-    tool: get_operation_status
+    tool: tasks/get
     args: { task_id: ${activate.task_id} }
     expect_response_field:
       revoked_by: ${revoke.task_id}

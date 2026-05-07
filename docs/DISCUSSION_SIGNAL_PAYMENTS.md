@@ -292,7 +292,7 @@ Implication: termination is **detectable**, not just declarative. The receipt en
 
 ### Receipt envelope sketch (for sync discussion)
 
-To make the termination question concrete, here's the minimal receipt envelope this design implies:
+To make the termination question concrete, here's the minimal receipt envelope this design implies (v4: parallel-split DAG support added; algorithm framing corrected):
 
 ```json
 {
@@ -300,27 +300,83 @@ To make the termination question concrete, here's the minimal receipt envelope t
   "original_task_id":     "op_<...>",          // null for first hop
   "pricing_option_id":    "opt_<...>",
   "hop_index":             0,                   // 0 = buyer-facing leaf
-  "hop_role":              "reseller | publisher | data_owner",
+  "hop_role":              "reseller | publisher | data_owner | modeling_agent",
   "terminal_node":         true,                // explicit per Option 3/5
-  "prev_receipt_hash":    "<sha256>",          // chain integrity
+  "prev_receipt_hashes":  ["<sha256>", ...],   // ARRAY — supports DAG forks (see §Parallel splits below)
   "signed_at":            "<ISO 8601>",
   "expires_at":           "<ISO 8601>",
-  "signature_alg":        "ed25519 | ecdsa-p256-sha256 | hmac-sha256",
-  "signature":            "<bytes>",
-  "signing_key_fingerprint": "<hex>"            // resolves via adagents.json signing_keys[]
+  "signature":            "<RFC 9421 HTTP Message Signature>",
+  "key_id":               "<JWK kid>"            // resolves via brand.json jwks_uri
 }
 ```
 
-Three things this surfaces for the sync:
-1. **Chain integrity via `prev_receipt_hash`** — Merkle-style chain so any link tampering breaks verification at the buyer's hop.
-2. **Algorithm negotiation** — receipt signing should align with the cross-vendor webhook signing standardization (already a separate gap in our adapter audit; HMAC-v1 vs ed25519/ecdsa-p256-sha256 GA profile).
-3. **Key resolution via `adagents.json`** — `signing_keys[]` already exists in 3.0.6 (`vendor/adcp/adcp-3.0.6/schemas/adagents.json` per the catalog/agent variant), but is not widely adopted. Track A landing means signing-key publication becomes a hard requirement for any non-terminal node.
+**Three things this surfaces for the sync (v4 — corrected post-Addie):**
 
-### Recommendation for the sync
+1. **Chain integrity via `prev_receipt_hashes[]`** (PLURAL — corrected v4) — Merkle-style chaining where each receipt hashes its parent(s). Single-element array for linear chains; multi-element when the chain forks (see §"Parallel splits" below). Any link tampering breaks verification at the buyer's hop.
 
-Lead with **Option 5 (hybrid)** as the proposal. Frame Option 3's chain-pruning detection as a security feature, not a bug — strict-mode verification catches dishonest termination claims. Defer the receipt envelope schema details to a follow-up Technical Standards thread once the WG aligns on the termination model.
+2. **Signing algorithm is NOT an open negotiation — corrected v4.** The current spec has already chosen RFC 9421 HTTP Message Signatures as the baseline; HMAC-SHA256 is **deprecated** and **removed in AdCP 4.0** (verified verbatim in `vendor/adcp/adcp-3.0.6/schemas/bundled/creative/sync-creatives-request.json:4871` + `bundled/protocol/get-adcp-capabilities-response.json:1246`: *"RFC 9421 HTTP Signatures support... Required for spend-committing operations in 4.0"*). The receipt envelope MUST align with that — RFC 9421 + JWKS publication. **The "gap" is adoption velocity, not algorithm choice.** Worth flagging at the sync so we don't relitigate a question the spec has already decided.
 
-This also clarifies why **Track A is the gating dependency**: chain integrity + signing-key publication adoption is what makes Tracks B (revenue_share[]), C (vendor-to-vendor report_usage), and D (settlement close-out) verifiable. Without it, every downstream primitive falls back to bilateral-trust commercial agreements.
+3. **Key resolution via `brand.json` `jwks_uri`** (corrected v4) — The publication mechanism is the agent's JWKS at `brand.json` `agents[].jwks_uri` (per `vendor/.../brand.json:631`: *"HTTPS URL of the agent's JWKS (RFC 7517) containing public keys used to verify... RFC 9421 HTTP Signatures on outgoing requests"*). Per-purpose separation via `key_ops` and `use` fields; `kid` identifies the specific key. Track A's launch criterion is **JWKS publication adoption with webhook-signing-purpose keys**.
+
+### Parallel splits (DAG chains) — added v4
+
+Addie flagged: real chains aren't always linear. A modeling agent producing a lookalike signal often draws from **multiple data suppliers simultaneously** — Source A and Source B both feed the modeling pipeline; the model output is a function of both. When a buyer activates the modeled signal, the receipt at the modeling-agent hop has **two parents**, not one.
+
+Two design options for the receipt envelope:
+
+**(a) `prev_receipt_hashes[]` (plural) — recommended.** A receipt is a node in a DAG with possibly-multiple parents. Single-parent chains use a one-element array. The verifier walks every parent recursively until each terminates.
+
+- **Pro:** matches how real modeled-lookalike pipelines work; explicit DAG structure auditable end-to-end.
+- **Pro:** strict-mode verification can require ALL parent receipts to be valid (no weakest-link compromise).
+- **Con:** verification cost is proportional to DAG width × depth; receipt envelopes may include 5+ parent hashes for richly-modeled signals.
+
+**(b) Independent linear chains per fork.** Modeling agent emits one receipt per source data supplier; downstream consumers see N parallel receipts converging at their hop.
+
+- **Pro:** simpler envelope shape (single `prev_receipt_hash`).
+- **Con:** loses the JOIN semantics — a downstream verifier can't tell whether receipts A and B were combined or independent.
+- **Con:** doesn't generalize to agents that re-emit a derived signal whose lineage matters.
+
+**Recommendation: Option (a).** Plural `prev_receipt_hashes[]` is the cleaner shape; the verification cost is bounded by DAG width which is small in practice (typical modeled lookalike has 2–4 source suppliers, not 50). Strict-mode verification requires ALL parents to be valid → no weakest-link hole.
+
+**Sub-question for the sync:** when a node has multiple parents from DIFFERENT source agents, do they each contribute to the `revenue_share[]` propagation independently, or does the modeling agent collapse them into a single share split it controls? (Likely the latter, since the modeling agent is the one with the commercial relationship — but worth confirming.)
+
+### Track A.0 — pre-launch readiness criterion (sharpened v4)
+
+Addie's framing: Track A's launch criteria isn't a protocol question, it's an **ecosystem readiness question**. The receipt chain only executes when enough vendors publish JWKS with webhook-signing-purpose keys.
+
+**Empirical baseline from our adapter's federation probe** (May 7, 2026):
+
+| Adoption surface | Count | % of probed peers (19) |
+|---|---|---|
+| Peers with reachable MCP endpoint | ~16 | 84% |
+| Peers publishing `/.well-known/adagents.json` | 2 (BidMachine, AdCP Test Agent) | 10% |
+| Peers publishing schema-valid 3.0.6 adagents.json | 0 | 0% |
+| Peers publishing `brand.json` `jwks_uri` | unknown — not yet probed | TBD |
+| Peers publishing JWKS with `key_ops`/`use` for webhook-signing | unknown — not yet probed | TBD |
+
+**Implication:** Track A.0 (pre-launch) needs concrete adoption targets before Track A schema work makes sense:
+
+- **Threshold proposal:** ≥30% of the AdCP signals-domain directory publishes a JWKS with at least one webhook-signing key by the time Track A schema lands. Below that, the spec has no audience.
+- **Signal of progress:** the daily watcher (already running per `.github/adcp-watch-config.json`) could probe peer JWKS endpoints alongside `/.well-known/adagents.json` — auto-track the adoption curve. Three lines of code in our adapter; valuable as ecosystem telemetry.
+
+**This is worth filing as a separate tracked item** independent of the payments thread — JWKS publication adoption gates the entire signed-receipt design AND is presumably already a gating concern for the existing webhook-signing migration.
+
+### Webhook-signing migration — does it have a tracked owner?
+
+Addie offered to check open issues for a tracking item. Worth doing before the sync. Two outcomes:
+
+- **If a tracked migration item exists:** loop that owner into Track A's design discussion now (before the sync). Algorithm choice is shared; key publication is shared; adoption telemetry is shared. Two parallel decisions choosing different defaults would be worse than one coordinated decision.
+- **If no tracked item exists:** that's a gap itself. The migration is happening (per release notes) but without a coordination point. Filing a tracking issue at the same time as the Track A.0 readiness item kills two birds.
+
+### Recommendation for the sync (v4)
+
+Lead with **Option 5 (hybrid)** as the termination model. Frame Option 3's chain-pruning detection as a security feature — strict-mode verification catches dishonest termination claims by attempting upstream verification. Adopt **Option (a) `prev_receipt_hashes[]` plural** for DAG support so modeled-lookalike pipelines work cleanly.
+
+**Skip the algorithm-negotiation discussion** — RFC 9421 is the spec baseline; the sync should not relitigate it. Instead, frame Track A.0 (JWKS adoption) as the gating dependency before Track A schema work.
+
+Defer the receipt envelope schema details to a follow-up Technical Standards thread once the WG aligns on (a) the termination model, (b) the DAG shape, and (c) the Track A.0 adoption threshold.
+
+This sharpens **why Track A is the gating dependency**: chain integrity + JWKS adoption is what makes Tracks B (revenue_share[]), C (vendor-to-vendor report_usage), and D (settlement close-out) verifiable. Without JWKS adoption hitting threshold, every downstream primitive falls back to bilateral-trust commercial agreements regardless of how cleanly the schemas are designed.
 
 ---
 

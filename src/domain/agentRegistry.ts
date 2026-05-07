@@ -223,13 +223,13 @@ export const AGENT_REGISTRY: RegisteredAgent[] = [
   // ── Known-issue agents (skipped on probe-all) ─────────────────────────
   {
     id: "bidcliq",
-    name: "Bidcliq",
+    name: "Bidcliq Agent",
     vendor: "Bidcliq",
     mcp_url: "https://agents.bidcliq.com/mcp",
     stage: "known_issue",
-    role: "unclassified",
+    role: "buying",
     protocols: ["adcp_3.0"],
-    notes: "Directory discovery error: MCP endpoint unreachable at tried paths.",
+    notes: "Directory rename + type flip 2026-05-07: 'Bidcliq' → 'Bidcliq Agent', type buying → sales (per AdCP daily watcher). MCP endpoint still unreachable at tried paths; kept under known_issue.",
   },
   {
     id: "bidmachine",

@@ -1,8 +1,8 @@
 # AdCP Spec Proposal: `revoke_activation`
 
-**Status:** Draft (workshop close-out, 2026-05-07)
+**Status:** Draft v2 (post-Addie review — May 7, 2026)
 **Author:** Evgeny (signals adaptor — adcp.signal-stack.io)
-**Target:** AdCP 3.1 / 4.0
+**Target:** AdCP 3.1
 **Domain:** signals
 **Type:** new tool (additive)
 
@@ -10,17 +10,25 @@
 
 ## 1 · Problem statement
 
-AdCP 3.0.6 has no protocol-level way for a buyer to **stop using a signal mid-campaign** once it has been activated to a destination.
+AdCP 3.0.6 already declares an `action` field on `activate-signal-request.json` with values `"activate" | "deactivate"`. Direct quote from the schema description:
 
-`activate_signal` ships a `signal_agent_segment_id` to a DSP / clean room / agent. From that moment on, the buyer's only options are:
+> *"Deactivating removes the segment from downstream platforms, required when campaigns end to comply with data governance policies (GDPR, CCPA). Defaults to 'activate' when omitted."*
 
+The intent is real — the field carries GDPR/CCPA compliance language and a documented downstream-removal contract. But four things are missing for the field to actually work end-to-end:
+
+1. **No per-activation scoping.** The request takes `signal_agent_segment_id` + `destinations[]`. There's no way to address "the activation I started yesterday" — only "the signal, at these destinations, right now." If a buyer activated the same signal twice with different `pricing_option_id` or different `account` references, there's no protocol-level way to revoke one without affecting the other.
+2. **No reason codes.** The action is binary. There's no way for the audit trail to distinguish a buyer's discretionary cleanup from a producer-driven consent withdrawal from a fraud-detection trigger.
+3. **No async lifecycle.** `activate_signal` returns `task_id` and `tasks/get` polls for completion. The deactivate path through the same tool inherits the same lifecycle, but the task represents the deactivation request — there's no link back to the original activation `task_id` for audit-chain correlation.
+4. **No published implementation.** Per the live AdCP directory + this adaptor's federation probe (May 7, 2026), no published 3.0.x agent currently honors `action: "deactivate"` on `activate_signal`. Buyers fall back to manual destination action.
+
+The buyer's current options are:
+
+- **`activate_signal` with `action: "deactivate"`** — declared, undefined semantics, unimplemented across the live ecosystem.
 - **Manual destination action** — log into the DSP and pause the line item using the segment. Out-of-band, untraceable in the AdCP audit chain.
 - **Wait for `validity_period` expiry** — producer-set only, not buyer-triggered, and not implemented in any 3.0.x adapter today.
 - **No-op** — keep paying for a signal you've decided you don't want.
 
-The 3.0.6 schema declares an `action: "deactivate"` discriminator on `activate-signal-request.json:15-23` but no published agent reads it, and the semantics of "deactivate this signal everywhere" vs. "deactivate this specific activation" are undefined.
-
-There is no audit trail, no async lifecycle, no reason code, and no downstream propagation contract. **This is the cleanest greenfield surface in the signals domain.**
+This proposal sharpens the existing `action: "deactivate"` intent into a first-class tool with explicit per-activation scoping, reason codes, async chain linking, and a conformance harness — closing the four gaps above without breaking the existing field.
 
 ---
 
@@ -227,7 +235,7 @@ revoke_activation ─────▶ │ submitted │
 
 ## 7 · Async semantics
 
-- **Polling**: same `get_operation_status(task_id)` surface as `activate_signal`. The new revocation `task_id` is queryable identically.
+- **Polling**: same `tasks/get` surface as `activate_signal` (per `vendor/adcp/adcp-3.0.6/schemas/bundled/core/tasks-get-response.json`). The new revocation `task_id` is queryable identically — buyer calls `tasks/get` with the revocation `task_id` to get terminal state.
 - **Webhook**: optional `webhook_url` can be passed via `context.webhook_url` in the request. Same HMAC-SHA256 signing contract as `activate_signal` webhooks.
 - **Synchronous variant**: agents MAY choose to return `status: completed` immediately if all destinations support sync revocation. Buyers MUST handle either case.
 
@@ -246,9 +254,11 @@ Every revocation produces:
    - `revocation_failed`
 3. Webhook payloads on each terminal state transition.
 
-The `original_task_id ↔ revocation task_id` link MUST be queryable in both directions:
-- `GET /operations/<original_task_id>` returns `revoked_by: <revocation_task_id>` if revoked.
-- `GET /operations/<revocation_task_id>` returns `original_task_id` in response body.
+The `original_task_id ↔ revocation task_id` link MUST be queryable in both directions via `tasks/get`:
+- `tasks/get` with `task_id = <original_task_id>` returns `revoked_by: <revocation_task_id>` in the task envelope when revoked.
+- `tasks/get` with `task_id = <revocation_task_id>` returns `original_task_id` in the response payload.
+
+This linkage is the auditable correlation between the activation lifecycle and its revocation lifecycle — neither task is the other's parent; they're peer tasks bound by `original_task_id`.
 
 ---
 
@@ -269,9 +279,10 @@ The `original_task_id ↔ revocation task_id` link MUST be queryable in both dir
 ## 10 · Backwards compatibility
 
 - **Additive only.** Adding a new tool name doesn't break any existing handler.
-- **Existing `action: "deactivate"` discriminator** on `activate-signal-request.json` is preserved but deprecated for revocation purposes. New callers SHOULD use `revoke_activation` instead. The existing field's semantics (synchronous deactivation of a specific run) remain valid.
-- **`validity_period` expiry** continues to work; expiry generates a synthetic `revocation_completed` event with `reason_code: expiry` so the audit chain is uniform regardless of trigger.
-- **Adapters that don't implement `revoke_activation`** return the standard `TOOL_NOT_FOUND` error. Buyers fall back to the manual destination action with no protocol-level audit.
+- **Existing `action: "deactivate"` field on `activate_signal` is preserved.** Its GDPR/CCPA-driven downstream-removal semantics (per the schema description) carry into `revoke_activation` as the equivalent of `reason_code: "consent_withdrawn"` or `reason_code: "campaign_ended"`. New callers SHOULD migrate to `revoke_activation` for the per-activation scoping + reason-code audit trail; the existing field continues to work for callers who don't need either.
+- **Spec text alignment.** `activate-signal-request.json` description references "data governance policies (GDPR, CCPA)" — the new tool's `consent_withdrawn` reason code is the canonical surface for that exact use case. Cross-link the schema descriptions when the proposal lands.
+- **`validity_period` expiry** continues to work; expiry generates a synthetic `revocation_completed` event with `reason_code: "expiry"` so the audit chain is uniform regardless of trigger.
+- **Adapters that don't implement `revoke_activation`** return the standard `TOOL_NOT_FOUND` error. Buyers fall back to the existing `activate_signal` `action: "deactivate"` field (with all its undefined-scoping caveats) or to manual destination action.
 
 ---
 
@@ -330,7 +341,7 @@ The `original_task_id ↔ revocation task_id` link MUST be queryable in both dir
 }
 ```
 
-Buyer polls `get_operation_status(op_1778079111234_a7d9c1e3b5f0a2c4)` for terminal state.
+Buyer polls `tasks/get` with `task_id=op_1778079111234_a7d9c1e3b5f0a2c4` for terminal state.
 
 ---
 
@@ -358,7 +369,7 @@ steps:
     expect_envelope_field_present: original_task_id
 
   - id: verify_chain
-    tool: get_operation_status
+    tool: tasks/get
     args: { task_id: ${activate.task_id} }
     expect_response_field:
       revoked_by: ${revoke.task_id}

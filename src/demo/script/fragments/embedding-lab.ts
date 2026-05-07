@@ -220,6 +220,58 @@ function wireLabPlayground() {
   document.querySelectorAll("#pg-sample-briefs .lab-chip").forEach(function (c) {
     c.addEventListener("click", function () { document.getElementById("pg-text").value = c.dataset.brief; });
   });
+
+  // Transcode text -> 512-d vector. Pre-fills the vector textarea with
+  // 6-decimal comma-separated floats so the user can run /ucp/query-vector
+  // without pasting 512 numbers by hand. Uses the same engine the catalog
+  // uses for embedSignal so the produced vector is in the same space_id.
+  document.getElementById("pg-transcode-btn").addEventListener("click", async function () {
+    var input = document.getElementById("pg-transcode-text");
+    var meta = document.getElementById("pg-transcode-meta");
+    var btn = this;
+    var text = (input.value || "").trim();
+    if (!text) {
+      meta.textContent = "Enter text above first.";
+      meta.style.color = "var(--error)";
+      return;
+    }
+    var origLabel = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span><span>Transcoding…</span>';
+    meta.style.color = "var(--text-mut)";
+    meta.textContent = "calling /ucp/embed-text…";
+    try {
+      var r = await fetch("/ucp/embed-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text }),
+      });
+      var data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error || ("HTTP " + r.status));
+      // Pre-fill the vector textarea with 6-decimal comma-separated floats.
+      // Six decimals is enough precision for cosine queries to land on the
+      // same neighbors as the raw float64 vector while keeping the textarea
+      // human-scannable (~5KB instead of ~10KB).
+      document.getElementById("pg-vector").value = data.vector
+        .map(function (x) { return x.toFixed(6); })
+        .join(", ");
+      var phaseLabel = data.engine_phase === "pseudo-v1"
+        ? "pseudo (deterministic hash — demo only)"
+        : "live (" + data.model_label + ")";
+      meta.style.color = "var(--success, #5fd9c4)";
+      meta.innerHTML =
+        "✓ transcoded · " + data.dim + "-d · space=" +
+        escapeHtml(data.space_id) + " · phase=" + escapeHtml(phaseLabel) +
+        " · " + data.duration_ms + "ms";
+    } catch (e) {
+      meta.style.color = "var(--error)";
+      meta.textContent = "transcode failed: " + (e && e.message ? e.message : String(e));
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = origLabel;
+    }
+  });
+
   document.getElementById("pg-run").addEventListener("click", async function () {
     var host = document.getElementById("pg-results");
     host.innerHTML = '<div class="empty-state"><span class="spinner"></span><div class="empty-title">Computing cosines\u2026</div></div>';

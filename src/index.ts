@@ -28,6 +28,7 @@ import { handleGetGts } from "./routes/gts";
 import { handleSimulateHandshake } from "./routes/handshake";
 import { handleGetProjector } from "./routes/getProjector";
 import { handleUcpProjection, handleUcpSimilarity } from "./routes/ucpProjection";
+import { handleEmbedText } from "./routes/embedText";
 import {
   handleQueryVector,
   handleArithmetic,
@@ -282,6 +283,7 @@ export default {
             // Sec-41: Embedding Lab + audience analytics endpoints.
             // All read-only, all driven by public embedding data.
             "/ucp/query-vector",
+            "/ucp/embed-text",
             "/ucp/arithmetic",
             "/ucp/analogy",
             "/ucp/neighborhood",
@@ -554,6 +556,11 @@ export default {
                 // ── Sec-41: Embedding Lab + Analytics endpoints ─────────────────────
             } else if (method === "POST" && path === "/ucp/query-vector") {
                 response = await handleQueryVector(request);
+            } else if (method === "POST" && path === "/ucp/embed-text") {
+                // Text → 512-d vector transcoder. Used by the Embedding
+                // Lab playground "Transcode" button so users don't have
+                // to paste 512 floats by hand.
+                response = await handleEmbedText(request, env, logger);
             } else if (method === "POST" && path === "/ucp/arithmetic") {
                 response = await handleArithmetic(request);
             } else if (method === "POST" && path === "/ucp/analogy") {

@@ -99,10 +99,30 @@ Before drafting any payments-domain proposal, these questions need vendor / comm
 
 If a `pricing_option` carried a `revenue_share[]` field with `[{ recipient: "polk.com", share_percent: 65, role: "data_provider" }, { recipient: "self", share_percent: 35, role: "reseller_agent" }]`, would real vendors populate it?
 
-- **If yes:** the chain becomes visible to buyers at discovery time; the spec can model it.
-- **If no (commercial-secret concern):** the field becomes optional-and-rarely-used and the design pivots to "signed receipts that survive the chain" instead — the chain stays opaque to buyers but auditable end-to-end by upstream vendors.
+**Initial framing (v1):** binary fork — yes pivots to `revenue_share[]`; no pivots to signed receipts + chain-of-custody.
 
-This is the fork the rest of the design hangs on.
+**Refined framing (v2, post-Addie feedback):** the answer is almost certainly **not binary**. Two reasons:
+
+**1. Hybrid is the realistic outcome, not a clean fork.** Even one major data owner refusing to publish forces the protocol to support BOTH modes. `revenue_share[]` becomes an OPTIONAL field on `pricing_option`; signed-receipts-with-chain-of-custody becomes the MANDATORY baseline that works regardless of disclosure preference. Vendors pick per pricing option whether to populate the share array. The protocol carries both designs simultaneously rather than choosing.
+
+**2. The answer differs by data category.** Commercial disclosure tolerance varies along a gradient:
+
+| Category | Disclosure tolerance | Likely default |
+|---|---|---|
+| Commodity segments (contextual, basic demographics) | High — vendors compete on price; splits are commoditized | Publish |
+| Deterministic identity graph (RampID, UID2 cohorts, hashed-email matches) | Low — high IP, splits are commercial secrets | Opaque |
+| Modeled lookalikes / propensity scores | Mixed — depends on whether the modeling pipeline is the moat | Per-vendor decision |
+| Subscription bundles (flat-fee data feeds) | N/A — not impression-based | Out of scope for `revenue_share[]` |
+
+A vendor like Experian might publish splits on commodity demographic segments AND keep them opaque on their proprietary identity graph — both pricing options on the same vendor agent.
+
+**Implications for the design:**
+- `revenue_share[]` MUST be optional, per-pricing-option (not per-vendor or per-signal).
+- Signed receipts + chain-of-custody MUST be the baseline (works without disclosure).
+- Buyers see the chain at discovery only when ALL hops opt in; otherwise see "share withheld" markers.
+- Conformance harness must test both modes — the spec ships valid even when no vendor populates the share array.
+
+This means the design is additive in TWO directions, not a fork. The WG decides priority order, not exclusivity.
 
 ### Q2 — Push or pull for upstream propagation?
 
@@ -194,7 +214,33 @@ If the WG decides to pursue this, my read on realistic ordering:
 4. **Settlement-period close-out / `freeze_period`** (Q1 2027) — explicit "this period is settled, no more corrections" primitive.
 5. **Negotiation primitive** (parking-lot — most vendors will not implement) — `negotiate_pricing` async tool. Worth scoping if at least 3 vendors say they'd implement.
 
+**Revised ordering (v2, post-Addie feedback):** because Q1 is non-binary, the rollout becomes **additive in two directions** rather than sequential:
+
+- **Track A (always-on baseline):** signed activation receipts + chain-of-custody. Works regardless of disclosure preference. Lays the audit foundation that every other primitive depends on.
+- **Track B (opt-in by data category):** `revenue_share[]` extension on `pricing_option`. Vendors publish splits where commercial disclosure is acceptable (commodity segments); leave null on proprietary surfaces.
+- **Track C (depends on A + B):** vendor-to-vendor `report_usage` upstream propagation. Uses signed receipts (Track A) as the proof carrier; uses revenue_share where present (Track B) for declarative routing, falls back to bilateral commercial agreement otherwise.
+- **Track D (independent):** settlement period close-out (`freeze_period`).
+- **Track E (parking-lot):** negotiation primitive.
+
+**Track A is the gating dependency** for everything else — start there.
+
 This is a **multi-PR program over 9-12 months**, not a single proposal. The retraction primitive is shippable in weeks; payments needs commercial-side validation as the gating step.
+
+---
+
+## Routing strategy across WGs
+
+This thread is currently in the Signals & Measurement WG. Schema implications (the eventual `pricing_option` extension, the receipt envelope, the new tools) are Technical Standards WG territory.
+
+**Recommendation:** keep the substantive discussion in Signals & Measurement until directional alignment lands (Q1 + Q4), then bring a focused schema spec to Technical Standards. Two reasons:
+
+1. **Premature schema discussion crowds out commercial framing.** Technical Standards will reflexively want field names and JSON Schema sketches; the current questions (Q1, Q5) need vendor finance / partnerships people in the room first. Mixing audiences risks the conversation collapsing into syntax.
+2. **A short heads-up note to Technical Standards** is still worth posting now, so they're not surprised when the schema work arrives and can flag any cross-domain implications early (e.g., interactions with `media-buy` `report_usage`, `account` `get_account_financials`).
+
+Suggested heads-up message to Technical Standards WG:
+> *Heads-up: payments-domain framing discussion is underway in Signals & Measurement (link to this doc). Schema implications include `revenue_share[]` extension on `pricing_option`, signed activation receipt envelope, vendor-to-vendor `report_usage`. Bringing detailed schema work here once the WG aligns on direction (Q1 in the doc is the fork). No action needed yet — flagging for awareness.*
+
+This keeps Technical Standards in the loop without flooding their channel with commercial-side framing they can't directly action.
 
 ---
 

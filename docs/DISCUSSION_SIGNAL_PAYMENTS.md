@@ -244,6 +244,86 @@ This keeps Technical Standards in the loop without flooding their channel with c
 
 ---
 
+## Open implementation question — Track A chain termination
+
+Surfaced by Addie post-v2: *"Track A (signed receipts + chain-of-custody) needs a defined chain termination condition. At what point does the receipt chain stop? If DataOwner has upstream licensors, does the chain extend further, or is DataOwner the terminal node by convention?"*
+
+This is the right question to surface for the sync. It's the kind of thing that breaks a design at implementation time even if Q1 + Q4 resolve cleanly. Five options, listed in increasing flexibility:
+
+### Option 1 — Terminate at the first AdCP-conformant agent
+Chain extends as far as agents have AdCP endpoints + published signing keys (`adagents.json` `signing_keys[]`). Below that — DMV records, raw census data, off-protocol licensors — nothing is auditable. Termination is implicit: whoever's the last AdCP-conformant agent in the chain is terminal.
+
+- **Pro:** clean, no new fields. Off-protocol stays off-protocol by construction.
+- **Con:** a thin reseller agent could claim to be terminal when actually they have an off-protocol upstream. No way to detect.
+
+### Option 2 — Terminate at `data_provider_domain` from `signal_id.source: "catalog"`
+The catalog signal's published `data_provider_domain` is the trust anchor; the chain stops there by convention. Buyer verifies provenance back to the publishing entity, no further.
+
+- **Pro:** aligns with the existing trust gradient (catalog vs agent discriminator).
+- **Con:** doesn't work for `source: "agent"` signals (no published catalog provenance). Fails when the data provider is itself a reseller (e.g., LiveRamp aggregating Polk).
+
+### Option 3 — Explicit `terminal_node: true | false` in the receipt envelope
+Each link in the chain MUST declare whether they're terminal or have undisclosed upstream. If `terminal_node: false`, the chain "ends with redaction" — buyer can audit to this hop, knows there's more upstream they can't see.
+
+- **Pro:** explicit, flexible, doesn't impose a single model.
+- **Con:** trusts each vendor's self-attestation (chain-pruning attack: a middle node falsely claims terminal).
+
+### Option 4 — Termination defaulted by data category
+Per the disclosure-tolerance table from Q1:
+- Commodity segments → terminate at the AdCP catalog publisher (commoditized, no further audit needed)
+- Deterministic identity → require termination handshake at every hop with cryptographic acknowledgment
+- Modeled lookalikes → terminate at the modeling agent (the model is the IP; source data may be off-protocol)
+- Subscription bundles → N/A (not impression-driven)
+
+- **Pro:** matches the per-category gradient already established in v2.
+- **Con:** complex; documentation burden; may not fit categories the WG hasn't anticipated.
+
+### Option 5 — Hybrid: explicit + category-defaulted (recommended)
+Default termination set per data category (Option 4), with vendor opt-out per pricing_option (`terminal: true | false | inherit`). Receipt envelope carries the resolved choice.
+
+- **Pro:** matches the protocol's "additive in two directions" posture from v2 — defaults plus per-pricing-option overrides.
+- **Con:** documentation burden, but follows the same opt-in pattern as `revenue_share[]`.
+
+### Chain-pruning attack vector
+
+Worth flagging explicitly for the sync regardless of which option lands: **what stops a malicious middle node from claiming `terminal_node: true` when they actually have upstream?** The signing-key chain must extend up; a buyer can verify by attempting to step further upward through the upstream `agent_url` (if reachable + signing). If a node claims terminal but their upstream IS reachable and signs valid receipts, that's a chain-pruning attempt and should fail strict-mode verification.
+
+Implication: termination is **detectable**, not just declarative. The receipt envelope should support both modes.
+
+### Receipt envelope sketch (for sync discussion)
+
+To make the termination question concrete, here's the minimal receipt envelope this design implies:
+
+```json
+{
+  "task_id":              "op_<timestamp>_<hex>",
+  "original_task_id":     "op_<...>",          // null for first hop
+  "pricing_option_id":    "opt_<...>",
+  "hop_index":             0,                   // 0 = buyer-facing leaf
+  "hop_role":              "reseller | publisher | data_owner",
+  "terminal_node":         true,                // explicit per Option 3/5
+  "prev_receipt_hash":    "<sha256>",          // chain integrity
+  "signed_at":            "<ISO 8601>",
+  "expires_at":           "<ISO 8601>",
+  "signature_alg":        "ed25519 | ecdsa-p256-sha256 | hmac-sha256",
+  "signature":            "<bytes>",
+  "signing_key_fingerprint": "<hex>"            // resolves via adagents.json signing_keys[]
+}
+```
+
+Three things this surfaces for the sync:
+1. **Chain integrity via `prev_receipt_hash`** — Merkle-style chain so any link tampering breaks verification at the buyer's hop.
+2. **Algorithm negotiation** — receipt signing should align with the cross-vendor webhook signing standardization (already a separate gap in our adapter audit; HMAC-v1 vs ed25519/ecdsa-p256-sha256 GA profile).
+3. **Key resolution via `adagents.json`** — `signing_keys[]` already exists in 3.0.6 (`vendor/adcp/adcp-3.0.6/schemas/adagents.json` per the catalog/agent variant), but is not widely adopted. Track A landing means signing-key publication becomes a hard requirement for any non-terminal node.
+
+### Recommendation for the sync
+
+Lead with **Option 5 (hybrid)** as the proposal. Frame Option 3's chain-pruning detection as a security feature, not a bug — strict-mode verification catches dishonest termination claims. Defer the receipt envelope schema details to a follow-up Technical Standards thread once the WG aligns on the termination model.
+
+This also clarifies why **Track A is the gating dependency**: chain integrity + signing-key publication adoption is what makes Tracks B (revenue_share[]), C (vendor-to-vendor report_usage), and D (settlement close-out) verifiable. Without it, every downstream primitive falls back to bilateral-trust commercial agreements.
+
+---
+
 ## Companion artifact
 
 For the focused single-tool proposal that IS shippable today (canonical signal revocation), see `docs/SPEC_PROPOSAL_REVOKE_ACTIVATION.md`. That one's filed via `gh issue` once the WG triage owner is identified.

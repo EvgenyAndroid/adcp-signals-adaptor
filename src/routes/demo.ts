@@ -888,8 +888,18 @@ ${STYLES}
                 </div>
               </div>
               <div id="pg-vector-shell" style="display:none">
-                <label class="lab-label" style="margin-top:10px">Paste 512 comma-separated floats</label>
+                <label class="lab-label" style="margin-top:10px">Vector input <span style="color:var(--text-mut);font-weight:400">— paste 512 floats, or transcode from text below</span></label>
                 <textarea id="pg-vector" class="lab-input mono" rows="5" placeholder="0.123, -0.456, ..."></textarea>
+                <div style="display:flex;gap:8px;align-items:flex-end;margin-top:10px">
+                  <div style="flex:1">
+                    <label class="lab-label">Or transcode text → 512-d vector</label>
+                    <input id="pg-transcode-text" class="lab-input" placeholder="e.g. soccer moms 35-44 in top-10 DMAs" />
+                  </div>
+                  <button class="btn-secondary" id="pg-transcode-btn" title="Embed the text into a 512-d vector via the same engine catalog signals use, then fill the textarea above. Saves you from pasting 512 floats by hand." style="white-space:nowrap">
+                    <svg class="ico"><use href="#icon-bolt"/></svg><span>Transcode</span>
+                  </button>
+                </div>
+                <div id="pg-transcode-meta" style="font-size:10.5px;color:var(--text-mut);margin-top:6px;font-family:var(--font-mono)"></div>
               </div>
               <label class="lab-label" style="margin-top:10px">Top K</label>
               <input id="pg-k" type="number" min="1" max="50" value="10" class="lab-input"/>

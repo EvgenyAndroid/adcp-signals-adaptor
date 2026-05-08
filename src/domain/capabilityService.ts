@@ -105,7 +105,14 @@ type AdcpCapabilities = {
 function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
   return {
     adcp: {
-      major_versions: [2, 3],
+      // Narrowed [2, 3] -> [3] in PR #247: a live audit found we have
+      // ZERO code branching on adcp_major_version === 2. The v2 claim
+      // was paper-only — buyers sending v2-shaped requests would have
+      // been silently coerced to v3 handling, with possible drift.
+      // Keeping just [3] is the honest declaration. Add v2 back ONLY
+      // after wiring real v2-shape handlers (currently no consumer
+      // demand, since 3.0 GA shipped).
+      major_versions: [3],
       // HEAD schema models idempotency as a discriminated union keyed on
       // `supported`. The IdempotencySupported variant requires both
       // `supported: true` and `replay_ttl_seconds` (3600..604800 per spec).

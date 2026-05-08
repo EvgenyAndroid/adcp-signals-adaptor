@@ -360,12 +360,17 @@ async function handleInitialize(
 }
 
 /**
- * Major versions this agent supports. Synced with /capabilities
- * `adcp.major_versions` and the get_adcp_capabilities response. Bump
- * here + in capabilityService.ts when we add support for a new major
- * line; both surfaces must agree or buyers see contradictory metadata.
+ * Major versions this agent supports. MUST stay in sync with
+ * `capabilityService.ts` `adcp.major_versions` — both surfaces
+ * (this file enforces VERSION_UNSUPPORTED, capabilityService
+ * advertises the supported set). A buyer who reads capabilities
+ * and retries with a value from there must succeed.
+ *
+ * Narrowed from [2, 3] -> [3] in PR #247. The v2 claim was
+ * paper-only: zero code branches on adcp_major_version === 2.
+ * Re-add v2 ONLY after wiring real v2-shape handlers.
  */
-const SUPPORTED_MAJOR_VERSIONS: ReadonlyArray<number> = [2, 3];
+const SUPPORTED_MAJOR_VERSIONS: ReadonlyArray<number> = [3];
 
 /**
  * Per AdCP 3.0.x (vendor/.../signals/get-signals-request.json:10):

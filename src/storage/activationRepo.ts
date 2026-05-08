@@ -19,6 +19,7 @@ interface JobRow {
   updated_at: string;
   completed_at: string | null;
   error_message: string | null;
+  idempotency_key: string | null;
 }
 
 function rowToOperation(row: JobRow): OperationRecord {
@@ -50,14 +51,15 @@ export async function createActivationJob(
     campaignId?: string;
     notes?: string;
     webhookUrl?: string;
+    idempotencyKey?: string;
   }
 ): Promise<void> {
   const now = new Date().toISOString();
   await execute(
     db,
     `INSERT INTO activation_jobs
-      (operation_id, signal_id, destination, account_id, campaign_id, notes, webhook_url, status, submitted_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      (operation_id, signal_id, destination, account_id, campaign_id, notes, webhook_url, status, submitted_at, updated_at, idempotency_key)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
     [
       job.operationId,
       job.signalId,
@@ -69,10 +71,37 @@ export async function createActivationJob(
       "submitted",
       now,
       now,
+      job.idempotencyKey ?? null,
     ]
   );
 
   await appendEvent(db, job.operationId, "submitted", "Activation job submitted");
+}
+
+/**
+ * Idempotency lookup: find an existing activation job that matches the
+ * (idempotency_key, signal_id, destination) triple. Used by
+ * activateSignalService to short-circuit duplicate requests with the
+ * original task_id instead of creating a new row.
+ *
+ * Triple-key match (not key-only) prevents accidental cross-activation
+ * collisions: a buyer who reuses the same key against a different
+ * signal-or-destination tuple legitimately gets a fresh activation.
+ */
+export async function findActivationByIdempotencyKey(
+  db: DB,
+  idempotencyKey: string,
+  signalId: string,
+  destination: string,
+): Promise<OperationRecord | null> {
+  const row = await queryFirst<JobRow>(
+    db,
+    `SELECT * FROM activation_jobs
+     WHERE idempotency_key = ? AND signal_id = ? AND destination = ?
+     LIMIT 1`,
+    [idempotencyKey, signalId, destination],
+  );
+  return row ? rowToOperation(row) : null;
 }
 
 export async function findOperationById(

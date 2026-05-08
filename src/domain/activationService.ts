@@ -17,6 +17,7 @@ import type { DB } from "../storage/db";
 import {
   createActivationJob,
   findOperationById,
+  findActivationByIdempotencyKey,
   updateJobStatus,
   markWebhookFired,
   recordWebhookAttempt,
@@ -66,6 +67,47 @@ export async function activateSignalService(
   if (!signal.activationSupported) {
     throw new ValidationError(`Signal ${req.signalId} does not support activation`);
   }
+
+  // Idempotency enforcement (AdCP 3.0.x activate_signal_request contract).
+  // If the caller supplied an idempotency_key AND we have a prior job
+  // with the same (key, signal, destination) triple, return the
+  // ORIGINAL task_id without creating a new row. Prevents duplicate
+  // activations on retries — closes a gap the workshop deck audit
+  // flagged. Triple-match (not key-only) so reuse against a different
+  // signal-or-destination legitimately mints a fresh activation.
+  if (req.idempotencyKey) {
+    const existing = await findActivationByIdempotencyKey(
+      db,
+      req.idempotencyKey,
+      req.signalId,
+      req.destination,
+    );
+    if (existing) {
+      logger.info("activation_idempotent_replay", {
+        idempotencyKey: req.idempotencyKey,
+        operationId: existing.operationId,
+        signalId: req.signalId,
+        destination: req.destination,
+      });
+      // Map the broader OperationStatus enum onto ActivateSignalResponse's
+      // narrower 4-state surface. "submitted" → "pending" preserves the
+      // wire-format we emit on first call; "working" → "processing"
+      // mirrors the lazy state machine; terminal states pass through.
+      const responseStatus =
+        existing.status === "submitted" ? "pending" :
+        existing.status === "working" ? "processing" :
+        existing.status === "completed" ? "completed" :
+        "failed";
+      return {
+        task_id: existing.operationId,
+        status: responseStatus,
+        signal_agent_segment_id: req.signalId,
+        ...(existing.webhookUrl ? { webhook_url: existing.webhookUrl } : {}),
+        operationId: existing.operationId,
+        submittedAt: existing.submittedAt,
+      };
+    }
+  }
   // Per-signal destinations list is now advisory metadata, not a rejection
   // gate (Sec-12 round 2). The AdCP signals storyboard activates against
   // arbitrary platform names (the-trade-desk, dv360, etc.) and the agent
@@ -95,6 +137,7 @@ export async function activateSignalService(
     ...(req.campaignId !== undefined ? { campaignId: req.campaignId } : {}),
     ...(req.notes !== undefined ? { notes: req.notes } : {}),
     ...(req.webhookUrl !== undefined ? { webhookUrl: req.webhookUrl } : {}),
+    ...(req.idempotencyKey !== undefined ? { idempotencyKey: req.idempotencyKey } : {}),
   });
 
   logger.info("activation_submitted", {

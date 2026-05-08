@@ -22,6 +22,7 @@
 
 import { AGENT_REGISTRY } from "../domain/agentRegistry";
 import { safeRecordSignalTrace, persistSignalTrace, type AdcpToolName } from "../domain/signalTrace";
+import { correlationId } from "../utils/ids";
 import type { Env } from "../types/env";
 
 const SESSION_TTL_MS = 9 * 60 * 1000;
@@ -315,13 +316,33 @@ type SelfToolHook = (url: string, name: string, args: Record<string, unknown>) =
 let SELF_TOOL_HOOK: SelfToolHook | null = null;
 export function installSelfToolHook(hook: SelfToolHook | null): void { SELF_TOOL_HOOK = hook; }
 
-export async function callAgentTool(url: string, name: string, args: Record<string, unknown>, opts?: { timeoutMs?: number; env?: Env }): Promise<ToolCallResult> {
+export async function callAgentTool(url: string, name: string, args: Record<string, unknown>, opts?: { timeoutMs?: number; env?: Env; correlation_id?: string }): Promise<ToolCallResult> {
   const timeoutMs = opts?.timeoutMs ?? 20_000;
   const start = Date.now();
+
+  // Cross-protocol correlation_id propagation (closes the gap flagged
+  // in the workshop deck audit and the v4 payments discussion). Every
+  // outbound peer tools/call now carries `args.context.correlation_id`
+  // so the trace recorder can chain inbound → outbound → response
+  // under a single audit handle. Behavior:
+  //
+  //   1. If args.context.correlation_id is already set, respect it
+  //      (caller knows what they're doing — e.g. the orchestrator
+  //      passes the same id to every peer in a fanout).
+  //   2. Else if opts.correlation_id is set, use that.
+  //   3. Else generate a fresh one.
+  //
+  // Result: every outbound trace has a correlation_id, even when
+  // intermediate code didn't bother threading one through.
+  const incomingCtx = (args["context"] as Record<string, unknown> | undefined) ?? {};
+  const incomingCid = typeof incomingCtx["correlation_id"] === "string" ? incomingCtx["correlation_id"] as string : undefined;
+  const cid = incomingCid ?? opts?.correlation_id ?? correlationId();
+  const argsWithCtx: Record<string, unknown> = { ...args, context: { ...incomingCtx, correlation_id: cid } };
+
   // Sec-48b: if this is a call against our own URL, use the in-process hook
   // to avoid Cloudflare Workers' self-fetch restriction.
   if (SELF_TOOL_HOOK) {
-    const selfResult = SELF_TOOL_HOOK(url, name, args);
+    const selfResult = SELF_TOOL_HOOK(url, name, argsWithCtx);
     if (selfResult) {
       try { return await selfResult; }
       catch (e) { return { ok: false, error: String((e as Error).message || e), latency_ms: Date.now() - start }; }
@@ -333,11 +354,11 @@ export async function callAgentTool(url: string, name: string, args: Record<stri
     if (!session) {
       result = { ok: false, error: "session_init_failed", latency_ms: Date.now() - start };
     } else {
-      let r = await callToolOnce(url, session, name, args, timeoutMs);
+      let r = await callToolOnce(url, session, name, argsWithCtx, timeoutMs);
       if (r.error && /session/i.test(r.error)) {
         invalidateSession(url);
         session = await ensureSession(url, { timeoutMs });
-        if (session) r = await callToolOnce(url, session, name, args, timeoutMs);
+        if (session) r = await callToolOnce(url, session, name, argsWithCtx, timeoutMs);
       }
       result = r;
     }
@@ -384,7 +405,11 @@ export async function callAgentTool(url: string, name: string, args: Record<stri
         // does Dstillery live?" on every call. Surface the answer.
         endpoint_url: url,
         peer_server_info: peerServerInfo,
-        request_payload: args,
+        // Trace what we ACTUALLY sent — the args after correlation_id
+        // injection — so the trace's correlation_id field matches
+        // what the peer received.
+        request_payload: argsWithCtx,
+        correlation_id: cid,
         response_payload: result.ok
           ? (result.structured_content ?? result.content ?? null)
           : { error: result.error ?? "unknown_error" },

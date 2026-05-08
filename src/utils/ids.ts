@@ -63,6 +63,23 @@ export function requestId(): string {
   return `req_${Date.now()}_${randomHex(6)}`;
 }
 
+/**
+ * Generate a workflow-scoped correlation ID for cross-protocol tracing.
+ *
+ * Threaded into outbound peer `tools/call` args as
+ * `context.correlation_id` by the federation client when the caller
+ * doesn't supply one explicitly. Lets the trace recorder chain
+ * inbound discovery → outbound peer fan-out → response under a single
+ * audit handle.
+ *
+ * Format: `cid_<36-base-timestamp>_<8-hex>`. Distinct prefix from
+ * requestId so REST log lines and outbound trace correlation IDs are
+ * not confused at a glance.
+ */
+export function correlationId(): string {
+  return `cid_${Date.now().toString(36)}_${randomHex(8)}`;
+}
+
 function randomHex(bytes: number): string {
   const arr = new Uint8Array(bytes);
   crypto.getRandomValues(arr);

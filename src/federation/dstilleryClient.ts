@@ -19,6 +19,7 @@
 //     once on session error.
 
 import { safeRecordSignalTrace, persistSignalTrace } from "../domain/signalTrace";
+import { correlationId } from "../utils/ids";
 import type { Env } from "../types/env";
 
 export const DSTILLERY_MCP_URL = "https://adcp-signals-agent.dstillery.com/mcp";
@@ -125,8 +126,7 @@ export interface DstillerySearchResult {
 
 async function callGetSignalsOnce(
   sessionId: string,
-  brief: string,
-  maxResults: number,
+  args: Record<string, unknown>,
 ): Promise<{ signals: DstillerySignal[]; error?: string }> {
   const res = await fetch(DSTILLERY_MCP_URL, {
     method: "POST",
@@ -139,14 +139,12 @@ async function callGetSignalsOnce(
       jsonrpc: "2.0",
       id: Date.now(),
       method: "tools/call",
-      params: {
-        name: "get_signals",
-        // Top-level max_results only. Dstillery's get_signals validator
-        // (Pydantic 2.12) rejects the `pagination` envelope as an
-        // "Unexpected keyword argument" — strict-additionalProperties
-        // schemas don't tolerate forward-compat fields.
-        arguments: { signal_spec: brief, max_results: maxResults },
-      },
+      // args carries the canonical request payload — signal_spec,
+      // max_results, AND context.correlation_id. Dstillery's get_signals
+      // validator (Pydantic 2.12) rejects the `pagination` envelope as an
+      // "Unexpected keyword argument", but accepts context per AdCP MUST
+      // (the v2.13.1 peer echoes context.correlation_id back on response).
+      params: { name: "get_signals", arguments: args },
     }),
     signal: AbortSignal.timeout(15_000),
   });
@@ -165,13 +163,25 @@ export async function dstillerySearch(
   brief: string,
   maxResults: number = 10,
   env?: Env,
+  inboundCorrelationId?: string,
 ): Promise<DstillerySearchResult> {
   const start = Date.now();
   // Track the request payload separately so we can record it even when
   // the network call throws. The trace recorder captures both successful
   // and failed federation outbounds — same posture as callAgentTool's
   // recorder in genericMcpClient.ts.
-  const requestPayload = { signal_spec: brief, max_results: maxResults };
+  //
+  // Inject context.correlation_id (matches the genericMcpClient
+  // propagation pattern). When the caller threads an inbound
+  // correlation_id, we reuse it; otherwise we generate one. The
+  // peer's get_signals response (Dstillery v2.13.1) currently echoes
+  // context per spec MUST, so the buyer-side trace can chain.
+  const cid = inboundCorrelationId ?? correlationId();
+  const requestPayload: Record<string, unknown> = {
+    signal_spec: brief,
+    max_results: maxResults,
+    context: { correlation_id: cid },
+  };
   try {
     let session = await ensureSession();
     if (!session) {
@@ -183,13 +193,13 @@ export async function dstillerySearch(
       return failResult;
     }
 
-    let r = await callGetSignalsOnce(session, brief, maxResults);
+    let r = await callGetSignalsOnce(session, requestPayload);
 
     // If session-related error, retry once with a fresh session
     if (r.error && /session/i.test(r.error)) {
       _sessionId = null;
       session = await ensureSession();
-      if (session) r = await callGetSignalsOnce(session, brief, maxResults);
+      if (session) r = await callGetSignalsOnce(session, requestPayload);
     }
 
     const result: DstillerySearchResult = {

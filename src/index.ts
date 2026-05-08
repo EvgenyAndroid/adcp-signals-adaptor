@@ -29,6 +29,7 @@ import { handleSimulateHandshake } from "./routes/handshake";
 import { handleGetProjector } from "./routes/getProjector";
 import { handleUcpProjection, handleUcpSimilarity } from "./routes/ucpProjection";
 import { handleEmbedText } from "./routes/embedText";
+import { ADCP_SPEC_VERSION } from "./schemas/adcp";
 import {
   handleQueryVector,
   handleArithmetic,
@@ -491,10 +492,17 @@ export default {
                 response = await handleSignalTraceById(traceId, env);
 
             } else if (method === "GET" && path === "/health") {
+                // Version fields derive from ADCP_SPEC_VERSION (vendored
+                // schema corpus pin). The bare "3.0" major-line stays
+                // alongside the patch-versioned `adcp_spec_version` for
+                // back-compat with consumers that key on either string.
+                // Bumping the corpus auto-bumps these without an
+                // index.ts edit.
                 response = jsonResponse({
                     status: "ok",
-                    version: "3.0",          // AdCP protocol version (kept for back-compat)
-                    adcp_version: "3.0",
+                    version: "3.0",                            // major-line, back-compat
+                    adcp_version: "3.0",                       // major-line, back-compat
+                    adcp_spec_version: ADCP_SPEC_VERSION,      // patch (e.g. 3.0.8)
                     worker_version: WORKER_VERSION,
                     built_at: builtAt(),
                 });

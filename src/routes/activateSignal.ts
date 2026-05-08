@@ -19,6 +19,15 @@ export async function handleActivateSignal(
     return errorResponse("INVALID_BODY", "Request body must be valid JSON", 400);
   }
 
+  // Accept both AdCP 3.0.x canonical `idempotency_key` (snake_case)
+  // and legacy camelCase `idempotencyKey`. Prefer the canonical form
+  // when both are present. Internal type is camelCase; downstream
+  // service enforces dedup via (idempotencyKey, signal, destination).
+  const bodyAny = body as unknown as Record<string, unknown>;
+  if (typeof bodyAny["idempotency_key"] === "string" && !body.idempotencyKey) {
+    body.idempotencyKey = bodyAny["idempotency_key"] as string;
+  }
+
   const validation = validateActivateRequest(body);
   if (!validation.ok) {
     // ApiError uses `error` (not `message`) for the human-readable string.

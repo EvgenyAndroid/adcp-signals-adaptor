@@ -41,6 +41,12 @@
       "number": 4206,
       "kind": "issue",
       "context": "Filed 2026-05-07 via Addie (Track A.0 JWKS adoption baseline gates signal-payment chain-of-custody work). DEFERRED — blocked on #4205. Same on-ramp reframe as #4205 applies: original 30% threshold was meaningless against ~zero population. Empirical adoption snapshot retained as named-partner inventory baseline for #3360, NOT as a WG-vote target. Resurfaces when #4205 resolves. Companion to docs/DISCUSSION_SIGNAL_PAYMENTS.md v5 + docs/SPEC_PROPOSAL_REVOKE_ACTIVATION.md."
+    },
+    {
+      "repo": "adcontextprotocol/adcp",
+      "number": 4270,
+      "kind": "issue",
+      "context": "Filed 2026-05-08. Follow-through on the storyboard / SDK-skill on-ramp pledge in #4205 comment 4409426562 — surface 4 of @bokelley's four-on-ramp framing (docs / grade tooling / SDK / storyboards). Inventory of bundled adcp-3.0.8 skills + schemas: compliance storyboards + push-notification-config.json already well-framed; reporting-webhook.json still describes HMAC-SHA256 as 'recommended for production' AND requires the legacy authentication block; all five skills/*/SKILL.md agent on-ramp files are silent on webhook auth (a new buyer will reach for the visible `authentication` field before learning that omitting it selects 9421). Suggested fix is a two-PR shape (schema fix + skills/call-adcp-agent/SKILL.md webhook-signing section). Self-offered to take first pass if maintainers triage scope. Drop when fix lands or maintainer triages 'won't do'."
     }
   ],
   "external_registries": [

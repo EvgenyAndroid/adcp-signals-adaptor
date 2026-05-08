@@ -340,43 +340,66 @@ Two design options for the receipt envelope:
 
 **Sub-question for the sync:** when a node has multiple parents from DIFFERENT source agents, do they each contribute to the `revenue_share[]` propagation independently, or does the modeling agent collapse them into a single share split it controls? (Likely the latter, since the modeling agent is the one with the commercial relationship — but worth confirming.)
 
-### Track A.0 — pre-launch readiness criterion (sharpened v4)
+### Track A.0 — pre-launch readiness criterion (REFRAMED v5 post-WG triage)
 
-Addie's framing: Track A's launch criteria isn't a protocol question, it's an **ecosystem readiness question**. The receipt chain only executes when enough vendors publish JWKS with webhook-signing-purpose keys.
+**v4 framing (superseded):** Track A's launch criteria is an "ecosystem readiness question" — the receipt chain only executes when enough vendors publish JWKS with webhook-signing-purpose keys. ≥30% directory adoption proposed as threshold.
 
-**Empirical baseline from our adapter's federation probe** (May 7, 2026):
+**v5 reframe (post-WG triage by @bokelley):** the threshold framing assumes a population to migrate. There isn't one yet. Both this work and the parallel webhook-signing migration are **on-ramp problems, not migration problems**. Filing both as adcp issues and reading the triage:
 
-| Adoption surface | Count | % of probed peers (19) |
+- **#4205 (webhook signing migration coordination):** deferred, blocked on #3064 + #3360. WG reframe — *"the installed base of live buyer agents is ~empty right now"* — so 80% migration thresholds are meaningless. The right metric is *"no new HMAC implementers after date X,"* enforced by docs + grade tooling + SDK defaults. SDK already correct.
+- **#4206 (Track A.0 JWKS adoption):** deferred, blocked on #4205. Same on-ramp logic applies — 30% of an empty installed base is the wrong target.
+
+**What this means for the design:**
+
+- The empirical baseline data (84% reachable, 10% adagents.json, 0% schema-valid) **stays useful** — but as a *named-partner inventory* feeding #3360's grade-tooling scope, NOT as a WG-vote threshold target.
+- Track A.0's gating dependency is now: **on-ramp surfaces consistently emit RFC 9421 + JWKS** (docs default, grade tooling fails on legacy, SDK ✓ done, storyboards untracked). Once those are clean, every NEW agent built off the SDK lands chain-of-custody-ready by default.
+- The "30% threshold" question stops being a sync agenda item. The right sync question becomes: *"do the four on-ramp surfaces (docs / grade tooling / SDK / storyboards) all emit RFC 9421 by the time we ship Track A schema?"* — that's a checklist, not a vote.
+
+**The four on-ramp surfaces** (per @bokelley's #4205 triage, generalized to apply to BOTH #4205 and Track A.0):
+
+| Surface | Track | Status | Owner |
+|---|---|---|---|
+| Docs default to RFC 9421; HMAC as legacy footnote | shared | open | #3064 / @benminer |
+| Grade tooling fails on HMAC-only / non-JWKS config | shared | open | #3360 / @bokelley |
+| SDK generates RFC 9421 keys by default | shared | ✓ done | `@adcp/client` signing module |
+| Storyboard / getting-started paths use RFC 9421 end-to-end | shared | **untracked** | needs a home |
+
+**Empirical adoption snapshot** (kept for historical reference + named-partner inventory baseline; superseded as a threshold target):
+
+Source: adcp.signal-stack.io federation probe, May 7, 2026, 19 peers.
+
+| Adoption surface | Count | % of probed peers |
 |---|---|---|
 | Peers with reachable MCP endpoint | ~16 | 84% |
 | Peers publishing `/.well-known/adagents.json` | 2 (BidMachine, AdCP Test Agent) | 10% |
 | Peers publishing schema-valid 3.0.6 adagents.json | 0 | 0% |
-| Peers publishing `brand.json` `jwks_uri` | unknown — not yet probed | TBD |
-| Peers publishing JWKS with `key_ops`/`use` for webhook-signing | unknown — not yet probed | TBD |
+| Peers publishing `brand.json` `jwks_uri` | TBD | TBD |
+| Peers publishing JWKS with `key_ops`/`use` for webhook-signing | TBD | TBD |
 
-**Implication:** Track A.0 (pre-launch) needs concrete adoption targets before Track A schema work makes sense:
+The numbers underline @bokelley's point — the "directory" is mostly-dormant agents. Surveying it for migration completeness produces noise, not signal.
 
-- **Threshold proposal:** ≥30% of the AdCP signals-domain directory publishes a JWKS with at least one webhook-signing key by the time Track A schema lands. Below that, the spec has no audience.
-- **Signal of progress:** the daily watcher (already running per `.github/adcp-watch-config.json`) could probe peer JWKS endpoints alongside `/.well-known/adagents.json` — auto-track the adoption curve. Three lines of code in our adapter; valuable as ecosystem telemetry.
+### Webhook-signing migration — tracked, but NOT as we framed it (resolved v5)
 
-**This is worth filing as a separate tracked item** independent of the payments thread — JWKS publication adoption gates the entire signed-receipt design AND is presumably already a gating concern for the existing webhook-signing migration.
+v4 said: *"Addie offered to check open issues. If no tracked item exists, that's a gap itself."* She did, we filed #4205, and @bokelley triaged it with the on-ramp reframe above. Filing the issue surfaced the framing error, which is the WG mechanism working as intended.
 
-### Webhook-signing migration — does it have a tracked owner?
+**Updated rollup:**
 
-Addie offered to check open issues for a tracking item. Worth doing before the sync. Two outcomes:
+- **Tracked migration owner DRI:** not needed. Existing surface owners (@benminer #3064, @bokelley #3360) cover the cross-cutting work. SDK already correct.
+- **Telemetry:** narrower than directory-wide. Folds into #3360's grade-tooling scope (named-partner check + on-ramp surface inspection).
+- **Algorithm choice + key publication format:** already settled in 3.0.6 corpus per the v4 audit (`vendor/.../bundled/creative/sync-creatives-request.json:4871` → RFC 9421 default, HMAC legacy opt-in removed in 4.0). Not a sync question.
+- **Storyboard item:** the one piece that doesn't have a home in #3064 or #3360. Self-pledge to file a follow-up against the AdCP storyboard repo if no other owner steps up before #3064 + #3360 land.
 
-- **If a tracked migration item exists:** loop that owner into Track A's design discussion now (before the sync). Algorithm choice is shared; key publication is shared; adoption telemetry is shared. Two parallel decisions choosing different defaults would be worse than one coordinated decision.
-- **If no tracked item exists:** that's a gap itself. The migration is happening (per release notes) but without a coordination point. Filing a tracking issue at the same time as the Track A.0 readiness item kills two birds.
-
-### Recommendation for the sync (v4)
+### Recommendation for the sync (v5 post-triage)
 
 Lead with **Option 5 (hybrid)** as the termination model. Frame Option 3's chain-pruning detection as a security feature — strict-mode verification catches dishonest termination claims by attempting upstream verification. Adopt **Option (a) `prev_receipt_hashes[]` plural** for DAG support so modeled-lookalike pipelines work cleanly.
 
-**Skip the algorithm-negotiation discussion** — RFC 9421 is the spec baseline; the sync should not relitigate it. Instead, frame Track A.0 (JWKS adoption) as the gating dependency before Track A schema work.
+**Skip the algorithm-negotiation discussion** — RFC 9421 is the spec baseline; the sync should not relitigate it.
 
-Defer the receipt envelope schema details to a follow-up Technical Standards thread once the WG aligns on (a) the termination model, (b) the DAG shape, and (c) the Track A.0 adoption threshold.
+**Skip the threshold-vote discussion (v5 update).** Per @bokelley's #4205 triage, neither webhook migration nor Track A.0 has an installed base to migrate — both are on-ramp problems. The right sync agenda item is the four on-ramp surfaces above, not "what % of vendors publish JWKS." Storyboard surface (item 4) is the one that doesn't have a tracker; everything else is in #3064 / #3360 / SDK.
 
-This sharpens **why Track A is the gating dependency**: chain integrity + JWKS adoption is what makes Tracks B (revenue_share[]), C (vendor-to-vendor report_usage), and D (settlement close-out) verifiable. Without JWKS adoption hitting threshold, every downstream primitive falls back to bilateral-trust commercial agreements regardless of how cleanly the schemas are designed.
+Defer the receipt envelope schema details to a follow-up Technical Standards thread once the WG aligns on (a) the termination model, (b) the DAG shape, and (c) which storyboard / getting-started paths get the RFC 9421 update.
+
+**Why Track A is still the gating dependency** (refined v5): chain integrity + JWKS adoption is what makes Tracks B (revenue_share[]), C (vendor-to-vendor report_usage), and D (settlement close-out) verifiable. The on-ramp framing makes that gating dependency *executable* — it's not "wait for adoption to hit X%" (vote-style), it's "land the four on-ramp surfaces" (checklist-style). Cleaner, faster, doesn't block on commercial framing that won't resolve in WG meetings.
 
 ---
 

@@ -12,7 +12,9 @@
     "compliance": "node scripts/run-compliance.mjs",
     "type-check": "tsc --noEmit",
     "db:migrate": "wrangler d1 migrations apply adcp-signals-db",
+    "db:migrate:remote": "wrangler d1 migrations apply adcp-signals-db --remote",
     "db:seed": "wrangler d1 execute adcp-signals-db --file=./migrations/seed.sql",
+    "db:seed:remote": "wrangler d1 execute adcp-signals-db --file=./migrations/seed.sql --remote",
     "lint": "eslint src --ext .ts"
   },
   "devDependencies": {

@@ -394,7 +394,7 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
           },
         ],
         report: "docs/SEC42_ADCP_30_GA_COMPLIANCE.md",
-        reproduce: "API_KEY=$DEMO_API_KEY AGENT_URL=https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp npm run compliance",
+        reproduce: "API_KEY=$DEMO_API_KEY AGENT_URL=https://adcp.signal-stack.io/mcp npm run compliance",
       },
       // ext.ucp now mirrors the real engine. Previously this was a static
       // UCP_CAPABILITY constant that always declared the pseudo bridge,

@@ -208,6 +208,19 @@ export interface ActivateSignalRequest {
   notes?: string;
   webhookUrl?: string;       // optional: POST status updates here when complete
   proposalData?: import("../types/signal").CanonicalSignal;  // for lazy custom signal creation
+  /**
+   * Per AdCP 3.0.x activate_signal_request: client-generated UUID-style
+   * key (^[A-Za-z0-9_.:-]{16,255}$) that prevents duplicate activations
+   * on retries. The server enforces idempotency by:
+   *   1. Looking up an existing activation_jobs row with this key
+   *   2. If found → return the original task_id (no new row created)
+   *   3. If not found → create the row with this key in idempotency_key column
+   *
+   * Optional in our adapter for back-compat with callers who haven't
+   * migrated yet; the SCHEMA marks it required. Recommend migrating
+   * all clients to send it before AdCP 4.0 makes it strictly required.
+   */
+  idempotencyKey?: string;
 }
 
 export interface ActivateSignalResponse {

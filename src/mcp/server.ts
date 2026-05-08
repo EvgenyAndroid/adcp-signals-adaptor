@@ -747,6 +747,12 @@ async function callActivateSignal(
             campaignId: args["campaignId"] as string | undefined,
             notes: args["notes"] as string | undefined,
             webhookUrl,
+            // AdCP 3.0.x activate_signal_request idempotency contract:
+            // canonical wire field is `idempotency_key` (snake_case);
+            // we accept that AND legacy camelCase `idempotencyKey` for
+            // back-compat with callers that sent the camelCase form
+            // before the spec settled.
+            idempotencyKey: (args["idempotency_key"] ?? args["idempotencyKey"]) as string | undefined,
         }),
     };
 

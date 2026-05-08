@@ -359,6 +359,54 @@ async function handleInitialize(
     };
 }
 
+/**
+ * Major versions this agent supports. Synced with /capabilities
+ * `adcp.major_versions` and the get_adcp_capabilities response. Bump
+ * here + in capabilityService.ts when we add support for a new major
+ * line; both surfaces must agree or buyers see contradictory metadata.
+ */
+const SUPPORTED_MAJOR_VERSIONS: ReadonlyArray<number> = [2, 3];
+
+/**
+ * Per AdCP 3.0.x (vendor/.../signals/get-signals-request.json:10):
+ *   "Sellers validate against their supported major_versions and
+ *    return VERSION_UNSUPPORTED if unsupported."
+ *
+ * Per error-code.json:96 the error carries recovery semantics:
+ *   "correctable (call get_adcp_capabilities without
+ *    adcp_major_version to discover supported major_versions, then
+ *    retry with a supported version)."
+ *
+ * Recovery carve-out: `get_adcp_capabilities` MUST remain callable
+ * regardless of the declared version, because that's the discovery
+ * surface the recovery loop depends on. If we erred on
+ * capabilities-with-unsupported-version too, the buyer couldn't
+ * self-heal — they'd get an error with no path forward.
+ *
+ * Omitted version: per spec, *"the seller assumes its highest
+ * supported version"* — also valid. Only an EXPLICIT, OUT-OF-RANGE
+ * value triggers the error.
+ *
+ * Throws McpToolError with code: "VERSION_UNSUPPORTED" so the existing
+ * JSON-RPC -> MCP_TOOL_ERROR transport-marker pipeline applies. The
+ * code travels in the error's `details.code` field which the
+ * rpcError helper places in `error.data` on the wire — buyers
+ * inspect it to drive the documented recovery flow.
+ */
+function validateAdcpMajorVersion(toolName: string, args: Record<string, unknown>): void {
+    // Recovery carve-out — see comment above.
+    if (toolName === "get_adcp_capabilities") return;
+    const v = args["adcp_major_version"];
+    if (v === undefined || v === null) return; // omitted ⇒ seller's highest
+    const num = typeof v === "number" ? v : Number(v);
+    if (!Number.isInteger(num) || !SUPPORTED_MAJOR_VERSIONS.includes(num)) {
+        throw new McpToolError(
+            `adcp_major_version ${v} not supported. This seller supports: [${SUPPORTED_MAJOR_VERSIONS.join(", ")}]. Call get_adcp_capabilities without adcp_major_version to discover supported versions, then retry with a supported version.`,
+            { code: "VERSION_UNSUPPORTED", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS] },
+        );
+    }
+}
+
 async function handleToolCall(
     params: McpCallToolParams,
     env: Env,
@@ -374,6 +422,11 @@ async function handleToolCall(
     const resolvedName = TOOL_ALIASES[name] ?? name;
     const toolDef = getToolByName(resolvedName);
     if (!toolDef) throw new McpToolError(`Unknown tool: ${name}`);
+
+    // Version negotiation — must run BEFORE per-tool dispatch so the
+    // error surfaces uniformly across every state-changing tool. The
+    // get_adcp_capabilities carve-out is encoded inside the helper.
+    validateAdcpMajorVersion(resolvedName, args as Record<string, unknown>);
 
     logger.info("mcp_tool_call", { tool: resolvedName });
 

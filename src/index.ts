@@ -503,7 +503,7 @@ export default {
                 // AdCP discovery anchor — declares this worker as the
                 // authorized signals agent for the Demo Provider catalog.
                 // Public, cacheable, schema-validated against the
-                // vendored 3.0.6 adagents.json schema (see
+                // vendored 3.0.8 adagents.json schema (see
                 // tests/adagents-self-publish.test.ts).
                 response = handleAdAgents(request, env);
 

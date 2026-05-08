@@ -358,7 +358,7 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       compliance: {
         spec_version: "adcp_3.0",
         client_runner: "@adcp/client@5.25.1",
-        last_run: "2026-05-07",
+        last_run: "2026-05-08",
         // The 5.25 runner restored the error_handling / schema_compliance
         // / validation scenario tracks for signals-only agents — adcp
         // issue #2916 was effectively unblocked by capability-aware

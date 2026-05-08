@@ -74,6 +74,16 @@ export const AGENT_REGISTRY: RegisteredAgent[] = [
     tools_exposed: ["get_signals"],
     mcp_version: "2.13.1",
     directory_tool_count: 1,
+    // Watcher 2026-05-08: AAO directory mass-recategorized 8 agents to
+    // type "sales" (Dstillery, Advertible, Celtra, AffinityAnswers,
+    // vastlint, BidMachine, AdCP Test Agent, Equativ). Functionally
+    // their MCP servers + tools-exposed didn't change — Dstillery's
+    // serverInfo still advertises `dstillery_signals_agent` v2.13.1
+    // and they serve get_signals. The directory's "sales" tag is a
+    // broad sell-side bucket, not a capability statement. Our local
+    // role classification reflects ACTUAL TOOLS exposed, not the
+    // directory's taxonomy choice — so role: "signals" stays.
+    notes: "Directory recategorized to type=sales 2026-05-08 (broad sell-side bucket); role: 'signals' here reflects actual tools_exposed.",
   },
   // ── Creative agents ───────────────────────────────────────────────────
   {
@@ -260,6 +270,40 @@ export const AGENT_REGISTRY: RegisteredAgent[] = [
     role: "unclassified",
     protocols: ["adcp_3.0"],
     notes: "Directory: unclassified.",
+  },
+  // ── New peers from 2026-05-08 directory snapshot (probe-untested) ─────
+  // Added under known_issue until our federation probe confirms each
+  // handshakes cleanly. Discovery probe (/api/adagents-probe) will
+  // surface their adagents.json publication state automatically.
+  {
+    id: "equalize",
+    name: "Equalize",
+    vendor: "Equalize",
+    mcp_url: "https://adcp.equalize.cloud",
+    stage: "known_issue",
+    role: "buying",
+    protocols: ["adcp_3.0"],
+    notes: "Directory: type=sales (added 2026-05-08). Probe-untested in our federation flow; promote to stage:live once handshake confirmed.",
+  },
+  {
+    id: "rediads",
+    name: "Rediads Private Limited",
+    vendor: "Rediads",
+    mcp_url: "https://adcp.rediads.com/mcp",
+    stage: "known_issue",
+    role: "buying",
+    protocols: ["adcp_3.0"],
+    notes: "Directory: type=sales (added 2026-05-08). Probe-untested.",
+  },
+  {
+    id: "select_staging",
+    name: "Select Staging Sales Agent",
+    vendor: "Select",
+    mcp_url: "https://seller-platform.aitools.access.mn/mcp",
+    stage: "known_issue",
+    role: "buying",
+    protocols: ["adcp_3.0"],
+    notes: "Directory: type=sales (added 2026-05-08). Explicitly STAGING per directory name — kept under known_issue intentionally; do NOT promote to stage:live without vendor confirming a production endpoint.",
   },
   // ── Roadmap (no MCP endpoint yet) ─────────────────────────────────────
   {

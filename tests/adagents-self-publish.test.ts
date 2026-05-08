@@ -2,7 +2,7 @@
 //
 // Pin two contracts on the AdCP discovery anchor we publish:
 //   1. Our /.well-known/adagents.json document validates against the
-//      vendored 3.0.6 schema. If we ever drift (new required field,
+//      vendored 3.0.8 schema. If we ever drift (new required field,
 //      removed property, etc.), the test fails before deploy.
 //   2. The build helper produces a different agent_url per origin so
 //      a preview deploy doesn't hardcode the prod URL.
@@ -22,7 +22,7 @@ function fakeRequest(url: string): Request {
 }
 
 describe("adagents self-publish", () => {
-  it("buildAdagentsDocument produces a 3.0.6-conformant doc", () => {
+  it("buildAdagentsDocument produces a 3.0.8-conformant doc", () => {
     const doc = buildAdagentsDocument(
       fakeRequest("https://adcp-signals-adaptor.evgeny-193.workers.dev/.well-known/adagents.json"),
     );

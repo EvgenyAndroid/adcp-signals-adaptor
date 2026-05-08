@@ -14,6 +14,19 @@ export const ADCP_MAJOR_LINE = "3.0 GA";
 /** Specific spec patch version we're tested against. Bump on each
  *  successful conformance pass against a new patch.
  *
+ *  3.0.8 (2026-05-08): conformance-harness fix — UUID-aliased
+ *  idempotency_keys across 15 storyboard steps in 9 scenarios
+ *  (extends the #4218 precedent to the rest of the suite). Affects
+ *  state-mutating tasks (`create_media_buy`, `sync_creatives`,
+ *  `sync_plans`, `update_media_buy`). Compliance harness only;
+ *  wire format unchanged.
+ *
+ *  3.0.7 (2026-05-08): docs-only — tightened type-column casing
+ *  on `list_creatives` filtering options table to match
+ *  `core/creative-filters.json` (`AccountRef[]`, `FormatID[]`,
+ *  `CreativeStatus`). Patch-eligible per the non-normative-docs
+ *  rule. No schema or wire-format change.
+ *
  *  3.0.6 (2026-05-03): prose-only — wire-placement guidance for
  *  `GOVERNANCE_DENIED` and `GOVERNANCE_UNAVAILABLE`. Use the
  *  structured rejection arm (e.g. `AcquireRightsRejected`) when one
@@ -40,7 +53,7 @@ export const ADCP_MAJOR_LINE = "3.0 GA";
  *  scripts/vendor-adcp-schemas.mjs; the trace inspector validates
  *  every payload against /schemas/<this-version>/ identifiers.
  */
-export const SPEC_VERSION = "3.0.6";
+export const SPEC_VERSION = "3.0.8";
 
 /** Composite label for UI display: "3.0 GA · 3.0.4". */
 export const SPEC_LABEL = ADCP_MAJOR_LINE + " · " + SPEC_VERSION;

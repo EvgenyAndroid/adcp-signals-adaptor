@@ -1508,11 +1508,11 @@ ${STYLES}
             <span class="discovery-panel-title">AdCP discovery anchor · /.well-known/adagents.json</span>
             <span id="discovery-peer-counts" class="discovery-panel-counts"></span>
           </summary>
-          <p class="orch-small discovery-panel-intro">A buyer agent doing "find authorized signals agents for this domain" lands on this file. We publish a 3.0.6-conformant declaration; most peers don't yet — that gap is exactly what the AdCP standardization closes.</p>
+          <p class="orch-small discovery-panel-intro">A buyer agent doing "find authorized signals agents for this domain" lands on this file. We publish a 3.0.8-conformant declaration; most peers don't yet — that gap is exactly what the AdCP standardization closes.</p>
           <details class="discovery-our-details">
             <summary class="discovery-our-summary">
               <span class="discovery-our-label">Our declaration</span>
-              <span class="discovery-our-meta">3.0.6 conformant · click to view JSON</span>
+              <span class="discovery-our-meta">3.0.8 conformant · click to view JSON</span>
             </summary>
             <pre id="discovery-our-doc" class="signal-trace-json discovery-our-json">loading…</pre>
           </details>

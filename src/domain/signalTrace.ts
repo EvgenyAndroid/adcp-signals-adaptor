@@ -10,7 +10,7 @@
 // Each trace records the full request + response payloads, validates
 // them against the canonical AdCP schemas (vendored at the spec
 // version pinned in scripts/vendor-adcp-schemas.mjs — currently
-// 3.0.6), and keeps the result in an in-memory ring buffer
+// 3.0.8), and keeps the result in an in-memory ring buffer
 // (last 500 traces).
 //
 // Demo surfaces (Recent Activations, Orchestrator, Race Canvas,
@@ -181,7 +181,7 @@ export const SCHEMA_URL = {
 
 // Internal $id values the AdCP spec uses to register schemas. We resolve
 // validators against these, then surface the public URL to consumers.
-// Bumped from 3.0.1 → 3.0.6 alongside the vendor-adcp-schemas.mjs spec
+// Bumped through 3.0.1 → 3.0.6 → 3.0.8 alongside vendor-adcp-schemas.mjs spec
 // pin. The patch line is wire-compatible (no new required fields, no
 // removed fields), but the $id prefix changes per release so the
 // validator registry has to walk in lockstep with the corpus.

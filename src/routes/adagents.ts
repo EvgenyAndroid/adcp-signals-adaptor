@@ -3,8 +3,8 @@
 // AdCP discovery anchor — /.well-known/adagents.json
 //
 // As a signals data provider, we publish this file to declare which
-// agents are authorized to resell our catalog. Per the AdCP 3.0.6
-// spec ($id: /schemas/3.0.6/adagents.json):
+// agents are authorized to resell our catalog. Per the AdCP 3.0.8
+// spec ($id: /schemas/3.0.8/adagents.json):
 //
 //   "Hosted at /.well-known/adagents.json on publisher domains (for
 //    properties) or data provider domains (for signals)."
@@ -15,7 +15,7 @@
 // a published file we're invisible to that discovery flow.
 //
 // Validation: the served document is schema-validated at build via
-// tests/adagents-self-publish.test.ts against the vendored 3.0.6
+// tests/adagents-self-publish.test.ts against the vendored 3.0.8
 // schema. If we ever drift (new required field, etc.), the test
 // fails before deploy.
 //
@@ -48,7 +48,7 @@ export interface AdagentsDocument {
 }
 
 /**
- * Build a 3.0.6-conformant adagents.json declaring our worker as the
+ * Build a 3.0.8-conformant adagents.json declaring our worker as the
  * authorized signals agent for our own catalog. The agent URL is
  * derived from the request origin so the document works on any deploy
  * (production, preview, local) without rebuild.

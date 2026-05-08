@@ -1,9 +1,9 @@
 // AUTO-GENERATED — do not edit by hand.
-// Source: vendor/adcp/adcp-3.0.6/schemas/
-// (downloaded from https://github.com/adcontextprotocol/adcp/releases/tag/v3.0.6)
+// Source: vendor/adcp/adcp-3.0.8/schemas/
+// (downloaded from https://github.com/adcontextprotocol/adcp/releases/tag/v3.0.8)
 // Regenerate with: node scripts/vendor-adcp-schemas.mjs
 //
-// This module vendors EVERY AdCP 3.0.6 JSON schema as TypeScript
+// This module vendors EVERY AdCP 3.0.8 JSON schema as TypeScript
 // constants so the worker can bundle them without relying on
 // @adcp/sdk's package.json exports map. The trace recorder uses
 // loadAdcpCorpus() to seed @cfworker/json-schema's $ref resolver.
@@ -12,11 +12,11 @@
 // without touching this script. To bump the spec version, edit
 // ADCP_SPEC_VERSION in scripts/vendor-adcp-schemas.mjs and re-run.
 
-export const ADCP_SPEC_VERSION = "3.0.6";
+export const ADCP_SPEC_VERSION = "3.0.8";
 
 export const a2ui_BoundValue = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/a2ui/bound-value.json",
+  "$id": "/schemas/3.0.8/a2ui/bound-value.json",
   "title": "A2UI Bound Value",
   "description": "A value that can be a literal or bound to a path in the data model",
   "oneOf": [
@@ -98,7 +98,7 @@ export const a2ui_BoundValue = {
 
 export const a2ui_Component = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/a2ui/component.json",
+  "$id": "/schemas/3.0.8/a2ui/component.json",
   "title": "A2UI Component",
   "description": "A component in an A2UI surface",
   "type": "object",
@@ -131,7 +131,7 @@ export const a2ui_Component = {
 
 export const a2ui_SiCatalog = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/a2ui/si-catalog.json",
+  "$id": "/schemas/3.0.8/a2ui/si-catalog.json",
   "title": "SI Component Catalog",
   "description": "A2UI component catalog for Sponsored Intelligence",
   "definitions": {
@@ -140,7 +140,7 @@ export const a2ui_SiCatalog = {
       "description": "Text display component",
       "properties": {
         "text": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Text content to display"
         },
         "variant": {
@@ -163,7 +163,7 @@ export const a2ui_SiCatalog = {
       "description": "Interactive button component",
       "properties": {
         "label": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Button label text"
         },
         "action": {
@@ -178,7 +178,7 @@ export const a2ui_SiCatalog = {
               "type": "object",
               "description": "Context data to include with action",
               "additionalProperties": {
-                "$ref": "/schemas/3.0.6/a2ui/bound-value.json"
+                "$ref": "/schemas/3.0.8/a2ui/bound-value.json"
               }
             }
           },
@@ -196,7 +196,7 @@ export const a2ui_SiCatalog = {
           "default": "primary"
         },
         "disabled": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json"
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json"
         }
       },
       "required": [
@@ -209,11 +209,11 @@ export const a2ui_SiCatalog = {
       "description": "Hyperlink component",
       "properties": {
         "label": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Link text"
         },
         "url": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "URL to navigate to"
         },
         "external": {
@@ -232,11 +232,11 @@ export const a2ui_SiCatalog = {
       "description": "Image display component",
       "properties": {
         "src": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Image source URL"
         },
         "alt": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Alt text for accessibility"
         },
         "width": {
@@ -258,19 +258,19 @@ export const a2ui_SiCatalog = {
       "description": "Card container for grouped content",
       "properties": {
         "title": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Card title"
         },
         "subtitle": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Card subtitle"
         },
         "image": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Card image URL"
         },
         "badge": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Badge text (e.g., 'New', 'Sale')"
         },
         "action": {
@@ -283,7 +283,7 @@ export const a2ui_SiCatalog = {
             "context": {
               "type": "object",
               "additionalProperties": {
-                "$ref": "/schemas/3.0.6/a2ui/bound-value.json"
+                "$ref": "/schemas/3.0.8/a2ui/bound-value.json"
               }
             }
           },
@@ -308,27 +308,27 @@ export const a2ui_SiCatalog = {
       "description": "Product display card (SI-specific)",
       "properties": {
         "title": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Product name"
         },
         "price": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Price display string"
         },
         "image": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Product image URL"
         },
         "description": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Product description"
         },
         "badge": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Badge text (e.g., 'Best Seller')"
         },
         "ctaLabel": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "CTA button label"
         },
         "action": {
@@ -340,7 +340,7 @@ export const a2ui_SiCatalog = {
             "context": {
               "type": "object",
               "additionalProperties": {
-                "$ref": "/schemas/3.0.6/a2ui/bound-value.json"
+                "$ref": "/schemas/3.0.8/a2ui/bound-value.json"
               }
             }
           },
@@ -359,7 +359,7 @@ export const a2ui_SiCatalog = {
       "description": "Data-bound list component",
       "properties": {
         "items": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Path to array in data model"
         },
         "template": {
@@ -376,7 +376,7 @@ export const a2ui_SiCatalog = {
           ]
         },
         "emptyMessage": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Message to show when list is empty"
         },
         "layout": {
@@ -480,11 +480,11 @@ export const a2ui_SiCatalog = {
           "description": "Integration type"
         },
         "label": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Button label"
         },
         "url": {
-          "$ref": "/schemas/3.0.6/a2ui/bound-value.json",
+          "$ref": "/schemas/3.0.8/a2ui/bound-value.json",
           "description": "Integration endpoint URL"
         },
         "highlighted": {
@@ -559,7 +559,7 @@ export const a2ui_SiCatalog = {
 
 export const a2ui_Surface = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/a2ui/surface.json",
+  "$id": "/schemas/3.0.8/a2ui/surface.json",
   "title": "A2UI Surface",
   "description": "A contiguous UI region containing components",
   "type": "object",
@@ -577,7 +577,7 @@ export const a2ui_Surface = {
       "type": "array",
       "description": "Flat list of components (adjacency list structure)",
       "items": {
-        "$ref": "/schemas/3.0.6/a2ui/component.json"
+        "$ref": "/schemas/3.0.8/a2ui/component.json"
       }
     },
     "rootId": {
@@ -599,7 +599,7 @@ export const a2ui_Surface = {
 
 export const a2ui_UserAction = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/a2ui/user-action.json",
+  "$id": "/schemas/3.0.8/a2ui/user-action.json",
   "title": "A2UI User Action",
   "description": "User interaction event sent from client to agent",
   "type": "object",
@@ -647,7 +647,7 @@ export const a2ui_UserAction = {
 
 export const account_GetAccountFinancialsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/account/get-account-financials-request.json",
+  "$id": "/schemas/3.0.8/account/get-account-financials-request.json",
   "title": "Get Account Financials Request",
   "description": "Request financial status for an operator-billed account. Returns spend summary, credit/balance status, and invoice history. Only applicable when the seller declares account_financials capability.",
   "type": "object",
@@ -659,18 +659,18 @@ export const account_GetAccountFinancialsRequest = {
       "maximum": 99
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account to query financials for. Must be an operator-billed account."
     },
     "period": {
-      "$ref": "/schemas/3.0.6/core/date-range.json",
+      "$ref": "/schemas/3.0.8/core/date-range.json",
       "description": "Date range for the spend summary. Defaults to the current billing cycle if omitted."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -718,7 +718,7 @@ export const account_GetAccountFinancialsRequest = {
 
 export const account_GetAccountFinancialsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/account/get-account-financials-response.json",
+  "$id": "/schemas/3.0.8/account/get-account-financials-response.json",
   "title": "Get Account Financials Response",
   "description": "Financial status for an operator-billed account. Returns spend summary, credit/balance status, payment status, and invoice history. The level of detail varies by seller — only account, currency, and period are guaranteed on success.",
   "type": "object",
@@ -729,7 +729,7 @@ export const account_GetAccountFinancialsResponse = {
       "type": "object",
       "properties": {
         "account": {
-          "$ref": "/schemas/3.0.6/core/account-ref.json",
+          "$ref": "/schemas/3.0.8/core/account-ref.json",
           "description": "Account reference, echoed from the request"
         },
         "currency": {
@@ -738,7 +738,7 @@ export const account_GetAccountFinancialsResponse = {
           "description": "ISO 4217 currency code for all monetary amounts in this response"
         },
         "period": {
-          "$ref": "/schemas/3.0.6/core/date-range.json",
+          "$ref": "/schemas/3.0.8/core/date-range.json",
           "description": "The actual period covered by spend data. May differ from the requested period if the seller adjusts to billing cycle boundaries."
         },
         "timezone": {
@@ -833,7 +833,7 @@ export const account_GetAccountFinancialsResponse = {
           "description": "Overall payment status. current: all obligations met. past_due: one or more invoices overdue. suspended: account suspended due to payment issues."
         },
         "payment_terms": {
-          "$ref": "/schemas/3.0.6/enums/payment-terms.json",
+          "$ref": "/schemas/3.0.8/enums/payment-terms.json",
           "description": "Payment terms in effect for this account"
         },
         "invoices": {
@@ -847,7 +847,7 @@ export const account_GetAccountFinancialsResponse = {
                 "description": "Seller-assigned invoice identifier"
               },
               "period": {
-                "$ref": "/schemas/3.0.6/core/date-range.json",
+                "$ref": "/schemas/3.0.8/core/date-range.json",
                 "description": "Billing period covered by this invoice"
               },
               "amount": {
@@ -885,10 +885,10 @@ export const account_GetAccountFinancialsResponse = {
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -913,15 +913,15 @@ export const account_GetAccountFinancialsResponse = {
           "type": "array",
           "description": "Operation-level errors",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -1039,7 +1039,7 @@ export const account_GetAccountFinancialsResponse = {
 
 export const account_ListAccountsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/account/list-accounts-request.json",
+  "$id": "/schemas/3.0.8/account/list-accounts-request.json",
   "title": "List Accounts Request",
   "description": "Request parameters for listing accounts accessible to the authenticated agent",
   "type": "object",
@@ -1063,17 +1063,17 @@ export const account_ListAccountsRequest = {
       "description": "Filter accounts by status. Omit to return accounts in all statuses."
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-request.json"
+      "$ref": "/schemas/3.0.8/core/pagination-request.json"
     },
     "sandbox": {
       "type": "boolean",
       "description": "Filter by sandbox status. true returns only sandbox accounts, false returns only production accounts. Omit to return all accounts. Primarily used with explicit accounts (require_operator_auth: true) where sandbox accounts are pre-existing test accounts on the platform."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [],
@@ -1082,7 +1082,7 @@ export const account_ListAccountsRequest = {
 
 export const account_ListAccountsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/account/list-accounts-response.json",
+  "$id": "/schemas/3.0.8/account/list-accounts-response.json",
   "title": "List Accounts Response",
   "description": "Response payload for list_accounts task",
   "type": "object",
@@ -1091,24 +1091,24 @@ export const account_ListAccountsResponse = {
       "type": "array",
       "description": "Array of accounts accessible to the authenticated agent",
       "items": {
-        "$ref": "/schemas/3.0.6/core/account.json"
+        "$ref": "/schemas/3.0.8/core/account.json"
       }
     },
     "errors": {
       "type": "array",
       "description": "Task-specific errors and warnings",
       "items": {
-        "$ref": "/schemas/3.0.6/core/error.json"
+        "$ref": "/schemas/3.0.8/core/error.json"
       }
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-response.json"
+      "$ref": "/schemas/3.0.8/core/pagination-response.json"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -1191,7 +1191,7 @@ export const account_ListAccountsResponse = {
 
 export const account_ReportUsageRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/account/report-usage-request.json",
+  "$id": "/schemas/3.0.8/account/report-usage-request.json",
   "title": "Report Usage Request",
   "description": "Reports how a vendor's service was consumed after campaign delivery. Used by orchestrators (DSPs, storefronts) to inform vendor agents (signals, governance, creative) what was used so the vendor can track earned revenue and verify billing. Records can span multiple accounts and campaigns in a single request.",
   "x-mutates-state": true,
@@ -1208,7 +1208,7 @@ export const account_ReportUsageRequest = {
       "description": "Client-generated unique key for this request. If a request with the same key has already been accepted, the server returns the original response without re-processing. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request. Prevents duplicate billing on retries."
     },
     "reporting_period": {
-      "$ref": "/schemas/3.0.6/core/datetime-range.json",
+      "$ref": "/schemas/3.0.8/core/datetime-range.json",
       "description": "The time range covered by this usage report. Applies to all records in the request."
     },
     "usage": {
@@ -1219,7 +1219,7 @@ export const account_ReportUsageRequest = {
         "type": "object",
         "properties": {
           "account": {
-            "$ref": "/schemas/3.0.6/core/account-ref.json",
+            "$ref": "/schemas/3.0.8/core/account-ref.json",
             "description": "Account for this usage record."
           },
           "media_buy_id": {
@@ -1287,10 +1287,10 @@ export const account_ReportUsageRequest = {
       }
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -1360,7 +1360,7 @@ export const account_ReportUsageRequest = {
 
 export const account_ReportUsageResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/account/report-usage-response.json",
+  "$id": "/schemas/3.0.8/account/report-usage-response.json",
   "title": "Report Usage Response",
   "description": "Response from report_usage. Partial acceptance is valid — records that pass validation are stored even when others fail.",
   "type": "object",
@@ -1374,7 +1374,7 @@ export const account_ReportUsageResponse = {
       "type": "array",
       "description": "Validation errors for individual records. The field property identifies which record failed (e.g., 'usage[1].pricing_option_id').",
       "items": {
-        "$ref": "/schemas/3.0.6/core/error.json"
+        "$ref": "/schemas/3.0.8/core/error.json"
       }
     },
     "sandbox": {
@@ -1382,10 +1382,10 @@ export const account_ReportUsageResponse = {
       "description": "When true, the account is a sandbox account and no billing occurred."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -1417,7 +1417,7 @@ export const account_ReportUsageResponse = {
 
 export const account_SyncAccountsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/account/sync-accounts-request.json",
+  "$id": "/schemas/3.0.8/account/sync-accounts-request.json",
   "title": "Sync Accounts Request",
   "description": "Sync advertiser accounts with a seller using upsert semantics. The agent declares which brands it represents, who operates on each brand's behalf, and the billing model. The seller provisions or links accounts accordingly, returning per-account status.",
   "x-mutates-state": true,
@@ -1444,7 +1444,7 @@ export const account_SyncAccountsRequest = {
         "description": "An advertiser account the agent wants to operate on the seller",
         "properties": {
           "brand": {
-            "$ref": "/schemas/3.0.6/core/brand-ref.json",
+            "$ref": "/schemas/3.0.8/core/brand-ref.json",
             "description": "Brand reference identifying the advertiser. Uses the brand's house domain and optional brand_id from brand.json."
           },
           "operator": {
@@ -1453,15 +1453,15 @@ export const account_SyncAccountsRequest = {
             "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
           },
           "billing": {
-            "$ref": "/schemas/3.0.6/enums/billing-party.json",
+            "$ref": "/schemas/3.0.8/enums/billing-party.json",
             "description": "Who should be invoiced. The seller must either accept this billing model or reject the request."
           },
           "billing_entity": {
-            "$ref": "/schemas/3.0.6/core/business-entity.json",
+            "$ref": "/schemas/3.0.8/core/business-entity.json",
             "description": "Business entity details for the party responsible for payment. The agent provides this so the seller has the legal name, tax IDs, address, and bank details needed for formal B2B invoicing."
           },
           "payment_terms": {
-            "$ref": "/schemas/3.0.6/enums/payment-terms.json",
+            "$ref": "/schemas/3.0.8/enums/payment-terms.json",
             "description": "Payment terms for this account. The seller must either accept these terms or reject the account — terms are never silently remapped. When omitted, the seller applies its default terms."
           },
           "sandbox": {
@@ -1469,7 +1469,7 @@ export const account_SyncAccountsRequest = {
             "description": "When true, provision this as a sandbox account with no real platform calls or billing. Only applicable to implicit accounts (require_operator_auth: false). For explicit accounts, sandbox accounts are pre-existing test accounts discovered via list_accounts."
           },
           "preferred_reporting_protocol": {
-            "$ref": "/schemas/3.0.6/enums/cloud-storage-protocol.json",
+            "$ref": "/schemas/3.0.8/enums/cloud-storage-protocol.json",
             "description": "Buyer's preferred cloud storage protocol for offline reporting delivery. The seller provisions the account's reporting_bucket using this protocol if supported. When omitted, the seller chooses from its supported offline_delivery_protocols. Only meaningful when the seller's reporting_delivery_methods includes 'offline'."
           }
         },
@@ -1493,14 +1493,14 @@ export const account_SyncAccountsRequest = {
       "description": "When true, preview what would change without applying. Returns what would be created/updated/deactivated."
     },
     "push_notification_config": {
-      "$ref": "/schemas/3.0.6/core/push-notification-config.json",
+      "$ref": "/schemas/3.0.8/core/push-notification-config.json",
       "description": "Webhook for async notifications when account status changes (e.g., pending_approval transitions to active)."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -1619,7 +1619,7 @@ export const account_SyncAccountsRequest = {
 
 export const account_SyncAccountsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/account/sync-accounts-response.json",
+  "$id": "/schemas/3.0.8/account/sync-accounts-response.json",
   "title": "Sync Accounts Response",
   "description": "Response from account sync operation. Returns per-account results with status and billing, or operation-level errors on complete failure.",
   "type": "object",
@@ -1645,7 +1645,7 @@ export const account_SyncAccountsResponse = {
                 "x-entity": "account"
               },
               "brand": {
-                "$ref": "/schemas/3.0.6/core/brand-ref.json",
+                "$ref": "/schemas/3.0.8/core/brand-ref.json",
                 "description": "Brand reference, echoed from the request"
               },
               "operator": {
@@ -1679,15 +1679,15 @@ export const account_SyncAccountsResponse = {
                 "description": "Account status. active: ready for use. pending_approval: seller reviewing (credit, legal). rejected: seller declined the account request. payment_required: credit limit reached or funds depleted. suspended: was active, now paused. closed: was active, now terminated."
               },
               "billing": {
-                "$ref": "/schemas/3.0.6/enums/billing-party.json",
+                "$ref": "/schemas/3.0.8/enums/billing-party.json",
                 "description": "Who is invoiced on this account. Matches the requested billing model."
               },
               "billing_entity": {
-                "$ref": "/schemas/3.0.6/core/business-entity.json",
+                "$ref": "/schemas/3.0.8/core/business-entity.json",
                 "description": "Business entity details for the party responsible for payment, echoed from the request. Sellers MAY add fields the agent omitted (e.g., filling in registration_number from a credit check), but MUST NOT return data from a different entity. Bank details are omitted (write-only)."
               },
               "account_scope": {
-                "$ref": "/schemas/3.0.6/enums/account-scope.json"
+                "$ref": "/schemas/3.0.8/enums/account-scope.json"
               },
               "setup": {
                 "type": "object",
@@ -1718,7 +1718,7 @@ export const account_SyncAccountsResponse = {
                 "description": "Rate card applied to this account"
               },
               "payment_terms": {
-                "$ref": "/schemas/3.0.6/enums/payment-terms.json",
+                "$ref": "/schemas/3.0.8/enums/payment-terms.json",
                 "description": "Payment terms agreed for this account. When the account is active, these are the binding terms for all invoices on this account."
               },
               "credit_limit": {
@@ -1742,7 +1742,7 @@ export const account_SyncAccountsResponse = {
                 "type": "array",
                 "description": "Per-account errors (only present when action is 'failed')",
                 "items": {
-                  "$ref": "/schemas/3.0.6/core/error.json"
+                  "$ref": "/schemas/3.0.8/core/error.json"
                 }
               },
               "warnings": {
@@ -1767,10 +1767,10 @@ export const account_SyncAccountsResponse = {
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -1792,15 +1792,15 @@ export const account_SyncAccountsResponse = {
           "type": "array",
           "description": "Operation-level errors (e.g., authentication failure, service unavailable)",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -1966,7 +1966,7 @@ export const account_SyncAccountsResponse = {
 
 export const account_SyncGovernanceRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/account/sync-governance-request.json",
+  "$id": "/schemas/3.0.8/account/sync-governance-request.json",
   "title": "Sync Governance Request",
   "description": "Sync governance agent endpoints against specific accounts. The seller persists these governance agents and calls them for approval during media buy lifecycle events via check_governance. Uses replace semantics: each call replaces any previously synced agents on the specified accounts. The seller MUST verify that the authenticated agent has authority over each referenced account before persisting governance agents.",
   "x-mutates-state": true,
@@ -1992,7 +1992,7 @@ export const account_SyncGovernanceRequest = {
         "type": "object",
         "properties": {
           "account": {
-            "$ref": "/schemas/3.0.6/core/account-ref.json",
+            "$ref": "/schemas/3.0.8/core/account-ref.json",
             "description": "Account to sync governance agents for. Use account_id for explicit accounts or brand + operator for implicit accounts."
           },
           "governance_agents": {
@@ -2014,7 +2014,7 @@ export const account_SyncGovernanceRequest = {
                     "schemes": {
                       "type": "array",
                       "items": {
-                        "$ref": "/schemas/3.0.6/enums/auth-scheme.json"
+                        "$ref": "/schemas/3.0.8/enums/auth-scheme.json"
                       },
                       "minItems": 1,
                       "maxItems": 1
@@ -2062,10 +2062,10 @@ export const account_SyncGovernanceRequest = {
       "maxItems": 100
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -2137,7 +2137,7 @@ export const account_SyncGovernanceRequest = {
 
 export const account_SyncGovernanceResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/account/sync-governance-response.json",
+  "$id": "/schemas/3.0.8/account/sync-governance-response.json",
   "title": "Sync Governance Response",
   "description": "Response from governance agent sync. Returns per-account results confirming sync, or operation-level errors on complete failure.",
   "type": "object",
@@ -2154,7 +2154,7 @@ export const account_SyncGovernanceResponse = {
             "type": "object",
             "properties": {
               "account": {
-                "$ref": "/schemas/3.0.6/core/account-ref.json",
+                "$ref": "/schemas/3.0.8/core/account-ref.json",
                 "description": "Account reference, echoed from request"
               },
               "status": {
@@ -2198,7 +2198,7 @@ export const account_SyncGovernanceResponse = {
                 "type": "array",
                 "description": "Per-account errors (only present when status is 'failed')",
                 "items": {
-                  "$ref": "/schemas/3.0.6/core/error.json"
+                  "$ref": "/schemas/3.0.8/core/error.json"
                 }
               }
             },
@@ -2210,10 +2210,10 @@ export const account_SyncGovernanceResponse = {
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -2235,15 +2235,15 @@ export const account_SyncGovernanceResponse = {
           "type": "array",
           "description": "Operation-level errors (e.g., authentication failure, service unavailable)",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -2331,7 +2331,7 @@ export const account_SyncGovernanceResponse = {
 
 export const adagents = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/adagents.json",
+  "$id": "/schemas/3.0.8/adagents.json",
   "title": "AdCP Agents Authorization",
   "description": "Declaration of authorized agents for advertising inventory and data signals. Hosted at /.well-known/adagents.json on publisher domains (for properties) or data provider domains (for signals). Can either contain the full structure inline or reference an authoritative URL.",
   "oneOf": [
@@ -2417,7 +2417,7 @@ export const adagents = {
           "type": "array",
           "description": "Array of all properties covered by this adagents.json file. Defines the canonical property list that authorized agents reference.",
           "items": {
-            "$ref": "/schemas/3.0.6/core/property.json"
+            "$ref": "/schemas/3.0.8/core/property.json"
           },
           "minItems": 1
         },
@@ -2425,14 +2425,14 @@ export const adagents = {
           "type": "array",
           "description": "Collections produced or distributed by this publisher. Declares the content programs whose inventory is sold through authorized agents. Products in get_products responses reference these collections by collection_id.",
           "items": {
-            "$ref": "/schemas/3.0.6/core/collection.json"
+            "$ref": "/schemas/3.0.8/core/collection.json"
           }
         },
         "placements": {
           "type": "array",
           "description": "Canonical placement definitions for properties in this file. Products SHOULD reuse these placement_id values when exposing inventory in get_products, and authorized agents can scope authorization to these placement IDs.",
           "items": {
-            "$ref": "/schemas/3.0.6/core/placement-definition.json"
+            "$ref": "/schemas/3.0.8/core/placement-definition.json"
           },
           "minItems": 1
         },
@@ -2508,7 +2508,7 @@ export const adagents = {
                     "type": "array",
                     "description": "Property IDs this agent is authorized for. Resolved against the top-level properties array in this file",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/property-id.json"
+                      "$ref": "/schemas/3.0.8/core/property-id.json"
                     },
                     "minItems": 1
                   },
@@ -2516,7 +2516,7 @@ export const adagents = {
                     "type": "array",
                     "description": "Optional collection constraints. When present, authorization only applies to inventory associated with these collections.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/collection-selector.json"
+                      "$ref": "/schemas/3.0.8/core/collection-selector.json"
                     },
                     "minItems": 1
                   },
@@ -2574,7 +2574,7 @@ export const adagents = {
                     "type": "array",
                     "description": "Optional publisher-attested public signing keys for this agent. Use these as the trust anchor for verifying signed agent responses instead of relying on key discovery from the agent domain alone.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/agent-signing-key.json"
+                      "$ref": "/schemas/3.0.8/core/agent-signing-key.json"
                     },
                     "minItems": 1
                   },
@@ -2582,7 +2582,7 @@ export const adagents = {
                     "type": "array",
                     "description": "X25519 public keys for TMPX exposure token encryption. Each key identifies a cluster master that can decrypt TMPX tokens. Used with HPKE mode_base — read replicas encrypt with this public key, only the master can decrypt.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/agent-encryption-key.json"
+                      "$ref": "/schemas/3.0.8/core/agent-encryption-key.json"
                     },
                     "minItems": 1
                   }
@@ -2618,7 +2618,7 @@ export const adagents = {
                     "type": "array",
                     "description": "Tags identifying which properties this agent is authorized for. Resolved against the top-level properties array in this file using tag matching",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/property-tag.json"
+                      "$ref": "/schemas/3.0.8/core/property-tag.json"
                     },
                     "minItems": 1
                   },
@@ -2626,7 +2626,7 @@ export const adagents = {
                     "type": "array",
                     "description": "Optional collection constraints. When present, authorization only applies to inventory associated with these collections.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/collection-selector.json"
+                      "$ref": "/schemas/3.0.8/core/collection-selector.json"
                     },
                     "minItems": 1
                   },
@@ -2684,7 +2684,7 @@ export const adagents = {
                     "type": "array",
                     "description": "Optional publisher-attested public signing keys for this agent. Use these as the trust anchor for verifying signed agent responses instead of relying on key discovery from the agent domain alone.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/agent-signing-key.json"
+                      "$ref": "/schemas/3.0.8/core/agent-signing-key.json"
                     },
                     "minItems": 1
                   },
@@ -2692,7 +2692,7 @@ export const adagents = {
                     "type": "array",
                     "description": "X25519 public keys for TMPX exposure token encryption. Each key identifies a cluster master that can decrypt TMPX tokens. Used with HPKE mode_base — read replicas encrypt with this public key, only the master can decrypt.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/agent-encryption-key.json"
+                      "$ref": "/schemas/3.0.8/core/agent-encryption-key.json"
                     },
                     "minItems": 1
                   }
@@ -2728,7 +2728,7 @@ export const adagents = {
                     "type": "array",
                     "description": "Specific properties this agent is authorized for (alternative to property_ids/property_tags)",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/property.json"
+                      "$ref": "/schemas/3.0.8/core/property.json"
                     },
                     "minItems": 1
                   },
@@ -2736,7 +2736,7 @@ export const adagents = {
                     "type": "array",
                     "description": "Optional collection constraints. When present, authorization only applies to inventory associated with these collections.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/collection-selector.json"
+                      "$ref": "/schemas/3.0.8/core/collection-selector.json"
                     },
                     "minItems": 1
                   },
@@ -2794,7 +2794,7 @@ export const adagents = {
                     "type": "array",
                     "description": "Optional publisher-attested public signing keys for this agent. Use these as the trust anchor for verifying signed agent responses instead of relying on key discovery from the agent domain alone.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/agent-signing-key.json"
+                      "$ref": "/schemas/3.0.8/core/agent-signing-key.json"
                     },
                     "minItems": 1
                   },
@@ -2802,7 +2802,7 @@ export const adagents = {
                     "type": "array",
                     "description": "X25519 public keys for TMPX exposure token encryption. Each key identifies a cluster master that can decrypt TMPX tokens. Used with HPKE mode_base — read replicas encrypt with this public key, only the master can decrypt.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/agent-encryption-key.json"
+                      "$ref": "/schemas/3.0.8/core/agent-encryption-key.json"
                     },
                     "minItems": 1
                   }
@@ -2838,7 +2838,7 @@ export const adagents = {
                     "type": "array",
                     "description": "Properties from other publisher domains this agent is authorized for. Each entry specifies a publisher domain and which of their properties this agent can sell",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/publisher-property-selector.json"
+                      "$ref": "/schemas/3.0.8/core/publisher-property-selector.json"
                     },
                     "minItems": 1
                   },
@@ -2846,7 +2846,7 @@ export const adagents = {
                     "type": "array",
                     "description": "Optional collection constraints. When present, authorization only applies to inventory associated with these collections.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/collection-selector.json"
+                      "$ref": "/schemas/3.0.8/core/collection-selector.json"
                     },
                     "minItems": 1
                   },
@@ -2904,7 +2904,7 @@ export const adagents = {
                     "type": "array",
                     "description": "Optional publisher-attested public signing keys for this agent. Use these as the trust anchor for verifying signed agent responses instead of relying on key discovery from the agent domain alone.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/agent-signing-key.json"
+                      "$ref": "/schemas/3.0.8/core/agent-signing-key.json"
                     },
                     "minItems": 1
                   },
@@ -2912,7 +2912,7 @@ export const adagents = {
                     "type": "array",
                     "description": "X25519 public keys for TMPX exposure token encryption. Each key identifies a cluster master that can decrypt TMPX tokens. Used with HPKE mode_base — read replicas encrypt with this public key, only the master can decrypt.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/agent-encryption-key.json"
+                      "$ref": "/schemas/3.0.8/core/agent-encryption-key.json"
                     },
                     "minItems": 1
                   }
@@ -2958,7 +2958,7 @@ export const adagents = {
                     "type": "array",
                     "description": "Optional publisher-attested public signing keys for this agent. Use these as the trust anchor for verifying signed agent responses instead of relying on key discovery from the agent domain alone.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/agent-signing-key.json"
+                      "$ref": "/schemas/3.0.8/core/agent-signing-key.json"
                     },
                     "minItems": 1
                   },
@@ -2966,7 +2966,7 @@ export const adagents = {
                     "type": "array",
                     "description": "X25519 public keys for TMPX exposure token encryption. Each key identifies a cluster master that can decrypt TMPX tokens. Used with HPKE mode_base — read replicas encrypt with this public key, only the master can decrypt.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/agent-encryption-key.json"
+                      "$ref": "/schemas/3.0.8/core/agent-encryption-key.json"
                     },
                     "minItems": 1
                   }
@@ -3012,7 +3012,7 @@ export const adagents = {
                     "type": "array",
                     "description": "Optional publisher-attested public signing keys for this agent. Use these as the trust anchor for verifying signed agent responses instead of relying on key discovery from the agent domain alone.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/agent-signing-key.json"
+                      "$ref": "/schemas/3.0.8/core/agent-signing-key.json"
                     },
                     "minItems": 1
                   },
@@ -3020,7 +3020,7 @@ export const adagents = {
                     "type": "array",
                     "description": "X25519 public keys for TMPX exposure token encryption. Each key identifies a cluster master that can decrypt TMPX tokens. Used with HPKE mode_base — read replicas encrypt with this public key, only the master can decrypt.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/agent-encryption-key.json"
+                      "$ref": "/schemas/3.0.8/core/agent-encryption-key.json"
                     },
                     "minItems": 1
                   }
@@ -3082,7 +3082,7 @@ export const adagents = {
           "type": "array",
           "description": "Signal catalog published by this data provider. Signals agents reference these signals via data_provider_domain + signal_id.",
           "items": {
-            "$ref": "/schemas/3.0.6/core/signal-definition.json"
+            "$ref": "/schemas/3.0.8/core/signal-definition.json"
           },
           "minItems": 1
         },
@@ -3117,12 +3117,12 @@ export const adagents = {
   ],
   "examples": [
     {
-      "$schema": "/schemas/3.0.6/adagents.json",
+      "$schema": "/schemas/3.0.8/adagents.json",
       "authoritative_location": "https://cdn.example.com/adagents/v2/adagents.json",
       "last_updated": "2025-01-15T10:00:00Z"
     },
     {
-      "$schema": "/schemas/3.0.6/adagents.json",
+      "$schema": "/schemas/3.0.8/adagents.json",
       "properties": [
         {
           "property_id": "example_site",
@@ -3200,7 +3200,7 @@ export const adagents = {
       "last_updated": "2025-01-10T12:00:00Z"
     },
     {
-      "$schema": "/schemas/3.0.6/adagents.json",
+      "$schema": "/schemas/3.0.8/adagents.json",
       "contact": {
         "name": "Meta Advertising Operations",
         "email": "adops@meta.com",
@@ -3309,7 +3309,7 @@ export const adagents = {
       "last_updated": "2025-01-10T15:30:00Z"
     },
     {
-      "$schema": "/schemas/3.0.6/adagents.json",
+      "$schema": "/schemas/3.0.8/adagents.json",
       "contact": {
         "name": "Tumblr Advertising"
       },
@@ -3348,7 +3348,7 @@ export const adagents = {
       "last_updated": "2025-01-10T16:00:00Z"
     },
     {
-      "$schema": "/schemas/3.0.6/adagents.json",
+      "$schema": "/schemas/3.0.8/adagents.json",
       "contact": {
         "name": "Example Third-Party Sales Agent",
         "email": "sales@agent.example",
@@ -3394,7 +3394,7 @@ export const adagents = {
       "last_updated": "2025-01-10T17:00:00Z"
     },
     {
-      "$schema": "/schemas/3.0.6/adagents.json",
+      "$schema": "/schemas/3.0.8/adagents.json",
       "contact": {
         "name": "Premium News Publisher",
         "email": "adops@news.example.com",
@@ -3469,7 +3469,7 @@ export const adagents = {
       "last_updated": "2025-01-10T18:00:00Z"
     },
     {
-      "$schema": "/schemas/3.0.6/adagents.json",
+      "$schema": "/schemas/3.0.8/adagents.json",
       "contact": {
         "name": "Polk Automotive Data",
         "email": "partnerships@polk.com",
@@ -3557,7 +3557,7 @@ export const adagents = {
 
 export const brand_AcquireRightsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/brand/acquire-rights-request.json",
+  "$id": "/schemas/3.0.8/brand/acquire-rights-request.json",
   "title": "Acquire Rights Request",
   "description": "Binding contractual request to acquire rights from a brand agent. Parallels create_media_buy — the buyer selects a pricing_option_id from a get_rights response and provides campaign details. The agent clears against existing contracts and returns terms, generation credentials, and disclosure requirements.",
   "x-status": "experimental",
@@ -3581,7 +3581,7 @@ export const brand_AcquireRightsRequest = {
       "x-entity": "vendor_pricing_option"
     },
     "buyer": {
-      "$ref": "/schemas/3.0.6/core/brand-ref.json",
+      "$ref": "/schemas/3.0.8/core/brand-ref.json",
       "description": "The buyer's brand identity"
     },
     "campaign": {
@@ -3596,7 +3596,7 @@ export const brand_AcquireRightsRequest = {
           "type": "array",
           "description": "Specific rights uses for this campaign",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/right-use.json"
+            "$ref": "/schemas/3.0.8/enums/right-use.json"
           },
           "minItems": 1
         },
@@ -3612,7 +3612,7 @@ export const brand_AcquireRightsRequest = {
           "type": "array",
           "description": "Creative formats that will be produced",
           "items": {
-            "$ref": "/schemas/3.0.6/core/format-id.json"
+            "$ref": "/schemas/3.0.8/core/format-id.json"
           }
         },
         "estimated_impressions": {
@@ -3638,11 +3638,11 @@ export const brand_AcquireRightsRequest = {
       "additionalProperties": true
     },
     "revocation_webhook": {
-      "$ref": "/schemas/3.0.6/core/push-notification-config.json",
+      "$ref": "/schemas/3.0.8/core/push-notification-config.json",
       "description": "Webhook for rights revocation notifications. If the rights holder needs to revoke rights (talent scandal, contract violation, etc.), they POST a revocation-notification to this URL. The buyer is responsible for stopping creative delivery upon receipt."
     },
     "push_notification_config": {
-      "$ref": "/schemas/3.0.6/core/push-notification-config.json",
+      "$ref": "/schemas/3.0.8/core/push-notification-config.json",
       "description": "Webhook for async status updates if the acquisition requires approval. The rights agent sends a webhook notification when the status transitions to acquired or rejected."
     },
     "idempotency_key": {
@@ -3653,10 +3653,10 @@ export const brand_AcquireRightsRequest = {
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -3672,7 +3672,7 @@ export const brand_AcquireRightsRequest = {
 
 export const brand_AcquireRightsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/brand/acquire-rights-response.json",
+  "$id": "/schemas/3.0.8/brand/acquire-rights-response.json",
   "title": "Acquire Rights Response",
   "description": "Result of a rights acquisition request. Returns one of three statuses: acquired (with terms and generation credentials), pending_approval (requires rights holder review), or rejected (with reason). Uses discriminated union on status field.",
   "x-status": "experimental",
@@ -3697,14 +3697,14 @@ export const brand_AcquireRightsResponse = {
           "x-entity": "rights_holder_brand"
         },
         "terms": {
-          "$ref": "/schemas/3.0.6/brand/rights-terms.json",
+          "$ref": "/schemas/3.0.8/brand/rights-terms.json",
           "description": "Agreed contractual terms"
         },
         "generation_credentials": {
           "type": "array",
           "description": "Scoped credentials for generating rights-cleared content",
           "items": {
-            "$ref": "/schemas/3.0.6/core/generation-credential.json"
+            "$ref": "/schemas/3.0.8/core/generation-credential.json"
           }
         },
         "restrictions": {
@@ -3733,7 +3733,7 @@ export const brand_AcquireRightsResponse = {
           "additionalProperties": true
         },
         "approval_webhook": {
-          "$ref": "/schemas/3.0.6/core/push-notification-config.json",
+          "$ref": "/schemas/3.0.8/core/push-notification-config.json",
           "description": "Authenticated webhook for submitting creatives for approval. POST a creative-approval-request to the URL using the provided authentication. The response is a creative-approval-response."
         },
         "usage_reporting_url": {
@@ -3742,14 +3742,14 @@ export const brand_AcquireRightsResponse = {
           "description": "Endpoint for reporting usage against these rights"
         },
         "rights_constraint": {
-          "$ref": "/schemas/3.0.6/core/rights-constraint.json",
+          "$ref": "/schemas/3.0.8/core/rights-constraint.json",
           "description": "Pre-built rights constraint for embedding in creative manifests. Populated from the agreed terms — the buyer does not need to construct it manually."
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -3792,10 +3792,10 @@ export const brand_AcquireRightsResponse = {
           "description": "Expected time for approval decision (e.g., '48h', '3 business days')"
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -3838,10 +3838,10 @@ export const brand_AcquireRightsResponse = {
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -3863,15 +3863,15 @@ export const brand_AcquireRightsResponse = {
         "errors": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -3893,7 +3893,7 @@ export const brand_AcquireRightsResponse = {
 
 export const brand_CreativeApprovalRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/brand/creative-approval-request.json",
+  "$id": "/schemas/3.0.8/brand/creative-approval-request.json",
   "title": "Creative Approval Request",
   "description": "Payload submitted by the buyer to the approval_webhook URL from acquire_rights. Contains the creative for rights holder review before distribution.",
   "x-mutates-state": true,
@@ -3921,7 +3921,7 @@ export const brand_CreativeApprovalRequest = {
       "description": "URL where the creative asset can be retrieved for review"
     },
     "creative_format": {
-      "$ref": "/schemas/3.0.6/core/format-id.json",
+      "$ref": "/schemas/3.0.8/core/format-id.json",
       "description": "Format of the creative being submitted"
     },
     "description": {
@@ -3941,10 +3941,10 @@ export const brand_CreativeApprovalRequest = {
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -3957,7 +3957,7 @@ export const brand_CreativeApprovalRequest = {
 
 export const brand_CreativeApprovalResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/brand/creative-approval-response.json",
+  "$id": "/schemas/3.0.8/brand/creative-approval-response.json",
   "title": "Creative Approval Response",
   "description": "Response from the approval_webhook after reviewing a submitted creative. Uses discriminated union on status field: approved, rejected, or pending_review.",
   "type": "object",
@@ -3995,10 +3995,10 @@ export const brand_CreativeApprovalResponse = {
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -4045,10 +4045,10 @@ export const brand_CreativeApprovalResponse = {
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -4094,10 +4094,10 @@ export const brand_CreativeApprovalResponse = {
           "description": "URL to poll for updated approval status. GET this URL to receive a creative-approval-response. Poll at reasonable intervals (suggested: every 5 minutes, back off after 1 hour to every 30 minutes). Stop polling after estimated_response_time has elapsed and the status is still pending_review."
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -4117,15 +4117,15 @@ export const brand_CreativeApprovalResponse = {
         "errors": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -4147,7 +4147,7 @@ export const brand_CreativeApprovalResponse = {
 
 export const brand_GetBrandIdentityRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/brand/get-brand-identity-request.json",
+  "$id": "/schemas/3.0.8/brand/get-brand-identity-request.json",
   "title": "Get Brand Identity Request",
   "description": "Request brand identity data from a brand agent. Core identity (house, names, description, logos) is always public. Linked accounts get deeper data: high-res assets, voice configs, tone guidelines, and rights availability.",
   "type": "object",
@@ -4190,10 +4190,10 @@ export const brand_GetBrandIdentityRequest = {
       "description": "Intended use case, so the agent can tailor the response. A 'voice_synthesis' use case returns voice configs; a 'likeness' use case returns high-res photos and appearance guidelines."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -4204,7 +4204,7 @@ export const brand_GetBrandIdentityRequest = {
 
 export const brand_GetBrandIdentityResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/brand/get-brand-identity-response.json",
+  "$id": "/schemas/3.0.8/brand/get-brand-identity-response.json",
   "title": "Get Brand Identity Response",
   "description": "Brand identity data from a brand agent. Core identity (house, names, description, logos) is always public. Authorized callers receive richer data (high-res assets, voice synthesis, tone guidelines, rights availability). Includes available_fields to signal what the caller could unlock by linking their account.",
   "type": "object",
@@ -4614,7 +4614,7 @@ export const brand_GetBrandIdentityResponse = {
                 "description": "Unique identifier"
               },
               "asset_type": {
-                "$ref": "/schemas/3.0.6/enums/asset-content-type.json",
+                "$ref": "/schemas/3.0.8/enums/asset-content-type.json",
                 "description": "Type of asset content"
               },
               "url": {
@@ -4673,7 +4673,7 @@ export const brand_GetBrandIdentityResponse = {
             "available_uses": {
               "type": "array",
               "items": {
-                "$ref": "/schemas/3.0.6/enums/right-use.json"
+                "$ref": "/schemas/3.0.8/enums/right-use.json"
               }
             },
             "countries": {
@@ -4726,10 +4726,10 @@ export const brand_GetBrandIdentityResponse = {
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -4750,15 +4750,15 @@ export const brand_GetBrandIdentityResponse = {
         "errors": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -4790,7 +4790,7 @@ export const brand_GetBrandIdentityResponse = {
 
 export const brand_GetRightsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/brand/get-rights-request.json",
+  "$id": "/schemas/3.0.8/brand/get-rights-request.json",
   "title": "Get Rights Request",
   "description": "Search for licensable rights across a brand agent's roster. Returns matches with pricing. Discovery is natural-language-first — no taxonomy for categories. The agent interprets intent from the query and filters based on the buyer's brand compatibility.",
   "x-status": "experimental",
@@ -4811,12 +4811,12 @@ export const brand_GetRightsRequest = {
       "type": "array",
       "description": "Rights uses being requested. The agent returns options covering these uses, potentially bundled into composite pricing.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/right-use.json"
+        "$ref": "/schemas/3.0.8/enums/right-use.json"
       },
       "minItems": 1
     },
     "buyer_brand": {
-      "$ref": "/schemas/3.0.6/core/brand-ref.json",
+      "$ref": "/schemas/3.0.8/core/brand-ref.json",
       "description": "The buyer's brand. The agent fetches the buyer's brand.json for compatibility filtering (e.g., dietary conflicts, competitor exclusions)."
     },
     "countries": {
@@ -4833,7 +4833,7 @@ export const brand_GetRightsRequest = {
       "x-entity": "rights_holder_brand"
     },
     "right_type": {
-      "$ref": "/schemas/3.0.6/enums/right-type.json",
+      "$ref": "/schemas/3.0.8/enums/right-type.json",
       "description": "Filter by type of rights (talent, music, stock_media, etc.)"
     },
     "include_excluded": {
@@ -4842,14 +4842,14 @@ export const brand_GetRightsRequest = {
       "default": false
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-request.json",
+      "$ref": "/schemas/3.0.8/core/pagination-request.json",
       "description": "Pagination parameters for large result sets"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -4861,7 +4861,7 @@ export const brand_GetRightsRequest = {
 
 export const brand_GetRightsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/brand/get-rights-response.json",
+  "$id": "/schemas/3.0.8/brand/get-rights-response.json",
   "title": "Get Rights Response",
   "description": "Licensable rights matching the search criteria, with pricing options. Each result is a complete snapshot of current availability (stateless, DDEX PIE pattern). Excluded results explain why they were filtered out.",
   "x-status": "experimental",
@@ -4895,7 +4895,7 @@ export const brand_GetRightsResponse = {
                 "description": "Description of the rights subject"
               },
               "right_type": {
-                "$ref": "/schemas/3.0.6/enums/right-type.json"
+                "$ref": "/schemas/3.0.8/enums/right-type.json"
               },
               "match_score": {
                 "type": "number",
@@ -4914,7 +4914,7 @@ export const brand_GetRightsResponse = {
                 "type": "array",
                 "description": "Rights uses available for licensing",
                 "items": {
-                  "$ref": "/schemas/3.0.6/enums/right-use.json"
+                  "$ref": "/schemas/3.0.8/enums/right-use.json"
                 }
               },
               "countries": {
@@ -4955,7 +4955,7 @@ export const brand_GetRightsResponse = {
                 "type": "array",
                 "description": "Available pricing options for these rights",
                 "items": {
-                  "$ref": "/schemas/3.0.6/brand/rights-pricing-option.json"
+                  "$ref": "/schemas/3.0.8/brand/rights-pricing-option.json"
                 },
                 "minItems": 1
               },
@@ -5030,10 +5030,10 @@ export const brand_GetRightsResponse = {
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -5052,15 +5052,15 @@ export const brand_GetRightsResponse = {
         "errors": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -5082,7 +5082,7 @@ export const brand_GetRightsResponse = {
 
 export const brand_RevocationNotification = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/brand/revocation-notification.json",
+  "$id": "/schemas/3.0.8/brand/revocation-notification.json",
   "title": "Revocation Notification",
   "description": "Payload sent by a rights holder to a buyer's revocation_webhook when rights are revoked. The buyer must cease creative delivery by effective_at. Partial revocation is supported — if revoked_uses is present, only those uses are revoked.",
   "type": "object",
@@ -5117,15 +5117,15 @@ export const brand_RevocationNotification = {
       "type": "array",
       "description": "If present, only these uses are revoked (partial revocation). If absent, all uses under the grant are revoked.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/right-use.json"
+        "$ref": "/schemas/3.0.8/enums/right-use.json"
       },
       "minItems": 1
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -5140,7 +5140,7 @@ export const brand_RevocationNotification = {
 
 export const brand_RightsPricingOption = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/brand/rights-pricing-option.json",
+  "$id": "/schemas/3.0.8/brand/rights-pricing-option.json",
   "title": "Rights Pricing Option",
   "description": "A pricing option for licensable rights. Separate from media-buy pricing options — rights pricing includes period, impression caps, overage rates, and use-type scoping.",
   "x-status": "experimental",
@@ -5151,7 +5151,7 @@ export const brand_RightsPricingOption = {
       "description": "Unique identifier for this pricing option. Referenced in acquire_rights and report_usage."
     },
     "model": {
-      "$ref": "/schemas/3.0.6/enums/pricing-model.json",
+      "$ref": "/schemas/3.0.8/enums/pricing-model.json",
       "description": "Pricing model (cpm, flat_rate, etc.)"
     },
     "price": {
@@ -5168,12 +5168,12 @@ export const brand_RightsPricingOption = {
       "type": "array",
       "description": "Which rights uses this pricing option covers. A single option can bundle multiple uses (e.g., likeness + voice).",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/right-use.json"
+        "$ref": "/schemas/3.0.8/enums/right-use.json"
       },
       "minItems": 1
     },
     "period": {
-      "$ref": "/schemas/3.0.6/enums/rights-billing-period.json",
+      "$ref": "/schemas/3.0.8/enums/rights-billing-period.json",
       "description": "Billing period for flat_rate and time-based models"
     },
     "impression_cap": {
@@ -5191,7 +5191,7 @@ export const brand_RightsPricingOption = {
       "description": "Human-readable description of this pricing option"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -5206,7 +5206,7 @@ export const brand_RightsPricingOption = {
 
 export const brand_RightsTerms = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/brand/rights-terms.json",
+  "$id": "/schemas/3.0.8/brand/rights-terms.json",
   "title": "Rights Terms",
   "description": "Contractual terms for a rights grant. Shared between acquire_rights and update_rights responses.",
   "x-status": "experimental",
@@ -5224,12 +5224,12 @@ export const brand_RightsTerms = {
       "pattern": "^[A-Z]{3}$"
     },
     "period": {
-      "$ref": "/schemas/3.0.6/enums/rights-billing-period.json"
+      "$ref": "/schemas/3.0.8/enums/rights-billing-period.json"
     },
     "uses": {
       "type": "array",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/right-use.json"
+        "$ref": "/schemas/3.0.8/enums/right-use.json"
       }
     },
     "impression_cap": {
@@ -5277,7 +5277,7 @@ export const brand_RightsTerms = {
 
 export const brand_UpdateRightsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/brand/update-rights-request.json",
+  "$id": "/schemas/3.0.8/brand/update-rights-request.json",
   "title": "Update Rights Request",
   "description": "Modify an existing rights grant — extend dates, adjust impression caps, change pricing, or pause/resume. Parallels update_media_buy. Only the fields provided are updated; omitted fields remain unchanged.",
   "x-status": "experimental",
@@ -5315,7 +5315,7 @@ export const brand_UpdateRightsRequest = {
       "description": "Pause or resume the rights grant. When paused, generation credentials are suspended and creative delivery should stop. When resumed, credentials are re-activated."
     },
     "push_notification_config": {
-      "$ref": "/schemas/3.0.6/core/push-notification-config.json",
+      "$ref": "/schemas/3.0.8/core/push-notification-config.json",
       "description": "Webhook for async update notifications if the update requires approval"
     },
     "idempotency_key": {
@@ -5326,10 +5326,10 @@ export const brand_UpdateRightsRequest = {
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -5341,7 +5341,7 @@ export const brand_UpdateRightsRequest = {
 
 export const brand_UpdateRightsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/brand/update-rights-response.json",
+  "$id": "/schemas/3.0.8/brand/update-rights-response.json",
   "title": "Update Rights Response",
   "description": "Result of a rights update request. Returns updated terms and re-issued credentials on success, or errors if the update cannot be applied.",
   "x-status": "experimental",
@@ -5356,18 +5356,18 @@ export const brand_UpdateRightsResponse = {
           "x-entity": "rights_grant"
         },
         "terms": {
-          "$ref": "/schemas/3.0.6/brand/rights-terms.json",
+          "$ref": "/schemas/3.0.8/brand/rights-terms.json",
           "description": "Updated contractual terms (same shape as acquire_rights acquired response)"
         },
         "generation_credentials": {
           "type": "array",
           "description": "Re-issued credentials reflecting updated terms (new expiration dates, adjusted caps)",
           "items": {
-            "$ref": "/schemas/3.0.6/core/generation-credential.json"
+            "$ref": "/schemas/3.0.8/core/generation-credential.json"
           }
         },
         "rights_constraint": {
-          "$ref": "/schemas/3.0.6/core/rights-constraint.json",
+          "$ref": "/schemas/3.0.8/core/rights-constraint.json",
           "description": "Updated rights constraint for re-embedding in creative manifests"
         },
         "paused": {
@@ -5383,10 +5383,10 @@ export const brand_UpdateRightsResponse = {
           "description": "When changes take effect (null if pending approval from rights holder)"
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -5406,15 +5406,15 @@ export const brand_UpdateRightsResponse = {
         "errors": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -5441,7 +5441,7 @@ export const brand_UpdateRightsResponse = {
 
 export const brand = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/brand.json",
+  "$id": "/schemas/3.0.8/brand.json",
   "title": "Brand Discovery",
   "description": "Brand identity and discovery file. Hosted at /.well-known/brand.json on house domains. Contains the full brand portfolio with identity, creative assets, and digital properties. Brands are identified by house + brand_id (like properties are identified by publisher + property_id). Supports variants: house portfolio (full brand data), brand agent (agent provides brand info via MCP), house redirect (pointer to house domain), or authoritative location redirect.",
   "definitions": {
@@ -5723,7 +5723,7 @@ export const brand = {
           "description": "Unique identifier"
         },
         "asset_type": {
-          "$ref": "/schemas/3.0.6/enums/asset-content-type.json",
+          "$ref": "/schemas/3.0.8/enums/asset-content-type.json",
           "description": "Type of asset content"
         },
         "url": {
@@ -6199,7 +6199,7 @@ export const brand = {
                 "description": "Human-readable collection name"
               },
               "role": {
-                "$ref": "/schemas/3.0.6/enums/talent-role.json",
+                "$ref": "/schemas/3.0.8/enums/talent-role.json",
                 "description": "This person's role on the collection"
               },
               "seller_agent_url": {
@@ -6306,7 +6306,7 @@ export const brand = {
           "type": "array",
           "description": "Rights uses available for licensing through this agent",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/right-use.json"
+            "$ref": "/schemas/3.0.8/enums/right-use.json"
           },
           "minItems": 1
         },
@@ -6314,7 +6314,7 @@ export const brand = {
           "type": "array",
           "description": "Types of rights available",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/right-type.json"
+            "$ref": "/schemas/3.0.8/enums/right-type.json"
           },
           "minItems": 1
         },
@@ -6339,7 +6339,7 @@ export const brand = {
       "description": "An agent declared by a brand or house. Each entry identifies one agent endpoint and its functional role in the advertising ecosystem.",
       "properties": {
         "type": {
-          "$ref": "/schemas/3.0.6/enums/brand-agent-type.json",
+          "$ref": "/schemas/3.0.8/enums/brand-agent-type.json",
           "description": "Functional role of this agent"
         },
         "url": {
@@ -6383,7 +6383,7 @@ export const brand = {
           "type": "array",
           "description": "For rights agents: rights uses available for licensing",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/right-use.json"
+            "$ref": "/schemas/3.0.8/enums/right-use.json"
           },
           "minItems": 1
         },
@@ -6391,7 +6391,7 @@ export const brand = {
           "type": "array",
           "description": "For rights agents: types of rights available",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/right-type.json"
+            "$ref": "/schemas/3.0.8/enums/right-type.json"
           },
           "minItems": 1
         },
@@ -7474,16 +7474,16 @@ export const brand = {
   ],
   "examples": [
     {
-      "$schema": "/schemas/3.0.6/brand.json",
+      "$schema": "/schemas/3.0.8/brand.json",
       "authoritative_location": "https://adcontextprotocol.org/brand/abc123/brand.json"
     },
     {
-      "$schema": "/schemas/3.0.6/brand.json",
+      "$schema": "/schemas/3.0.8/brand.json",
       "house": "nikeinc.com",
       "note": "Redirect to house domain for full brand portfolio"
     },
     {
-      "$schema": "/schemas/3.0.6/brand.json",
+      "$schema": "/schemas/3.0.8/brand.json",
       "version": "1.0",
       "agents": [
         {
@@ -7494,7 +7494,7 @@ export const brand = {
       ]
     },
     {
-      "$schema": "/schemas/3.0.6/brand.json",
+      "$schema": "/schemas/3.0.8/brand.json",
       "version": "1.0",
       "house": {
         "domain": "pg.com",
@@ -7800,7 +7800,7 @@ export const brand = {
       "last_updated": "2026-01-15T10:00:00Z"
     },
     {
-      "$schema": "/schemas/3.0.6/brand.json",
+      "$schema": "/schemas/3.0.8/brand.json",
       "version": "1.0",
       "house": {
         "domain": "nikeinc.com",
@@ -7969,7 +7969,7 @@ export const brand = {
       "last_updated": "2026-01-15T10:00:00Z"
     },
     {
-      "$schema": "/schemas/3.0.6/brand.json",
+      "$schema": "/schemas/3.0.8/brand.json",
       "version": "1.0",
       "house": {
         "domain": "mediavine.com",
@@ -8024,7 +8024,7 @@ export const brand = {
 
 export const collection_BaseCollectionSource = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/collection/base-collection-source.json",
+  "$id": "/schemas/3.0.8/collection/base-collection-source.json",
   "title": "Base Collection Source",
   "description": "A source of collections for a collection list. Supports three selection patterns: distribution identifiers (cross-publisher), publisher-specific collection IDs, or publisher-specific genres.",
   "discriminator": {
@@ -8048,7 +8048,7 @@ export const collection_BaseCollectionSource = {
             "type": "object",
             "properties": {
               "type": {
-                "$ref": "/schemas/3.0.6/enums/distribution-identifier-type.json",
+                "$ref": "/schemas/3.0.8/enums/distribution-identifier-type.json",
                 "description": "Type of distribution identifier"
               },
               "value": {
@@ -8126,7 +8126,7 @@ export const collection_BaseCollectionSource = {
           "minItems": 1
         },
         "genre_taxonomy": {
-          "$ref": "/schemas/3.0.6/enums/genre-taxonomy.json",
+          "$ref": "/schemas/3.0.8/enums/genre-taxonomy.json",
           "description": "Taxonomy for the genre values. Required so sellers can interpret genre strings unambiguously. Use 'custom' for free-form values negotiated out of band."
         }
       },
@@ -8143,7 +8143,7 @@ export const collection_BaseCollectionSource = {
 
 export const collection_CollectionListChangedWebhook = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/collection/collection-list-changed-webhook.json",
+  "$id": "/schemas/3.0.8/collection/collection-list-changed-webhook.json",
   "title": "Collection List Changed Webhook",
   "description": "Webhook notification sent when a collection list's resolved collections change. Contains a summary only — recipients must call get_collection_list to retrieve the updated collections.",
   "type": "object",
@@ -8203,7 +8203,7 @@ export const collection_CollectionListChangedWebhook = {
       "description": "HMAC-SHA256 webhook signature over {unix_timestamp}.{raw_http_body_bytes} using the secret exchanged out-of-band when the seller registered with the governance agent. Recipients MUST verify against the X-ADCP-Signature and X-ADCP-Timestamp headers using timing-safe comparison and MUST reject requests where |now - timestamp| > 300 seconds. The body copy of this field is a convenience only — the headers are authoritative. See docs/building/implementation/security#webhook-security."
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -8218,7 +8218,7 @@ export const collection_CollectionListChangedWebhook = {
 
 export const collection_CollectionListFilters = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/collection/collection-list-filters.json",
+  "$id": "/schemas/3.0.8/collection/collection-list-filters.json",
   "title": "Collection List Filters",
   "description": "Filters that dynamically modify a collection list when resolved. Include filters are allowlists (only matching collections pass). Exclude filters are blocklists (matching collections are removed). When both are present for the same dimension, include is applied first, then exclude narrows further.",
   "type": "object",
@@ -8227,7 +8227,7 @@ export const collection_CollectionListFilters = {
       "type": "array",
       "description": "Exclude collections with any of these content ratings (OR logic). This is a metadata filter on the collection's declared content_rating field — it does not evaluate episode content.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/content-rating.json"
+        "$ref": "/schemas/3.0.8/core/content-rating.json"
       },
       "minItems": 1
     },
@@ -8235,7 +8235,7 @@ export const collection_CollectionListFilters = {
       "type": "array",
       "description": "Include only collections with any of these content ratings (OR logic). Collections without a declared content_rating are excluded.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/content-rating.json"
+        "$ref": "/schemas/3.0.8/core/content-rating.json"
       },
       "minItems": 1
     },
@@ -8256,14 +8256,14 @@ export const collection_CollectionListFilters = {
       "minItems": 1
     },
     "genre_taxonomy": {
-      "$ref": "/schemas/3.0.6/enums/genre-taxonomy.json",
+      "$ref": "/schemas/3.0.8/enums/genre-taxonomy.json",
       "description": "Taxonomy for genre filter values. When present, genres_include and genres_exclude values are interpreted as taxonomy IDs."
     },
     "kinds": {
       "type": "array",
       "description": "Filter to these collection kinds",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/collection-kind.json"
+        "$ref": "/schemas/3.0.8/enums/collection-kind.json"
       },
       "minItems": 1
     },
@@ -8274,7 +8274,7 @@ export const collection_CollectionListFilters = {
         "type": "object",
         "properties": {
           "type": {
-            "$ref": "/schemas/3.0.6/enums/distribution-identifier-type.json",
+            "$ref": "/schemas/3.0.8/enums/distribution-identifier-type.json",
             "description": "Type of distribution identifier"
           },
           "value": {
@@ -8294,7 +8294,7 @@ export const collection_CollectionListFilters = {
       "type": "array",
       "description": "Filter by production quality tier",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/production-quality.json"
+        "$ref": "/schemas/3.0.8/enums/production-quality.json"
       },
       "minItems": 1
     }
@@ -8304,7 +8304,7 @@ export const collection_CollectionListFilters = {
 
 export const collection_CollectionList = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/collection/collection-list.json",
+  "$id": "/schemas/3.0.8/collection/collection-list.json",
   "title": "Collection List",
   "description": "A managed collection list with optional filters for dynamic evaluation. Lists are resolved at setup time and cached by orchestrators/sellers for real-time use. Collections represent programs, shows, and other content entities independent of which properties carry them.",
   "type": "object",
@@ -8323,22 +8323,22 @@ export const collection_CollectionList = {
       "description": "Description of the list's purpose"
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account that owns this list. Returned as account_id form (seller-assigned identifier)."
     },
     "base_collections": {
       "type": "array",
       "description": "Array of collection sources to evaluate. Each entry is a discriminated union: distribution_ids (platform-independent identifiers), publisher_collections (publisher_domain + collection_ids), or publisher_genres (publisher_domain + genres). If omitted, queries the agent's entire collection database.",
       "items": {
-        "$ref": "/schemas/3.0.6/collection/base-collection-source.json"
+        "$ref": "/schemas/3.0.8/collection/base-collection-source.json"
       }
     },
     "filters": {
-      "$ref": "/schemas/3.0.6/collection/collection-list-filters.json",
+      "$ref": "/schemas/3.0.8/collection/collection-list-filters.json",
       "description": "Dynamic filters applied when resolving the list"
     },
     "brand": {
-      "$ref": "/schemas/3.0.6/core/brand-ref.json",
+      "$ref": "/schemas/3.0.8/core/brand-ref.json",
       "description": "Brand reference used to automatically apply appropriate rules. Resolved to full brand identity at execution time."
     },
     "webhook_url": {
@@ -8376,7 +8376,7 @@ export const collection_CollectionList = {
 
 export const collection_CreateCollectionListRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/collection/create-collection-list-request.json",
+  "$id": "/schemas/3.0.8/collection/create-collection-list-request.json",
   "title": "Create Collection List Request",
   "description": "Request parameters for creating a new collection list",
   "x-mutates-state": true,
@@ -8389,7 +8389,7 @@ export const collection_CreateCollectionListRequest = {
       "maximum": 99
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account that will own the list. Pass a natural key (brand, operator, optional sandbox) or a seller-assigned account_id from list_accounts. When omitted, the seller assigns the list to the agent's default account if exactly one is accessible; otherwise returns an error."
     },
     "name": {
@@ -8404,16 +8404,16 @@ export const collection_CreateCollectionListRequest = {
       "type": "array",
       "description": "Array of collection sources to evaluate. Each entry is a discriminated union: distribution_ids (platform-independent identifiers), publisher_collections (publisher_domain + collection_ids), or publisher_genres (publisher_domain + genres). If omitted, queries the agent's entire collection database.",
       "items": {
-        "$ref": "/schemas/3.0.6/collection/base-collection-source.json"
+        "$ref": "/schemas/3.0.8/collection/base-collection-source.json"
       },
       "minItems": 1
     },
     "filters": {
-      "$ref": "/schemas/3.0.6/collection/collection-list-filters.json",
+      "$ref": "/schemas/3.0.8/collection/collection-list-filters.json",
       "description": "Dynamic filters to apply when resolving the list"
     },
     "brand": {
-      "$ref": "/schemas/3.0.6/core/brand-ref.json",
+      "$ref": "/schemas/3.0.8/core/brand-ref.json",
       "description": "Brand reference. When provided, the agent automatically applies appropriate rules based on brand characteristics (industry, target_audience, etc.). Resolved at execution time."
     },
     "idempotency_key": {
@@ -8424,10 +8424,10 @@ export const collection_CreateCollectionListRequest = {
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -8439,13 +8439,13 @@ export const collection_CreateCollectionListRequest = {
 
 export const collection_CreateCollectionListResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/collection/create-collection-list-response.json",
+  "$id": "/schemas/3.0.8/collection/create-collection-list-response.json",
   "title": "Create Collection List Response",
   "description": "Response payload for create_collection_list task",
   "type": "object",
   "properties": {
     "list": {
-      "$ref": "/schemas/3.0.6/collection/collection-list.json",
+      "$ref": "/schemas/3.0.8/collection/collection-list.json",
       "description": "The created collection list"
     },
     "auth_token": {
@@ -8458,10 +8458,10 @@ export const collection_CreateCollectionListResponse = {
       "default": false
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -8473,7 +8473,7 @@ export const collection_CreateCollectionListResponse = {
 
 export const collection_DeleteCollectionListRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/collection/delete-collection-list-request.json",
+  "$id": "/schemas/3.0.8/collection/delete-collection-list-request.json",
   "title": "Delete Collection List Request",
   "description": "Request parameters for deleting a collection list",
   "x-mutates-state": true,
@@ -8491,14 +8491,14 @@ export const collection_DeleteCollectionListRequest = {
       "x-entity": "collection_list"
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     },
     "idempotency_key": {
       "type": "string",
@@ -8517,7 +8517,7 @@ export const collection_DeleteCollectionListRequest = {
 
 export const collection_DeleteCollectionListResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/collection/delete-collection-list-response.json",
+  "$id": "/schemas/3.0.8/collection/delete-collection-list-response.json",
   "title": "Delete Collection List Response",
   "description": "Response payload for delete_collection_list task",
   "type": "object",
@@ -8537,10 +8537,10 @@ export const collection_DeleteCollectionListResponse = {
       "default": false
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -8552,7 +8552,7 @@ export const collection_DeleteCollectionListResponse = {
 
 export const collection_GetCollectionListRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/collection/get-collection-list-request.json",
+  "$id": "/schemas/3.0.8/collection/get-collection-list-request.json",
   "title": "Get Collection List Request",
   "description": "Request parameters for retrieving a collection list with resolved collections",
   "type": "object",
@@ -8569,7 +8569,7 @@ export const collection_GetCollectionListRequest = {
       "x-entity": "collection_list"
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account that owns the list. Required when the authenticated agent has access to multiple accounts and the list_id is not globally unique within that scope; optional otherwise."
     },
     "resolve": {
@@ -8596,10 +8596,10 @@ export const collection_GetCollectionListRequest = {
       "additionalProperties": false
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -8610,13 +8610,13 @@ export const collection_GetCollectionListRequest = {
 
 export const collection_GetCollectionListResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/collection/get-collection-list-response.json",
+  "$id": "/schemas/3.0.8/collection/get-collection-list-response.json",
   "title": "Get Collection List Response",
   "description": "Response payload for get_collection_list task. Returns resolved collection entries with identification and key metadata for matching. Consumers should cache the resolved collections and refresh based on cache_valid_until.",
   "type": "object",
   "properties": {
     "list": {
-      "$ref": "/schemas/3.0.6/collection/collection-list.json",
+      "$ref": "/schemas/3.0.8/collection/collection-list.json",
       "description": "The collection list metadata (always returned)"
     },
     "collections": {
@@ -8640,7 +8640,7 @@ export const collection_GetCollectionListResponse = {
               "type": "object",
               "properties": {
                 "type": {
-                  "$ref": "/schemas/3.0.6/enums/distribution-identifier-type.json",
+                  "$ref": "/schemas/3.0.8/enums/distribution-identifier-type.json",
                   "description": "Type of distribution identifier"
                 },
                 "value": {
@@ -8656,7 +8656,7 @@ export const collection_GetCollectionListResponse = {
             }
           },
           "content_rating": {
-            "$ref": "/schemas/3.0.6/core/content-rating.json",
+            "$ref": "/schemas/3.0.8/core/content-rating.json",
             "description": "Baseline content rating for this collection"
           },
           "genre": {
@@ -8667,11 +8667,11 @@ export const collection_GetCollectionListResponse = {
             }
           },
           "genre_taxonomy": {
-            "$ref": "/schemas/3.0.6/enums/genre-taxonomy.json",
+            "$ref": "/schemas/3.0.8/enums/genre-taxonomy.json",
             "description": "Taxonomy system for genre values"
           },
           "kind": {
-            "$ref": "/schemas/3.0.6/enums/collection-kind.json"
+            "$ref": "/schemas/3.0.8/enums/collection-kind.json"
           }
         },
         "required": [
@@ -8681,7 +8681,7 @@ export const collection_GetCollectionListResponse = {
       }
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-response.json"
+      "$ref": "/schemas/3.0.8/core/pagination-response.json"
     },
     "resolved_at": {
       "type": "string",
@@ -8702,7 +8702,7 @@ export const collection_GetCollectionListResponse = {
           "type": "object",
           "properties": {
             "type": {
-              "$ref": "/schemas/3.0.6/enums/distribution-identifier-type.json",
+              "$ref": "/schemas/3.0.8/enums/distribution-identifier-type.json",
               "description": "Type of distribution identifier"
             },
             "value": {
@@ -8719,10 +8719,10 @@ export const collection_GetCollectionListResponse = {
       }
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -8733,7 +8733,7 @@ export const collection_GetCollectionListResponse = {
 
 export const collection_ListCollectionListsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/collection/list-collection-lists-request.json",
+  "$id": "/schemas/3.0.8/collection/list-collection-lists-request.json",
   "title": "List Collection Lists Request",
   "description": "Request parameters for listing collection lists",
   "type": "object",
@@ -8745,7 +8745,7 @@ export const collection_ListCollectionListsRequest = {
       "maximum": 99
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Filter to lists owned by this account. When omitted, returns lists across all accounts accessible to the authenticated agent."
     },
     "name_contains": {
@@ -8753,13 +8753,13 @@ export const collection_ListCollectionListsRequest = {
       "description": "Filter to lists whose name contains this string"
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-request.json"
+      "$ref": "/schemas/3.0.8/core/pagination-request.json"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": false
@@ -8767,7 +8767,7 @@ export const collection_ListCollectionListsRequest = {
 
 export const collection_ListCollectionListsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/collection/list-collection-lists-response.json",
+  "$id": "/schemas/3.0.8/collection/list-collection-lists-response.json",
   "title": "List Collection Lists Response",
   "description": "Response payload for list_collection_lists task",
   "type": "object",
@@ -8776,17 +8776,17 @@ export const collection_ListCollectionListsResponse = {
       "type": "array",
       "description": "Array of collection lists (metadata only, not resolved collections)",
       "items": {
-        "$ref": "/schemas/3.0.6/collection/collection-list.json"
+        "$ref": "/schemas/3.0.8/collection/collection-list.json"
       }
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-response.json"
+      "$ref": "/schemas/3.0.8/core/pagination-response.json"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -8797,7 +8797,7 @@ export const collection_ListCollectionListsResponse = {
 
 export const collection_UpdateCollectionListRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/collection/update-collection-list-request.json",
+  "$id": "/schemas/3.0.8/collection/update-collection-list-request.json",
   "title": "Update Collection List Request",
   "description": "Request parameters for updating an existing collection list",
   "x-mutates-state": true,
@@ -8815,7 +8815,7 @@ export const collection_UpdateCollectionListRequest = {
       "x-entity": "collection_list"
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise."
     },
     "name": {
@@ -8830,15 +8830,15 @@ export const collection_UpdateCollectionListRequest = {
       "type": "array",
       "description": "Complete replacement for the base collections list (not a patch). Each entry is a discriminated union: distribution_ids (platform-independent identifiers), publisher_collections (publisher_domain + collection_ids), or publisher_genres (publisher_domain + genres).",
       "items": {
-        "$ref": "/schemas/3.0.6/collection/base-collection-source.json"
+        "$ref": "/schemas/3.0.8/collection/base-collection-source.json"
       }
     },
     "filters": {
-      "$ref": "/schemas/3.0.6/collection/collection-list-filters.json",
+      "$ref": "/schemas/3.0.8/collection/collection-list-filters.json",
       "description": "Complete replacement for the filters (not a patch)"
     },
     "brand": {
-      "$ref": "/schemas/3.0.6/core/brand-ref.json",
+      "$ref": "/schemas/3.0.8/core/brand-ref.json",
       "description": "Update brand reference. Resolved to full brand identity at execution time."
     },
     "webhook_url": {
@@ -8847,10 +8847,10 @@ export const collection_UpdateCollectionListRequest = {
       "description": "Update the webhook URL for list change notifications (set to empty string to remove). Governance agents MUST validate this URL against SSRF per docs/building/implementation/security#webhook-url-validation-ssrf."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     },
     "idempotency_key": {
       "type": "string",
@@ -8869,13 +8869,13 @@ export const collection_UpdateCollectionListRequest = {
 
 export const collection_UpdateCollectionListResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/collection/update-collection-list-response.json",
+  "$id": "/schemas/3.0.8/collection/update-collection-list-response.json",
   "title": "Update Collection List Response",
   "description": "Response payload for update_collection_list task",
   "type": "object",
   "properties": {
     "list": {
-      "$ref": "/schemas/3.0.6/collection/collection-list.json",
+      "$ref": "/schemas/3.0.8/collection/collection-list.json",
       "description": "The updated collection list"
     },
     "replayed": {
@@ -8884,10 +8884,10 @@ export const collection_UpdateCollectionListResponse = {
       "default": false
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -8898,7 +8898,7 @@ export const collection_UpdateCollectionListResponse = {
 
 export const compliance_ComplyTestControllerRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/compliance/comply-test-controller-request.json",
+  "$id": "/schemas/3.0.8/compliance/comply-test-controller-request.json",
   "title": "Comply Test Controller Request",
   "description": "Request payload for the comply_test_controller tool. Triggers seller-side state transitions for compliance testing. Sandbox only — sellers MUST NOT expose this tool in production. Naturally idempotent: the `scenario` enum is either a lookup (`list_scenarios`) or a state-forcing operation whose target state is carried in the payload (`force_*_status`, `simulate_*`), so replays converge to the same observable state without needing an idempotency_key. The compliance harness drives this tool deterministically and does not rely on the seller's at-most-once replay cache.",
   "x-mutates-state": true,
@@ -9037,17 +9037,17 @@ export const compliance_ComplyTestControllerRequest = {
           "description": "Creative format ID to seed. Used by seed_creative_format. The seller MUST expose this format ID in list_creative_formats responses for the duration of the compliance session."
         },
         "result": {
-          "$ref": "/schemas/3.0.6/core/async-response-data.json",
+          "$ref": "/schemas/3.0.8/core/async-response-data.json",
           "description": "Completion payload to record against the task. Used by force_task_completion. Validates against the async-response-data union — for create_media_buy this is a CreateMediaBuyResponse with media_buy_id and packages. The seller MUST deliver this verbatim to the buyer's push_notification_config.url (the canonical 3.0 path for completion payload delivery), with all caller-supplied fields preserved (sellers MAY augment with seller-controlled fields like created_at or dsp_* IDs but MUST NOT overwrite caller-supplied values). A typed projection on the polling response is tracked for 3.1 (#3123). Sellers MUST emit INVALID_PARAMS if the payload does not validate against the response branch for the task's original method, and MAY reject payloads exceeding 256 KB with INVALID_PARAMS."
         }
       },
       "additionalProperties": true
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -9074,7 +9074,7 @@ export const compliance_ComplyTestControllerRequest = {
             ],
             "properties": {
               "status": {
-                "$ref": "/schemas/3.0.6/enums/creative-status.json"
+                "$ref": "/schemas/3.0.8/enums/creative-status.json"
               }
             }
           }
@@ -9101,7 +9101,7 @@ export const compliance_ComplyTestControllerRequest = {
             ],
             "properties": {
               "status": {
-                "$ref": "/schemas/3.0.6/enums/account-status.json"
+                "$ref": "/schemas/3.0.8/enums/account-status.json"
               }
             }
           }
@@ -9128,7 +9128,7 @@ export const compliance_ComplyTestControllerRequest = {
             ],
             "properties": {
               "status": {
-                "$ref": "/schemas/3.0.6/enums/media-buy-status.json"
+                "$ref": "/schemas/3.0.8/enums/media-buy-status.json"
               }
             }
           }
@@ -9546,7 +9546,7 @@ export const compliance_ComplyTestControllerRequest = {
 
 export const compliance_ComplyTestControllerResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/compliance/comply-test-controller-response.json",
+  "$id": "/schemas/3.0.8/compliance/comply-test-controller-response.json",
   "title": "Comply Test Controller Response",
   "description": "Response from the comply_test_controller tool. Shape varies by scenario type: list_scenarios returns available scenarios, force_* returns state transition results, simulate_* returns simulation results.",
   "type": "object",
@@ -9584,10 +9584,10 @@ export const compliance_ComplyTestControllerResponse = {
           "description": "Scenarios this seller has implemented. Runners and sellers MUST accept unknown scenario strings (open-for-extension) — new scenarios may be added in additive minor bumps."
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -9642,10 +9642,10 @@ export const compliance_ComplyTestControllerResponse = {
           "description": "Human-readable description of the transition"
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -9702,10 +9702,10 @@ export const compliance_ComplyTestControllerResponse = {
           "type": "string"
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -9776,10 +9776,10 @@ export const compliance_ComplyTestControllerResponse = {
           "description": "Human-readable acknowledgement."
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -9826,10 +9826,10 @@ export const compliance_ComplyTestControllerResponse = {
           "description": "Human-readable acknowledgement."
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -9900,10 +9900,10 @@ export const compliance_ComplyTestControllerResponse = {
           "description": "Current state of the entity, or null if not found"
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -10033,7 +10033,7 @@ export const compliance_ComplyTestControllerResponse = {
 
 export const contentStandards_ArtifactWebhookPayload = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/content-standards/artifact-webhook-payload.json",
+  "$id": "/schemas/3.0.8/content-standards/artifact-webhook-payload.json",
   "title": "Artifact Webhook Payload",
   "description": "Payload sent by sales agents to orchestrators when pushing content artifacts for governance validation. Complements get_media_buy_artifacts for push-based artifact delivery.",
   "type": "object",
@@ -10065,7 +10065,7 @@ export const contentStandards_ArtifactWebhookPayload = {
         "type": "object",
         "properties": {
           "artifact": {
-            "$ref": "/schemas/3.0.6/content-standards/artifact.json",
+            "$ref": "/schemas/3.0.8/content-standards/artifact.json",
             "description": "The content artifact"
           },
           "delivered_at": {
@@ -10107,7 +10107,7 @@ export const contentStandards_ArtifactWebhookPayload = {
       }
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -10122,7 +10122,7 @@ export const contentStandards_ArtifactWebhookPayload = {
 
 export const contentStandards_Artifact = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/content-standards/artifact.json",
+  "$id": "/schemas/3.0.8/content-standards/artifact.json",
   "title": "Artifact",
   "description": "Content artifact for safety and suitability evaluation. An artifact represents content adjacent to an ad placement - a news article, podcast segment, video chapter, or social post. Artifacts are collections of assets (text, images, video, audio) plus metadata and signals.",
   "type": "object",
@@ -10140,7 +10140,7 @@ export const contentStandards_Artifact = {
       "description": "Identifies a specific variant of this artifact. Use for A/B tests, translations, or temporal versions. Examples: 'en', 'es-MX', 'v2', 'headline_test_b'. The combination of artifact_id + variant_id must be unique."
     },
     "format_id": {
-      "$ref": "/schemas/3.0.6/core/format-id.json",
+      "$ref": "/schemas/3.0.8/core/format-id.json",
       "description": "Always a structured object {agent_url, id} — never a plain string. Optional reference to a format definition. Uses the same format registry as creative formats."
     },
     "url": {
@@ -10212,7 +10212,7 @@ export const contentStandards_Artifact = {
                 "description": "Heading level (1-6), only for role=heading"
               },
               "provenance": {
-                "$ref": "/schemas/3.0.6/core/provenance.json",
+                "$ref": "/schemas/3.0.8/core/provenance.json",
                 "description": "Provenance for this text block, overrides artifact-level provenance"
               }
             },
@@ -10255,7 +10255,7 @@ export const contentStandards_Artifact = {
                 "description": "Image height in pixels"
               },
               "provenance": {
-                "$ref": "/schemas/3.0.6/core/provenance.json",
+                "$ref": "/schemas/3.0.8/core/provenance.json",
                 "description": "Provenance for this image, overrides artifact-level provenance"
               }
             },
@@ -10317,7 +10317,7 @@ export const contentStandards_Artifact = {
                 "description": "Video thumbnail URL"
               },
               "provenance": {
-                "$ref": "/schemas/3.0.6/core/provenance.json",
+                "$ref": "/schemas/3.0.8/core/provenance.json",
                 "description": "Provenance for this video, overrides artifact-level provenance"
               }
             },
@@ -10372,7 +10372,7 @@ export const contentStandards_Artifact = {
                 "description": "How the transcript was generated"
               },
               "provenance": {
-                "$ref": "/schemas/3.0.6/core/provenance.json",
+                "$ref": "/schemas/3.0.8/core/provenance.json",
                 "description": "Provenance for this audio, overrides artifact-level provenance"
               }
             },
@@ -10422,7 +10422,7 @@ export const contentStandards_Artifact = {
       "additionalProperties": true
     },
     "provenance": {
-      "$ref": "/schemas/3.0.6/core/provenance.json",
+      "$ref": "/schemas/3.0.8/core/provenance.json",
       "description": "Provenance metadata for this artifact. Serves as the default provenance for all assets within this artifact — individual assets can override with their own provenance."
     },
     "identifiers": {
@@ -10530,7 +10530,7 @@ export const contentStandards_Artifact = {
 
 export const contentStandards_CalibrateContentRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/content-standards/calibrate-content-request.json",
+  "$id": "/schemas/3.0.8/content-standards/calibrate-content-request.json",
   "title": "Calibrate Content Request",
   "description": "Request parameters for evaluating content during calibration. Multi-turn dialogue is handled at the protocol layer via contextId.",
   "x-mutates-state": true,
@@ -10547,7 +10547,7 @@ export const contentStandards_CalibrateContentRequest = {
       "description": "Standards configuration to calibrate against"
     },
     "artifact": {
-      "$ref": "/schemas/3.0.6/content-standards/artifact.json",
+      "$ref": "/schemas/3.0.8/content-standards/artifact.json",
       "description": "Artifact to evaluate"
     },
     "idempotency_key": {
@@ -10558,10 +10558,10 @@ export const contentStandards_CalibrateContentRequest = {
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -10573,7 +10573,7 @@ export const contentStandards_CalibrateContentRequest = {
 
 export const contentStandards_CalibrateContentResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/content-standards/calibrate-content-response.json",
+  "$id": "/schemas/3.0.8/content-standards/calibrate-content-response.json",
   "title": "Calibrate Content Response",
   "description": "Response payload with verdict and detailed explanations for collaborative calibration",
   "type": "object",
@@ -10583,7 +10583,7 @@ export const contentStandards_CalibrateContentResponse = {
       "description": "Success response with detailed calibration feedback",
       "properties": {
         "verdict": {
-          "$ref": "/schemas/3.0.6/enums/binary-verdict.json"
+          "$ref": "/schemas/3.0.8/enums/binary-verdict.json"
         },
         "confidence": {
           "type": "number",
@@ -10606,7 +10606,7 @@ export const contentStandards_CalibrateContentResponse = {
                 "description": "Which feature was evaluated. Data features come from the content-standards feature catalog (e.g., 'brand_safety', 'brand_suitability', 'competitor_adjacency'). Record-level structural checks use reserved namespaces: 'record:malformed_artifact'. Reserved prefixes: 'record:', 'delivery:'."
               },
               "status": {
-                "$ref": "/schemas/3.0.6/enums/feature-check-status.json"
+                "$ref": "/schemas/3.0.8/enums/feature-check-status.json"
               },
               "policy_id": {
                 "type": "string",
@@ -10631,10 +10631,10 @@ export const contentStandards_CalibrateContentResponse = {
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -10648,14 +10648,14 @@ export const contentStandards_CalibrateContentResponse = {
         "errors": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -10667,7 +10667,7 @@ export const contentStandards_CalibrateContentResponse = {
 
 export const contentStandards_ContentStandards = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/content-standards/content-standards.json",
+  "$id": "/schemas/3.0.8/content-standards/content-standards.json",
   "title": "Content Standards",
   "description": "A content standards configuration defining brand safety and suitability policies. Standards are scoped by brand, geography, and channel. Multiple standards can be active simultaneously for different scopes.",
   "type": "object",
@@ -10691,7 +10691,7 @@ export const contentStandards_ContentStandards = {
     "channels_any": {
       "type": "array",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/channels.json"
+        "$ref": "/schemas/3.0.8/enums/channels.json"
       },
       "minItems": 1,
       "description": "Advertising channels. Standards apply to ANY of the listed channels (OR logic)."
@@ -10708,7 +10708,7 @@ export const contentStandards_ContentStandards = {
       "type": "array",
       "description": "Bespoke policies for this content-standards configuration, using the same shape as registry entries. Each policy is addressable by policy_id; governance findings reference the policy_id that triggered them.",
       "items": {
-        "$ref": "/schemas/3.0.6/governance/policy-entry.json"
+        "$ref": "/schemas/3.0.8/governance/policy-entry.json"
       },
       "minItems": 1
     },
@@ -10719,14 +10719,14 @@ export const contentStandards_ContentStandards = {
         "pass": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/content-standards/artifact.json"
+            "$ref": "/schemas/3.0.8/content-standards/artifact.json"
           },
           "description": "Artifacts that pass the content standards"
         },
         "fail": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/content-standards/artifact.json"
+            "$ref": "/schemas/3.0.8/content-standards/artifact.json"
           },
           "description": "Artifacts that fail the content standards"
         }
@@ -10736,12 +10736,12 @@ export const contentStandards_ContentStandards = {
       "type": "array",
       "description": "Pricing options for this content standards service. The buyer passes the selected pricing_option_id in report_usage for billing verification.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/vendor-pricing-option.json"
+        "$ref": "/schemas/3.0.8/core/vendor-pricing-option.json"
       },
       "minItems": 1
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -10751,7 +10751,7 @@ export const contentStandards_ContentStandards = {
 
 export const contentStandards_CreateContentStandardsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/content-standards/create-content-standards-request.json",
+  "$id": "/schemas/3.0.8/content-standards/create-content-standards-request.json",
   "title": "Create Content Standards Request",
   "description": "Request parameters for creating a new content standards configuration",
   "x-mutates-state": true,
@@ -10778,7 +10778,7 @@ export const contentStandards_CreateContentStandardsRequest = {
         "channels_any": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/channels.json"
+            "$ref": "/schemas/3.0.8/enums/channels.json"
           },
           "minItems": 1,
           "description": "Advertising channels. Standards apply to ANY of the listed channels (OR logic)."
@@ -10812,7 +10812,7 @@ export const contentStandards_CreateContentStandardsRequest = {
       "type": "array",
       "description": "Bespoke policies for this content-standards configuration, using the same shape as registry entries. Each policy is addressable by policy_id and carries its own enforcement (must|should); governance findings reference the policy_id that triggered them. Inline bespoke policies can omit version/name/category (defaulted by the server). Combines with registry_policy_ids — registry policies and bespoke policies are both evaluated. Bespoke policy_ids MUST be flat (no colons/slashes) to avoid collision with namespaced registry ids.",
       "items": {
-        "$ref": "/schemas/3.0.6/governance/policy-entry.json"
+        "$ref": "/schemas/3.0.8/governance/policy-entry.json"
       },
       "minItems": 1
     },
@@ -10849,7 +10849,7 @@ export const contentStandards_CreateContentStandardsRequest = {
                 ]
               },
               {
-                "$ref": "/schemas/3.0.6/content-standards/artifact.json",
+                "$ref": "/schemas/3.0.8/content-standards/artifact.json",
                 "description": "Full artifact with pre-extracted content (text, images, video, audio)"
               }
             ]
@@ -10885,7 +10885,7 @@ export const contentStandards_CreateContentStandardsRequest = {
                 ]
               },
               {
-                "$ref": "/schemas/3.0.6/content-standards/artifact.json",
+                "$ref": "/schemas/3.0.8/content-standards/artifact.json",
                 "description": "Full artifact with pre-extracted content (text, images, video, audio)"
               }
             ]
@@ -10902,10 +10902,10 @@ export const contentStandards_CreateContentStandardsRequest = {
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -10929,7 +10929,7 @@ export const contentStandards_CreateContentStandardsRequest = {
 
 export const contentStandards_CreateContentStandardsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/content-standards/create-content-standards-response.json",
+  "$id": "/schemas/3.0.8/content-standards/create-content-standards-response.json",
   "title": "Create Content Standards Response",
   "description": "Response payload for creating a content standards configuration",
   "type": "object",
@@ -10943,10 +10943,10 @@ export const contentStandards_CreateContentStandardsResponse = {
           "description": "Unique identifier for the created standards configuration"
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -10960,7 +10960,7 @@ export const contentStandards_CreateContentStandardsResponse = {
         "errors": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           }
         },
         "conflicting_standards_id": {
@@ -10968,10 +10968,10 @@ export const contentStandards_CreateContentStandardsResponse = {
           "description": "If the error is a scope conflict, the ID of the existing standards that conflict"
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -10983,7 +10983,7 @@ export const contentStandards_CreateContentStandardsResponse = {
 
 export const contentStandards_GetContentStandardsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/content-standards/get-content-standards-request.json",
+  "$id": "/schemas/3.0.8/content-standards/get-content-standards-request.json",
   "title": "Get Content Standards Request",
   "description": "Request parameters for retrieving content safety policies",
   "type": "object",
@@ -10999,10 +10999,10 @@ export const contentStandards_GetContentStandardsRequest = {
       "description": "Identifier for the standards configuration to retrieve"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -11012,7 +11012,7 @@ export const contentStandards_GetContentStandardsRequest = {
 
 export const contentStandards_GetContentStandardsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/content-standards/get-content-standards-response.json",
+  "$id": "/schemas/3.0.8/content-standards/get-content-standards-response.json",
   "title": "Get Content Standards Response",
   "description": "Response payload with content safety policies",
   "type": "object",
@@ -11022,15 +11022,15 @@ export const contentStandards_GetContentStandardsResponse = {
       "description": "Success response - returns the content standards configuration",
       "allOf": [
         {
-          "$ref": "/schemas/3.0.6/content-standards/content-standards.json"
+          "$ref": "/schemas/3.0.8/content-standards/content-standards.json"
         }
       ],
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       }
     },
@@ -11041,14 +11041,14 @@ export const contentStandards_GetContentStandardsResponse = {
         "errors": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -11060,7 +11060,7 @@ export const contentStandards_GetContentStandardsResponse = {
 
 export const contentStandards_GetMediaBuyArtifactsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/content-standards/get-media-buy-artifacts-request.json",
+  "$id": "/schemas/3.0.8/content-standards/get-media-buy-artifacts-request.json",
   "title": "Get Media Buy Artifacts Request",
   "description": "Request parameters for retrieving content artifacts from a media buy for validation",
   "type": "object",
@@ -11072,7 +11072,7 @@ export const contentStandards_GetMediaBuyArtifactsRequest = {
       "maximum": 99
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Filter artifacts to a specific account. When omitted, returns artifacts across all accessible accounts."
     },
     "media_buy_id": {
@@ -11127,10 +11127,10 @@ export const contentStandards_GetMediaBuyArtifactsRequest = {
       "additionalProperties": false
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -11140,7 +11140,7 @@ export const contentStandards_GetMediaBuyArtifactsRequest = {
 
 export const contentStandards_GetMediaBuyArtifactsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/content-standards/get-media-buy-artifacts-response.json",
+  "$id": "/schemas/3.0.8/content-standards/get-media-buy-artifacts-response.json",
   "title": "Get Media Buy Artifacts Response",
   "description": "Response containing content artifacts from a media buy for validation",
   "type": "object",
@@ -11173,7 +11173,7 @@ export const contentStandards_GetMediaBuyArtifactsResponse = {
                 "description": "Which package this delivery belongs to"
               },
               "artifact": {
-                "$ref": "/schemas/3.0.6/content-standards/artifact.json",
+                "$ref": "/schemas/3.0.8/content-standards/artifact.json",
                 "description": "Full artifact with content assets"
               },
               "country": {
@@ -11237,13 +11237,13 @@ export const contentStandards_GetMediaBuyArtifactsResponse = {
           }
         },
         "pagination": {
-          "$ref": "/schemas/3.0.6/core/pagination-response.json"
+          "$ref": "/schemas/3.0.8/core/pagination-response.json"
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -11258,14 +11258,14 @@ export const contentStandards_GetMediaBuyArtifactsResponse = {
         "errors": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -11277,7 +11277,7 @@ export const contentStandards_GetMediaBuyArtifactsResponse = {
 
 export const contentStandards_ListContentStandardsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/content-standards/list-content-standards-request.json",
+  "$id": "/schemas/3.0.8/content-standards/list-content-standards-request.json",
   "title": "List Content Standards Request",
   "description": "Request parameters for listing content standards configurations",
   "type": "object",
@@ -11291,7 +11291,7 @@ export const contentStandards_ListContentStandardsRequest = {
     "channels": {
       "type": "array",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/channels.json"
+        "$ref": "/schemas/3.0.8/enums/channels.json"
       },
       "minItems": 1,
       "description": "Filter by channel"
@@ -11313,13 +11313,13 @@ export const contentStandards_ListContentStandardsRequest = {
       "description": "Filter by ISO 3166-1 alpha-2 country codes"
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-request.json"
+      "$ref": "/schemas/3.0.8/core/pagination-request.json"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -11327,7 +11327,7 @@ export const contentStandards_ListContentStandardsRequest = {
 
 export const contentStandards_ListContentStandardsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/content-standards/list-content-standards-response.json",
+  "$id": "/schemas/3.0.8/content-standards/list-content-standards-response.json",
   "title": "List Content Standards Response",
   "description": "Response payload with list of content standards configurations",
   "type": "object",
@@ -11339,18 +11339,18 @@ export const contentStandards_ListContentStandardsResponse = {
         "standards": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/content-standards/content-standards.json"
+            "$ref": "/schemas/3.0.8/content-standards/content-standards.json"
           },
           "description": "Array of content standards configurations matching the filter criteria"
         },
         "pagination": {
-          "$ref": "/schemas/3.0.6/core/pagination-response.json"
+          "$ref": "/schemas/3.0.8/core/pagination-response.json"
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -11364,14 +11364,14 @@ export const contentStandards_ListContentStandardsResponse = {
         "errors": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -11383,7 +11383,7 @@ export const contentStandards_ListContentStandardsResponse = {
 
 export const contentStandards_UpdateContentStandardsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/content-standards/update-content-standards-request.json",
+  "$id": "/schemas/3.0.8/content-standards/update-content-standards-request.json",
   "title": "Update Content Standards Request",
   "description": "Request parameters for updating an existing content standards configuration. Creates a new version.",
   "x-mutates-state": true,
@@ -11414,7 +11414,7 @@ export const contentStandards_UpdateContentStandardsRequest = {
         "channels_any": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/channels.json"
+            "$ref": "/schemas/3.0.8/enums/channels.json"
           },
           "minItems": 1,
           "description": "Advertising channels. Standards apply to ANY of the listed channels (OR logic)."
@@ -11445,7 +11445,7 @@ export const contentStandards_UpdateContentStandardsRequest = {
       "type": "array",
       "description": "Updated bespoke policies for this content-standards configuration, using the same shape as registry entries. Replaces the existing policies array; use stable policy_ids to track policies across versions. Combines with registry_policy_ids. Bespoke policy_ids MUST be flat (no colons/slashes).",
       "items": {
-        "$ref": "/schemas/3.0.6/governance/policy-entry.json"
+        "$ref": "/schemas/3.0.8/governance/policy-entry.json"
       },
       "minItems": 1
     },
@@ -11482,7 +11482,7 @@ export const contentStandards_UpdateContentStandardsRequest = {
                 ]
               },
               {
-                "$ref": "/schemas/3.0.6/content-standards/artifact.json",
+                "$ref": "/schemas/3.0.8/content-standards/artifact.json",
                 "description": "Full artifact with pre-extracted content (text, images, video, audio)"
               }
             ]
@@ -11518,7 +11518,7 @@ export const contentStandards_UpdateContentStandardsRequest = {
                 ]
               },
               {
-                "$ref": "/schemas/3.0.6/content-standards/artifact.json",
+                "$ref": "/schemas/3.0.8/content-standards/artifact.json",
                 "description": "Full artifact with pre-extracted content (text, images, video, audio)"
               }
             ]
@@ -11528,10 +11528,10 @@ export const contentStandards_UpdateContentStandardsRequest = {
       }
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     },
     "idempotency_key": {
       "type": "string",
@@ -11550,7 +11550,7 @@ export const contentStandards_UpdateContentStandardsRequest = {
 
 export const contentStandards_UpdateContentStandardsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/content-standards/update-content-standards-response.json",
+  "$id": "/schemas/3.0.8/content-standards/update-content-standards-response.json",
   "title": "Update Content Standards Response",
   "description": "Response from updating a content standards configuration",
   "oneOf": [
@@ -11568,10 +11568,10 @@ export const contentStandards_UpdateContentStandardsResponse = {
           "description": "ID of the updated standards configuration"
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -11592,7 +11592,7 @@ export const contentStandards_UpdateContentStandardsResponse = {
         "errors": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "description": "Errors that occurred during the update",
           "minItems": 1
@@ -11602,10 +11602,10 @@ export const contentStandards_UpdateContentStandardsResponse = {
           "description": "If scope change conflicts with another configuration, the ID of the conflicting standards"
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -11619,7 +11619,7 @@ export const contentStandards_UpdateContentStandardsResponse = {
 
 export const contentStandards_ValidateContentDeliveryRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/content-standards/validate-content-delivery-request.json",
+  "$id": "/schemas/3.0.8/content-standards/validate-content-delivery-request.json",
   "title": "Validate Content Delivery Request",
   "description": "Request parameters for batch validating delivery records against content safety policies",
   "type": "object",
@@ -11656,7 +11656,7 @@ export const contentStandards_ValidateContentDeliveryRequest = {
             "description": "When the delivery occurred"
           },
           "artifact": {
-            "$ref": "/schemas/3.0.6/content-standards/artifact.json",
+            "$ref": "/schemas/3.0.8/content-standards/artifact.json",
             "description": "Artifact where ad was delivered"
           },
           "country": {
@@ -11702,10 +11702,10 @@ export const contentStandards_ValidateContentDeliveryRequest = {
       "description": "Include passed records in results"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -11716,7 +11716,7 @@ export const contentStandards_ValidateContentDeliveryRequest = {
 
 export const contentStandards_ValidateContentDeliveryResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/content-standards/validate-content-delivery-response.json",
+  "$id": "/schemas/3.0.8/content-standards/validate-content-delivery-response.json",
   "title": "Validate Content Delivery Response",
   "description": "Response payload with per-record verdicts and optional feature breakdown",
   "type": "object",
@@ -11756,7 +11756,7 @@ export const contentStandards_ValidateContentDeliveryResponse = {
                 "description": "Which delivery record was evaluated"
               },
               "verdict": {
-                "$ref": "/schemas/3.0.6/enums/binary-verdict.json"
+                "$ref": "/schemas/3.0.8/enums/binary-verdict.json"
               },
               "features": {
                 "type": "array",
@@ -11769,7 +11769,7 @@ export const contentStandards_ValidateContentDeliveryResponse = {
                       "description": "Which feature was evaluated. Data features come from the content-standards feature catalog (e.g., 'brand_safety', 'brand_suitability', 'image_dpi'). Record-level structural checks use reserved namespaces: 'record:malformed_artifact', 'delivery:authorization'. Reserved prefixes: 'record:', 'delivery:'."
                     },
                     "status": {
-                      "$ref": "/schemas/3.0.6/enums/feature-check-status.json"
+                      "$ref": "/schemas/3.0.8/enums/feature-check-status.json"
                     },
                     "policy_id": {
                       "type": "string",
@@ -11801,10 +11801,10 @@ export const contentStandards_ValidateContentDeliveryResponse = {
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -11819,14 +11819,14 @@ export const contentStandards_ValidateContentDeliveryResponse = {
         "errors": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -11838,7 +11838,7 @@ export const contentStandards_ValidateContentDeliveryResponse = {
 
 export const core_AccountRef = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/account-ref.json",
+  "$id": "/schemas/3.0.8/core/account-ref.json",
   "title": "Account Reference",
   "description": "Reference to an account by seller-assigned ID or natural key. Use account_id for explicit accounts (require_operator_auth: true, discovered via list_accounts). Use the natural key (brand + operator) for implicit accounts (require_operator_auth: false, declared via sync_accounts). For sandbox: explicit accounts use account_id (pre-existing test account), implicit accounts use the natural key with sandbox: true.",
   "type": "object",
@@ -11859,7 +11859,7 @@ export const core_AccountRef = {
     {
       "properties": {
         "brand": {
-          "$ref": "/schemas/3.0.6/core/brand-ref.json",
+          "$ref": "/schemas/3.0.8/core/brand-ref.json",
           "description": "Brand reference identifying the advertiser"
         },
         "operator": {
@@ -11910,7 +11910,7 @@ export const core_AccountRef = {
 
 export const core_Account = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/account.json",
+  "$id": "/schemas/3.0.8/core/account.json",
   "title": "Account",
   "description": "A billing account representing the relationship between a buyer and seller. The account determines rate cards, payment terms, and billing entity.",
   "type": "object",
@@ -11933,11 +11933,11 @@ export const core_Account = {
       "description": "Optional intermediary who receives invoices on behalf of the advertiser (e.g., agency)"
     },
     "status": {
-      "$ref": "/schemas/3.0.6/enums/account-status.json",
+      "$ref": "/schemas/3.0.8/enums/account-status.json",
       "description": "Account lifecycle status. See the Accounts Protocol overview for the operations matrix showing which tasks are permitted in each state."
     },
     "brand": {
-      "$ref": "/schemas/3.0.6/core/brand-ref.json",
+      "$ref": "/schemas/3.0.8/core/brand-ref.json",
       "description": "Brand reference identifying the advertiser"
     },
     "operator": {
@@ -11947,11 +11947,11 @@ export const core_Account = {
       "x-entity": "operator"
     },
     "billing": {
-      "$ref": "/schemas/3.0.6/enums/billing-party.json",
+      "$ref": "/schemas/3.0.8/enums/billing-party.json",
       "description": "Who is invoiced on this account. See billing_entity for the invoiced party's business details."
     },
     "billing_entity": {
-      "$ref": "/schemas/3.0.6/core/business-entity.json",
+      "$ref": "/schemas/3.0.8/core/business-entity.json",
       "description": "Business entity details for the party responsible for payment. Contains the legal name, tax IDs, address, and bank details needed for formal B2B invoicing. Corresponds to whoever billing points to (operator, agent, or advertiser). When this account appears in a response, bank details MUST be omitted (write-only)."
     },
     "rate_card": {
@@ -11959,7 +11959,7 @@ export const core_Account = {
       "description": "Identifier for the rate card applied to this account"
     },
     "payment_terms": {
-      "$ref": "/schemas/3.0.6/enums/payment-terms.json",
+      "$ref": "/schemas/3.0.8/enums/payment-terms.json",
       "description": "Payment terms agreed for this account. Binding for all invoices when the account is active."
     },
     "credit_limit": {
@@ -12005,7 +12005,7 @@ export const core_Account = {
       "additionalProperties": true
     },
     "account_scope": {
-      "$ref": "/schemas/3.0.6/enums/account-scope.json"
+      "$ref": "/schemas/3.0.8/enums/account-scope.json"
     },
     "governance_agents": {
       "type": "array",
@@ -12042,7 +12042,7 @@ export const core_Account = {
       "description": "Cloud storage bucket where the seller delivers offline reporting files for this account. Seller provisions a dedicated bucket or a per-account prefix within a shared bucket, and grants the buyer read access out-of-band. Access MUST be scoped at the IAM layer so each account can only read its own prefix — bucket-wide grants are non-compliant even with per-account prefixes. Seller MUST revoke access when the account's status transitions to inactive, suspended, or closed. See security considerations for offline delivery in docs/media-buy/media-buys/optimization-reporting. Only present when the seller supports offline delivery (reporting_delivery_methods includes 'offline' in capabilities).",
       "properties": {
         "protocol": {
-          "$ref": "/schemas/3.0.6/enums/cloud-storage-protocol.json",
+          "$ref": "/schemas/3.0.8/enums/cloud-storage-protocol.json",
           "description": "Cloud storage protocol"
         },
         "bucket": {
@@ -12122,7 +12122,7 @@ export const core_Account = {
       "description": "When true, this is a sandbox account — no real platform calls, no real spend. For explicit accounts (require_operator_auth: true), sandbox accounts are pre-existing test accounts on the platform discovered via list_accounts. For implicit accounts, sandbox is part of the natural key: the same brand/operator pair can have both a production and sandbox account."
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -12255,7 +12255,7 @@ export const core_Account = {
 
 export const core_ActivationKey = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/activation-key.json",
+  "$id": "/schemas/3.0.8/core/activation-key.json",
   "title": "Activation Key",
   "description": "Universal identifier for using a signal on a destination platform. Can be either a segment ID or a key-value pair depending on the platform's targeting mechanism.",
   "type": "object",
@@ -12306,7 +12306,7 @@ export const core_ActivationKey = {
 
 export const core_AdInventoryConfig = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/ad-inventory-config.json",
+  "$id": "/schemas/3.0.8/core/ad-inventory-config.json",
   "title": "Ad Inventory Configuration",
   "description": "Break-based ad inventory configuration for an installment. Describes the ad breaks available within the content. For non-break ad formats (host reads, integrations, sponsorships), use product placements instead.",
   "type": "object",
@@ -12346,7 +12346,7 @@ export const core_AdInventoryConfig = {
 
 export const core_AgentEncryptionKey = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/agent-encryption-key.json",
+  "$id": "/schemas/3.0.8/core/agent-encryption-key.json",
   "title": "Agent Encryption Key",
   "description": "X25519 public key for HPKE encryption. Used for TMPX exposure token encryption with HPKE mode_base.",
   "type": "object",
@@ -12388,7 +12388,7 @@ export const core_AgentEncryptionKey = {
 
 export const core_AgentSigningKey = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/agent-signing-key.json",
+  "$id": "/schemas/3.0.8/core/agent-signing-key.json",
   "title": "Agent Signing Key",
   "description": "Publisher-attested public key material for an authorized agent. Buyers use these keys to verify signed agent responses against the trust anchor published in adagents.json rather than trusting key discovery from the agent domain alone.",
   "type": "object",
@@ -12444,7 +12444,7 @@ export const core_AgentSigningKey = {
 
 export const core_AppItem = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/app-item.json",
+  "$id": "/schemas/3.0.8/core/app-item.json",
   "title": "App Item",
   "description": "A mobile application within an app-type catalog. Carries the app metadata and store identifiers that platforms use for app install campaigns and re-engagement ads. Maps to Google App Campaigns, Apple Search Ads, Meta App Ads, TikTok App Campaigns, and Snapchat App Install Ads. Each item represents one app on one platform — iOS and Android variants are separate items.",
   "type": "object",
@@ -12516,7 +12516,7 @@ export const core_AppItem = {
       "description": "Deep link URI for re-engagement campaigns targeting existing users. Use Universal Links (iOS) or App Links (Android) where available (e.g., 'https://acmegames.com/app/level/5'). Falls back to URI scheme (e.g., 'acmegames://level/5') when universal links are not configured."
     },
     "price": {
-      "$ref": "/schemas/3.0.6/core/price.json",
+      "$ref": "/schemas/3.0.8/core/price.json",
       "description": "App download price. Set amount to 0 for free apps."
     },
     "rating": {
@@ -12546,12 +12546,12 @@ export const core_AppItem = {
       "type": "array",
       "description": "Typed creative asset pools for this app. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (promotional hero), 'images_vertical' (9:16 for Snap, Stories), 'images_square' (1:1 for display), 'video' (gameplay or demo video). Supplements icon_url and screenshots for platform-specific format requirements.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/offering-asset-group.json"
+        "$ref": "/schemas/3.0.8/core/offering-asset-group.json"
       },
       "minItems": 1
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -12615,51 +12615,51 @@ export const core_AppItem = {
 
 export const core_Assets_AssetUnion = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/assets/asset-union.json",
+  "$id": "/schemas/3.0.8/core/assets/asset-union.json",
   "title": "AssetVariant",
   "description": "Canonical union of all asset variant schemas. Referenced from creative-asset.json and creative-manifest.json to ensure a single named type is emitted by schema-to-TypeScript tooling. Add new asset types here and to the creative/asset-types registry.",
   "oneOf": [
     {
-      "$ref": "/schemas/3.0.6/core/assets/image-asset.json"
+      "$ref": "/schemas/3.0.8/core/assets/image-asset.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/assets/video-asset.json"
+      "$ref": "/schemas/3.0.8/core/assets/video-asset.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/assets/audio-asset.json"
+      "$ref": "/schemas/3.0.8/core/assets/audio-asset.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/assets/vast-asset.json"
+      "$ref": "/schemas/3.0.8/core/assets/vast-asset.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/assets/text-asset.json"
+      "$ref": "/schemas/3.0.8/core/assets/text-asset.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/assets/url-asset.json"
+      "$ref": "/schemas/3.0.8/core/assets/url-asset.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/assets/html-asset.json"
+      "$ref": "/schemas/3.0.8/core/assets/html-asset.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/assets/javascript-asset.json"
+      "$ref": "/schemas/3.0.8/core/assets/javascript-asset.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/assets/webhook-asset.json"
+      "$ref": "/schemas/3.0.8/core/assets/webhook-asset.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/assets/css-asset.json"
+      "$ref": "/schemas/3.0.8/core/assets/css-asset.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/assets/daast-asset.json"
+      "$ref": "/schemas/3.0.8/core/assets/daast-asset.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/assets/markdown-asset.json"
+      "$ref": "/schemas/3.0.8/core/assets/markdown-asset.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/assets/brief-asset.json"
+      "$ref": "/schemas/3.0.8/core/assets/brief-asset.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/assets/catalog-asset.json"
+      "$ref": "/schemas/3.0.8/core/assets/catalog-asset.json"
     }
   ],
   "discriminator": {
@@ -12669,7 +12669,7 @@ export const core_Assets_AssetUnion = {
 
 export const core_Assets_AudioAsset = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/assets/audio-asset.json",
+  "$id": "/schemas/3.0.8/core/assets/audio-asset.json",
   "title": "Audio Asset",
   "description": "Audio asset with URL and technical specifications",
   "type": "object",
@@ -12707,7 +12707,7 @@ export const core_Assets_AudioAsset = {
       "description": "Sampling rate in Hz (e.g., 44100, 48000, 96000)"
     },
     "channels": {
-      "$ref": "/schemas/3.0.6/enums/audio-channel-layout.json",
+      "$ref": "/schemas/3.0.8/enums/audio-channel-layout.json",
       "description": "Channel configuration"
     },
     "bit_depth": {
@@ -12739,7 +12739,7 @@ export const core_Assets_AudioAsset = {
       "x-accessibility": true
     },
     "provenance": {
-      "$ref": "/schemas/3.0.6/core/provenance.json",
+      "$ref": "/schemas/3.0.8/core/provenance.json",
       "description": "Provenance metadata for this asset, overrides manifest-level provenance"
     }
   },
@@ -12752,7 +12752,7 @@ export const core_Assets_AudioAsset = {
 
 export const core_Assets_BriefAsset = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/assets/brief-asset.json",
+  "$id": "/schemas/3.0.8/core/assets/brief-asset.json",
   "title": "Brief Asset",
   "description": "Campaign-level creative context as an asset. Carries the creative brief through the manifest so it travels with the creative through regeneration, resizing, and auditing.",
   "type": "object",
@@ -12768,14 +12768,14 @@ export const core_Assets_BriefAsset = {
   ],
   "allOf": [
     {
-      "$ref": "/schemas/3.0.6/core/creative-brief.json"
+      "$ref": "/schemas/3.0.8/core/creative-brief.json"
     }
   ]
 } as const;
 
 export const core_Assets_CatalogAsset = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/assets/catalog-asset.json",
+  "$id": "/schemas/3.0.8/core/assets/catalog-asset.json",
   "title": "Catalog Asset",
   "description": "A typed data feed as a creative asset. Carries catalog context (products, stores, jobs, etc.) within the manifest's assets map.",
   "type": "object",
@@ -12791,14 +12791,14 @@ export const core_Assets_CatalogAsset = {
   ],
   "allOf": [
     {
-      "$ref": "/schemas/3.0.6/core/catalog.json"
+      "$ref": "/schemas/3.0.8/core/catalog.json"
     }
   ]
 } as const;
 
 export const core_Assets_CssAsset = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/assets/css-asset.json",
+  "$id": "/schemas/3.0.8/core/assets/css-asset.json",
   "title": "CSS Asset",
   "description": "CSS stylesheet asset",
   "type": "object",
@@ -12817,7 +12817,7 @@ export const core_Assets_CssAsset = {
       "description": "CSS media query context (e.g., 'screen', 'print')"
     },
     "provenance": {
-      "$ref": "/schemas/3.0.6/core/provenance.json",
+      "$ref": "/schemas/3.0.8/core/provenance.json",
       "description": "Provenance metadata for this asset, overrides manifest-level provenance"
     }
   },
@@ -12830,7 +12830,7 @@ export const core_Assets_CssAsset = {
 
 export const core_Assets_DaastAsset = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/assets/daast-asset.json",
+  "$id": "/schemas/3.0.8/core/assets/daast-asset.json",
   "title": "DAAST Asset",
   "description": "DAAST (Digital Audio Ad Serving Template) tag for third-party audio ad serving",
   "type": "object",
@@ -12841,7 +12841,7 @@ export const core_Assets_DaastAsset = {
       "description": "Discriminator identifying this as a DAAST asset. See /schemas/creative/asset-types for the registry."
     },
     "daast_version": {
-      "$ref": "/schemas/3.0.6/enums/daast-version.json",
+      "$ref": "/schemas/3.0.8/enums/daast-version.json",
       "description": "DAAST specification version"
     },
     "duration_ms": {
@@ -12852,7 +12852,7 @@ export const core_Assets_DaastAsset = {
     "tracking_events": {
       "type": "array",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/daast-tracking-event.json"
+        "$ref": "/schemas/3.0.8/enums/daast-tracking-event.json"
       },
       "description": "Tracking events supported by this DAAST tag"
     },
@@ -12867,7 +12867,7 @@ export const core_Assets_DaastAsset = {
       "x-accessibility": true
     },
     "provenance": {
-      "$ref": "/schemas/3.0.6/core/provenance.json",
+      "$ref": "/schemas/3.0.8/core/provenance.json",
       "description": "Provenance metadata for this asset, overrides manifest-level provenance"
     }
   },
@@ -12919,7 +12919,7 @@ export const core_Assets_DaastAsset = {
 
 export const core_Assets_HtmlAsset = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/assets/html-asset.json",
+  "$id": "/schemas/3.0.8/core/assets/html-asset.json",
   "title": "HTML Asset",
   "description": "HTML content asset",
   "type": "object",
@@ -12961,7 +12961,7 @@ export const core_Assets_HtmlAsset = {
       }
     },
     "provenance": {
-      "$ref": "/schemas/3.0.6/core/provenance.json",
+      "$ref": "/schemas/3.0.8/core/provenance.json",
       "description": "Provenance metadata for this asset, overrides manifest-level provenance"
     }
   },
@@ -12974,7 +12974,7 @@ export const core_Assets_HtmlAsset = {
 
 export const core_Assets_ImageAsset = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/assets/image-asset.json",
+  "$id": "/schemas/3.0.8/core/assets/image-asset.json",
   "title": "Image Asset",
   "description": "Image asset with URL and dimensions",
   "type": "object",
@@ -13009,7 +13009,7 @@ export const core_Assets_ImageAsset = {
       "x-accessibility": true
     },
     "provenance": {
-      "$ref": "/schemas/3.0.6/core/provenance.json",
+      "$ref": "/schemas/3.0.8/core/provenance.json",
       "description": "Provenance metadata for this asset, overrides manifest-level provenance"
     }
   },
@@ -13024,7 +13024,7 @@ export const core_Assets_ImageAsset = {
 
 export const core_Assets_JavascriptAsset = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/assets/javascript-asset.json",
+  "$id": "/schemas/3.0.8/core/assets/javascript-asset.json",
   "title": "JavaScript Asset",
   "description": "JavaScript code asset",
   "type": "object",
@@ -13039,7 +13039,7 @@ export const core_Assets_JavascriptAsset = {
       "description": "JavaScript content"
     },
     "module_type": {
-      "$ref": "/schemas/3.0.6/enums/javascript-module-type.json",
+      "$ref": "/schemas/3.0.8/enums/javascript-module-type.json",
       "description": "JavaScript module type"
     },
     "accessibility": {
@@ -13066,7 +13066,7 @@ export const core_Assets_JavascriptAsset = {
       }
     },
     "provenance": {
-      "$ref": "/schemas/3.0.6/core/provenance.json",
+      "$ref": "/schemas/3.0.8/core/provenance.json",
       "description": "Provenance metadata for this asset, overrides manifest-level provenance"
     }
   },
@@ -13079,7 +13079,7 @@ export const core_Assets_JavascriptAsset = {
 
 export const core_Assets_MarkdownAsset = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/assets/markdown-asset.json",
+  "$id": "/schemas/3.0.8/core/assets/markdown-asset.json",
   "title": "Markdown Asset",
   "description": "Markdown-formatted text content following CommonMark specification",
   "type": "object",
@@ -13098,7 +13098,7 @@ export const core_Assets_MarkdownAsset = {
       "description": "Language code (e.g., 'en', 'es', 'fr')"
     },
     "markdown_flavor": {
-      "$ref": "/schemas/3.0.6/enums/markdown-flavor.json",
+      "$ref": "/schemas/3.0.8/enums/markdown-flavor.json",
       "default": "commonmark",
       "description": "Markdown flavor used. CommonMark for strict compatibility, GFM for tables/task lists/strikethrough."
     },
@@ -13117,7 +13117,7 @@ export const core_Assets_MarkdownAsset = {
 
 export const core_Assets_TextAsset = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/assets/text-asset.json",
+  "$id": "/schemas/3.0.8/core/assets/text-asset.json",
   "title": "Text Asset",
   "description": "Text content asset",
   "type": "object",
@@ -13136,7 +13136,7 @@ export const core_Assets_TextAsset = {
       "description": "Language code (e.g., 'en', 'es', 'fr')"
     },
     "provenance": {
-      "$ref": "/schemas/3.0.6/core/provenance.json",
+      "$ref": "/schemas/3.0.8/core/provenance.json",
       "description": "Provenance metadata for this asset, overrides manifest-level provenance"
     }
   },
@@ -13149,7 +13149,7 @@ export const core_Assets_TextAsset = {
 
 export const core_Assets_UrlAsset = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/assets/url-asset.json",
+  "$id": "/schemas/3.0.8/core/assets/url-asset.json",
   "title": "URL Asset",
   "$comment": "Fallback table is also rendered in docs/creative/asset-types.mdx (URL Asset section). Keep the two in sync — schema description is the normative source for conformance tools; mdx is the human-readable copy.",
   "description": "URL reference asset. `url_type` declares the mechanism a receiver uses to invoke the URL (clickthrough vs. tracker_pixel vs. tracker_script) and is distinct from the URL's purpose, which the format declares in `url-asset-requirements.role` (clickthrough, landing_page, impression_tracker, click_tracker, viewability_tracker, third_party_tracker). Senders SHOULD include `url_type` on every URL asset. When `url_type` is absent, receivers SHOULD fall back to the format's `url-asset-requirements.role` per this mapping: clickthrough/landing_page → `clickthrough`; impression_tracker/click_tracker → `tracker_pixel`; viewability_tracker → `tracker_script` (OMID and equivalent verification SDKs require a <script> tag — firing them as a pixel produces no measurement); third_party_tracker → no safe fallback (mechanism is integration-specific — DV/IAS ship both pixel and script forms — receivers MAY reject or warn). When neither `url_type` nor a format-side `role` is available, receivers MUST NOT silently pick a mechanism; they SHOULD reject the manifest. Note: VAST/DAAST tag URLs are not URL assets — use `asset_type: \"vast\"` (or the dedicated tracker types pending RFC #2915), not `asset_type: \"url\"` with a tracker_pixel mechanism.",
@@ -13166,7 +13166,7 @@ export const core_Assets_UrlAsset = {
       "description": "URL reference. May be a plain URI or an RFC 6570 URI template carrying AdCP universal macros (e.g., `{SKU}`, `{MEDIA_BUY_ID}`). Buyers MUST NOT pre-encode macro braces at sync time; the ad server URL-encodes substituted values at impression time. See docs/creative/universal-macros.mdx."
     },
     "url_type": {
-      "$ref": "/schemas/3.0.6/enums/url-asset-type.json",
+      "$ref": "/schemas/3.0.8/enums/url-asset-type.json",
       "description": "Mechanism a receiver uses to invoke this URL (distinct from purpose, which lives in `url-asset-requirements.role`): `clickthrough` for user click destination (landing page), `tracker_pixel` for impression/event tracking via HTTP request (fires GET, expects pixel/204 response), `tracker_script` for measurement SDKs that must load as a <script> tag (OMID verification, native event trackers using method:2). SHOULD be present on every URL asset; senders that omit it force the receiver into the role-based fallback described in this schema's top-level description."
     },
     "description": {
@@ -13174,7 +13174,7 @@ export const core_Assets_UrlAsset = {
       "description": "Description of what this URL points to"
     },
     "provenance": {
-      "$ref": "/schemas/3.0.6/core/provenance.json",
+      "$ref": "/schemas/3.0.8/core/provenance.json",
       "description": "Provenance metadata for this asset, overrides manifest-level provenance"
     }
   },
@@ -13187,7 +13187,7 @@ export const core_Assets_UrlAsset = {
 
 export const core_Assets_VastAsset = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/assets/vast-asset.json",
+  "$id": "/schemas/3.0.8/core/assets/vast-asset.json",
   "title": "VAST Asset",
   "description": "VAST (Video Ad Serving Template) tag for third-party video ad serving",
   "type": "object",
@@ -13198,7 +13198,7 @@ export const core_Assets_VastAsset = {
       "description": "Discriminator identifying this as a VAST asset. See /schemas/creative/asset-types for the registry."
     },
     "vast_version": {
-      "$ref": "/schemas/3.0.6/enums/vast-version.json",
+      "$ref": "/schemas/3.0.8/enums/vast-version.json",
       "description": "VAST specification version"
     },
     "vpaid_enabled": {
@@ -13213,7 +13213,7 @@ export const core_Assets_VastAsset = {
     "tracking_events": {
       "type": "array",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/vast-tracking-event.json"
+        "$ref": "/schemas/3.0.8/enums/vast-tracking-event.json"
       },
       "description": "Tracking events supported by this VAST tag"
     },
@@ -13230,7 +13230,7 @@ export const core_Assets_VastAsset = {
       "x-accessibility": true
     },
     "provenance": {
-      "$ref": "/schemas/3.0.6/core/provenance.json",
+      "$ref": "/schemas/3.0.8/core/provenance.json",
       "description": "Provenance metadata for this asset, overrides manifest-level provenance"
     }
   },
@@ -13282,7 +13282,7 @@ export const core_Assets_VastAsset = {
 
 export const core_Assets_VideoAsset = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/assets/video-asset.json",
+  "$id": "/schemas/3.0.8/core/assets/video-asset.json",
   "title": "Video Asset",
   "description": "Video asset with URL and technical specifications including audio track properties",
   "type": "object",
@@ -13335,10 +13335,10 @@ export const core_Assets_VideoAsset = {
       "description": "Frame rate as string to preserve precision (e.g., '23.976', '29.97', '30')"
     },
     "frame_rate_type": {
-      "$ref": "/schemas/3.0.6/enums/frame-rate-type.json"
+      "$ref": "/schemas/3.0.8/enums/frame-rate-type.json"
     },
     "scan_type": {
-      "$ref": "/schemas/3.0.6/enums/scan-type.json"
+      "$ref": "/schemas/3.0.8/enums/scan-type.json"
     },
     "color_space": {
       "type": "string",
@@ -13385,10 +13385,10 @@ export const core_Assets_VideoAsset = {
       "description": "GOP/keyframe interval in seconds"
     },
     "gop_type": {
-      "$ref": "/schemas/3.0.6/enums/gop-type.json"
+      "$ref": "/schemas/3.0.8/enums/gop-type.json"
     },
     "moov_atom_position": {
-      "$ref": "/schemas/3.0.6/enums/moov-atom-position.json"
+      "$ref": "/schemas/3.0.8/enums/moov-atom-position.json"
     },
     "has_audio": {
       "type": "boolean",
@@ -13403,7 +13403,7 @@ export const core_Assets_VideoAsset = {
       "description": "Audio sampling rate in Hz (e.g., 44100, 48000)"
     },
     "audio_channels": {
-      "$ref": "/schemas/3.0.6/enums/audio-channel-layout.json",
+      "$ref": "/schemas/3.0.8/enums/audio-channel-layout.json",
       "description": "Audio channel configuration"
     },
     "audio_bit_depth": {
@@ -13447,7 +13447,7 @@ export const core_Assets_VideoAsset = {
       "x-accessibility": true
     },
     "provenance": {
-      "$ref": "/schemas/3.0.6/core/provenance.json",
+      "$ref": "/schemas/3.0.8/core/provenance.json",
       "description": "Provenance metadata for this asset, overrides manifest-level provenance"
     }
   },
@@ -13462,7 +13462,7 @@ export const core_Assets_VideoAsset = {
 
 export const core_Assets_WebhookAsset = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/assets/webhook-asset.json",
+  "$id": "/schemas/3.0.8/core/assets/webhook-asset.json",
   "title": "Webhook Asset",
   "description": "Webhook for server-side dynamic content rendering (DCO)",
   "type": "object",
@@ -13478,7 +13478,7 @@ export const core_Assets_WebhookAsset = {
       "description": "Webhook URL to call for dynamic content"
     },
     "method": {
-      "$ref": "/schemas/3.0.6/enums/http-method.json",
+      "$ref": "/schemas/3.0.8/enums/http-method.json",
       "default": "POST",
       "description": "HTTP method"
     },
@@ -13494,7 +13494,7 @@ export const core_Assets_WebhookAsset = {
       "items": {
         "anyOf": [
           {
-            "$ref": "/schemas/3.0.6/enums/universal-macro.json"
+            "$ref": "/schemas/3.0.8/enums/universal-macro.json"
           },
           {
             "type": "string",
@@ -13509,7 +13509,7 @@ export const core_Assets_WebhookAsset = {
       "items": {
         "anyOf": [
           {
-            "$ref": "/schemas/3.0.6/enums/universal-macro.json"
+            "$ref": "/schemas/3.0.8/enums/universal-macro.json"
           },
           {
             "type": "string",
@@ -13520,7 +13520,7 @@ export const core_Assets_WebhookAsset = {
       "description": "Universal macros that must be provided for webhook to function"
     },
     "response_type": {
-      "$ref": "/schemas/3.0.6/enums/webhook-response-type.json",
+      "$ref": "/schemas/3.0.8/enums/webhook-response-type.json",
       "description": "Expected content type of webhook response"
     },
     "security": {
@@ -13528,7 +13528,7 @@ export const core_Assets_WebhookAsset = {
       "description": "Security configuration for webhook calls",
       "properties": {
         "method": {
-          "$ref": "/schemas/3.0.6/enums/webhook-security-method.json",
+          "$ref": "/schemas/3.0.8/enums/webhook-security-method.json",
           "description": "Authentication method"
         },
         "hmac_header": {
@@ -13545,7 +13545,7 @@ export const core_Assets_WebhookAsset = {
       ]
     },
     "provenance": {
-      "$ref": "/schemas/3.0.6/core/provenance.json",
+      "$ref": "/schemas/3.0.8/core/provenance.json",
       "description": "Provenance metadata for this asset, overrides manifest-level provenance"
     }
   },
@@ -13560,136 +13560,136 @@ export const core_Assets_WebhookAsset = {
 
 export const core_AsyncResponseData = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/async-response-data.json",
+  "$id": "/schemas/3.0.8/core/async-response-data.json",
   "title": "AdCP Async Response Data",
   "description": "Union of all possible data payloads for async task webhook responses. For completed/failed statuses, use the main task response schema. For working/input-required/submitted, use the status-specific schemas.",
   "anyOf": [
     {
       "title": "GetProductsResponse",
       "description": "Response for completed or failed get_products",
-      "$ref": "/schemas/3.0.6/media-buy/get-products-response.json"
+      "$ref": "/schemas/3.0.8/media-buy/get-products-response.json"
     },
     {
       "title": "GetProductsAsyncWorking",
       "description": "Progress data for working get_products",
-      "$ref": "/schemas/3.0.6/media-buy/get-products-async-response-working.json"
+      "$ref": "/schemas/3.0.8/media-buy/get-products-async-response-working.json"
     },
     {
       "title": "GetProductsAsyncInputRequired",
       "description": "Input requirements for get_products needing clarification",
-      "$ref": "/schemas/3.0.6/media-buy/get-products-async-response-input-required.json"
+      "$ref": "/schemas/3.0.8/media-buy/get-products-async-response-input-required.json"
     },
     {
       "title": "GetProductsAsyncSubmitted",
       "description": "Acknowledgment for submitted get_products (custom curation)",
-      "$ref": "/schemas/3.0.6/media-buy/get-products-async-response-submitted.json"
+      "$ref": "/schemas/3.0.8/media-buy/get-products-async-response-submitted.json"
     },
     {
       "title": "CreateMediaBuyResponse",
       "description": "Response for completed or failed create_media_buy",
-      "$ref": "/schemas/3.0.6/media-buy/create-media-buy-response.json"
+      "$ref": "/schemas/3.0.8/media-buy/create-media-buy-response.json"
     },
     {
       "title": "CreateMediaBuyAsyncWorking",
       "description": "Progress data for working create_media_buy",
-      "$ref": "/schemas/3.0.6/media-buy/create-media-buy-async-response-working.json"
+      "$ref": "/schemas/3.0.8/media-buy/create-media-buy-async-response-working.json"
     },
     {
       "title": "CreateMediaBuyAsyncInputRequired",
       "description": "Input requirements for create_media_buy needing user input",
-      "$ref": "/schemas/3.0.6/media-buy/create-media-buy-async-response-input-required.json"
+      "$ref": "/schemas/3.0.8/media-buy/create-media-buy-async-response-input-required.json"
     },
     {
       "title": "CreateMediaBuyAsyncSubmitted",
       "description": "Acknowledgment for submitted create_media_buy",
-      "$ref": "/schemas/3.0.6/media-buy/create-media-buy-async-response-submitted.json"
+      "$ref": "/schemas/3.0.8/media-buy/create-media-buy-async-response-submitted.json"
     },
     {
       "title": "UpdateMediaBuyResponse",
       "description": "Response for completed or failed update_media_buy",
-      "$ref": "/schemas/3.0.6/media-buy/update-media-buy-response.json"
+      "$ref": "/schemas/3.0.8/media-buy/update-media-buy-response.json"
     },
     {
       "title": "UpdateMediaBuyAsyncWorking",
       "description": "Progress data for working update_media_buy",
-      "$ref": "/schemas/3.0.6/media-buy/update-media-buy-async-response-working.json"
+      "$ref": "/schemas/3.0.8/media-buy/update-media-buy-async-response-working.json"
     },
     {
       "title": "UpdateMediaBuyAsyncInputRequired",
       "description": "Input requirements for update_media_buy needing user input",
-      "$ref": "/schemas/3.0.6/media-buy/update-media-buy-async-response-input-required.json"
+      "$ref": "/schemas/3.0.8/media-buy/update-media-buy-async-response-input-required.json"
     },
     {
       "title": "UpdateMediaBuyAsyncSubmitted",
       "description": "Acknowledgment for submitted update_media_buy",
-      "$ref": "/schemas/3.0.6/media-buy/update-media-buy-async-response-submitted.json"
+      "$ref": "/schemas/3.0.8/media-buy/update-media-buy-async-response-submitted.json"
     },
     {
       "title": "BuildCreativeResponse",
       "description": "Response for completed or failed build_creative",
-      "$ref": "/schemas/3.0.6/media-buy/build-creative-response.json"
+      "$ref": "/schemas/3.0.8/media-buy/build-creative-response.json"
     },
     {
       "title": "BuildCreativeAsyncWorking",
       "description": "Progress data for working build_creative",
-      "$ref": "/schemas/3.0.6/media-buy/build-creative-async-response-working.json"
+      "$ref": "/schemas/3.0.8/media-buy/build-creative-async-response-working.json"
     },
     {
       "title": "BuildCreativeAsyncInputRequired",
       "description": "Input requirements for build_creative needing user input",
-      "$ref": "/schemas/3.0.6/media-buy/build-creative-async-response-input-required.json"
+      "$ref": "/schemas/3.0.8/media-buy/build-creative-async-response-input-required.json"
     },
     {
       "title": "BuildCreativeAsyncSubmitted",
       "description": "Acknowledgment for submitted build_creative",
-      "$ref": "/schemas/3.0.6/media-buy/build-creative-async-response-submitted.json"
+      "$ref": "/schemas/3.0.8/media-buy/build-creative-async-response-submitted.json"
     },
     {
       "title": "SyncCreativesResponse",
       "description": "Response for completed or failed sync_creatives",
-      "$ref": "/schemas/3.0.6/creative/sync-creatives-response.json"
+      "$ref": "/schemas/3.0.8/creative/sync-creatives-response.json"
     },
     {
       "title": "SyncCreativesAsyncWorking",
       "description": "Progress data for working sync_creatives",
-      "$ref": "/schemas/3.0.6/creative/sync-creatives-async-response-working.json"
+      "$ref": "/schemas/3.0.8/creative/sync-creatives-async-response-working.json"
     },
     {
       "title": "SyncCreativesAsyncInputRequired",
       "description": "Input requirements for sync_creatives needing user input",
-      "$ref": "/schemas/3.0.6/creative/sync-creatives-async-response-input-required.json"
+      "$ref": "/schemas/3.0.8/creative/sync-creatives-async-response-input-required.json"
     },
     {
       "title": "SyncCreativesAsyncSubmitted",
       "description": "Acknowledgment for submitted sync_creatives",
-      "$ref": "/schemas/3.0.6/creative/sync-creatives-async-response-submitted.json"
+      "$ref": "/schemas/3.0.8/creative/sync-creatives-async-response-submitted.json"
     },
     {
       "title": "SyncCatalogsResponse",
       "description": "Response for completed or failed sync_catalogs",
-      "$ref": "/schemas/3.0.6/media-buy/sync-catalogs-response.json"
+      "$ref": "/schemas/3.0.8/media-buy/sync-catalogs-response.json"
     },
     {
       "title": "SyncCatalogsAsyncWorking",
       "description": "Progress data for working sync_catalogs",
-      "$ref": "/schemas/3.0.6/media-buy/sync-catalogs-async-response-working.json"
+      "$ref": "/schemas/3.0.8/media-buy/sync-catalogs-async-response-working.json"
     },
     {
       "title": "SyncCatalogsAsyncInputRequired",
       "description": "Input requirements for sync_catalogs needing buyer input",
-      "$ref": "/schemas/3.0.6/media-buy/sync-catalogs-async-response-input-required.json"
+      "$ref": "/schemas/3.0.8/media-buy/sync-catalogs-async-response-input-required.json"
     },
     {
       "title": "SyncCatalogsAsyncSubmitted",
       "description": "Acknowledgment for submitted sync_catalogs",
-      "$ref": "/schemas/3.0.6/media-buy/sync-catalogs-async-response-submitted.json"
+      "$ref": "/schemas/3.0.8/media-buy/sync-catalogs-async-response-submitted.json"
     }
   ]
 } as const;
 
 export const core_AttributionWindow = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/attribution-window.json",
+  "$id": "/schemas/3.0.8/core/attribution-window.json",
   "title": "Attribution Window",
   "description": "Describes the attribution methodology and lookback windows used for conversion measurement. Enables cross-platform comparison by making attribution methodology transparent.",
   "type": "object",
@@ -13697,7 +13697,7 @@ export const core_AttributionWindow = {
     "post_click": {
       "allOf": [
         {
-          "$ref": "/schemas/3.0.6/core/duration.json"
+          "$ref": "/schemas/3.0.8/core/duration.json"
         }
       ],
       "description": "Post-click attribution window. Conversions occurring within this duration after a click are attributed to the ad."
@@ -13705,13 +13705,13 @@ export const core_AttributionWindow = {
     "post_view": {
       "allOf": [
         {
-          "$ref": "/schemas/3.0.6/core/duration.json"
+          "$ref": "/schemas/3.0.8/core/duration.json"
         }
       ],
       "description": "Post-view attribution window. Conversions occurring within this duration after an ad impression (without click) are attributed to the ad."
     },
     "model": {
-      "$ref": "/schemas/3.0.6/enums/attribution-model.json",
+      "$ref": "/schemas/3.0.8/enums/attribution-model.json",
       "description": "Attribution model used to assign credit when multiple touchpoints exist"
     }
   },
@@ -13723,7 +13723,7 @@ export const core_AttributionWindow = {
 
 export const core_AudienceMember = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/audience-member.json",
+  "$id": "/schemas/3.0.8/core/audience-member.json",
   "title": "Audience Member",
   "description": "A CRM audience member identified by a buyer-assigned external_id and at least one matchable identifier. All identifiers must be normalized before hashing: emails to lowercase+trim, phone numbers to E.164 format (e.g. +12065551234). Providing multiple identifiers for the same person improves match rates. Composite identifiers (e.g. hashed first name + last name + zip for Google Customer Match) are not yet standardized — use the ext field for platform-specific extensions.",
   "type": "object",
@@ -13749,7 +13749,7 @@ export const core_AudienceMember = {
         "type": "object",
         "properties": {
           "type": {
-            "$ref": "/schemas/3.0.6/enums/uid-type.json",
+            "$ref": "/schemas/3.0.8/enums/uid-type.json",
             "description": "Universal ID type"
           },
           "value": {
@@ -13766,7 +13766,7 @@ export const core_AudienceMember = {
       "minItems": 1
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -13794,7 +13794,7 @@ export const core_AudienceMember = {
 
 export const core_AudienceSelector = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/audience-selector.json",
+  "$id": "/schemas/3.0.8/core/audience-selector.json",
   "title": "Audience Selector",
   "description": "Selects an audience by signal reference or natural language description. Uses 'type' as the primary discriminator (signal vs description). Signal selectors additionally use 'value_type' to determine the targeting expression format (matching signal-targeting.json variants).",
   "oneOf": [
@@ -13808,7 +13808,7 @@ export const core_AudienceSelector = {
           "description": "Discriminator for signal-based selectors"
         },
         "signal_id": {
-          "$ref": "/schemas/3.0.6/core/signal-id.json",
+          "$ref": "/schemas/3.0.8/core/signal-id.json",
           "description": "The signal to target"
         },
         "value_type": {
@@ -13839,7 +13839,7 @@ export const core_AudienceSelector = {
           "description": "Discriminator for signal-based selectors"
         },
         "signal_id": {
-          "$ref": "/schemas/3.0.6/core/signal-id.json",
+          "$ref": "/schemas/3.0.8/core/signal-id.json",
           "description": "The signal to target"
         },
         "value_type": {
@@ -13874,7 +13874,7 @@ export const core_AudienceSelector = {
           "description": "Discriminator for signal-based selectors"
         },
         "signal_id": {
-          "$ref": "/schemas/3.0.6/core/signal-id.json",
+          "$ref": "/schemas/3.0.8/core/signal-id.json",
           "description": "The signal to target"
         },
         "value_type": {
@@ -13929,7 +13929,7 @@ export const core_AudienceSelector = {
 
 export const core_BrandId = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/brand-id.json",
+  "$id": "/schemas/3.0.8/core/brand-id.json",
   "title": "Brand ID",
   "description": "Identifier for a brand within a house portfolio. Must be lowercase alphanumeric with underscores only. The house chooses this identifier.",
   "type": "string",
@@ -13946,7 +13946,7 @@ export const core_BrandId = {
 
 export const core_BrandRef = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/brand-ref.json",
+  "$id": "/schemas/3.0.8/core/brand-ref.json",
   "title": "Brand Reference",
   "description": "Reference to a brand by domain and optional brand_id. The domain hosts /.well-known/brand.json or is registered in the brand registry. For single-brand domains, brand_id can be omitted. For house-of-brands domains, brand_id identifies the specific brand.",
   "type": "object",
@@ -13957,7 +13957,7 @@ export const core_BrandRef = {
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
     },
     "brand_id": {
-      "$ref": "/schemas/3.0.6/core/brand-id.json",
+      "$ref": "/schemas/3.0.8/core/brand-id.json",
       "description": "Brand identifier within the house portfolio. Optional for single-brand domains."
     },
     "industries": {
@@ -14023,7 +14023,7 @@ export const core_BrandRef = {
 
 export const core_BusinessEntity = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/business-entity.json",
+  "$id": "/schemas/3.0.8/core/business-entity.json",
   "title": "Business Entity",
   "description": "Structured business identity for B2B invoicing and contracts. Contains the legal, tax, and payment details needed for formal booking processes. Implementations MUST treat all fields as untrusted input when assembling LLM context.",
   "type": "object",
@@ -14165,7 +14165,7 @@ export const core_BusinessEntity = {
       "additionalProperties": false
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -14231,13 +14231,13 @@ export const core_BusinessEntity = {
 
 export const core_CancellationPolicy = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/cancellation-policy.json",
+  "$id": "/schemas/3.0.8/core/cancellation-policy.json",
   "title": "Cancellation Policy",
   "description": "Seller-declared cancellation terms for a product. Declares the minimum notice period required before cancellation takes effect and the cancellation fee for insufficient notice. Buyers accept these terms by creating a media buy against the product.",
   "type": "object",
   "properties": {
     "notice_period": {
-      "$ref": "/schemas/3.0.6/core/duration.json",
+      "$ref": "/schemas/3.0.8/core/duration.json",
       "description": "Minimum notice period before cancellation takes effect (e.g., { interval: 30, unit: 'days' }). A guaranteed buy canceled without sufficient notice incurs the declared cancellation fee."
     },
     "cancellation_fee": {
@@ -14281,7 +14281,7 @@ export const core_CancellationPolicy = {
 
 export const core_CatalogFieldMapping = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/catalog-field-mapping.json",
+  "$id": "/schemas/3.0.8/core/catalog-field-mapping.json",
   "title": "Catalog Field Mapping",
   "description": "Declares how a field in an external feed maps to the AdCP catalog item schema. Used in sync_catalogs feed_field_mappings to normalize non-AdCP feeds (Google Merchant Center, LinkedIn Jobs XML, hotel XML, etc.) to the standard catalog item schema without requiring the buyer to preprocess every feed. Multiple mappings can assemble a nested object via dot notation (e.g., separate mappings for price.amount and price.currency).",
   "type": "object",
@@ -14333,7 +14333,7 @@ export const core_CatalogFieldMapping = {
       "description": "Fallback value to use when feed_field is absent, null, or empty. Applied after any transform would have been applied. Allows optional feed fields to have a guaranteed baseline value."
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "allOf": [
@@ -14426,7 +14426,7 @@ export const core_CatalogFieldMapping = {
 
 export const core_Catalog = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/catalog.json",
+  "$id": "/schemas/3.0.8/core/catalog.json",
   "title": "Catalog",
   "description": "A typed data feed. Catalogs carry the items, locations, stock levels, or pricing that publishers use to render ads. They can be synced to a platform via sync_catalogs (managed lifecycle with approval), provided inline, or fetched from an external URL. The catalog type determines the item schema and can be structural (offering, product, inventory, store, promotion) or vertical-specific (hotel, flight, job, vehicle, real_estate, education, destination, app). Selectors (ids, tags, category, query) filter items regardless of sourcing method.",
   "type": "object",
@@ -14441,7 +14441,7 @@ export const core_Catalog = {
       "description": "Human-readable name for this catalog (e.g., 'Summer Products 2025', 'Amsterdam Store Locations')."
     },
     "type": {
-      "$ref": "/schemas/3.0.6/enums/catalog-type.json",
+      "$ref": "/schemas/3.0.8/enums/catalog-type.json",
       "description": "Catalog type. Structural types: 'offering' (AdCP Offering objects), 'product' (ecommerce entries), 'inventory' (stock per location), 'store' (physical locations), 'promotion' (deals and pricing). Vertical types: 'hotel', 'flight', 'job', 'vehicle', 'real_estate', 'education', 'destination', 'app' — each with an industry-specific item schema."
     },
     "url": {
@@ -14450,11 +14450,11 @@ export const core_Catalog = {
       "description": "URL to an external catalog feed. The platform fetches and resolves items from this URL. For offering-type catalogs, the feed contains an array of Offering objects. For other types, the feed format is determined by feed_format. When omitted with type 'product', the platform uses its synced copy of the brand's product catalog."
     },
     "feed_format": {
-      "$ref": "/schemas/3.0.6/enums/feed-format.json",
+      "$ref": "/schemas/3.0.8/enums/feed-format.json",
       "description": "Format of the external feed at url. Required when url points to a non-AdCP feed (e.g., Google Merchant Center XML, Meta Product Catalog). Omit for offering-type catalogs where the feed is native AdCP JSON."
     },
     "update_frequency": {
-      "$ref": "/schemas/3.0.6/enums/update-frequency.json",
+      "$ref": "/schemas/3.0.8/enums/update-frequency.json",
       "description": "How often the platform should re-fetch the feed from url. Only applicable when url is provided. Platforms may use this as a hint for polling schedules."
     },
     "items": {
@@ -14502,20 +14502,20 @@ export const core_Catalog = {
       "type": "array",
       "description": "Event types that represent conversions for items in this catalog. Declares what events the platform should attribute to catalog items — e.g., a job catalog converts via submit_application, a product catalog via purchase. The event's content_ids field carries the item IDs that connect back to catalog items. Use content_id_type to declare what identifier type content_ids values represent.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/event-type.json"
+        "$ref": "/schemas/3.0.8/enums/event-type.json"
       },
       "minItems": 1,
       "uniqueItems": true
     },
     "content_id_type": {
-      "$ref": "/schemas/3.0.6/enums/content-id-type.json",
+      "$ref": "/schemas/3.0.8/enums/content-id-type.json",
       "description": "Identifier type that the event's content_ids field should be matched against for items in this catalog. For example, 'gtin' means content_ids values are Global Trade Item Numbers, 'sku' means retailer SKUs. Omit when using a custom identifier scheme not listed in the enum."
     },
     "feed_field_mappings": {
       "type": "array",
       "description": "Declarative normalization rules for external feeds. Maps non-standard feed field names, date formats, price encodings, and image URLs to the AdCP catalog item schema. Applied during sync_catalogs ingestion. Supports field renames, named transforms (date, divide, boolean, split), static literal injection, and assignment of image URLs to typed asset pools.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/catalog-field-mapping.json"
+        "$ref": "/schemas/3.0.8/core/catalog-field-mapping.json"
       },
       "minItems": 1
     }
@@ -14649,7 +14649,7 @@ export const core_Catalog = {
 
 export const core_Catchment = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/catchment.json",
+  "$id": "/schemas/3.0.8/core/catchment.json",
   "title": "Catchment",
   "description": "A catchment area definition for a store or location. Defines the geographic area from which a store draws customers. Three methods are supported: isochrone inputs (travel time + transport mode, platform resolves the shape), simple radius (distance from location), or pre-computed GeoJSON geometry (buyer provides the exact boundary). Provide exactly one method per catchment.",
   "type": "object",
@@ -14672,7 +14672,7 @@ export const core_Catchment = {
           "description": "Travel time limit."
         },
         "unit": {
-          "$ref": "/schemas/3.0.6/enums/travel-time-unit.json"
+          "$ref": "/schemas/3.0.8/enums/travel-time-unit.json"
         }
       },
       "required": [
@@ -14682,7 +14682,7 @@ export const core_Catchment = {
       "additionalProperties": false
     },
     "transport_mode": {
-      "$ref": "/schemas/3.0.6/enums/transport-mode.json",
+      "$ref": "/schemas/3.0.8/enums/transport-mode.json",
       "description": "Transportation mode for isochrone calculation. Required when travel_time is provided."
     },
     "radius": {
@@ -14695,7 +14695,7 @@ export const core_Catchment = {
           "description": "Radius distance."
         },
         "unit": {
-          "$ref": "/schemas/3.0.6/enums/distance-unit.json",
+          "$ref": "/schemas/3.0.8/enums/distance-unit.json",
           "description": "Distance unit."
         }
       },
@@ -14729,7 +14729,7 @@ export const core_Catchment = {
       "additionalProperties": false
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -14871,7 +14871,7 @@ export const core_Catchment = {
 
 export const core_CollectionDistribution = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/collection-distribution.json",
+  "$id": "/schemas/3.0.8/core/collection-distribution.json",
   "title": "Collection Distribution",
   "description": "A collection's presence on a specific publisher platform, identified by platform-specific identifiers. Enables cross-seller matching when the same collection is sold by different agents.",
   "type": "object",
@@ -14887,7 +14887,7 @@ export const core_CollectionDistribution = {
         "type": "object",
         "properties": {
           "type": {
-            "$ref": "/schemas/3.0.6/enums/distribution-identifier-type.json",
+            "$ref": "/schemas/3.0.8/enums/distribution-identifier-type.json",
             "description": "Type of distribution identifier"
           },
           "value": {
@@ -14913,7 +14913,7 @@ export const core_CollectionDistribution = {
 
 export const core_CollectionListRef = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/collection-list-ref.json",
+  "$id": "/schemas/3.0.8/core/collection-list-ref.json",
   "title": "Collection List Reference",
   "description": "Reference to an externally managed collection list. Enables passing large collection exclusion/inclusion sets without embedding them in requests. The receiving agent fetches and caches the list independently.",
   "type": "object",
@@ -14943,7 +14943,7 @@ export const core_CollectionListRef = {
 
 export const core_CollectionSelector = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/collection-selector.json",
+  "$id": "/schemas/3.0.8/core/collection-selector.json",
   "title": "Collection Selector",
   "description": "References collections declared in an adagents.json. Buyers resolve full collection objects by fetching the adagents.json at the given domain and matching collection_ids against its collections array.",
   "type": "object",
@@ -14971,7 +14971,7 @@ export const core_CollectionSelector = {
 
 export const core_Collection = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/collection.json",
+  "$id": "/schemas/3.0.8/core/collection.json",
   "title": "Collection",
   "description": "A recurring inventory container — a named program, publication, event series, or rotation that produces bookable installments on a defined cadence. The kind field indicates how to interpret this collection: 'series' for TV/podcast programs, 'publication' for print/newsletter titles, 'event_series' for live events, 'rotation' for DOOH scheduling. Declared in the publisher's adagents.json and referenced by products via collection selectors.",
   "type": "object",
@@ -14985,7 +14985,7 @@ export const core_Collection = {
       "description": "Human-readable collection name"
     },
     "kind": {
-      "$ref": "/schemas/3.0.6/enums/collection-kind.json",
+      "$ref": "/schemas/3.0.8/enums/collection-kind.json",
       "description": "What kind of content program this is. Helps agents interpret installments correctly. Defaults to 'series' when absent."
     },
     "description": {
@@ -15008,11 +15008,11 @@ export const core_Collection = {
       "description": "Primary language (BCP 47 tag, e.g., 'en', 'es-MX')"
     },
     "content_rating": {
-      "$ref": "/schemas/3.0.6/core/content-rating.json",
+      "$ref": "/schemas/3.0.8/core/content-rating.json",
       "description": "Baseline content rating for the collection. Individual installments may override this."
     },
     "cadence": {
-      "$ref": "/schemas/3.0.6/enums/collection-cadence.json",
+      "$ref": "/schemas/3.0.8/enums/collection-cadence.json",
       "description": "How frequently the collection releases new installments"
     },
     "season": {
@@ -15020,37 +15020,37 @@ export const core_Collection = {
       "description": "Current or most recent season identifier (e.g., '3', '2026', 'spring_2026'). A lightweight label — not a full season object."
     },
     "status": {
-      "$ref": "/schemas/3.0.6/enums/collection-status.json",
+      "$ref": "/schemas/3.0.8/enums/collection-status.json",
       "description": "Lifecycle status of the collection"
     },
     "production_quality": {
-      "$ref": "/schemas/3.0.6/enums/production-quality.json",
+      "$ref": "/schemas/3.0.8/enums/production-quality.json",
       "description": "Production quality tier. Seller-declared. Maps to OpenRTB content.prodq (professional=1, prosumer=2, ugc=3)."
     },
     "talent": {
       "type": "array",
       "description": "Hosts, recurring cast, creators associated with the collection. Each talent entry may include a brand_url linking to their brand.json identity.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/talent.json"
+        "$ref": "/schemas/3.0.8/core/talent.json"
       }
     },
     "special": {
-      "$ref": "/schemas/3.0.6/core/special.json",
+      "$ref": "/schemas/3.0.8/core/special.json",
       "description": "When present, this collection is a special — content anchored to a real-world event or occasion. Individual installments may override with their own event context."
     },
     "limited_series": {
-      "$ref": "/schemas/3.0.6/core/limited-series.json",
+      "$ref": "/schemas/3.0.8/core/limited-series.json",
       "description": "When present, this collection is a limited series — a bounded run with a defined arc, installment count, and end date."
     },
     "distribution": {
       "type": "array",
       "description": "Where this collection is distributed. Each entry maps the collection to a publisher platform with platform-specific identifiers. Collections SHOULD include at least one platform-independent identifier (imdb_id, gracenote_id, eidr_id) when available.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/collection-distribution.json"
+        "$ref": "/schemas/3.0.8/core/collection-distribution.json"
       }
     },
     "deadline_policy": {
-      "$ref": "/schemas/3.0.6/core/deadline-policy.json",
+      "$ref": "/schemas/3.0.8/core/deadline-policy.json",
       "description": "Default deadline rules for installments of this collection. Agents compute absolute deadlines from each installment's scheduled_at and these lead times. Installments with explicit deadlines override this policy."
     },
     "related_collections": {
@@ -15064,7 +15064,7 @@ export const core_Collection = {
             "description": "The related collection's collection_id within this seller's response"
           },
           "relationship": {
-            "$ref": "/schemas/3.0.6/enums/collection-relationship.json",
+            "$ref": "/schemas/3.0.8/enums/collection-relationship.json",
             "description": "How the collections are related"
           }
         },
@@ -15076,7 +15076,7 @@ export const core_Collection = {
       }
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -15088,13 +15088,13 @@ export const core_Collection = {
 
 export const core_ContentRating = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/content-rating.json",
+  "$id": "/schemas/3.0.8/core/content-rating.json",
   "title": "Content Rating",
   "description": "Content advisory rating using a specified rating system",
   "type": "object",
   "properties": {
     "system": {
-      "$ref": "/schemas/3.0.6/enums/content-rating-system.json",
+      "$ref": "/schemas/3.0.8/enums/content-rating-system.json",
       "description": "Rating system used"
     },
     "rating": {
@@ -15111,7 +15111,7 @@ export const core_ContentRating = {
 
 export const core_Context = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/context.json",
+  "$id": "/schemas/3.0.8/core/context.json",
   "title": "Context Object",
   "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
   "type": "object",
@@ -15120,7 +15120,7 @@ export const core_Context = {
 
 export const core_CreativeAsset = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/creative-asset.json",
+  "$id": "/schemas/3.0.8/core/creative-asset.json",
   "title": "Creative Asset",
   "description": "Creative asset for upload to library - supports static assets, generative formats, and third-party snippets",
   "type": "object",
@@ -15135,7 +15135,7 @@ export const core_CreativeAsset = {
       "description": "Human-readable creative name"
     },
     "format_id": {
-      "$ref": "/schemas/3.0.6/core/format-id.json",
+      "$ref": "/schemas/3.0.8/core/format-id.json",
       "description": "Always a structured object {agent_url, id} — never a plain string. Format identifier specifying which format this creative conforms to. Can be: (1) concrete format_id referencing a format with fixed dimensions, (2) template format_id referencing a template format, or (3) parameterized format_id with dimensions/duration parameters for template formats."
     },
     "assets": {
@@ -15143,7 +15143,7 @@ export const core_CreativeAsset = {
       "description": "Assets required by the format, keyed by asset_id. Each asset value carries an `asset_type` discriminator that selects the matching asset schema.",
       "patternProperties": {
         "^[a-z0-9_]+$": {
-          "$ref": "/schemas/3.0.6/core/assets/asset-union.json"
+          "$ref": "/schemas/3.0.8/core/assets/asset-union.json"
         }
       },
       "additionalProperties": true
@@ -15184,7 +15184,7 @@ export const core_CreativeAsset = {
       }
     },
     "status": {
-      "$ref": "/schemas/3.0.6/enums/creative-status.json",
+      "$ref": "/schemas/3.0.8/enums/creative-status.json",
       "description": "For generative creatives: set to 'approved' to finalize, 'rejected' to request regeneration with updated assets/message. Omit for non-generative creatives (system will set based on processing state)."
     },
     "weight": {
@@ -15205,12 +15205,12 @@ export const core_CreativeAsset = {
       "type": "array",
       "description": "Industry-standard identifiers for this creative (e.g., Ad-ID, ISCI, Clearcast clock number). In broadcast buying, these identifiers tie the creative to rotation instructions and traffic systems. A creative may have multiple identifiers when different systems reference the same asset.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/industry-identifier.json"
+        "$ref": "/schemas/3.0.8/core/industry-identifier.json"
       },
       "uniqueItems": true
     },
     "provenance": {
-      "$ref": "/schemas/3.0.6/core/provenance.json",
+      "$ref": "/schemas/3.0.8/core/provenance.json",
       "description": "Provenance metadata for this creative. Serves as the default provenance for all manifests and assets within this creative. A manifest or asset with its own provenance replaces this object entirely (no field-level merging)."
     }
   },
@@ -15225,7 +15225,7 @@ export const core_CreativeAsset = {
 
 export const core_CreativeAssignment = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/creative-assignment.json",
+  "$id": "/schemas/3.0.8/core/creative-assignment.json",
   "title": "Creative Assignment",
   "description": "Assignment of a creative asset to a package with optional placement targeting. Used in create_media_buy and update_media_buy requests. Note: sync_creatives does not support placement_ids - use create/update_media_buy for placement-level targeting.",
   "type": "object",
@@ -15258,7 +15258,7 @@ export const core_CreativeAssignment = {
 
 export const core_CreativeBrief = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/creative-brief.json",
+  "$id": "/schemas/3.0.8/core/creative-brief.json",
   "title": "Creative Brief",
   "description": "Campaign-level creative context for AI-powered creative generation. Provides the layer between brand identity (stable across campaigns) and individual creative execution (per-request). A brand has one identity (defined in brand.json) but different creative briefs for each campaign or flight.",
   "type": "object",
@@ -15320,7 +15320,7 @@ export const core_CreativeBrief = {
       "type": "array",
       "description": "Visual and strategic reference materials such as mood boards, product shots, example creatives, and strategy documents",
       "items": {
-        "$ref": "/schemas/3.0.6/core/reference-asset.json"
+        "$ref": "/schemas/3.0.8/core/reference-asset.json"
       }
     },
     "compliance": {
@@ -15338,7 +15338,7 @@ export const core_CreativeBrief = {
                 "description": "The disclosure text that must appear in the creative"
               },
               "position": {
-                "$ref": "/schemas/3.0.6/enums/disclosure-position.json",
+                "$ref": "/schemas/3.0.8/enums/disclosure-position.json",
                 "description": "Where the disclosure should appear within the creative. prominent: clearly visible in the main creative area; footer: at the bottom of visual creatives; audio: spoken in audio/video creatives; subtitle: displayed in the subtitle or closed-caption track; overlay: superimposed on video content; end_card: displayed on video end card; pre_roll: spoken or displayed before main content; companion: in companion ad unit alongside primary creative"
               },
               "jurisdictions": {
@@ -15364,7 +15364,7 @@ export const core_CreativeBrief = {
                 "description": "Language of the disclosure text as a BCP 47 language tag (e.g., 'en', 'fr-CA', 'es'). When omitted, the disclosure is assumed to match the creative's language."
               },
               "persistence": {
-                "$ref": "/schemas/3.0.6/enums/disclosure-persistence.json",
+                "$ref": "/schemas/3.0.8/enums/disclosure-persistence.json",
                 "description": "How long the disclosure must persist during content playback or display. When omitted, the creative agent should use the most restrictive persistence mode supported by the target format."
               }
             },
@@ -15395,7 +15395,7 @@ export const core_CreativeBrief = {
 
 export const core_CreativeConsumption = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/creative-consumption.json",
+  "$id": "/schemas/3.0.8/core/creative-consumption.json",
   "title": "Creative Consumption",
   "description": "Structured consumption details returned by build_creative when a paid creative agent computes cost. Contains well-known fields for common consumption metrics. The consumption object is informational — it lets the buyer verify that vendor_cost is consistent with the rate card. vendor_cost is the billing source of truth, not consumption.",
   "type": "object",
@@ -15426,7 +15426,7 @@ export const core_CreativeConsumption = {
 
 export const core_CreativeFilters = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/creative-filters.json",
+  "$id": "/schemas/3.0.8/core/creative-filters.json",
   "title": "Creative Filters",
   "description": "Filter criteria for querying creatives from a creative library. By default, archived creatives are excluded from results. To include archived creatives, explicitly filter by status='archived' or include 'archived' in the statuses array.",
   "type": "object",
@@ -15435,7 +15435,7 @@ export const core_CreativeFilters = {
       "type": "array",
       "description": "Filter creatives by owning accounts. Useful for agencies managing multiple client accounts.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/account-ref.json"
+        "$ref": "/schemas/3.0.8/core/account-ref.json"
       },
       "minItems": 1
     },
@@ -15443,7 +15443,7 @@ export const core_CreativeFilters = {
       "type": "array",
       "description": "Filter by creative approval statuses",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/creative-status.json"
+        "$ref": "/schemas/3.0.8/enums/creative-status.json"
       },
       "minItems": 1
     },
@@ -15532,7 +15532,7 @@ export const core_CreativeFilters = {
       "type": "array",
       "description": "Filter by structured format IDs. Returns creatives that match any of these formats.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       },
       "minItems": 1
     },
@@ -15546,7 +15546,7 @@ export const core_CreativeFilters = {
 
 export const core_CreativeItem = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/creative-item.json",
+  "$id": "/schemas/3.0.8/core/creative-item.json",
   "title": "Creative Item",
   "description": "Item within a multi-asset creative format. Used for carousel products, native ad components, and other formats composed of multiple distinct elements.",
   "oneOf": [
@@ -15626,13 +15626,13 @@ export const core_CreativeItem = {
 
 export const core_CreativeManifest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/creative-manifest.json",
+  "$id": "/schemas/3.0.8/core/creative-manifest.json",
   "title": "Creative Manifest",
   "description": "Complete specification of a creative: format_id + assets. Everything the creative needs — images, text, briefs, catalogs — lives in the assets map, declared by the format. Each asset is typed according to its asset_type from the format specification.",
   "type": "object",
   "properties": {
     "format_id": {
-      "$ref": "/schemas/3.0.6/core/format-id.json",
+      "$ref": "/schemas/3.0.8/core/format-id.json",
       "description": "Always a structured object {agent_url, id} — never a plain string. Format identifier this manifest is for. Can be a template format (id only) or a deterministic format (id + dimensions/duration). For dimension-specific creatives, include width/height in the format_id to create a unique identifier (e.g., {id: 'display_static', width: 300, height: 250})."
     },
     "assets": {
@@ -15640,7 +15640,7 @@ export const core_CreativeManifest = {
       "description": "Map of asset IDs to actual asset content. Each key MUST match an asset_id from the format's assets array (e.g., 'banner_image', 'clickthrough_url', 'video_file', 'vast_tag'). The asset_id is the technical identifier used to match assets to format requirements.\n\nEach asset value carries an `asset_type` discriminator (image, video, audio, vast, daast, text, markdown, url, html, css, webhook, javascript, brief, catalog) that selects the matching asset schema. Validators with OpenAPI-style discriminator support use `asset_type` to report errors against only the selected branch instead of all branches.",
       "patternProperties": {
         "^[a-z0-9_]+$": {
-          "$ref": "/schemas/3.0.6/core/assets/asset-union.json"
+          "$ref": "/schemas/3.0.8/core/assets/asset-union.json"
         }
       },
       "additionalProperties": true
@@ -15649,23 +15649,23 @@ export const core_CreativeManifest = {
       "type": "array",
       "description": "Rights constraints attached to this creative. Each entry represents constraints from a single rights holder. A creative may combine multiple rights constraints (e.g., talent likeness + music license). For v1, rights constraints are informational metadata — the buyer/orchestrator manages creative lifecycle against these terms.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/rights-constraint.json"
+        "$ref": "/schemas/3.0.8/core/rights-constraint.json"
       }
     },
     "industry_identifiers": {
       "type": "array",
       "description": "Industry-standard identifiers for this specific manifest (e.g., Ad-ID, ISCI, Clearcast clock number). When present, overrides creative-level identifiers. Use when different format versions of the same source creative have distinct Ad-IDs (e.g., the :15 and :30 cuts).",
       "items": {
-        "$ref": "/schemas/3.0.6/core/industry-identifier.json"
+        "$ref": "/schemas/3.0.8/core/industry-identifier.json"
       },
       "uniqueItems": true
     },
     "provenance": {
-      "$ref": "/schemas/3.0.6/core/provenance.json",
+      "$ref": "/schemas/3.0.8/core/provenance.json",
       "description": "Provenance metadata for this creative manifest. Serves as the default provenance for all assets in this manifest. An asset with its own provenance replaces this object entirely (no field-level merging)."
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -15677,17 +15677,17 @@ export const core_CreativeManifest = {
 
 export const core_CreativePolicy = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/creative-policy.json",
+  "$id": "/schemas/3.0.8/core/creative-policy.json",
   "title": "Creative Policy",
   "description": "Creative requirements and restrictions for a product",
   "type": "object",
   "properties": {
     "co_branding": {
-      "$ref": "/schemas/3.0.6/enums/co-branding-requirement.json",
+      "$ref": "/schemas/3.0.8/enums/co-branding-requirement.json",
       "description": "Co-branding requirement"
     },
     "landing_page": {
-      "$ref": "/schemas/3.0.6/enums/landing-page-requirement.json",
+      "$ref": "/schemas/3.0.8/enums/landing-page-requirement.json",
       "description": "Landing page requirements"
     },
     "templates_available": {
@@ -15709,7 +15709,7 @@ export const core_CreativePolicy = {
 
 export const core_CreativeVariable = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/creative-variable.json",
+  "$id": "/schemas/3.0.8/core/creative-variable.json",
   "title": "Creative Variable",
   "description": "A dynamic content variable (DCO slot) on a creative. Variables represent content that can change at serve time — headlines, images, product data, etc.",
   "type": "object",
@@ -15757,13 +15757,13 @@ export const core_CreativeVariable = {
 
 export const core_CreativeVariant = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/creative-variant.json",
+  "$id": "/schemas/3.0.8/core/creative-variant.json",
   "title": "Creative Variant",
   "description": "A specific execution variant of a creative with delivery metrics. For catalog-driven packages, each catalog item rendered as a distinct ad execution is a variant — the variant's manifest includes the catalog reference with the specific item rendered. For asset group optimization, represents one combination of assets the platform selected. For generative creative, represents a platform-generated variant. For standard creatives, maps 1:1 with the creative itself.",
   "type": "object",
   "allOf": [
     {
-      "$ref": "/schemas/3.0.6/core/delivery-metrics.json"
+      "$ref": "/schemas/3.0.8/core/delivery-metrics.json"
     },
     {
       "properties": {
@@ -15772,7 +15772,7 @@ export const core_CreativeVariant = {
           "description": "Platform-assigned identifier for this variant"
         },
         "manifest": {
-          "$ref": "/schemas/3.0.6/core/creative-manifest.json",
+          "$ref": "/schemas/3.0.8/core/creative-manifest.json",
           "description": "The rendered creative manifest for this variant — the actual output that was served, not the input assets. Contains format_id and the resolved assets (specific headline, image, video, etc. the platform selected or generated). For Tier 2, shows which asset combination was picked. For Tier 3, contains the generated assets which may differ entirely from the input brand identity. Pass to preview_creative to re-render."
         },
         "generation_context": {
@@ -15788,7 +15788,7 @@ export const core_CreativeVariant = {
               "description": "Reference to the content-standards artifact that provided the generation context. Links this variant to the specific piece of content (article, video, podcast segment, etc.) where the ad was placed.",
               "properties": {
                 "property_id": {
-                  "$ref": "/schemas/3.0.6/core/identifier.json",
+                  "$ref": "/schemas/3.0.8/core/identifier.json",
                   "description": "Property where the artifact appears"
                 },
                 "artifact_id": {
@@ -15803,7 +15803,7 @@ export const core_CreativeVariant = {
               "additionalProperties": false
             },
             "ext": {
-              "$ref": "/schemas/3.0.6/core/ext.json"
+              "$ref": "/schemas/3.0.8/core/ext.json"
             }
           },
           "additionalProperties": true
@@ -15818,7 +15818,7 @@ export const core_CreativeVariant = {
 
 export const core_DataProviderSignalSelector = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/data-provider-signal-selector.json",
+  "$id": "/schemas/3.0.8/core/data-provider-signal-selector.json",
   "title": "Data Provider Signal Selector",
   "description": "Selects signals from a data provider's adagents.json catalog. Used for product definitions and agent authorization. Supports three selection patterns: all signals, specific IDs, or by tags.",
   "discriminator": {
@@ -15913,7 +15913,7 @@ export const core_DataProviderSignalSelector = {
 
 export const core_DateRange = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/date-range.json",
+  "$id": "/schemas/3.0.8/core/date-range.json",
   "title": "Date Range",
   "description": "A date range with inclusive start and end dates (ISO 8601 calendar dates). Used for billing periods, flight dates, and other calendar-day boundaries.",
   "type": "object",
@@ -15938,7 +15938,7 @@ export const core_DateRange = {
 
 export const core_DatetimeRange = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/datetime-range.json",
+  "$id": "/schemas/3.0.8/core/datetime-range.json",
   "title": "Datetime Range",
   "description": "A datetime range with inclusive start and end timestamps (ISO 8601 with timezone). Used for measurement windows, reporting periods, and other sub-day precision boundaries.",
   "type": "object",
@@ -15963,7 +15963,7 @@ export const core_DatetimeRange = {
 
 export const core_DaypartTarget = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/daypart-target.json",
+  "$id": "/schemas/3.0.8/core/daypart-target.json",
   "title": "Daypart Target",
   "description": "A time window for daypart targeting. Specifies days of week and an hour range. start_hour is inclusive, end_hour is exclusive (e.g., 6-10 = 6:00am to 10:00am). Follows the Google Ads AdScheduleInfo / DV360 DayPartTargeting pattern.",
   "type": "object",
@@ -15972,7 +15972,7 @@ export const core_DaypartTarget = {
       "type": "array",
       "description": "Days of week this window applies to. Use multiple days for compact targeting (e.g., monday-friday in one object).",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/day-of-week.json"
+        "$ref": "/schemas/3.0.8/enums/day-of-week.json"
       },
       "minItems": 1
     },
@@ -16003,7 +16003,7 @@ export const core_DaypartTarget = {
 
 export const core_DeadlinePolicy = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/deadline-policy.json",
+  "$id": "/schemas/3.0.8/core/deadline-policy.json",
   "title": "Deadline Policy",
   "description": "Default deadline rules for installments that do not declare their own deadlines. Agents compute absolute deadlines from the installment's scheduled_at and these lead times. Installments with explicit deadlines override this policy. booking_lead_days SHOULD be >= cancellation_lead_days (bookings close before cancellation window closes).",
   "type": "object",
@@ -16062,7 +16062,7 @@ export const core_DeadlinePolicy = {
 
 export const core_DeliveryForecast = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/delivery-forecast.json",
+  "$id": "/schemas/3.0.8/core/delivery-forecast.json",
   "title": "Delivery Forecast",
   "description": "Forecasted delivery metrics for a proposal or product allocation. Publishers attach points to help buyers evaluate expected campaign performance before purchase.",
   "type": "object",
@@ -16071,16 +16071,16 @@ export const core_DeliveryForecast = {
       "type": "array",
       "description": "Forecasted delivery data points. For spend curves (default), points at ascending budget levels show how metrics scale with spend. For availability forecasts, points represent total available inventory independent of budget. See forecast_range_unit for interpretation.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/forecast-point.json"
+        "$ref": "/schemas/3.0.8/core/forecast-point.json"
       },
       "minItems": 1
     },
     "forecast_range_unit": {
-      "$ref": "/schemas/3.0.6/enums/forecast-range-unit.json",
+      "$ref": "/schemas/3.0.8/enums/forecast-range-unit.json",
       "description": "How to interpret the points array. 'spend' (default when omitted): points at ascending budget levels. 'availability': total available inventory, budget omitted. 'reach_freq': points at ascending reach/frequency targets. 'weekly'/'daily': metrics are per-period values. 'clicks'/'conversions': points at ascending outcome targets. 'package': each point is a distinct inventory package."
     },
     "method": {
-      "$ref": "/schemas/3.0.6/enums/forecast-method.json",
+      "$ref": "/schemas/3.0.8/enums/forecast-method.json",
       "description": "Method used to produce this forecast"
     },
     "currency": {
@@ -16088,7 +16088,7 @@ export const core_DeliveryForecast = {
       "description": "ISO 4217 currency code for monetary values in this forecast (spend, budget)"
     },
     "demographic_system": {
-      "$ref": "/schemas/3.0.6/enums/demographic-system.json",
+      "$ref": "/schemas/3.0.8/enums/demographic-system.json",
       "description": "Measurement system for the demographic field. Ensures buyer and seller agree on demographic notation."
     },
     "demographic": {
@@ -16122,7 +16122,7 @@ export const core_DeliveryForecast = {
       ]
     },
     "reach_unit": {
-      "$ref": "/schemas/3.0.6/enums/reach-unit.json",
+      "$ref": "/schemas/3.0.8/enums/reach-unit.json",
       "description": "Unit of measurement for reach and audience_size metrics in this forecast. Required for cross-channel forecast comparison."
     },
     "generated_at": {
@@ -16136,7 +16136,7 @@ export const core_DeliveryForecast = {
       "description": "When this forecast expires. After this time, the forecast should be refreshed. Forecast expiry does not affect proposal executability."
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -16149,7 +16149,7 @@ export const core_DeliveryForecast = {
 
 export const core_DeliveryMetrics = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/delivery-metrics.json",
+  "$id": "/schemas/3.0.8/core/delivery-metrics.json",
   "title": "Delivery Metrics",
   "description": "Standard delivery metrics that can be reported at media buy, package, or creative level",
   "type": "object",
@@ -16229,7 +16229,7 @@ export const core_DeliveryMetrics = {
         "type": "object",
         "properties": {
           "event_type": {
-            "$ref": "/schemas/3.0.6/enums/event-type.json",
+            "$ref": "/schemas/3.0.8/enums/event-type.json",
             "description": "The event type"
           },
           "event_source_id": {
@@ -16267,7 +16267,7 @@ export const core_DeliveryMetrics = {
     "reach_unit": {
       "allOf": [
         {
-          "$ref": "/schemas/3.0.6/enums/reach-unit.json"
+          "$ref": "/schemas/3.0.8/enums/reach-unit.json"
         }
       ],
       "description": "Unit of measurement for the reach field. Aligns with the reach_unit declared on optimization goals and delivery forecasts. Required when reach is present to enable cross-platform comparison."
@@ -16397,7 +16397,7 @@ export const core_DeliveryMetrics = {
           "maximum": 1
         },
         "standard": {
-          "$ref": "/schemas/3.0.6/enums/viewability-standard.json",
+          "$ref": "/schemas/3.0.8/enums/viewability-standard.json",
           "description": "Viewability measurement standard applied to these metrics."
         }
       },
@@ -16441,7 +16441,7 @@ export const core_DeliveryMetrics = {
         "type": "object",
         "properties": {
           "action_source": {
-            "$ref": "/schemas/3.0.6/enums/action-source.json",
+            "$ref": "/schemas/3.0.8/enums/action-source.json",
             "description": "Where the conversion occurred"
           },
           "event_source_id": {
@@ -16477,7 +16477,7 @@ export const core_DeliveryMetrics = {
 
 export const core_Deployment = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/deployment.json",
+  "$id": "/schemas/3.0.8/core/deployment.json",
   "title": "Deployment",
   "description": "A signal deployment to a specific deployment target with activation status and key",
   "oneOf": [
@@ -16502,7 +16502,7 @@ export const core_Deployment = {
           "description": "Whether signal is currently active on this deployment"
         },
         "activation_key": {
-          "$ref": "/schemas/3.0.6/core/activation-key.json",
+          "$ref": "/schemas/3.0.8/core/activation-key.json",
           "description": "The key to use for targeting. Only present if is_live=true AND requester has access to this deployment."
         },
         "estimated_activation_duration_minutes": {
@@ -16545,7 +16545,7 @@ export const core_Deployment = {
           "description": "Whether signal is currently active on this deployment"
         },
         "activation_key": {
-          "$ref": "/schemas/3.0.6/core/activation-key.json",
+          "$ref": "/schemas/3.0.8/core/activation-key.json",
           "description": "The key to use for targeting. Only present if is_live=true AND requester has access to this deployment."
         },
         "estimated_activation_duration_minutes": {
@@ -16571,7 +16571,7 @@ export const core_Deployment = {
 
 export const core_DestinationItem = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/destination-item.json",
+  "$id": "/schemas/3.0.8/core/destination-item.json",
   "title": "Destination Item",
   "description": "A travel destination within a destination-type catalog. Carries the location, imagery, and pricing data that platforms use for destination ads and travel remarketing. Maps to Meta destination catalogs, Google travel ads, and similar formats.",
   "type": "object",
@@ -16638,7 +16638,7 @@ export const core_DestinationItem = {
       "description": "Destination category."
     },
     "price": {
-      "$ref": "/schemas/3.0.6/core/price.json",
+      "$ref": "/schemas/3.0.8/core/price.json",
       "description": "Starting price for a trip to this destination."
     },
     "image_url": {
@@ -16669,12 +16669,12 @@ export const core_DestinationItem = {
       "type": "array",
       "description": "Typed creative asset pools for this destination. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (destination hero), 'images_vertical' (9:16 for Snap, Stories), 'images_square' (1:1). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/offering-asset-group.json"
+        "$ref": "/schemas/3.0.8/core/offering-asset-group.json"
       },
       "minItems": 1
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -16740,7 +16740,7 @@ export const core_DestinationItem = {
 
 export const core_Destination = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/destination.json",
+  "$id": "/schemas/3.0.8/core/destination.json",
   "title": "Destination",
   "description": "A deployment target where signals can be activated (DSP, sales agent, etc.)",
   "oneOf": [
@@ -16794,7 +16794,7 @@ export const core_Destination = {
 
 export const core_DiagnosticIssue = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/diagnostic-issue.json",
+  "$id": "/schemas/3.0.8/core/diagnostic-issue.json",
   "title": "Diagnostic Issue",
   "description": "An actionable issue detected during a health or readiness assessment. Used by event source health and measurement readiness to surface problems and recommendations.",
   "type": "object",
@@ -16822,7 +16822,7 @@ export const core_DiagnosticIssue = {
 
 export const core_Duration = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/duration.json",
+  "$id": "/schemas/3.0.8/core/duration.json",
   "title": "Duration",
   "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 — the window spans the full campaign flight.",
   "type": "object",
@@ -16853,7 +16853,7 @@ export const core_Duration = {
 
 export const core_EducationItem = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/education-item.json",
+  "$id": "/schemas/3.0.8/core/education-item.json",
   "title": "Education Item",
   "description": "An educational program or course within an education-type catalog. Carries the program details that platforms use for education ads and student recruitment campaigns. Maps to Google DynamicEducationAsset, schema.org Course, and similar formats.",
   "type": "object",
@@ -16901,7 +16901,7 @@ export const core_EducationItem = {
       "description": "Difficulty or prerequisite level."
     },
     "price": {
-      "$ref": "/schemas/3.0.6/core/price.json",
+      "$ref": "/schemas/3.0.8/core/price.json",
       "description": "Tuition or course fee."
     },
     "duration": {
@@ -16952,12 +16952,12 @@ export const core_EducationItem = {
       "type": "array",
       "description": "Typed creative asset pools for this program. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (campus/program hero), 'images_vertical' (9:16 for Stories), 'logo' (institution logo). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/offering-asset-group.json"
+        "$ref": "/schemas/3.0.8/core/offering-asset-group.json"
       },
       "minItems": 1
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -17022,7 +17022,7 @@ export const core_EducationItem = {
 
 export const core_Error = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/error.json",
+  "$id": "/schemas/3.0.8/core/error.json",
   "title": "Error",
   "description": "Standard error structure for task-specific errors and warnings",
   "type": "object",
@@ -17106,7 +17106,7 @@ export const core_Error = {
 
 export const core_EventCustomData = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/event-custom-data.json",
+  "$id": "/schemas/3.0.8/core/event-custom-data.json",
   "title": "Event Custom Data",
   "description": "Event-specific data for attribution and reporting",
   "type": "object",
@@ -17185,7 +17185,7 @@ export const core_EventCustomData = {
       }
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -17193,13 +17193,13 @@ export const core_EventCustomData = {
 
 export const core_EventSourceHealth = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/event-source-health.json",
+  "$id": "/schemas/3.0.8/core/event-source-health.json",
   "title": "Event Source Health",
   "description": "Health assessment for a configured event source. Sellers evaluate the quality, completeness, and volume of events received from this source. Sellers with native quality scores (Snap EQS, Meta EMQ) relay them in detail; sellers without native scores derive status from operational metrics (volume, error rates, tag activity).",
   "type": "object",
   "properties": {
     "status": {
-      "$ref": "/schemas/3.0.6/enums/assessment-status.json",
+      "$ref": "/schemas/3.0.8/enums/assessment-status.json",
       "description": "Overall health status. Use this for cross-seller decisions — do not rely on detail.score for comparability."
     },
     "detail": {
@@ -17252,7 +17252,7 @@ export const core_EventSourceHealth = {
       "type": "array",
       "description": "Actionable issues detected with this event source. Sellers should limit to the top 3-5 most actionable items. Buyer agents should sort by severity rather than relying on array position.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/diagnostic-issue.json"
+        "$ref": "/schemas/3.0.8/core/diagnostic-issue.json"
       }
     }
   },
@@ -17264,7 +17264,7 @@ export const core_EventSourceHealth = {
 
 export const core_Event = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/event.json",
+  "$id": "/schemas/3.0.8/core/event.json",
   "title": "Event",
   "description": "A marketing event (conversion, engagement, or custom) for attribution and optimization",
   "type": "object",
@@ -17276,7 +17276,7 @@ export const core_Event = {
       "maxLength": 256
     },
     "event_type": {
-      "$ref": "/schemas/3.0.6/enums/event-type.json",
+      "$ref": "/schemas/3.0.8/enums/event-type.json",
       "description": "Standard event type"
     },
     "event_time": {
@@ -17285,15 +17285,15 @@ export const core_Event = {
       "description": "ISO 8601 timestamp when the event occurred"
     },
     "user_match": {
-      "$ref": "/schemas/3.0.6/core/user-match.json",
+      "$ref": "/schemas/3.0.8/core/user-match.json",
       "description": "User identifiers for attribution matching"
     },
     "custom_data": {
-      "$ref": "/schemas/3.0.6/core/event-custom-data.json",
+      "$ref": "/schemas/3.0.8/core/event-custom-data.json",
       "description": "Event-specific data (value, currency, items, etc.)"
     },
     "action_source": {
-      "$ref": "/schemas/3.0.6/enums/action-source.json",
+      "$ref": "/schemas/3.0.8/enums/action-source.json",
       "description": "Where the event originated"
     },
     "event_source_url": {
@@ -17306,7 +17306,7 @@ export const core_Event = {
       "description": "Name for custom events (used when event_type is 'custom')"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -17319,7 +17319,7 @@ export const core_Event = {
 
 export const core_Ext = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/ext.json",
+  "$id": "/schemas/3.0.8/core/ext.json",
   "title": "Extension Object",
   "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
   "type": "object",
@@ -17328,7 +17328,7 @@ export const core_Ext = {
 
 export const core_FeatureRequirement = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/feature-requirement.json",
+  "$id": "/schemas/3.0.8/core/feature-requirement.json",
   "title": "Feature Requirement",
   "description": "A feature-based requirement — a reusable predicate over a feature value. Used by property list filters today; designed for reuse in other surfaces (audience filters, creative gates) in future versions. Use min_value/max_value for quantitative features, allowed_values for binary/categorical features.",
   "type": "object",
@@ -17374,7 +17374,7 @@ export const core_FeatureRequirement = {
 
 export const core_FlightItem = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/flight-item.json",
+  "$id": "/schemas/3.0.8/core/flight-item.json",
   "title": "Flight Item",
   "description": "A flight route within a flight-type catalog. Carries origin/destination, airline, pricing, and schedule data that platforms use for flight ads and dynamic travel remarketing. Maps to Google DynamicFlightsAsset, Meta flight catalogs, and similar formats.",
   "type": "object",
@@ -17426,7 +17426,7 @@ export const core_FlightItem = {
       "description": "Airline name or IATA airline code."
     },
     "price": {
-      "$ref": "/schemas/3.0.6/core/price.json",
+      "$ref": "/schemas/3.0.8/core/price.json",
       "description": "Ticket price or starting fare."
     },
     "description": {
@@ -17465,12 +17465,12 @@ export const core_FlightItem = {
       "type": "array",
       "description": "Typed creative asset pools for this flight. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (destination hero), 'images_vertical' (9:16 for Stories), 'images_square' (1:1). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/offering-asset-group.json"
+        "$ref": "/schemas/3.0.8/core/offering-asset-group.json"
       },
       "minItems": 1
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -17534,7 +17534,7 @@ export const core_FlightItem = {
 
 export const core_ForecastPoint = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/forecast-point.json",
+  "$id": "/schemas/3.0.8/core/forecast-point.json",
   "title": "Forecast Point",
   "description": "A forecast data point. When budget is present, the point pairs a spend level with expected delivery — multiple points at ascending budgets form a curve. When budget is omitted, the point represents total available inventory for the requested targeting and dates, independent of spend.",
   "type": "object",
@@ -17559,56 +17559,56 @@ export const core_ForecastPoint = {
       "description": "Forecasted metric values. Keys are forecastable-metric enum values for delivery/engagement or event-type enum values for outcomes. Values are ForecastRange objects (low/mid/high). Use { \"mid\": value } for point estimates. When budget is present, these are the expected metrics at that spend level. When budget is omitted, these represent total available inventory — use spend to express the estimated cost. Additional keys beyond the documented properties are allowed for event-type values (purchase, lead, app_install, etc.).",
       "properties": {
         "audience_size": {
-          "$ref": "/schemas/3.0.6/core/forecast-range.json"
+          "$ref": "/schemas/3.0.8/core/forecast-range.json"
         },
         "reach": {
-          "$ref": "/schemas/3.0.6/core/forecast-range.json"
+          "$ref": "/schemas/3.0.8/core/forecast-range.json"
         },
         "frequency": {
-          "$ref": "/schemas/3.0.6/core/forecast-range.json"
+          "$ref": "/schemas/3.0.8/core/forecast-range.json"
         },
         "impressions": {
-          "$ref": "/schemas/3.0.6/core/forecast-range.json"
+          "$ref": "/schemas/3.0.8/core/forecast-range.json"
         },
         "clicks": {
-          "$ref": "/schemas/3.0.6/core/forecast-range.json"
+          "$ref": "/schemas/3.0.8/core/forecast-range.json"
         },
         "spend": {
-          "$ref": "/schemas/3.0.6/core/forecast-range.json"
+          "$ref": "/schemas/3.0.8/core/forecast-range.json"
         },
         "views": {
-          "$ref": "/schemas/3.0.6/core/forecast-range.json"
+          "$ref": "/schemas/3.0.8/core/forecast-range.json"
         },
         "completed_views": {
-          "$ref": "/schemas/3.0.6/core/forecast-range.json"
+          "$ref": "/schemas/3.0.8/core/forecast-range.json"
         },
         "grps": {
-          "$ref": "/schemas/3.0.6/core/forecast-range.json"
+          "$ref": "/schemas/3.0.8/core/forecast-range.json"
         },
         "engagements": {
-          "$ref": "/schemas/3.0.6/core/forecast-range.json"
+          "$ref": "/schemas/3.0.8/core/forecast-range.json"
         },
         "follows": {
-          "$ref": "/schemas/3.0.6/core/forecast-range.json"
+          "$ref": "/schemas/3.0.8/core/forecast-range.json"
         },
         "saves": {
-          "$ref": "/schemas/3.0.6/core/forecast-range.json"
+          "$ref": "/schemas/3.0.8/core/forecast-range.json"
         },
         "profile_visits": {
-          "$ref": "/schemas/3.0.6/core/forecast-range.json"
+          "$ref": "/schemas/3.0.8/core/forecast-range.json"
         },
         "measured_impressions": {
-          "$ref": "/schemas/3.0.6/core/forecast-range.json"
+          "$ref": "/schemas/3.0.8/core/forecast-range.json"
         },
         "downloads": {
-          "$ref": "/schemas/3.0.6/core/forecast-range.json"
+          "$ref": "/schemas/3.0.8/core/forecast-range.json"
         },
         "plays": {
-          "$ref": "/schemas/3.0.6/core/forecast-range.json"
+          "$ref": "/schemas/3.0.8/core/forecast-range.json"
         }
       },
       "additionalProperties": {
-        "$ref": "/schemas/3.0.6/core/forecast-range.json"
+        "$ref": "/schemas/3.0.8/core/forecast-range.json"
       }
     }
   },
@@ -17620,7 +17620,7 @@ export const core_ForecastPoint = {
 
 export const core_ForecastRange = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/forecast-range.json",
+  "$id": "/schemas/3.0.8/core/forecast-range.json",
   "title": "Forecast Range",
   "description": "A forecast value with optional confidence bounds. Either mid (point estimate) or both low and high (range) must be provided. mid represents the most likely outcome. low and high represent conservative and optimistic estimates. All three can be provided together.",
   "type": "object",
@@ -17659,7 +17659,7 @@ export const core_ForecastRange = {
 
 export const core_FormatId = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/format-id.json",
+  "$id": "/schemas/3.0.8/core/format-id.json",
   "title": "Format Reference (Structured Object)",
   "description": "A JSON object — never a plain string — that identifies a creative format by its declaring agent and local slug. Required properties: agent_url (URI of the agent that owns the format) and id (slug matching [a-zA-Z0-9_-]+). Example: {\"agent_url\": \"https://creative.adcontextprotocol.org\", \"id\": \"display_300x250\"}. Can reference: (1) a concrete format with fixed dimensions (id only), (2) a template format without parameters (id only), or (3) a template format with parameters (id + dimensions/duration). Template formats accept parameters in format_id while concrete formats have fixed dimensions in their definition. Parameterized format IDs create unique, specific format variants. Using a plain string here is a schema violation.",
   "x-entity": "creative_format",
@@ -17708,7 +17708,7 @@ export const core_FormatId = {
 
 export const core_Format = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/format.json",
+  "$id": "/schemas/3.0.8/core/format.json",
   "title": "Format",
   "description": "Represents a creative format with its requirements",
   "type": "object",
@@ -17737,7 +17737,7 @@ export const core_Format = {
           "type": "array",
           "description": "Publisher-controlled elements rendered on top of buyer content at this asset's position (e.g., video player controls, publisher logos). Creative agents should avoid placing critical content (CTAs, logos, key copy) within overlay bounds.",
           "items": {
-            "$ref": "/schemas/3.0.6/core/overlay.json"
+            "$ref": "/schemas/3.0.8/core/overlay.json"
           }
         }
       },
@@ -17768,7 +17768,7 @@ export const core_Format = {
           "type": "array",
           "description": "Publisher-controlled elements rendered on top of buyer content at this asset's position (e.g., carousel navigation arrows, slide indicators). Creative agents should avoid placing critical content within overlay bounds.",
           "items": {
-            "$ref": "/schemas/3.0.6/core/overlay.json"
+            "$ref": "/schemas/3.0.8/core/overlay.json"
           }
         }
       },
@@ -17781,7 +17781,7 @@ export const core_Format = {
   },
   "properties": {
     "format_id": {
-      "$ref": "/schemas/3.0.6/core/format-id.json",
+      "$ref": "/schemas/3.0.8/core/format-id.json",
       "description": "This format's own identifier — a structured object {agent_url, id}, not a string. See /schemas/core/format-id.json for the full shape."
     },
     "name": {
@@ -17801,7 +17801,7 @@ export const core_Format = {
       "type": "array",
       "description": "List of parameters this format accepts in format_id. Template formats define which parameters (dimensions, duration, etc.) can be specified when instantiating the format. Empty or omitted means this is a concrete format with fixed parameters.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/format-id-parameter.json"
+        "$ref": "/schemas/3.0.8/enums/format-id-parameter.json"
       },
       "uniqueItems": true
     },
@@ -17854,7 +17854,7 @@ export const core_Format = {
                 "description": "Maximum height for responsive renders"
               },
               "unit": {
-                "$ref": "/schemas/3.0.6/enums/dimension-unit.json",
+                "$ref": "/schemas/3.0.8/enums/dimension-unit.json",
                 "description": "Unit of measurement for width/height values. Defaults to 'px' when absent. Print formats use 'inches' or 'cm'."
               },
               "responsive": {
@@ -17935,7 +17935,7 @@ export const core_Format = {
                 "const": "image"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.6/core/requirements/image-asset-requirements.json"
+                "$ref": "/schemas/3.0.8/core/requirements/image-asset-requirements.json"
               }
             }
           },
@@ -17955,7 +17955,7 @@ export const core_Format = {
                 "const": "video"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.6/core/requirements/video-asset-requirements.json"
+                "$ref": "/schemas/3.0.8/core/requirements/video-asset-requirements.json"
               }
             }
           },
@@ -17975,7 +17975,7 @@ export const core_Format = {
                 "const": "audio"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.6/core/requirements/audio-asset-requirements.json"
+                "$ref": "/schemas/3.0.8/core/requirements/audio-asset-requirements.json"
               }
             }
           },
@@ -17995,7 +17995,7 @@ export const core_Format = {
                 "const": "text"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.6/core/requirements/text-asset-requirements.json"
+                "$ref": "/schemas/3.0.8/core/requirements/text-asset-requirements.json"
               }
             }
           },
@@ -18015,7 +18015,7 @@ export const core_Format = {
                 "const": "markdown"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.6/core/requirements/markdown-asset-requirements.json"
+                "$ref": "/schemas/3.0.8/core/requirements/markdown-asset-requirements.json"
               }
             }
           },
@@ -18035,7 +18035,7 @@ export const core_Format = {
                 "const": "html"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.6/core/requirements/html-asset-requirements.json"
+                "$ref": "/schemas/3.0.8/core/requirements/html-asset-requirements.json"
               }
             }
           },
@@ -18055,7 +18055,7 @@ export const core_Format = {
                 "const": "css"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.6/core/requirements/css-asset-requirements.json"
+                "$ref": "/schemas/3.0.8/core/requirements/css-asset-requirements.json"
               }
             }
           },
@@ -18075,7 +18075,7 @@ export const core_Format = {
                 "const": "javascript"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.6/core/requirements/javascript-asset-requirements.json"
+                "$ref": "/schemas/3.0.8/core/requirements/javascript-asset-requirements.json"
               }
             }
           },
@@ -18095,7 +18095,7 @@ export const core_Format = {
                 "const": "vast"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.6/core/requirements/vast-asset-requirements.json"
+                "$ref": "/schemas/3.0.8/core/requirements/vast-asset-requirements.json"
               }
             }
           },
@@ -18115,7 +18115,7 @@ export const core_Format = {
                 "const": "daast"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.6/core/requirements/daast-asset-requirements.json"
+                "$ref": "/schemas/3.0.8/core/requirements/daast-asset-requirements.json"
               }
             }
           },
@@ -18135,7 +18135,7 @@ export const core_Format = {
                 "const": "url"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.6/core/requirements/url-asset-requirements.json"
+                "$ref": "/schemas/3.0.8/core/requirements/url-asset-requirements.json"
               }
             }
           },
@@ -18155,7 +18155,7 @@ export const core_Format = {
                 "const": "webhook"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.6/core/requirements/webhook-asset-requirements.json"
+                "$ref": "/schemas/3.0.8/core/requirements/webhook-asset-requirements.json"
               }
             }
           },
@@ -18192,7 +18192,7 @@ export const core_Format = {
                 "const": "catalog"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.6/core/requirements/catalog-requirements.json"
+                "$ref": "/schemas/3.0.8/core/requirements/catalog-requirements.json"
               }
             }
           },
@@ -18251,7 +18251,7 @@ export const core_Format = {
                           "const": "image"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.6/core/requirements/image-asset-requirements.json"
+                          "$ref": "/schemas/3.0.8/core/requirements/image-asset-requirements.json"
                         }
                       }
                     },
@@ -18268,7 +18268,7 @@ export const core_Format = {
                           "const": "video"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.6/core/requirements/video-asset-requirements.json"
+                          "$ref": "/schemas/3.0.8/core/requirements/video-asset-requirements.json"
                         }
                       }
                     },
@@ -18285,7 +18285,7 @@ export const core_Format = {
                           "const": "audio"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.6/core/requirements/audio-asset-requirements.json"
+                          "$ref": "/schemas/3.0.8/core/requirements/audio-asset-requirements.json"
                         }
                       }
                     },
@@ -18302,7 +18302,7 @@ export const core_Format = {
                           "const": "text"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.6/core/requirements/text-asset-requirements.json"
+                          "$ref": "/schemas/3.0.8/core/requirements/text-asset-requirements.json"
                         }
                       }
                     },
@@ -18319,7 +18319,7 @@ export const core_Format = {
                           "const": "markdown"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.6/core/requirements/markdown-asset-requirements.json"
+                          "$ref": "/schemas/3.0.8/core/requirements/markdown-asset-requirements.json"
                         }
                       }
                     },
@@ -18336,7 +18336,7 @@ export const core_Format = {
                           "const": "html"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.6/core/requirements/html-asset-requirements.json"
+                          "$ref": "/schemas/3.0.8/core/requirements/html-asset-requirements.json"
                         }
                       }
                     },
@@ -18353,7 +18353,7 @@ export const core_Format = {
                           "const": "css"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.6/core/requirements/css-asset-requirements.json"
+                          "$ref": "/schemas/3.0.8/core/requirements/css-asset-requirements.json"
                         }
                       }
                     },
@@ -18370,7 +18370,7 @@ export const core_Format = {
                           "const": "javascript"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.6/core/requirements/javascript-asset-requirements.json"
+                          "$ref": "/schemas/3.0.8/core/requirements/javascript-asset-requirements.json"
                         }
                       }
                     },
@@ -18387,7 +18387,7 @@ export const core_Format = {
                           "const": "vast"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.6/core/requirements/vast-asset-requirements.json"
+                          "$ref": "/schemas/3.0.8/core/requirements/vast-asset-requirements.json"
                         }
                       }
                     },
@@ -18404,7 +18404,7 @@ export const core_Format = {
                           "const": "daast"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.6/core/requirements/daast-asset-requirements.json"
+                          "$ref": "/schemas/3.0.8/core/requirements/daast-asset-requirements.json"
                         }
                       }
                     },
@@ -18421,7 +18421,7 @@ export const core_Format = {
                           "const": "url"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.6/core/requirements/url-asset-requirements.json"
+                          "$ref": "/schemas/3.0.8/core/requirements/url-asset-requirements.json"
                         }
                       }
                     },
@@ -18438,7 +18438,7 @@ export const core_Format = {
                           "const": "webhook"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.6/core/requirements/webhook-asset-requirements.json"
+                          "$ref": "/schemas/3.0.8/core/requirements/webhook-asset-requirements.json"
                         }
                       }
                     }
@@ -18469,7 +18469,7 @@ export const core_Format = {
       "items": {
         "oneOf": [
           {
-            "$ref": "/schemas/3.0.6/enums/universal-macro.json"
+            "$ref": "/schemas/3.0.8/enums/universal-macro.json"
           },
           {
             "type": "string",
@@ -18482,14 +18482,14 @@ export const core_Format = {
       "type": "array",
       "description": "Array of format IDs this format accepts as input creative manifests. When present, indicates this format can take existing creatives in these formats as input. Omit for formats that work from raw assets (images, text, etc.) rather than existing creatives.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       }
     },
     "output_format_ids": {
       "type": "array",
       "description": "Array of format IDs that this format can produce as output. When present, indicates this format can build creatives in these output formats (e.g., a multi-publisher template format might produce standard display formats across many publishers). Omit for formats that produce a single fixed output (the format itself).",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       }
     },
     "format_card": {
@@ -18497,7 +18497,7 @@ export const core_Format = {
       "description": "Optional standard visual card (300x400px) for displaying this format in user interfaces. Can be rendered via preview_creative or pre-generated.",
       "properties": {
         "format_id": {
-          "$ref": "/schemas/3.0.6/core/format-id.json",
+          "$ref": "/schemas/3.0.8/core/format-id.json",
           "description": "Creative format defining the card layout (typically format_card_standard)"
         },
         "manifest": {
@@ -18517,7 +18517,7 @@ export const core_Format = {
       "description": "Accessibility posture of this format. Declares the WCAG conformance level that creatives produced by this format will meet.",
       "properties": {
         "wcag_level": {
-          "$ref": "/schemas/3.0.6/enums/wcag-level.json",
+          "$ref": "/schemas/3.0.8/enums/wcag-level.json",
           "description": "WCAG conformance level that this format achieves. For format-rendered creatives, the format guarantees this level. For opaque creatives, the format requires assets that self-certify to this level."
         },
         "requires_accessible_assets": {
@@ -18533,7 +18533,7 @@ export const core_Format = {
       "type": "array",
       "description": "Disclosure positions this format can render. Buyers use this to determine whether a format can satisfy their compliance requirements before submitting a creative. When omitted, the format makes no disclosure rendering guarantees — creative agents SHOULD treat this as incompatible with briefs that require specific disclosure positions. Values correspond to positions on creative-brief.json required_disclosures.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/disclosure-position.json"
+        "$ref": "/schemas/3.0.8/enums/disclosure-position.json"
       },
       "minItems": 1,
       "uniqueItems": true
@@ -18545,14 +18545,14 @@ export const core_Format = {
         "type": "object",
         "properties": {
           "position": {
-            "$ref": "/schemas/3.0.6/enums/disclosure-position.json",
+            "$ref": "/schemas/3.0.8/enums/disclosure-position.json",
             "description": "The disclosure position"
           },
           "persistence": {
             "type": "array",
             "description": "Persistence modes this position supports",
             "items": {
-              "$ref": "/schemas/3.0.6/enums/disclosure-persistence.json"
+              "$ref": "/schemas/3.0.8/enums/disclosure-persistence.json"
             },
             "minItems": 1,
             "uniqueItems": true
@@ -18571,7 +18571,7 @@ export const core_Format = {
       "description": "Optional detailed card with carousel and full specifications. Provides rich format documentation similar to ad spec pages.",
       "properties": {
         "format_id": {
-          "$ref": "/schemas/3.0.6/core/format-id.json",
+          "$ref": "/schemas/3.0.8/core/format-id.json",
           "description": "Creative format defining the detailed card layout (typically format_card_detailed)"
         },
         "manifest": {
@@ -18590,7 +18590,7 @@ export const core_Format = {
       "type": "array",
       "description": "Metrics this format can produce in delivery reporting. Buyers receive the intersection of format reported_metrics and product available_metrics. If omitted, the format defers entirely to product-level metric declarations.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/available-metric.json"
+        "$ref": "/schemas/3.0.8/enums/available-metric.json"
       },
       "minItems": 1,
       "uniqueItems": true
@@ -18599,7 +18599,7 @@ export const core_Format = {
       "type": "array",
       "description": "Pricing options for this format. Used by transformation and generation agents that charge per format adapted, per image generated, or per unit of work. Present when the request included include_pricing=true and account. Ad servers and library-based agents expose pricing on list_creatives instead.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/vendor-pricing-option.json"
+        "$ref": "/schemas/3.0.8/core/vendor-pricing-option.json"
       },
       "minItems": 1
     }
@@ -18613,7 +18613,7 @@ export const core_Format = {
 
 export const core_FrequencyCap = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/frequency-cap.json",
+  "$id": "/schemas/3.0.8/core/frequency-cap.json",
   "title": "Frequency Cap",
   "description": "Frequency capping settings for package-level application. Two types of frequency control can be used independently or together: suppress enforces a cooldown between consecutive exposures; max_impressions + per + window caps total exposures per entity in a time window. When both suppress and max_impressions are set, an impression is delivered only if both constraints permit it (AND semantics). At least one of suppress, suppress_minutes, or max_impressions must be set.",
   "type": "object",
@@ -18621,7 +18621,7 @@ export const core_FrequencyCap = {
     "suppress": {
       "allOf": [
         {
-          "$ref": "/schemas/3.0.6/core/duration.json"
+          "$ref": "/schemas/3.0.8/core/duration.json"
         }
       ],
       "description": "Cooldown period between consecutive exposures to the same entity. Prevents back-to-back ad delivery (e.g. {\"interval\": 60, \"unit\": \"minutes\"} for a 1-hour cooldown). Preferred over suppress_minutes."
@@ -18639,7 +18639,7 @@ export const core_FrequencyCap = {
     "per": {
       "allOf": [
         {
-          "$ref": "/schemas/3.0.6/enums/reach-unit.json"
+          "$ref": "/schemas/3.0.8/enums/reach-unit.json"
         }
       ],
       "description": "Entity granularity for impression counting. Required when max_impressions is set."
@@ -18647,7 +18647,7 @@ export const core_FrequencyCap = {
     "window": {
       "allOf": [
         {
-          "$ref": "/schemas/3.0.6/core/duration.json"
+          "$ref": "/schemas/3.0.8/core/duration.json"
         }
       ],
       "description": "Time window for the max_impressions cap (e.g. {\"interval\": 7, \"unit\": \"days\"} or {\"interval\": 1, \"unit\": \"campaign\"} for the full flight). Required when max_impressions is set."
@@ -18687,7 +18687,7 @@ export const core_FrequencyCap = {
 
 export const core_GenerationCredential = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/generation-credential.json",
+  "$id": "/schemas/3.0.8/core/generation-credential.json",
   "title": "Generation Credential",
   "description": "A scoped credential issued by an LLM provider for generating rights-cleared content. The rights agent coordinates with the provider to issue the credential; the provider enforces usage constraints at generation time. Any creative agent can use the credential.",
   "type": "object",
@@ -18704,7 +18704,7 @@ export const core_GenerationCredential = {
       "type": "array",
       "description": "Which rights uses this credential covers",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/right-use.json"
+        "$ref": "/schemas/3.0.8/enums/right-use.json"
       },
       "minItems": 1
     },
@@ -18719,7 +18719,7 @@ export const core_GenerationCredential = {
       "description": "Provider API endpoint to use with this credential, if different from the provider's default"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -18732,7 +18732,7 @@ export const core_GenerationCredential = {
 
 export const core_GeoBreakdownSupport = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/geo-breakdown-support.json",
+  "$id": "/schemas/3.0.8/core/geo-breakdown-support.json",
   "title": "Geographic Breakdown Support",
   "description": "Declares which geographic levels and classification systems are available for by_geo reporting breakdowns in product-level reporting_capabilities.",
   "type": "object",
@@ -18749,7 +18749,7 @@ export const core_GeoBreakdownSupport = {
       "type": "object",
       "description": "Metro area breakdown support. Keys are metro-system enum values; true means supported.",
       "propertyNames": {
-        "$ref": "/schemas/3.0.6/enums/metro-system.json"
+        "$ref": "/schemas/3.0.8/enums/metro-system.json"
       },
       "additionalProperties": {
         "type": "boolean"
@@ -18759,7 +18759,7 @@ export const core_GeoBreakdownSupport = {
       "type": "object",
       "description": "Postal area breakdown support. Keys are postal-system enum values; true means supported.",
       "propertyNames": {
-        "$ref": "/schemas/3.0.6/enums/postal-system.json"
+        "$ref": "/schemas/3.0.8/enums/postal-system.json"
       },
       "additionalProperties": {
         "type": "boolean"
@@ -18771,7 +18771,7 @@ export const core_GeoBreakdownSupport = {
 
 export const core_HotelItem = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/hotel-item.json",
+  "$id": "/schemas/3.0.8/core/hotel-item.json",
   "title": "Hotel Item",
   "description": "A hotel or lodging property within a hotel-type catalog. Carries the property data that platforms use for hotel ads, dynamic remarketing, and travel campaign creatives. Maps to Google Hotel Center feeds, Meta hotel catalogs, and similar platform-native formats.",
   "type": "object",
@@ -18846,7 +18846,7 @@ export const core_HotelItem = {
       "description": "Official star rating (1–5)."
     },
     "price": {
-      "$ref": "/schemas/3.0.6/core/price.json",
+      "$ref": "/schemas/3.0.8/core/price.json",
       "description": "Nightly rate or starting price. Use period 'night' for nightly rates."
     },
     "image_url": {
@@ -18903,12 +18903,12 @@ export const core_HotelItem = {
       "type": "array",
       "description": "Typed creative asset pools for this hotel. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (16:9 hero images), 'images_vertical' (9:16 for Snap, Stories), 'images_square' (1:1), 'logo'. Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/offering-asset-group.json"
+        "$ref": "/schemas/3.0.8/core/offering-asset-group.json"
       },
       "minItems": 1
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -18986,13 +18986,13 @@ export const core_HotelItem = {
 
 export const core_Identifier = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/identifier.json",
+  "$id": "/schemas/3.0.8/core/identifier.json",
   "title": "Identifier",
   "description": "A property identifier with type and value. Used to identify properties across platforms (domains, app store IDs, etc.).",
   "type": "object",
   "properties": {
     "type": {
-      "$ref": "/schemas/3.0.6/enums/identifier-types.json",
+      "$ref": "/schemas/3.0.8/enums/identifier-types.json",
       "description": "Type of identifier"
     },
     "value": {
@@ -19009,13 +19009,13 @@ export const core_Identifier = {
 
 export const core_IndustryIdentifier = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/industry-identifier.json",
+  "$id": "/schemas/3.0.8/core/industry-identifier.json",
   "title": "Industry Identifier",
   "description": "An industry-standard identifier for an advertising creative (e.g., Ad-ID, ISCI, Clearcast clock number). These identifiers are managed by external registries and used across the supply chain to track and reference specific creative assets.",
   "type": "object",
   "properties": {
     "type": {
-      "$ref": "/schemas/3.0.6/enums/creative-identifier-type.json"
+      "$ref": "/schemas/3.0.8/enums/creative-identifier-type.json"
     },
     "value": {
       "type": "string",
@@ -19032,7 +19032,7 @@ export const core_IndustryIdentifier = {
 
 export const core_InsertionOrder = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/insertion-order.json",
+  "$id": "/schemas/3.0.8/core/insertion-order.json",
   "title": "Insertion Order",
   "description": "A signing wrapper attached to a committed proposal. The IO does not introduce new deal terms — all negotiated terms (performance standards, measurement terms, cancellation policy, pricing) live on the product and package. The IO exists for human signature workflows and provides summary fields so buyer agents can verify the IO matches the committed proposal before a human signs.",
   "type": "object",
@@ -19124,7 +19124,7 @@ export const core_InsertionOrder = {
 
 export const core_InstallmentDeadlines = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/installment-deadlines.json",
+  "$id": "/schemas/3.0.8/core/installment-deadlines.json",
   "title": "Installment Deadlines",
   "description": "Deadlines associated with a bookable installment. Applies to any channel where inventory is tied to a scheduled unit: print issues, podcast episodes, linear TV airings, influencer posts, DOOH rotations.",
   "type": "object",
@@ -19143,7 +19143,7 @@ export const core_InstallmentDeadlines = {
       "type": "array",
       "description": "Stages for creative material submission. Items MUST be in chronological order by due_at (earliest first). Typical pattern: 'draft' for raw materials the seller will process, 'final' for production-ready assets. Print example: draft artwork then press-ready PDF. Influencer example: talking points then approved script.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/material-deadline.json"
+        "$ref": "/schemas/3.0.8/core/material-deadline.json"
       },
       "minItems": 1
     }
@@ -19154,7 +19154,7 @@ export const core_InstallmentDeadlines = {
 
 export const core_Installment = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/installment.json",
+  "$id": "/schemas/3.0.8/core/installment.json",
   "title": "Installment",
   "description": "A single bookable unit within a collection — one episode, issue, event, or rotation period. The parent collection's kind indicates how to interpret each installment: TV/podcast episodes, print issues, live event airings, newsletter editions, or DOOH rotation periods. Installments inherit collection-level fields they don't override: content_rating defaults to the collection's baseline, guest_talent is additive to the collection's recurring talent, and topics add context beyond the collection's genre.",
   "type": "object",
@@ -19185,7 +19185,7 @@ export const core_Installment = {
       "description": "When the installment airs or publishes (ISO 8601)"
     },
     "status": {
-      "$ref": "/schemas/3.0.6/enums/installment-status.json",
+      "$ref": "/schemas/3.0.8/enums/installment-status.json",
       "description": "Lifecycle status of the installment"
     },
     "duration_seconds": {
@@ -19203,7 +19203,7 @@ export const core_Installment = {
       "description": "When this installment data expires and should be re-queried. Agents should re-query before committing budget to products with tentative installments."
     },
     "content_rating": {
-      "$ref": "/schemas/3.0.6/core/content-rating.json",
+      "$ref": "/schemas/3.0.8/core/content-rating.json",
       "description": "Installment-specific content rating. Overrides the collection's baseline content_rating when present."
     },
     "topics": {
@@ -19214,22 +19214,22 @@ export const core_Installment = {
       }
     },
     "special": {
-      "$ref": "/schemas/3.0.6/core/special.json",
+      "$ref": "/schemas/3.0.8/core/special.json",
       "description": "Installment-specific event context. When present, this installment is anchored to a real-world event. Overrides the collection-level special when present."
     },
     "guest_talent": {
       "type": "array",
       "description": "Installment-specific guests and talent. Additive to the collection's recurring talent.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/talent.json"
+        "$ref": "/schemas/3.0.8/core/talent.json"
       }
     },
     "ad_inventory": {
-      "$ref": "/schemas/3.0.6/core/ad-inventory-config.json",
+      "$ref": "/schemas/3.0.8/core/ad-inventory-config.json",
       "description": "Break-based ad inventory for this installment. For non-break formats (host reads, integrations), use product placements."
     },
     "deadlines": {
-      "$ref": "/schemas/3.0.6/core/installment-deadlines.json",
+      "$ref": "/schemas/3.0.8/core/installment-deadlines.json",
       "description": "Booking, cancellation, and material submission deadlines for this installment. Present when the installment has time-sensitive inventory that requires advance commitment or material delivery."
     },
     "derivative_of": {
@@ -19241,7 +19241,7 @@ export const core_Installment = {
           "description": "The source installment this content is derived from"
         },
         "type": {
-          "$ref": "/schemas/3.0.6/enums/derivative-type.json",
+          "$ref": "/schemas/3.0.8/enums/derivative-type.json",
           "description": "What kind of derivative content this is"
         }
       },
@@ -19252,7 +19252,7 @@ export const core_Installment = {
       "additionalProperties": false
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -19263,7 +19263,7 @@ export const core_Installment = {
 
 export const core_JobItem = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/job-item.json",
+  "$id": "/schemas/3.0.8/core/job-item.json",
   "title": "Job Item",
   "description": "A job posting within a job-type catalog. Carries the position details that platforms use for job ads and recruitment campaigns. Maps to LinkedIn Jobs XML, Google DynamicJobsAsset, schema.org JobPosting, and similar formats.",
   "type": "object",
@@ -19389,12 +19389,12 @@ export const core_JobItem = {
       "type": "array",
       "description": "Typed creative asset pools for this job. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (company/role hero), 'images_vertical' (9:16 for Stories), 'logo' (company logo). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/offering-asset-group.json"
+        "$ref": "/schemas/3.0.8/core/offering-asset-group.json"
       },
       "minItems": 1
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -19463,7 +19463,7 @@ export const core_JobItem = {
 
 export const core_LimitedSeries = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/limited-series.json",
+  "$id": "/schemas/3.0.8/core/limited-series.json",
   "title": "Limited Series",
   "description": "A bounded content run with a defined arc. Indicates the collection has a planned beginning, end, and installment count — distinguishing it from ongoing series.",
   "type": "object",
@@ -19492,7 +19492,7 @@ export const core_LimitedSeries = {
 
 export const core_MaterialDeadline = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/material-deadline.json",
+  "$id": "/schemas/3.0.8/core/material-deadline.json",
   "title": "Material Deadline",
   "description": "A deadline for creative material submission. Sellers declare stages to distinguish draft materials (e.g., talking points, raw artwork) from production-ready assets (e.g., approved scripts, press-ready PDFs).",
   "type": "object",
@@ -19524,7 +19524,7 @@ export const core_MaterialDeadline = {
 
 export const core_McpWebhookPayload = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/mcp-webhook-payload.json",
+  "$id": "/schemas/3.0.8/core/mcp-webhook-payload.json",
   "title": "MCP Webhook Payload",
   "description": "Standard envelope for HTTP-based push notifications (MCP). This defines the wire format sent to the URL configured in `pushNotificationConfig`. NOTE: This envelope is NOT used in A2A integration, which uses native Task/TaskStatusUpdateEvent messages with the AdCP payload nested in `status.message.parts[].data`.",
   "type": "object",
@@ -19546,15 +19546,15 @@ export const core_McpWebhookPayload = {
       "x-entity": "task"
     },
     "task_type": {
-      "$ref": "/schemas/3.0.6/enums/task-type.json",
+      "$ref": "/schemas/3.0.8/enums/task-type.json",
       "description": "Type of AdCP operation that triggered this webhook. Enables webhook handlers to route to appropriate processing logic."
     },
     "protocol": {
-      "$ref": "/schemas/3.0.6/enums/adcp-protocol.json",
+      "$ref": "/schemas/3.0.8/enums/adcp-protocol.json",
       "description": "AdCP protocol this task belongs to. Helps classify the operation type at a high level."
     },
     "status": {
-      "$ref": "/schemas/3.0.6/enums/task-status.json",
+      "$ref": "/schemas/3.0.8/enums/task-status.json",
       "description": "Current task status. Webhooks are triggered for status changes after initial submission."
     },
     "timestamp": {
@@ -19571,7 +19571,7 @@ export const core_McpWebhookPayload = {
       "description": "Session/conversation identifier. Use this to continue the conversation if input-required status needs clarification or additional parameters."
     },
     "result": {
-      "$ref": "/schemas/3.0.6/core/async-response-data.json",
+      "$ref": "/schemas/3.0.8/core/async-response-data.json",
       "description": "Task-specific payload matching the status. For completed/failed, contains the full task response. For working/input-required/submitted, contains status-specific data. This is the data layer that AdCP specs - same structure used in A2A status.message.parts[].data."
     }
   },
@@ -19688,20 +19688,20 @@ export const core_McpWebhookPayload = {
 
 export const core_MeasurementReadiness = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/measurement-readiness.json",
+  "$id": "/schemas/3.0.8/core/measurement-readiness.json",
   "title": "Measurement Readiness",
   "description": "Per-product assessment of whether the buyer's event source setup is sufficient for the product's optimization capabilities. Sellers evaluate this in the context of the buyer's account — the same product may show different readiness for different buyers depending on their event source configuration.",
   "type": "object",
   "properties": {
     "status": {
-      "$ref": "/schemas/3.0.6/enums/assessment-status.json",
+      "$ref": "/schemas/3.0.8/enums/assessment-status.json",
       "description": "Overall measurement readiness level for this product given the buyer's event setup. 'insufficient' means the product cannot optimize effectively with the current setup."
     },
     "required_event_types": {
       "type": "array",
       "description": "Event types this product needs for effective optimization. Buyers should ensure their event sources cover these types.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/event-type.json"
+        "$ref": "/schemas/3.0.8/enums/event-type.json"
       },
       "minItems": 1
     },
@@ -19709,14 +19709,14 @@ export const core_MeasurementReadiness = {
       "type": "array",
       "description": "Event types this product requires that the buyer has not configured. Empty or absent when all required types are covered.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/event-type.json"
+        "$ref": "/schemas/3.0.8/enums/event-type.json"
       }
     },
     "issues": {
       "type": "array",
       "description": "Actionable issues preventing full measurement readiness. Sellers should limit to the top 3-5 most actionable items. Buyer agents should sort by severity rather than relying on array position.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/diagnostic-issue.json"
+        "$ref": "/schemas/3.0.8/core/diagnostic-issue.json"
       }
     },
     "notes": {
@@ -19732,7 +19732,7 @@ export const core_MeasurementReadiness = {
 
 export const core_MeasurementTerms = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/measurement-terms.json",
+  "$id": "/schemas/3.0.8/core/measurement-terms.json",
   "title": "Measurement Terms",
   "description": "Billing measurement and makegood terms for media buys. Declares who counts the billing metric and what remedies apply when thresholds are breached. Appears on products (seller defaults), package requests (buyer proposals), and confirmed packages (agreed terms). All fields are optional — presence indicates the term is declared or proposed.",
   "type": "object",
@@ -19742,7 +19742,7 @@ export const core_MeasurementTerms = {
       "description": "Which vendor's count of the billing metric governs invoicing. The billing metric is determined by the pricing_model on the selected pricing_option (e.g., impressions for CPM, completed views for CPCV).",
       "properties": {
         "vendor": {
-          "$ref": "/schemas/3.0.6/core/brand-ref.json",
+          "$ref": "/schemas/3.0.8/core/brand-ref.json",
           "description": "Vendor whose measurement of the billing metric is authoritative for invoicing (e.g., { domain: 'campaignmanager.google.com' } for buyer's DCM, { domain: 'admanager.google.com' } for seller's GAM)."
         },
         "max_variance_percent": {
@@ -19779,7 +19779,7 @@ export const core_MeasurementTerms = {
           "type": "array",
           "description": "Remedy types the seller supports. Ordered by seller preference (first = preferred). Seller proposes from this list when a breach occurs; buyer accepts or disputes.",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/makegood-remedy.json"
+            "$ref": "/schemas/3.0.8/enums/makegood-remedy.json"
           },
           "minItems": 1,
           "uniqueItems": true
@@ -19796,7 +19796,7 @@ export const core_MeasurementTerms = {
 
 export const core_MeasurementWindow = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/measurement-window.json",
+  "$id": "/schemas/3.0.8/core/measurement-window.json",
   "title": "Measurement Window",
   "description": "A measurement maturation stage for any channel where billing-grade data is produced in phases rather than arriving final on day one. Each window represents an accumulation or processing stage with its own expected availability. Examples: broadcast/linear TV (live → C3 → C7 DVR accumulation), DOOH (tentative plays → post-IVT/fraud-check final), digital (raw impressions → GIVT filtered → SIVT filtered), podcast (7-day downloads → 30-day downloads), audio/radio (tentative → diary/panel-certified). Sellers whose data is final on first delivery omit this.",
   "type": "object",
@@ -19851,7 +19851,7 @@ export const core_MeasurementWindow = {
 
 export const core_MediaBuyFeatures = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/media-buy-features.json",
+  "$id": "/schemas/3.0.8/core/media-buy-features.json",
   "title": "Media Buy Features",
   "description": "Optional media-buy protocol features. Used in capability declarations (seller declares support) and product filters (buyer requires support). If a seller declares a feature as true, they MUST honor requests using that feature.",
   "type": "object",
@@ -19876,7 +19876,7 @@ export const core_MediaBuyFeatures = {
 
 export const core_MediaBuy = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/media-buy.json",
+  "$id": "/schemas/3.0.8/core/media-buy.json",
   "title": "Media Buy",
   "description": "Represents a purchased advertising campaign",
   "type": "object",
@@ -19887,11 +19887,11 @@ export const core_MediaBuy = {
       "x-entity": "media_buy"
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account.json",
+      "$ref": "/schemas/3.0.8/core/account.json",
       "description": "Account billed for this media buy"
     },
     "status": {
-      "$ref": "/schemas/3.0.6/enums/media-buy-status.json"
+      "$ref": "/schemas/3.0.8/enums/media-buy-status.json"
     },
     "rejection_reason": {
       "type": "string",
@@ -19916,7 +19916,7 @@ export const core_MediaBuy = {
           "description": "ISO 8601 timestamp when this media buy was canceled."
         },
         "canceled_by": {
-          "$ref": "/schemas/3.0.6/enums/canceled-by.json",
+          "$ref": "/schemas/3.0.8/enums/canceled-by.json",
           "description": "Which party initiated the cancellation. 'buyer' when canceled via update_media_buy; 'seller' when the seller cancels (e.g., policy violation, inventory withdrawal)."
         },
         "reason": {
@@ -19936,11 +19936,11 @@ export const core_MediaBuy = {
       "type": "array",
       "description": "Array of packages within this media buy",
       "items": {
-        "$ref": "/schemas/3.0.6/core/package.json"
+        "$ref": "/schemas/3.0.8/core/package.json"
       }
     },
     "invoice_recipient": {
-      "$ref": "/schemas/3.0.6/core/business-entity.json",
+      "$ref": "/schemas/3.0.8/core/business-entity.json",
       "description": "Per-buy override for who receives the invoice. When provided, the seller invoices this entity instead of the account's default billing_entity. The seller MUST validate the invoice recipient is authorized for this account. When governance_agents are configured, the seller MUST include invoice_recipient in the check_governance request."
     },
     "creative_deadline": {
@@ -19964,7 +19964,7 @@ export const core_MediaBuy = {
       "description": "Last update timestamp"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -19978,7 +19978,7 @@ export const core_MediaBuy = {
 
 export const core_OfferingAssetGroup = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/offering-asset-group.json",
+  "$id": "/schemas/3.0.8/core/offering-asset-group.json",
   "title": "Offering Asset Group",
   "description": "A structured group of creative assets within an offering, identified by a group ID and asset type. Enables offerings to carry per-group creative pools (headlines, images, videos) using the same vocabulary as format-level asset definitions.",
   "type": "object",
@@ -19988,7 +19988,7 @@ export const core_OfferingAssetGroup = {
       "description": "Identifies the creative role this group fills. Values are defined by each format's offering_asset_constraints — not protocol constants. Discover them via list_creative_formats (e.g., a format might declare 'headlines', 'images', or 'videos')."
     },
     "asset_type": {
-      "$ref": "/schemas/3.0.6/enums/asset-content-type.json",
+      "$ref": "/schemas/3.0.8/enums/asset-content-type.json",
       "description": "The content type of all items in this group."
     },
     "items": {
@@ -19997,40 +19997,40 @@ export const core_OfferingAssetGroup = {
       "items": {
         "oneOf": [
           {
-            "$ref": "/schemas/3.0.6/core/assets/text-asset.json"
+            "$ref": "/schemas/3.0.8/core/assets/text-asset.json"
           },
           {
-            "$ref": "/schemas/3.0.6/core/assets/image-asset.json"
+            "$ref": "/schemas/3.0.8/core/assets/image-asset.json"
           },
           {
-            "$ref": "/schemas/3.0.6/core/assets/video-asset.json"
+            "$ref": "/schemas/3.0.8/core/assets/video-asset.json"
           },
           {
-            "$ref": "/schemas/3.0.6/core/assets/audio-asset.json"
+            "$ref": "/schemas/3.0.8/core/assets/audio-asset.json"
           },
           {
-            "$ref": "/schemas/3.0.6/core/assets/url-asset.json"
+            "$ref": "/schemas/3.0.8/core/assets/url-asset.json"
           },
           {
-            "$ref": "/schemas/3.0.6/core/assets/html-asset.json"
+            "$ref": "/schemas/3.0.8/core/assets/html-asset.json"
           },
           {
-            "$ref": "/schemas/3.0.6/core/assets/markdown-asset.json"
+            "$ref": "/schemas/3.0.8/core/assets/markdown-asset.json"
           },
           {
-            "$ref": "/schemas/3.0.6/core/assets/vast-asset.json"
+            "$ref": "/schemas/3.0.8/core/assets/vast-asset.json"
           },
           {
-            "$ref": "/schemas/3.0.6/core/assets/daast-asset.json"
+            "$ref": "/schemas/3.0.8/core/assets/daast-asset.json"
           },
           {
-            "$ref": "/schemas/3.0.6/core/assets/css-asset.json"
+            "$ref": "/schemas/3.0.8/core/assets/css-asset.json"
           },
           {
-            "$ref": "/schemas/3.0.6/core/assets/javascript-asset.json"
+            "$ref": "/schemas/3.0.8/core/assets/javascript-asset.json"
           },
           {
-            "$ref": "/schemas/3.0.6/core/assets/webhook-asset.json"
+            "$ref": "/schemas/3.0.8/core/assets/webhook-asset.json"
           }
         ],
         "discriminator": {
@@ -20040,7 +20040,7 @@ export const core_OfferingAssetGroup = {
       "minItems": 1
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -20097,7 +20097,7 @@ export const core_OfferingAssetGroup = {
 
 export const core_Offering = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/offering.json",
+  "$id": "/schemas/3.0.8/core/offering.json",
   "title": "Offering",
   "description": "A promotable offering from a brand. Can represent a campaign, product promotion, service, or any other thing the brand wants to make available. Offerings carry structured asset groups for creative assembly and can be promoted via traditional creatives or conversational SI experiences (via the brand's SI agent).",
   "type": "object",
@@ -20143,7 +20143,7 @@ export const core_Offering = {
       "type": "array",
       "description": "Structured asset groups for this offering. Each group carries a typed pool of creative assets (headlines, images, videos, etc.) identified by a group ID that matches format-level vocabulary.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/offering-asset-group.json"
+        "$ref": "/schemas/3.0.8/core/offering-asset-group.json"
       }
     },
     "geo_targets": {
@@ -20175,7 +20175,7 @@ export const core_Offering = {
             "type": "object",
             "properties": {
               "system": {
-                "$ref": "/schemas/3.0.6/enums/metro-system.json",
+                "$ref": "/schemas/3.0.8/enums/metro-system.json",
                 "description": "Metro area classification system (e.g., 'nielsen_dma', 'uk_itl2')"
               },
               "values": {
@@ -20202,7 +20202,7 @@ export const core_Offering = {
             "type": "object",
             "properties": {
               "system": {
-                "$ref": "/schemas/3.0.6/enums/postal-system.json",
+                "$ref": "/schemas/3.0.8/enums/postal-system.json",
                 "description": "Postal code system (e.g., 'us_zip', 'de_plz')"
               },
               "values": {
@@ -20240,7 +20240,7 @@ export const core_Offering = {
       }
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -20365,7 +20365,7 @@ export const core_Offering = {
 
 export const core_OptimizationGoal = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/optimization-goal.json",
+  "$id": "/schemas/3.0.8/core/optimization-goal.json",
   "title": "Optimization Goal",
   "description": "A single optimization target for a package. Packages accept an array of optimization_goals. When multiple goals are present, priority determines which the seller focuses on — 1 is highest priority (primary goal); higher numbers are secondary. Duplicate priority values result in undefined seller behavior.",
   "oneOf": [
@@ -20397,7 +20397,7 @@ export const core_OptimizationGoal = {
         "reach_unit": {
           "allOf": [
             {
-              "$ref": "/schemas/3.0.6/enums/reach-unit.json"
+              "$ref": "/schemas/3.0.8/enums/reach-unit.json"
             }
           ],
           "description": "Unit for reach measurement. Required when metric is 'reach'. Must be a value declared in the product's metric_optimization.supported_reach_units."
@@ -20419,7 +20419,7 @@ export const core_OptimizationGoal = {
             "window": {
               "allOf": [
                 {
-                  "$ref": "/schemas/3.0.6/core/duration.json"
+                  "$ref": "/schemas/3.0.8/core/duration.json"
                 }
               ],
               "description": "Time window over which frequency is measured (e.g. {\"interval\": 7, \"unit\": \"days\"} or {\"interval\": 1, \"unit\": \"campaign\"} for the full flight). Weekly windows are typical for brand campaigns; daily windows suit high-cadence direct response."
@@ -20524,7 +20524,7 @@ export const core_OptimizationGoal = {
                 "description": "Event source to include (must be configured on this account via sync_event_sources)"
               },
               "event_type": {
-                "$ref": "/schemas/3.0.6/enums/event-type.json",
+                "$ref": "/schemas/3.0.8/enums/event-type.json",
                 "description": "Event type to include from this source (e.g., purchase, lead, app_install, refund)"
               },
               "custom_event_name": {
@@ -20615,7 +20615,7 @@ export const core_OptimizationGoal = {
             "post_click": {
               "allOf": [
                 {
-                  "$ref": "/schemas/3.0.6/core/duration.json"
+                  "$ref": "/schemas/3.0.8/core/duration.json"
                 }
               ],
               "description": "Post-click attribution window. Conversions within this duration after a click are attributed to the ad (e.g. {\"interval\": 7, \"unit\": \"days\"})."
@@ -20623,7 +20623,7 @@ export const core_OptimizationGoal = {
             "post_view": {
               "allOf": [
                 {
-                  "$ref": "/schemas/3.0.6/core/duration.json"
+                  "$ref": "/schemas/3.0.8/core/duration.json"
                 }
               ],
               "description": "Post-view attribution window. Conversions within this duration after an ad impression (without click) are attributed to the ad (e.g. {\"interval\": 1, \"unit\": \"days\"})."
@@ -20651,7 +20651,7 @@ export const core_OptimizationGoal = {
 
 export const core_OutcomeMeasurement = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/outcome-measurement.json",
+  "$id": "/schemas/3.0.8/core/outcome-measurement.json",
   "title": "Outcome Measurement",
   "description": "Business outcome measurement capabilities included with a product (e.g., incremental sales lift, brand lift, foot traffic). Distinct from delivery_measurement, which declares who counts ad impressions.",
   "type": "object",
@@ -20676,7 +20676,7 @@ export const core_OutcomeMeasurement = {
     "window": {
       "allOf": [
         {
-          "$ref": "/schemas/3.0.6/core/duration.json"
+          "$ref": "/schemas/3.0.8/core/duration.json"
         }
       ],
       "description": "Attribution window as a structured duration (e.g., {\"interval\": 30, \"unit\": \"days\"})."
@@ -20700,7 +20700,7 @@ export const core_OutcomeMeasurement = {
 
 export const core_Overlay = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/overlay.json",
+  "$id": "/schemas/3.0.8/core/overlay.json",
   "title": "Overlay",
   "description": "A publisher-controlled element that renders on top of buyer creative content within the ad placement. Creative agents should avoid placing critical content (CTAs, logos, key copy) within overlay bounds.",
   "type": "object",
@@ -20790,7 +20790,7 @@ export const core_Overlay = {
 
 export const core_PackageSchema = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/package.json",
+  "$id": "/schemas/3.0.8/core/package.json",
   "title": "Package",
   "description": "A specific product within a media buy (line item)",
   "type": "object",
@@ -20811,7 +20811,7 @@ export const core_PackageSchema = {
       "minimum": 0
     },
     "pacing": {
-      "$ref": "/schemas/3.0.6/enums/pacing.json"
+      "$ref": "/schemas/3.0.8/enums/pacing.json"
     },
     "pricing_option_id": {
       "type": "string",
@@ -20825,7 +20825,7 @@ export const core_PackageSchema = {
     },
     "price_breakdown": {
       "description": "Breakdown of the effective price for this package. On fixed-price packages, echoes the pricing option's breakdown. On auction packages, shows the clearing price breakdown including any commission or settlement terms.",
-      "$ref": "/schemas/3.0.6/pricing-options/price-breakdown.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-breakdown.json"
     },
     "impressions": {
       "type": "number",
@@ -20836,28 +20836,28 @@ export const core_PackageSchema = {
       "type": "array",
       "description": "Catalogs this package promotes. Each catalog MUST have a distinct type (e.g., one product catalog, one store catalog). This constraint is enforced at the application level — sellers MUST reject requests containing multiple catalogs of the same type with a validation_error. Echoed from the create_media_buy request.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/catalog.json"
+        "$ref": "/schemas/3.0.8/core/catalog.json"
       }
     },
     "format_ids": {
       "type": "array",
       "description": "Format IDs active for this package. Echoed from the create_media_buy request; omitted means all formats for the product are active.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       }
     },
     "targeting_overlay": {
-      "$ref": "/schemas/3.0.6/core/targeting.json"
+      "$ref": "/schemas/3.0.8/core/targeting.json"
     },
     "measurement_terms": {
-      "$ref": "/schemas/3.0.6/core/measurement-terms.json",
+      "$ref": "/schemas/3.0.8/core/measurement-terms.json",
       "description": "Agreed billing measurement and makegood terms for this package. Reflects what was negotiated — may differ from the buyer's proposal or the product's defaults. When present, these terms are binding for the package's duration."
     },
     "performance_standards": {
       "type": "array",
       "description": "Agreed performance standards for this package. When any entry specifies a vendor, creatives assigned to this package MUST include corresponding tracker_script or tracker_pixel assets from that vendor.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/performance-standard.json"
+        "$ref": "/schemas/3.0.8/core/performance-standard.json"
       },
       "minItems": 1
     },
@@ -20865,21 +20865,21 @@ export const core_PackageSchema = {
       "type": "array",
       "description": "Creative assets assigned to this package",
       "items": {
-        "$ref": "/schemas/3.0.6/core/creative-assignment.json"
+        "$ref": "/schemas/3.0.8/core/creative-assignment.json"
       }
     },
     "format_ids_to_provide": {
       "type": "array",
       "description": "Format IDs that creative assets will be provided for this package",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       }
     },
     "optimization_goals": {
       "type": "array",
       "description": "Optimization targets for this package. The seller optimizes delivery toward these goals in priority order. Common pattern: event goals (purchase, install) as primary targets at priority 1; metric goals (clicks, views) as secondary proxy signals at priority 2+.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/optimization-goal.json"
+        "$ref": "/schemas/3.0.8/core/optimization-goal.json"
       },
       "minItems": 1
     },
@@ -20920,7 +20920,7 @@ export const core_PackageSchema = {
           "description": "ISO 8601 timestamp when this package was canceled."
         },
         "canceled_by": {
-          "$ref": "/schemas/3.0.6/enums/canceled-by.json",
+          "$ref": "/schemas/3.0.8/enums/canceled-by.json",
           "description": "Which party initiated the package cancellation."
         },
         "reason": {
@@ -20947,10 +20947,10 @@ export const core_PackageSchema = {
       "description": "ISO 8601 timestamp for creative upload or change deadline for this package. After this deadline, creative changes are rejected. When absent, the media buy's creative_deadline applies."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -20961,7 +20961,7 @@ export const core_PackageSchema = {
 
 export const core_PaginationRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/pagination-request.json",
+  "$id": "/schemas/3.0.8/core/pagination-request.json",
   "title": "Pagination Request",
   "description": "Standard cursor-based pagination parameters for list operations",
   "type": "object",
@@ -20983,7 +20983,7 @@ export const core_PaginationRequest = {
 
 export const core_PaginationResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/pagination-response.json",
+  "$id": "/schemas/3.0.8/core/pagination-response.json",
   "title": "Pagination Response",
   "description": "Standard cursor-based pagination metadata for list responses",
   "type": "object",
@@ -21010,7 +21010,7 @@ export const core_PaginationResponse = {
 
 export const core_PerformanceFeedback = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/performance-feedback.json",
+  "$id": "/schemas/3.0.8/core/performance-feedback.json",
   "title": "Performance Feedback",
   "description": "Represents performance feedback data for a media buy or package",
   "type": "object",
@@ -21058,11 +21058,11 @@ export const core_PerformanceFeedback = {
       "minimum": 0
     },
     "metric_type": {
-      "$ref": "/schemas/3.0.6/enums/metric-type.json",
+      "$ref": "/schemas/3.0.8/enums/metric-type.json",
       "description": "The business metric being measured"
     },
     "feedback_source": {
-      "$ref": "/schemas/3.0.6/enums/feedback-source.json",
+      "$ref": "/schemas/3.0.8/enums/feedback-source.json",
       "description": "Source of the performance data"
     },
     "status": {
@@ -21101,13 +21101,13 @@ export const core_PerformanceFeedback = {
 
 export const core_PerformanceStandard = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/performance-standard.json",
+  "$id": "/schemas/3.0.8/core/performance-standard.json",
   "title": "Performance Standard",
   "description": "A rate threshold for a performance metric, measured by a specified vendor. The threshold is a floor or ceiling depending on the metric: viewability, completion_rate, brand_safety, and attention_score are floors (must exceed); ivt is a ceiling (must not exceed).",
   "type": "object",
   "properties": {
     "metric": {
-      "$ref": "/schemas/3.0.6/enums/performance-standard-metric.json",
+      "$ref": "/schemas/3.0.8/enums/performance-standard-metric.json",
       "description": "The performance metric this standard applies to."
     },
     "threshold": {
@@ -21117,11 +21117,11 @@ export const core_PerformanceStandard = {
       "description": "Rate threshold as a decimal (e.g., 0.70 for 70%). Whether this is a floor or ceiling depends on the metric: for viewability, completion_rate, brand_safety, attention_score the actual rate must be >= threshold; for ivt the actual rate must be <= threshold."
     },
     "standard": {
-      "$ref": "/schemas/3.0.6/enums/viewability-standard.json",
+      "$ref": "/schemas/3.0.8/enums/viewability-standard.json",
       "description": "Measurement standard. Required when metric is 'viewability' (MRC and GroupM define materially different thresholds). Omit for other metrics."
     },
     "vendor": {
-      "$ref": "/schemas/3.0.6/core/brand-ref.json",
+      "$ref": "/schemas/3.0.8/core/brand-ref.json",
       "description": "Vendor measuring this metric (e.g., { domain: 'doubleverify.com' }). The vendor's brand.json agents array (type: 'measurement') is the discovery point for their measurement agent. When specified on a confirmed package, creatives MUST include tracker_script or tracker_pixel assets from this vendor."
     }
   },
@@ -21135,7 +21135,7 @@ export const core_PerformanceStandard = {
 
 export const core_PlacementDefinition = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/placement-definition.json",
+  "$id": "/schemas/3.0.8/core/placement-definition.json",
   "title": "Placement Definition",
   "description": "Canonical placement definition published in a publisher's adagents.json. Defines stable placement IDs that products can reuse and that authorization rules can reference. When a product reuses a registered placement_id, it is referring to this same semantic placement, not inventing a new one with the same ID.",
   "type": "object",
@@ -21164,7 +21164,7 @@ export const core_PlacementDefinition = {
       "type": "array",
       "description": "Property IDs in this adagents.json where this placement can appear.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/property-id.json"
+        "$ref": "/schemas/3.0.8/core/property-id.json"
       },
       "minItems": 1
     },
@@ -21172,7 +21172,7 @@ export const core_PlacementDefinition = {
       "type": "array",
       "description": "Property tags in this adagents.json where this placement can appear. Useful for network-wide positions such as 'pre_roll' or 'homepage_native_feed'.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/property-tag.json"
+        "$ref": "/schemas/3.0.8/core/property-tag.json"
       },
       "minItems": 1
     },
@@ -21188,12 +21188,12 @@ export const core_PlacementDefinition = {
       "type": "array",
       "description": "Optional format IDs supported by this placement across the scoped properties and collections. Lets buyers answer which formats are available on which placements without relying on product-local definitions alone.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       },
       "minItems": 1
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -21217,7 +21217,7 @@ export const core_PlacementDefinition = {
 
 export const core_Placement = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/placement.json",
+  "$id": "/schemas/3.0.8/core/placement.json",
   "title": "Placement",
   "description": "Represents a specific ad placement within a product's inventory. When the publisher declares a placement registry in adagents.json, products SHOULD reuse those placement_id values. Reusing a registered placement_id preserves the registry's semantic identity; product-level placement objects may narrow format_ids or add operational detail, but SHOULD NOT redefine the placement's meaning incompatibly.",
   "type": "object",
@@ -21246,7 +21246,7 @@ export const core_Placement = {
       "type": "array",
       "description": "Format IDs supported by this specific placement. Can include: (1) concrete format_ids (fixed dimensions), (2) template format_ids without parameters (accepts any dimensions/duration), or (3) parameterized format_ids (specific dimension/duration constraints).",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       },
       "minItems": 1
     }
@@ -21260,7 +21260,7 @@ export const core_Placement = {
 
 export const core_PlannedDelivery = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/planned-delivery.json",
+  "$id": "/schemas/3.0.8/core/planned-delivery.json",
   "title": "Planned Delivery",
   "description": "The seller's interpreted delivery parameters for a media buy. Represents what the seller will actually run, which may differ from what the buyer requested (e.g., the seller may apply additional targeting, frequency caps, or adjust geo to match their inventory). Used for authorization verification and audit.",
   "type": "object",
@@ -21289,7 +21289,7 @@ export const core_PlannedDelivery = {
     "channels": {
       "type": "array",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/channels.json"
+        "$ref": "/schemas/3.0.8/enums/channels.json"
       },
       "description": "Channels the seller will deliver on."
     },
@@ -21304,7 +21304,7 @@ export const core_PlannedDelivery = {
       "description": "Actual flight end the seller will use."
     },
     "frequency_cap": {
-      "$ref": "/schemas/3.0.6/core/frequency-cap.json",
+      "$ref": "/schemas/3.0.8/core/frequency-cap.json",
       "description": "Frequency cap the seller will apply."
     },
     "audience_summary": {
@@ -21315,7 +21315,7 @@ export const core_PlannedDelivery = {
       "type": "array",
       "description": "Structured audience targeting the seller will activate. Each entry is either a signal reference or a descriptive criterion. When present, governance agents MUST use this for bias/fairness validation and SHOULD ignore audience_summary for validation purposes. The audience_summary field is a human-readable rendering of this array, not an independent declaration.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/audience-selector.json"
+        "$ref": "/schemas/3.0.8/core/audience-selector.json"
       },
       "minItems": 1
     },
@@ -21337,7 +21337,7 @@ export const core_PlannedDelivery = {
       }
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -21345,7 +21345,7 @@ export const core_PlannedDelivery = {
 
 export const core_Price = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/price.json",
+  "$id": "/schemas/3.0.8/core/price.json",
   "title": "Price",
   "description": "A monetary amount with currency and optional billing period. Used across catalog item types for product prices, nightly hotel rates, salary ranges, rental costs, and similar monetary values.",
   "type": "object",
@@ -21405,43 +21405,43 @@ export const core_Price = {
 
 export const core_PricingOption = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/pricing-option.json",
+  "$id": "/schemas/3.0.8/core/pricing-option.json",
   "title": "Pricing Option",
   "description": "A pricing model option offered by a publisher for a product. Discriminated by pricing_model field. If fixed_price is present, it's fixed pricing. If absent, it's auction-based (floor_price and price_guidance optional). Bid-based auction models may also include max_bid as a boolean signal to interpret bid_price as a buyer ceiling instead of an exact honored price.",
   "oneOf": [
     {
-      "$ref": "/schemas/3.0.6/pricing-options/cpm-option.json"
+      "$ref": "/schemas/3.0.8/pricing-options/cpm-option.json"
     },
     {
-      "$ref": "/schemas/3.0.6/pricing-options/vcpm-option.json"
+      "$ref": "/schemas/3.0.8/pricing-options/vcpm-option.json"
     },
     {
-      "$ref": "/schemas/3.0.6/pricing-options/cpc-option.json"
+      "$ref": "/schemas/3.0.8/pricing-options/cpc-option.json"
     },
     {
-      "$ref": "/schemas/3.0.6/pricing-options/cpcv-option.json"
+      "$ref": "/schemas/3.0.8/pricing-options/cpcv-option.json"
     },
     {
-      "$ref": "/schemas/3.0.6/pricing-options/cpv-option.json"
+      "$ref": "/schemas/3.0.8/pricing-options/cpv-option.json"
     },
     {
-      "$ref": "/schemas/3.0.6/pricing-options/cpp-option.json"
+      "$ref": "/schemas/3.0.8/pricing-options/cpp-option.json"
     },
     {
-      "$ref": "/schemas/3.0.6/pricing-options/cpa-option.json"
+      "$ref": "/schemas/3.0.8/pricing-options/cpa-option.json"
     },
     {
-      "$ref": "/schemas/3.0.6/pricing-options/flat-rate-option.json"
+      "$ref": "/schemas/3.0.8/pricing-options/flat-rate-option.json"
     },
     {
-      "$ref": "/schemas/3.0.6/pricing-options/time-option.json"
+      "$ref": "/schemas/3.0.8/pricing-options/time-option.json"
     }
   ]
 } as const;
 
 export const core_ProductAllocation = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/product-allocation.json",
+  "$id": "/schemas/3.0.8/core/product-allocation.json",
   "title": "Product Allocation",
   "description": "A budget allocation for a specific product within a proposal. Percentages across all allocations in a proposal should sum to 100.",
   "type": "object",
@@ -21490,16 +21490,16 @@ export const core_ProductAllocation = {
       "type": "array",
       "description": "Recommended time windows for this allocation in spot-plan proposals.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/daypart-target.json"
+        "$ref": "/schemas/3.0.8/core/daypart-target.json"
       },
       "minItems": 1
     },
     "forecast": {
-      "$ref": "/schemas/3.0.6/core/delivery-forecast.json",
+      "$ref": "/schemas/3.0.8/core/delivery-forecast.json",
       "description": "Forecasted delivery metrics for this allocation"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -21511,16 +21511,16 @@ export const core_ProductAllocation = {
 
 export const core_ProductFilters = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/product-filters.json",
+  "$id": "/schemas/3.0.8/core/product-filters.json",
   "title": "Product Filters",
   "description": "Structured filters for product discovery",
   "type": "object",
   "properties": {
     "delivery_type": {
-      "$ref": "/schemas/3.0.6/enums/delivery-type.json"
+      "$ref": "/schemas/3.0.8/enums/delivery-type.json"
     },
     "exclusivity": {
-      "$ref": "/schemas/3.0.6/enums/exclusivity.json",
+      "$ref": "/schemas/3.0.8/enums/exclusivity.json",
       "description": "Filter by exclusivity level. Returns products matching the specified exclusivity (e.g., 'exclusive' returns only sole-sponsorship products)."
     },
     "is_fixed_price": {
@@ -21531,7 +21531,7 @@ export const core_ProductFilters = {
       "type": "array",
       "description": "Filter by specific format IDs",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       },
       "minItems": 1
     },
@@ -21616,7 +21616,7 @@ export const core_ProductFilters = {
         "type": "object",
         "properties": {
           "system": {
-            "$ref": "/schemas/3.0.6/enums/metro-system.json",
+            "$ref": "/schemas/3.0.8/enums/metro-system.json",
             "description": "Metro classification system"
           },
           "code": {
@@ -21636,7 +21636,7 @@ export const core_ProductFilters = {
       "type": "array",
       "description": "Filter by advertising channels (e.g., ['display', 'ctv', 'dooh'])",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/channels.json"
+        "$ref": "/schemas/3.0.8/enums/channels.json"
       },
       "minItems": 1
     },
@@ -21685,7 +21685,7 @@ export const core_ProductFilters = {
           "type": "array",
           "description": "Filter to products supporting specific TMP response types (e.g., 'activation', 'creative', 'catalog_items'). Products must support at least one of the listed types.",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/response-type.json"
+            "$ref": "/schemas/3.0.8/enums/response-type.json"
           },
           "minItems": 1
         }
@@ -21693,7 +21693,7 @@ export const core_ProductFilters = {
       "additionalProperties": false
     },
     "required_features": {
-      "$ref": "/schemas/3.0.6/core/media-buy-features.json",
+      "$ref": "/schemas/3.0.8/core/media-buy-features.json",
       "description": "Filter to products from sellers supporting specific protocol features. Only features set to true are used for filtering."
     },
     "required_geo_targeting": {
@@ -21703,7 +21703,7 @@ export const core_ProductFilters = {
         "type": "object",
         "properties": {
           "level": {
-            "$ref": "/schemas/3.0.6/enums/geo-level.json",
+            "$ref": "/schemas/3.0.8/enums/geo-level.json",
             "description": "Geographic targeting level (country, region, metro, postal_area)"
           },
           "system": {
@@ -21722,7 +21722,7 @@ export const core_ProductFilters = {
       "type": "array",
       "description": "Filter to products supporting specific signals from data provider catalogs. Products must have the requested signals in their data_provider_signals and signal_targeting_allowed must be true (or all signals requested).",
       "items": {
-        "$ref": "/schemas/3.0.6/core/signal-targeting.json"
+        "$ref": "/schemas/3.0.8/core/signal-targeting.json"
       },
       "minItems": 1
     },
@@ -21733,7 +21733,7 @@ export const core_ProductFilters = {
         "type": "object",
         "properties": {
           "system": {
-            "$ref": "/schemas/3.0.6/enums/postal-system.json",
+            "$ref": "/schemas/3.0.8/enums/postal-system.json",
             "description": "Postal code system (e.g., 'us_zip', 'gb_outward')"
           },
           "values": {
@@ -21785,7 +21785,7 @@ export const core_ProductFilters = {
                 "description": "Travel time limit"
               },
               "unit": {
-                "$ref": "/schemas/3.0.6/enums/travel-time-unit.json"
+                "$ref": "/schemas/3.0.8/enums/travel-time-unit.json"
               }
             },
             "required": [
@@ -21795,7 +21795,7 @@ export const core_ProductFilters = {
             "additionalProperties": false
           },
           "transport_mode": {
-            "$ref": "/schemas/3.0.6/enums/transport-mode.json",
+            "$ref": "/schemas/3.0.8/enums/transport-mode.json",
             "description": "Transportation mode for isochrone calculation. Required when travel_time is provided."
           },
           "radius": {
@@ -21808,7 +21808,7 @@ export const core_ProductFilters = {
                 "description": "Radius distance"
               },
               "unit": {
-                "$ref": "/schemas/3.0.6/enums/distance-unit.json",
+                "$ref": "/schemas/3.0.8/enums/distance-unit.json",
                 "description": "Distance unit"
               }
             },
@@ -21914,7 +21914,7 @@ export const core_ProductFilters = {
       "type": "array",
       "description": "Filter to products that can meet the buyer's performance standard requirements. Each entry specifies a metric, minimum threshold, and optionally a required vendor and standard. Products that cannot meet these thresholds or do not support the specified vendors are excluded. Use this to tell the seller upfront: 'I need DoubleVerify for viewability at 70% MRC.'",
       "items": {
-        "$ref": "/schemas/3.0.6/core/performance-standard.json"
+        "$ref": "/schemas/3.0.8/core/performance-standard.json"
       },
       "minItems": 1
     },
@@ -21930,7 +21930,7 @@ export const core_ProductFilters = {
             "description": "The keyword to target"
           },
           "match_type": {
-            "$ref": "/schemas/3.0.6/enums/match-type.json",
+            "$ref": "/schemas/3.0.8/enums/match-type.json",
             "default": "broad"
           }
         },
@@ -21947,7 +21947,7 @@ export const core_ProductFilters = {
 
 export const core_Product = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/product.json",
+  "$id": "/schemas/3.0.8/core/product.json",
   "title": "Product",
   "description": "Represents available advertising inventory",
   "type": "object",
@@ -21969,7 +21969,7 @@ export const core_Product = {
       "type": "array",
       "description": "Publisher properties covered by this product. Buyers fetch actual property definitions from each publisher's adagents.json and validate agent authorization. Selection patterns mirror the authorization patterns in adagents.json for consistency.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/publisher-property-selector.json"
+        "$ref": "/schemas/3.0.8/core/publisher-property-selector.json"
       },
       "minItems": 1
     },
@@ -21977,7 +21977,7 @@ export const core_Product = {
       "type": "array",
       "description": "Advertising channels this product is sold as. Products inherit from their properties' supported_channels but may narrow the scope. For example, a product covering YouTube properties might be sold as ['ctv'] even though those properties support ['olv', 'social', 'ctv'].",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/channels.json"
+        "$ref": "/schemas/3.0.8/enums/channels.json"
       },
       "uniqueItems": true
     },
@@ -21985,38 +21985,38 @@ export const core_Product = {
       "type": "array",
       "description": "Array of supported creative format IDs - structured format_id objects with agent_url and id",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       }
     },
     "placements": {
       "type": "array",
       "description": "Optional array of specific placements within this product. When provided, buyers can target specific placements when assigning creatives.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/placement.json"
+        "$ref": "/schemas/3.0.8/core/placement.json"
       },
       "minItems": 1
     },
     "delivery_type": {
-      "$ref": "/schemas/3.0.6/enums/delivery-type.json"
+      "$ref": "/schemas/3.0.8/enums/delivery-type.json"
     },
     "exclusivity": {
-      "$ref": "/schemas/3.0.6/enums/exclusivity.json",
+      "$ref": "/schemas/3.0.8/enums/exclusivity.json",
       "description": "Whether this product offers exclusive access to its inventory. Defaults to 'none' when absent. Most relevant for guaranteed products tied to specific collections or placements."
     },
     "pricing_options": {
       "type": "array",
       "description": "Available pricing models for this product",
       "items": {
-        "$ref": "/schemas/3.0.6/core/pricing-option.json"
+        "$ref": "/schemas/3.0.8/core/pricing-option.json"
       },
       "minItems": 1
     },
     "forecast": {
-      "$ref": "/schemas/3.0.6/core/delivery-forecast.json",
+      "$ref": "/schemas/3.0.8/core/delivery-forecast.json",
       "description": "Forecasted delivery metrics for this product. Gives buyers an estimate of expected performance before requesting a proposal."
     },
     "outcome_measurement": {
-      "$ref": "/schemas/3.0.6/core/outcome-measurement.json"
+      "$ref": "/schemas/3.0.8/core/outcome-measurement.json"
     },
     "delivery_measurement": {
       "type": "object",
@@ -22036,26 +22036,26 @@ export const core_Product = {
       ]
     },
     "measurement_terms": {
-      "$ref": "/schemas/3.0.6/core/measurement-terms.json",
+      "$ref": "/schemas/3.0.8/core/measurement-terms.json",
       "description": "Seller's default billing measurement and makegood terms. Declares who counts the billing metric and what remedies apply when thresholds are breached. Buyers may propose different terms at media buy creation — sellers accept, reject (TERMS_REJECTED), or adjust per their policy."
     },
     "performance_standards": {
       "type": "array",
       "description": "Seller's default performance standards for this product: viewability, IVT, completion rate, brand safety, attention score. Buyers may propose different standards at media buy creation. When absent, no structured performance standards apply.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/performance-standard.json"
+        "$ref": "/schemas/3.0.8/core/performance-standard.json"
       },
       "minItems": 1
     },
     "cancellation_policy": {
-      "$ref": "/schemas/3.0.6/core/cancellation-policy.json",
+      "$ref": "/schemas/3.0.8/core/cancellation-policy.json",
       "description": "Cancellation terms for this product. Declares the minimum notice period required before cancellation takes effect and any penalties for insufficient notice. Relevant for guaranteed delivery products. Buyers accept these terms by creating a media buy against the product."
     },
     "reporting_capabilities": {
-      "$ref": "/schemas/3.0.6/core/reporting-capabilities.json"
+      "$ref": "/schemas/3.0.8/core/reporting-capabilities.json"
     },
     "creative_policy": {
-      "$ref": "/schemas/3.0.6/core/creative-policy.json"
+      "$ref": "/schemas/3.0.8/core/creative-policy.json"
     },
     "is_custom": {
       "type": "boolean",
@@ -22070,7 +22070,7 @@ export const core_Product = {
       "type": "array",
       "description": "Data provider signals available for this product. Buyers fetch signal definitions from each data provider's adagents.json and can verify agent authorization.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/data-provider-signal-selector.json"
+        "$ref": "/schemas/3.0.8/core/data-provider-signal-selector.json"
       }
     },
     "signal_targeting_allowed": {
@@ -22082,7 +22082,7 @@ export const core_Product = {
       "type": "array",
       "description": "Catalog types this product supports for catalog-driven campaigns. A sponsored product listing declares [\"product\"], a job board declares [\"job\", \"offering\"]. Buyers match synced catalogs to products via this field.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/catalog-type.json"
+        "$ref": "/schemas/3.0.8/enums/catalog-type.json"
       },
       "uniqueItems": true,
       "minItems": 1
@@ -22116,7 +22116,7 @@ export const core_Product = {
           "type": "array",
           "description": "Reach units this product can optimize for. Required when supported_metrics includes 'reach'. Buyers must set reach_unit to a value in this list on reach optimization goals — sellers reject unsupported values.",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/reach-unit.json"
+            "$ref": "/schemas/3.0.8/enums/reach-unit.json"
           },
           "minItems": 1
         },
@@ -22151,7 +22151,7 @@ export const core_Product = {
       "description": "Maximum number of optimization_goals this product accepts on a package. When absent, no limit is declared. Most social platforms accept only 1 goal — buyers sending arrays longer than this value should expect the seller to use only the highest-priority (lowest priority number) goal."
     },
     "measurement_readiness": {
-      "$ref": "/schemas/3.0.6/core/measurement-readiness.json",
+      "$ref": "/schemas/3.0.8/core/measurement-readiness.json",
       "description": "Assessment of whether the buyer's event source setup is sufficient for this product to optimize effectively. Only present when the seller can evaluate the buyer's account context. Buyers should check this before creating media buys with event-based optimization goals."
     },
     "conversion_tracking": {
@@ -22162,7 +22162,7 @@ export const core_Product = {
           "type": "array",
           "description": "Action sources relevant to this product (e.g. a retail media product might have 'in_store' and 'website', while a display product might only have 'website')",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/action-source.json"
+            "$ref": "/schemas/3.0.8/enums/action-source.json"
           },
           "minItems": 1
         },
@@ -22234,7 +22234,7 @@ export const core_Product = {
       "description": "Optional standard visual card (300x400px) for displaying this product in user interfaces. Can be rendered via preview_creative or pre-generated.",
       "properties": {
         "format_id": {
-          "$ref": "/schemas/3.0.6/core/format-id.json",
+          "$ref": "/schemas/3.0.8/core/format-id.json",
           "description": "Creative format defining the card layout (typically product_card_standard)"
         },
         "manifest": {
@@ -22254,7 +22254,7 @@ export const core_Product = {
       "description": "Optional detailed card with carousel and full specifications. Provides rich product presentation similar to media kit pages.",
       "properties": {
         "format_id": {
-          "$ref": "/schemas/3.0.6/core/format-id.json",
+          "$ref": "/schemas/3.0.8/core/format-id.json",
           "description": "Creative format defining the detailed card layout (typically product_card_detailed)"
         },
         "manifest": {
@@ -22273,7 +22273,7 @@ export const core_Product = {
       "type": "array",
       "description": "Collections available in this product. Each entry references collections declared in an adagents.json by domain and collection ID. Buyers resolve full collection objects from the referenced adagents.json.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/collection-selector.json"
+        "$ref": "/schemas/3.0.8/core/collection-selector.json"
       },
       "minItems": 1
     },
@@ -22286,7 +22286,7 @@ export const core_Product = {
       "type": "array",
       "description": "Specific installments included in this product. Each installment references its parent collection via collection_id when the product spans multiple collections. When absent with collections present, the product covers the collections broadly (run-of-collection).",
       "items": {
-        "$ref": "/schemas/3.0.6/core/installment.json"
+        "$ref": "/schemas/3.0.8/core/installment.json"
       }
     },
     "enforced_policies": {
@@ -22314,7 +22314,7 @@ export const core_Product = {
           "type": "array",
           "description": "What the publisher can accept back from context match.",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/response-type.json"
+            "$ref": "/schemas/3.0.8/enums/response-type.json"
           },
           "minItems": 1,
           "default": [
@@ -22360,7 +22360,7 @@ export const core_Product = {
                 "type": "array",
                 "description": "Identity types this regional provider can resolve. The router filters providers whose uid_types includes the request's uid_type. Required when identity_match is true.",
                 "items": {
-                  "$ref": "/schemas/3.0.6/enums/uid-type.json"
+                  "$ref": "/schemas/3.0.8/enums/uid-type.json"
                 },
                 "minItems": 1
               }
@@ -22416,14 +22416,14 @@ export const core_Product = {
           "maxLength": 2000
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "minProperties": 1,
       "additionalProperties": true
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -22441,7 +22441,7 @@ export const core_Product = {
 
 export const core_PropertyId = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/property-id.json",
+  "$id": "/schemas/3.0.8/core/property-id.json",
   "title": "Property ID",
   "description": "Identifier for a publisher property. Must be lowercase alphanumeric with underscores only.",
   "type": "string",
@@ -22457,7 +22457,7 @@ export const core_PropertyId = {
 
 export const core_PropertyListRef = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/property-list-ref.json",
+  "$id": "/schemas/3.0.8/core/property-list-ref.json",
   "title": "Property List Reference",
   "description": "Reference to an externally managed property list. Enables passing large property sets (50,000+) without embedding them in requests. The receiving agent fetches and caches the list independently.",
   "type": "object",
@@ -22487,7 +22487,7 @@ export const core_PropertyListRef = {
 
 export const core_PropertyTag = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/property-tag.json",
+  "$id": "/schemas/3.0.8/core/property-tag.json",
   "title": "Property Tag",
   "description": "Tag for categorizing publisher properties. Must be lowercase alphanumeric with underscores only.",
   "type": "string",
@@ -22504,17 +22504,17 @@ export const core_PropertyTag = {
 
 export const core_Property = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/property.json",
+  "$id": "/schemas/3.0.8/core/property.json",
   "title": "Property",
   "description": "An advertising property that can be validated via adagents.json",
   "type": "object",
   "properties": {
     "property_id": {
-      "$ref": "/schemas/3.0.6/core/property-id.json",
+      "$ref": "/schemas/3.0.8/core/property-id.json",
       "description": "Unique identifier for this property (optional). Enables referencing properties by ID instead of repeating full objects."
     },
     "property_type": {
-      "$ref": "/schemas/3.0.6/enums/property-type.json",
+      "$ref": "/schemas/3.0.8/enums/property-type.json",
       "description": "Type of advertising property"
     },
     "name": {
@@ -22528,7 +22528,7 @@ export const core_Property = {
         "type": "object",
         "properties": {
           "type": {
-            "$ref": "/schemas/3.0.6/enums/identifier-types.json",
+            "$ref": "/schemas/3.0.8/enums/identifier-types.json",
             "description": "Type of identifier for this property"
           },
           "value": {
@@ -22548,7 +22548,7 @@ export const core_Property = {
       "type": "array",
       "description": "Tags for categorization and grouping (e.g., network membership, content categories)",
       "items": {
-        "$ref": "/schemas/3.0.6/core/property-tag.json"
+        "$ref": "/schemas/3.0.8/core/property-tag.json"
       },
       "uniqueItems": true
     },
@@ -22556,7 +22556,7 @@ export const core_Property = {
       "type": "array",
       "description": "Advertising channels this property supports (e.g., ['display', 'olv', 'social']). Publishers declare which channels their inventory aligns with. Properties may support multiple channels. See the Media Channel Taxonomy for definitions.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/channels.json"
+        "$ref": "/schemas/3.0.8/enums/channels.json"
       },
       "uniqueItems": true
     },
@@ -22575,7 +22575,7 @@ export const core_Property = {
 
 export const core_Proposal = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/proposal.json",
+  "$id": "/schemas/3.0.8/core/proposal.json",
   "title": "Proposal",
   "description": "A proposed media plan with budget allocations across products. Represents the publisher's strategic recommendation for how to structure a campaign based on the brief. Proposals are actionable - buyers can execute them directly via create_media_buy by providing the proposal_id.",
   "type": "object",
@@ -22599,12 +22599,12 @@ export const core_Proposal = {
       "type": "array",
       "description": "Budget allocations across products. Allocation percentages MUST sum to 100. Publishers are responsible for ensuring the sum equals 100; buyers SHOULD validate this before execution.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/product-allocation.json"
+        "$ref": "/schemas/3.0.8/core/product-allocation.json"
       },
       "minItems": 1
     },
     "proposal_status": {
-      "$ref": "/schemas/3.0.6/enums/proposal-status.json",
+      "$ref": "/schemas/3.0.8/enums/proposal-status.json",
       "description": "Lifecycle status of this proposal. When absent, the proposal is ready to buy (backward compatible). 'draft' means indicative pricing — finalize via refine before purchasing. 'committed' means firm pricing with inventory reserved until expires_at."
     },
     "expires_at": {
@@ -22613,7 +22613,7 @@ export const core_Proposal = {
       "description": "When this proposal expires and can no longer be executed. For draft proposals, indicates when indicative pricing becomes stale. For committed proposals, indicates when the inventory hold lapses — the buyer must call create_media_buy before this time."
     },
     "insertion_order": {
-      "$ref": "/schemas/3.0.6/core/insertion-order.json",
+      "$ref": "/schemas/3.0.8/core/insertion-order.json",
       "description": "Formal insertion order attached to a committed proposal. Present when the seller requires a signed agreement before the media buy can proceed. The buyer references the io_id in io_acceptance on create_media_buy."
     },
     "total_budget_guidance": {
@@ -22648,11 +22648,11 @@ export const core_Proposal = {
       "maxLength": 2000
     },
     "forecast": {
-      "$ref": "/schemas/3.0.6/core/delivery-forecast.json",
+      "$ref": "/schemas/3.0.8/core/delivery-forecast.json",
       "description": "Aggregate forecasted delivery metrics for the entire proposal. When both proposal-level and allocation-level forecasts are present, the proposal-level forecast is authoritative for total delivery estimation."
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -22665,7 +22665,7 @@ export const core_Proposal = {
 
 export const core_ProtocolEnvelope = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/protocol-envelope.json",
+  "$id": "/schemas/3.0.8/core/protocol-envelope.json",
   "title": "Protocol Envelope",
   "description": "Standard envelope structure for AdCP task responses. This envelope is added by the protocol layer (MCP, A2A, REST) and wraps the task-specific response payload. Task response schemas should NOT include these fields - they are protocol-level concerns.",
   "type": "object",
@@ -22680,7 +22680,7 @@ export const core_ProtocolEnvelope = {
       "x-entity": "task"
     },
     "status": {
-      "$ref": "/schemas/3.0.6/enums/task-status.json",
+      "$ref": "/schemas/3.0.8/enums/task-status.json",
       "description": "Current task execution state. Indicates whether the task is completed, in progress (working), submitted for async processing, failed, or requires user input. Managed by the protocol layer. Agents MUST NOT emit the legacy task_status or response_status fields alongside this field — the status field is the single authoritative task state."
     },
     "message": {
@@ -22698,7 +22698,7 @@ export const core_ProtocolEnvelope = {
       "default": false
     },
     "push_notification_config": {
-      "$ref": "/schemas/3.0.6/core/push-notification-config.json",
+      "$ref": "/schemas/3.0.8/core/push-notification-config.json",
       "description": "Push notification configuration for async task updates (A2A and REST protocols). Echoed from the request to confirm webhook settings. Specifies URL, authentication scheme (Bearer or HMAC-SHA256), and credentials. MCP uses progress notifications instead of webhooks."
     },
     "governance_context": {
@@ -22852,13 +22852,13 @@ export const core_ProtocolEnvelope = {
 
 export const core_Provenance = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/provenance.json",
+  "$id": "/schemas/3.0.8/core/provenance.json",
   "title": "Provenance",
   "description": "Declares how content was produced, whether AI was involved, and what disclosure obligations apply. Attaches to creative manifests, individual assets, or content-standards artifacts. When present at multiple levels, the most specific provenance object replaces the inherited one entirely (no field-level merging). Provenance is a claim by the declaring party — receiving parties should verify claims independently via their own detection tools.",
   "type": "object",
   "properties": {
     "digital_source_type": {
-      "$ref": "/schemas/3.0.6/enums/digital-source-type.json",
+      "$ref": "/schemas/3.0.8/enums/digital-source-type.json",
       "description": "IPTC-aligned classification of AI involvement in producing this content"
     },
     "ai_tool": {
@@ -22995,7 +22995,7 @@ export const core_Provenance = {
                 "minProperties": 1,
                 "properties": {
                   "persistence": {
-                    "$ref": "/schemas/3.0.6/enums/disclosure-persistence.json",
+                    "$ref": "/schemas/3.0.8/enums/disclosure-persistence.json",
                     "description": "How long the disclosure must persist during content playback or display"
                   },
                   "min_duration_ms": {
@@ -23007,13 +23007,13 @@ export const core_Provenance = {
                     "type": "array",
                     "description": "Preferred disclosure positions in priority order. The first position a format supports should be used.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/enums/disclosure-position.json"
+                      "$ref": "/schemas/3.0.8/enums/disclosure-position.json"
                     },
                     "minItems": 1,
                     "uniqueItems": true
                   },
                   "ext": {
-                    "$ref": "/schemas/3.0.6/core/ext.json"
+                    "$ref": "/schemas/3.0.8/core/ext.json"
                   }
                 },
                 "additionalProperties": true
@@ -23079,7 +23079,7 @@ export const core_Provenance = {
       }
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -23087,7 +23087,7 @@ export const core_Provenance = {
 
 export const core_PublisherPropertySelector = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/publisher-property-selector.json",
+  "$id": "/schemas/3.0.8/core/publisher-property-selector.json",
   "title": "Publisher Property Selector",
   "description": "Selects properties from a publisher's adagents.json. Used for both product definitions and agent authorization. Supports three selection patterns: all properties, specific IDs, or by tags.",
   "discriminator": {
@@ -23133,7 +23133,7 @@ export const core_PublisherPropertySelector = {
           "type": "array",
           "description": "Specific property IDs from the publisher's adagents.json",
           "items": {
-            "$ref": "/schemas/3.0.6/core/property-id.json"
+            "$ref": "/schemas/3.0.8/core/property-id.json"
           },
           "minItems": 1
         }
@@ -23163,7 +23163,7 @@ export const core_PublisherPropertySelector = {
           "type": "array",
           "description": "Property tags from the publisher's adagents.json. Selector covers all properties with these tags",
           "items": {
-            "$ref": "/schemas/3.0.6/core/property-tag.json"
+            "$ref": "/schemas/3.0.8/core/property-tag.json"
           },
           "minItems": 1
         }
@@ -23180,7 +23180,7 @@ export const core_PublisherPropertySelector = {
 
 export const core_PushNotificationConfig = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/push-notification-config.json",
+  "$id": "/schemas/3.0.8/core/push-notification-config.json",
   "title": "Push Notification Config",
   "description": "Webhook configuration for asynchronous task notifications. Uses A2A-compatible PushNotificationConfig structure. By default, webhooks are signed with the AdCP RFC 9421 profile (see docs/building/implementation/security.mdx#webhook-callbacks) — the seller signs outbound with a key published at the jwks_uri on its own brand.json `agents[]` entry and the buyer verifies against that JWKS, so no shared secret crosses the wire. The optional `authentication` block selects the legacy Bearer or HMAC-SHA256 fallback for compatibility with receivers that have not yet adopted the 9421 profile; this fallback is deprecated and will be removed in AdCP 4.0. Note: the `idempotency_key` that receivers dedup on lives inside the webhook **payload** body (see docs/building/implementation/webhooks.mdx#reliability and the mcp-webhook-payload schema), not in this configuration object — this schema only describes the receiver-side transport config sent to the seller. This schema is designed for composition via allOf - consuming schemas should define their own additionalProperties constraints.",
   "type": "object",
@@ -23203,7 +23203,7 @@ export const core_PushNotificationConfig = {
           "type": "array",
           "description": "Array of authentication schemes. Supported: ['Bearer'] for simple token auth, ['HMAC-SHA256'] for legacy shared-secret signing. Both are deprecated; new integrations SHOULD omit `authentication` and use the RFC 9421 webhook profile.",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/auth-scheme.json"
+            "$ref": "/schemas/3.0.8/enums/auth-scheme.json"
           },
           "minItems": 1,
           "maxItems": 1
@@ -23228,7 +23228,7 @@ export const core_PushNotificationConfig = {
 
 export const core_RealEstateItem = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/real-estate-item.json",
+  "$id": "/schemas/3.0.8/core/real-estate-item.json",
   "title": "Real Estate Item",
   "description": "A property listing within a real-estate-type catalog. Carries the address, pricing, and specification data that platforms use for real estate ads and dynamic remarketing. Maps to Google DynamicRealEstateAsset, Meta home listing catalogs, and similar formats.",
   "type": "object",
@@ -23270,7 +23270,7 @@ export const core_RealEstateItem = {
       "additionalProperties": false
     },
     "price": {
-      "$ref": "/schemas/3.0.6/core/price.json",
+      "$ref": "/schemas/3.0.8/core/price.json",
       "description": "Property price or rental rate. Use period 'month' for rentals."
     },
     "property_type": {
@@ -23384,12 +23384,12 @@ export const core_RealEstateItem = {
       "type": "array",
       "description": "Typed creative asset pools for this property listing. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (exterior/interior hero), 'images_vertical' (9:16 for Stories), 'images_square' (1:1). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/offering-asset-group.json"
+        "$ref": "/schemas/3.0.8/core/offering-asset-group.json"
       },
       "minItems": 1
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -23470,7 +23470,7 @@ export const core_RealEstateItem = {
 
 export const core_ReferenceAsset = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/reference-asset.json",
+  "$id": "/schemas/3.0.8/core/reference-asset.json",
   "title": "Reference Asset",
   "description": "A reference asset that provides creative context. Carries visual materials (mood boards, product shots, example creatives) with semantic roles that tell creative agents how to use them.",
   "type": "object",
@@ -23507,7 +23507,7 @@ export const core_ReferenceAsset = {
 
 export const core_ReportingCapabilities = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/reporting-capabilities.json",
+  "$id": "/schemas/3.0.8/core/reporting-capabilities.json",
   "title": "Reporting Capabilities",
   "description": "Reporting capabilities available for a product",
   "type": "object",
@@ -23516,7 +23516,7 @@ export const core_ReportingCapabilities = {
       "type": "array",
       "description": "Supported reporting frequency options",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/reporting-frequency.json"
+        "$ref": "/schemas/3.0.8/enums/reporting-frequency.json"
       },
       "minItems": 1,
       "uniqueItems": true
@@ -23549,7 +23549,7 @@ export const core_ReportingCapabilities = {
       "type": "array",
       "description": "Metrics available in reporting. Impressions and spend are always implicitly included. When a creative format declares reported_metrics, buyers receive the intersection of these product-level metrics and the format's reported_metrics.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/available-metric.json"
+        "$ref": "/schemas/3.0.8/enums/available-metric.json"
       },
       "uniqueItems": true,
       "examples": [
@@ -23575,7 +23575,7 @@ export const core_ReportingCapabilities = {
       "description": "Whether this product supports keyword-level metric breakdowns in delivery reporting (by_keyword within by_package)"
     },
     "supports_geo_breakdown": {
-      "$ref": "/schemas/3.0.6/core/geo-breakdown-support.json",
+      "$ref": "/schemas/3.0.8/core/geo-breakdown-support.json",
       "description": "Geographic breakdown support for this product. Declares which geo levels and systems are available for by_geo reporting within by_package."
     },
     "supports_device_type_breakdown": {
@@ -23607,7 +23607,7 @@ export const core_ReportingCapabilities = {
       "type": "array",
       "description": "Measurement maturation stages available for this product. Used by any channel where billing-grade data is produced in phases rather than arriving final on day one. Examples: broadcast/linear TV (Live → C3 → C7 DVR accumulation), DOOH (tentative plays → post-IVT/fraud-check final), digital with IVT filtering (raw → GIVT filtered → SIVT filtered), podcast (7-day downloads → 30-day downloads). Each window defines an accumulation period and expected data availability. When present, delivery reports reference a specific window_id. Sellers whose data is final on first delivery typically omit this.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/measurement-window.json"
+        "$ref": "/schemas/3.0.8/core/measurement-window.json"
       },
       "minItems": 1,
       "uniqueItems": true
@@ -23626,7 +23626,7 @@ export const core_ReportingCapabilities = {
 
 export const core_ReportingWebhook = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/reporting-webhook.json",
+  "$id": "/schemas/3.0.8/core/reporting-webhook.json",
   "title": "Reporting Webhook",
   "description": "Webhook configuration for automated reporting delivery. Configures where and how campaign performance reports are sent.",
   "type": "object",
@@ -23649,7 +23649,7 @@ export const core_ReportingWebhook = {
           "type": "array",
           "description": "Array of authentication schemes. Supported: ['Bearer'] for simple token auth, ['HMAC-SHA256'] for signature verification (recommended for production)",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/auth-scheme.json"
+            "$ref": "/schemas/3.0.8/enums/auth-scheme.json"
           },
           "minItems": 1,
           "maxItems": 1
@@ -23679,7 +23679,7 @@ export const core_ReportingWebhook = {
       "type": "array",
       "description": "Optional list of metrics to include in webhook notifications. If omitted, all available metrics are included. Must be subset of product's available_metrics.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/available-metric.json"
+        "$ref": "/schemas/3.0.8/enums/available-metric.json"
       },
       "uniqueItems": true
     }
@@ -23694,52 +23694,52 @@ export const core_ReportingWebhook = {
 
 export const core_Requirements_AssetRequirements = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/requirements/asset-requirements.json",
+  "$id": "/schemas/3.0.8/core/requirements/asset-requirements.json",
   "title": "Asset Requirements",
   "description": "Technical requirements for creative assets. The applicable schema is determined by the sibling asset_type field.",
   "anyOf": [
     {
-      "$ref": "/schemas/3.0.6/core/requirements/image-asset-requirements.json"
+      "$ref": "/schemas/3.0.8/core/requirements/image-asset-requirements.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/requirements/video-asset-requirements.json"
+      "$ref": "/schemas/3.0.8/core/requirements/video-asset-requirements.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/requirements/audio-asset-requirements.json"
+      "$ref": "/schemas/3.0.8/core/requirements/audio-asset-requirements.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/requirements/text-asset-requirements.json"
+      "$ref": "/schemas/3.0.8/core/requirements/text-asset-requirements.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/requirements/markdown-asset-requirements.json"
+      "$ref": "/schemas/3.0.8/core/requirements/markdown-asset-requirements.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/requirements/html-asset-requirements.json"
+      "$ref": "/schemas/3.0.8/core/requirements/html-asset-requirements.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/requirements/css-asset-requirements.json"
+      "$ref": "/schemas/3.0.8/core/requirements/css-asset-requirements.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/requirements/javascript-asset-requirements.json"
+      "$ref": "/schemas/3.0.8/core/requirements/javascript-asset-requirements.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/requirements/vast-asset-requirements.json"
+      "$ref": "/schemas/3.0.8/core/requirements/vast-asset-requirements.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/requirements/daast-asset-requirements.json"
+      "$ref": "/schemas/3.0.8/core/requirements/daast-asset-requirements.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/requirements/url-asset-requirements.json"
+      "$ref": "/schemas/3.0.8/core/requirements/url-asset-requirements.json"
     },
     {
-      "$ref": "/schemas/3.0.6/core/requirements/webhook-asset-requirements.json"
+      "$ref": "/schemas/3.0.8/core/requirements/webhook-asset-requirements.json"
     }
   ]
 } as const;
 
 export const core_Requirements_AudioAssetRequirements = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/requirements/audio-asset-requirements.json",
+  "$id": "/schemas/3.0.8/core/requirements/audio-asset-requirements.json",
   "title": "Audio Asset Requirements",
   "description": "Requirements for audio creative assets.",
   "type": "object",
@@ -23808,7 +23808,7 @@ export const core_Requirements_AudioAssetRequirements = {
 
 export const core_Requirements_CatalogFieldBinding = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/requirements/catalog-field-binding.json",
+  "$id": "/schemas/3.0.8/core/requirements/catalog-field-binding.json",
   "title": "Catalog Field Binding",
   "description": "Maps a format template slot to a catalog item field or typed asset pool. The 'kind' field identifies the binding variant. All bindings are optional — agents can still infer mappings without them.",
   "definitions": {
@@ -23829,7 +23829,7 @@ export const core_Requirements_CatalogFieldBinding = {
           "description": "Dot-notation path to the field on the catalog item (e.g., 'name', 'price.amount', 'location.city')."
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -23856,7 +23856,7 @@ export const core_Requirements_CatalogFieldBinding = {
           "description": "The asset_group_id on the catalog item's assets array to pull from (e.g., 'images_landscape', 'images_vertical', 'logo')."
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -23907,7 +23907,7 @@ export const core_Requirements_CatalogFieldBinding = {
           "minItems": 1
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -23981,13 +23981,13 @@ export const core_Requirements_CatalogFieldBinding = {
 
 export const core_Requirements_CatalogRequirements = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/requirements/catalog-requirements.json",
+  "$id": "/schemas/3.0.8/core/requirements/catalog-requirements.json",
   "title": "Catalog Requirements",
   "description": "Format-level declaration of what catalog feeds a creative needs. Formats that render product listings, store locators, or promotional content declare which catalog types must be synced and what fields each catalog must provide. Buyers use this to ensure the right catalogs are synced before submitting creatives.",
   "type": "object",
   "properties": {
     "catalog_type": {
-      "$ref": "/schemas/3.0.6/enums/catalog-type.json",
+      "$ref": "/schemas/3.0.8/enums/catalog-type.json",
       "description": "The catalog type this requirement applies to"
     },
     "required": {
@@ -24018,7 +24018,7 @@ export const core_Requirements_CatalogRequirements = {
       "type": "array",
       "description": "Accepted feed formats for this catalog type. When specified, the synced catalog must use one of these formats. When omitted, any format is accepted.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/feed-format.json"
+        "$ref": "/schemas/3.0.8/enums/feed-format.json"
       },
       "minItems": 1,
       "uniqueItems": true
@@ -24027,7 +24027,7 @@ export const core_Requirements_CatalogRequirements = {
       "type": "array",
       "description": "Per-item creative asset requirements. Declares what asset groups (headlines, images, videos) each catalog item must provide in its assets array, along with count bounds and per-asset technical constraints. Applicable to 'offering' and all vertical catalog types (hotel, flight, job, etc.) whose items carry typed assets.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/requirements/offering-asset-constraint.json"
+        "$ref": "/schemas/3.0.8/core/requirements/offering-asset-constraint.json"
       },
       "minItems": 1,
       "uniqueItems": true
@@ -24036,7 +24036,7 @@ export const core_Requirements_CatalogRequirements = {
       "type": "array",
       "description": "Explicit mappings from format template slots to catalog item fields or typed asset pools. Optional — creative agents can infer mappings without them, but bindings make the relationship self-describing and enable validation. Covers scalar fields (asset_id → catalog_field), asset pools (asset_id → asset_group_id on the catalog item), and repeatable groups that iterate over catalog items.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/requirements/catalog-field-binding.json"
+        "$ref": "/schemas/3.0.8/core/requirements/catalog-field-binding.json"
       },
       "minItems": 1,
       "uniqueItems": true
@@ -24050,7 +24050,7 @@ export const core_Requirements_CatalogRequirements = {
 
 export const core_Requirements_CssAssetRequirements = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/requirements/css-asset-requirements.json",
+  "$id": "/schemas/3.0.8/core/requirements/css-asset-requirements.json",
   "title": "CSS Asset Requirements",
   "description": "Requirements for CSS creative assets.",
   "type": "object",
@@ -24066,7 +24066,7 @@ export const core_Requirements_CssAssetRequirements = {
 
 export const core_Requirements_DaastAssetRequirements = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/requirements/daast-asset-requirements.json",
+  "$id": "/schemas/3.0.8/core/requirements/daast-asset-requirements.json",
   "title": "DAAST Asset Requirements",
   "description": "Requirements for DAAST (Digital Audio Ad Serving Template) creative assets.",
   "type": "object",
@@ -24084,7 +24084,7 @@ export const core_Requirements_DaastAssetRequirements = {
 
 export const core_Requirements_HtmlAssetRequirements = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/requirements/html-asset-requirements.json",
+  "$id": "/schemas/3.0.8/core/requirements/html-asset-requirements.json",
   "title": "HTML Asset Requirements",
   "description": "Requirements for HTML creative assets. These define the execution environment constraints that the HTML must be compatible with.",
   "type": "object",
@@ -24123,7 +24123,7 @@ export const core_Requirements_HtmlAssetRequirements = {
 
 export const core_Requirements_ImageAssetRequirements = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/requirements/image-asset-requirements.json",
+  "$id": "/schemas/3.0.8/core/requirements/image-asset-requirements.json",
   "title": "Image Asset Requirements",
   "description": "Requirements for image creative assets. These define the technical constraints for image files.",
   "type": "object",
@@ -24149,7 +24149,7 @@ export const core_Requirements_ImageAssetRequirements = {
       "description": "Maximum height. Interpretation depends on unit (default: pixels). For exact dimensions, set min_height = max_height."
     },
     "unit": {
-      "$ref": "/schemas/3.0.6/enums/dimension-unit.json",
+      "$ref": "/schemas/3.0.8/enums/dimension-unit.json",
       "description": "Unit of measurement for width/height values. Defaults to 'px' when absent. Print formats use 'inches' or 'cm'."
     },
     "aspect_ratio": {
@@ -24275,7 +24275,7 @@ export const core_Requirements_ImageAssetRequirements = {
 
 export const core_Requirements_JavascriptAssetRequirements = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/requirements/javascript-asset-requirements.json",
+  "$id": "/schemas/3.0.8/core/requirements/javascript-asset-requirements.json",
   "title": "JavaScript Asset Requirements",
   "description": "Requirements for JavaScript creative assets. These define the execution environment constraints that the JavaScript must be compatible with.",
   "type": "object",
@@ -24316,7 +24316,7 @@ export const core_Requirements_JavascriptAssetRequirements = {
 
 export const core_Requirements_MarkdownAssetRequirements = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/requirements/markdown-asset-requirements.json",
+  "$id": "/schemas/3.0.8/core/requirements/markdown-asset-requirements.json",
   "title": "Markdown Asset Requirements",
   "description": "Requirements for markdown creative assets.",
   "type": "object",
@@ -24332,7 +24332,7 @@ export const core_Requirements_MarkdownAssetRequirements = {
 
 export const core_Requirements_OfferingAssetConstraint = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/requirements/offering-asset-constraint.json",
+  "$id": "/schemas/3.0.8/core/requirements/offering-asset-constraint.json",
   "title": "Offering Asset Constraint",
   "description": "Declares per-group creative requirements that each offering must satisfy. Allows formats to specify what asset groups (headlines, images, videos) offerings must provide, along with count and per-asset technical constraints.",
   "type": "object",
@@ -24342,7 +24342,7 @@ export const core_Requirements_OfferingAssetConstraint = {
       "description": "The asset group this constraint applies to. Values are format-defined vocabulary — each format chooses its own group IDs (e.g., 'headlines', 'images', 'videos'). Buyers discover them via list_creative_formats."
     },
     "asset_type": {
-      "$ref": "/schemas/3.0.6/enums/asset-content-type.json",
+      "$ref": "/schemas/3.0.8/enums/asset-content-type.json",
       "description": "The expected content type for this group."
     },
     "required": {
@@ -24361,11 +24361,11 @@ export const core_Requirements_OfferingAssetConstraint = {
       "description": "Maximum number of items allowed in this group."
     },
     "asset_requirements": {
-      "$ref": "/schemas/3.0.6/core/requirements/asset-requirements.json",
+      "$ref": "/schemas/3.0.8/core/requirements/asset-requirements.json",
       "description": "Technical requirements for each item in this group (e.g., max_length for text, min_width/aspect_ratio for images). Applies uniformly to all items in the group."
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -24399,7 +24399,7 @@ export const core_Requirements_OfferingAssetConstraint = {
 
 export const core_Requirements_TextAssetRequirements = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/requirements/text-asset-requirements.json",
+  "$id": "/schemas/3.0.8/core/requirements/text-asset-requirements.json",
   "title": "Text Asset Requirements",
   "description": "Requirements for text creative assets such as headlines, body copy, and CTAs.",
   "type": "object",
@@ -24441,7 +24441,7 @@ export const core_Requirements_TextAssetRequirements = {
 
 export const core_Requirements_UrlAssetRequirements = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/requirements/url-asset-requirements.json",
+  "$id": "/schemas/3.0.8/core/requirements/url-asset-requirements.json",
   "title": "URL Asset Requirements",
   "description": "Requirements for URL assets such as click-through URLs, tracking pixels, and landing pages.",
   "type": "object",
@@ -24492,7 +24492,7 @@ export const core_Requirements_UrlAssetRequirements = {
 
 export const core_Requirements_VastAssetRequirements = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/requirements/vast-asset-requirements.json",
+  "$id": "/schemas/3.0.8/core/requirements/vast-asset-requirements.json",
   "title": "VAST Asset Requirements",
   "description": "Requirements for VAST (Video Ad Serving Template) creative assets.",
   "type": "object",
@@ -24514,7 +24514,7 @@ export const core_Requirements_VastAssetRequirements = {
 
 export const core_Requirements_VideoAssetRequirements = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/requirements/video-asset-requirements.json",
+  "$id": "/schemas/3.0.8/core/requirements/video-asset-requirements.json",
   "title": "Video Asset Requirements",
   "description": "Requirements for video creative assets. These define the technical constraints for video files.",
   "type": "object",
@@ -24611,15 +24611,15 @@ export const core_Requirements_VideoAssetRequirements = {
       "description": "Whether the video must include an audio track"
     },
     "frame_rate_type": {
-      "$ref": "/schemas/3.0.6/enums/frame-rate-type.json",
+      "$ref": "/schemas/3.0.8/enums/frame-rate-type.json",
       "description": "Required frame rate type. Broadcast and SSAI require constant frame rate for seamless splicing."
     },
     "scan_type": {
-      "$ref": "/schemas/3.0.6/enums/scan-type.json",
+      "$ref": "/schemas/3.0.8/enums/scan-type.json",
       "description": "Required scan type. Modern delivery requires progressive scan."
     },
     "gop_type": {
-      "$ref": "/schemas/3.0.6/enums/gop-type.json",
+      "$ref": "/schemas/3.0.8/enums/gop-type.json",
       "description": "Required GOP structure. SSAI and broadcast require closed GOPs for clean splice points."
     },
     "min_gop_interval_seconds": {
@@ -24633,7 +24633,7 @@ export const core_Requirements_VideoAssetRequirements = {
       "description": "Maximum keyframe interval in seconds. SSAI typically requires 1-2 second intervals."
     },
     "moov_atom_position": {
-      "$ref": "/schemas/3.0.6/enums/moov-atom-position.json",
+      "$ref": "/schemas/3.0.8/enums/moov-atom-position.json",
       "description": "Required moov atom position in MP4 container. 'start' enables progressive download without buffering the entire file."
     },
     "audio_codecs": {
@@ -24664,7 +24664,7 @@ export const core_Requirements_VideoAssetRequirements = {
     "audio_channels": {
       "type": "array",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/audio-channel-layout.json"
+        "$ref": "/schemas/3.0.8/enums/audio-channel-layout.json"
       },
       "description": "Accepted audio channel configurations"
     },
@@ -24687,7 +24687,7 @@ export const core_Requirements_VideoAssetRequirements = {
 
 export const core_Requirements_WebhookAssetRequirements = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/requirements/webhook-asset-requirements.json",
+  "$id": "/schemas/3.0.8/core/requirements/webhook-asset-requirements.json",
   "title": "Webhook Asset Requirements",
   "description": "Requirements for webhook creative assets.",
   "type": "object",
@@ -24709,7 +24709,7 @@ export const core_Requirements_WebhookAssetRequirements = {
 
 export const core_Response = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/response.json",
+  "$id": "/schemas/3.0.8/core/response.json",
   "title": "Protocol Response",
   "description": "Protocol-level response wrapper (MCP/A2A) - contains AdCP task data plus protocol fields",
   "type": "object",
@@ -24734,7 +24734,7 @@ export const core_Response = {
 
 export const core_RightsConstraint = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/rights-constraint.json",
+  "$id": "/schemas/3.0.8/core/rights-constraint.json",
   "title": "Rights Constraint",
   "description": "Rights metadata attached to a creative manifest. Each entry represents constraints from a single rights holder. A creative may combine multiple rights constraints (e.g., talent likeness + music license). For v1, rights constraints are informational metadata — the buyer/orchestrator manages creative lifecycle against these terms.",
   "type": "object",
@@ -24776,7 +24776,7 @@ export const core_RightsConstraint = {
       "type": "array",
       "description": "Rights uses covered by this constraint",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/right-use.json"
+        "$ref": "/schemas/3.0.8/enums/right-use.json"
       },
       "minItems": 1
     },
@@ -24802,7 +24802,7 @@ export const core_RightsConstraint = {
       "description": "Maximum total impressions allowed for the full validity period (valid_from to valid_until). This is the absolute cap across all creatives using this rights grant, not a per-creative or per-period limit."
     },
     "right_type": {
-      "$ref": "/schemas/3.0.6/enums/right-type.json",
+      "$ref": "/schemas/3.0.8/enums/right-type.json",
       "description": "Type of rights (talent, music, etc.). Helps identify constraints when a creative combines multiple rights types."
     },
     "approval_status": {
@@ -24820,7 +24820,7 @@ export const core_RightsConstraint = {
       "description": "URL where downstream supply chain participants can verify this rights grant is active. Returns HTTP 200 with the current grant status, or 404 if revoked. Enables SSPs and verification vendors to confirm rights before serving."
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -24833,7 +24833,7 @@ export const core_RightsConstraint = {
 
 export const core_SellerAgentRef = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/seller-agent-ref.json",
+  "$id": "/schemas/3.0.8/core/seller-agent-ref.json",
   "title": "Seller Agent Reference",
   "description": "Structured reference to a seller agent. The canonical identifier is the agent's URL as declared in the property publisher's adagents.json `authorized_agents[].url`. The optional `id` slot is reserved for a future registry-assigned stable identifier; it is not used today. This shape mirrors `format-id` and `ProviderEntry` — URL-first, with an ID slot for forward compatibility.",
   "x-status": "experimental",
@@ -24864,7 +24864,7 @@ export const core_SellerAgentRef = {
 
 export const core_SignalDefinition = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/signal-definition.json",
+  "$id": "/schemas/3.0.8/core/signal-definition.json",
   "title": "Signal Definition",
   "description": "Definition of a signal in a data provider's catalog, published via adagents.json",
   "type": "object",
@@ -24886,7 +24886,7 @@ export const core_SignalDefinition = {
       "maxLength": 2000
     },
     "value_type": {
-      "$ref": "/schemas/3.0.6/enums/signal-value-type.json",
+      "$ref": "/schemas/3.0.8/enums/signal-value-type.json",
       "description": "The data type of this signal's values"
     },
     "tags": {
@@ -24909,7 +24909,7 @@ export const core_SignalDefinition = {
       "type": "array",
       "description": "Restricted attribute categories this signal touches. Data providers SHOULD declare these so governance agents can structurally match signals against a plan's restricted_attributes without relying on semantic inference from the signal name or description.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/restricted-attribute.json"
+        "$ref": "/schemas/3.0.8/enums/restricted-attribute.json"
       },
       "minItems": 1
     },
@@ -24954,7 +24954,7 @@ export const core_SignalDefinition = {
 
 export const core_SignalFilters = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/signal-filters.json",
+  "$id": "/schemas/3.0.8/core/signal-filters.json",
   "title": "Signal Filters",
   "description": "Filters to refine signal discovery results",
   "type": "object",
@@ -24963,7 +24963,7 @@ export const core_SignalFilters = {
       "type": "array",
       "description": "Filter by catalog type",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/signal-catalog-type.json"
+        "$ref": "/schemas/3.0.8/enums/signal-catalog-type.json"
       },
       "minItems": 1
     },
@@ -24998,7 +24998,7 @@ export const core_SignalFilters = {
 
 export const core_SignalId = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/signal-id.json",
+  "$id": "/schemas/3.0.8/core/signal-id.json",
   "title": "Signal ID",
   "description": "Universal signal identifier. Uses 'source' as discriminator: 'catalog' for signals from a data provider's published catalog (verifiable), 'agent' for agent-native signals (not externally verifiable).",
   "x-entity": "signal",
@@ -25065,15 +25065,15 @@ export const core_SignalId = {
 
 export const core_SignalPricingOption = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/signal-pricing-option.json",
+  "$id": "/schemas/3.0.8/core/signal-pricing-option.json",
   "title": "Signal Pricing Option",
   "description": "Deprecated — use vendor-pricing-option.json for new implementations. This alias is retained for backward compatibility.",
-  "$ref": "/schemas/3.0.6/core/vendor-pricing-option.json"
+  "$ref": "/schemas/3.0.8/core/vendor-pricing-option.json"
 } as const;
 
 export const core_SignalPricing = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/signal-pricing.json",
+  "$id": "/schemas/3.0.8/core/signal-pricing.json",
   "title": "Vendor Pricing",
   "description": "Pricing model for a vendor service. Discriminated by model: 'cpm' (fixed CPM), 'percent_of_media' (percentage of spend with optional CPM cap), 'flat_fee' (fixed charge per reporting period), 'per_unit' (fixed price per unit of work), or 'custom' (escape hatch for models not covered by the enumerated forms — requires a description and structured metadata).",
   "type": "object",
@@ -25098,7 +25098,7 @@ export const core_SignalPricing = {
           "pattern": "^[A-Z]{3}$"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -25134,7 +25134,7 @@ export const core_SignalPricing = {
           "pattern": "^[A-Z]{3}$"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -25174,7 +25174,7 @@ export const core_SignalPricing = {
           "pattern": "^[A-Z]{3}$"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -25209,7 +25209,7 @@ export const core_SignalPricing = {
           "pattern": "^[A-Z]{3}$"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -25253,7 +25253,7 @@ export const core_SignalPricing = {
           "pattern": "^[A-Z]{3}$"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -25268,7 +25268,7 @@ export const core_SignalPricing = {
 
 export const core_SignalTargeting = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/signal-targeting.json",
+  "$id": "/schemas/3.0.8/core/signal-targeting.json",
   "title": "Signal Targeting",
   "description": "Targeting constraint for a specific signal. Uses value_type as discriminator to determine the targeting expression format.",
   "discriminator": {
@@ -25280,7 +25280,7 @@ export const core_SignalTargeting = {
       "description": "Binary signal targeting - user either matches or doesn't",
       "properties": {
         "signal_id": {
-          "$ref": "/schemas/3.0.6/core/signal-id.json",
+          "$ref": "/schemas/3.0.8/core/signal-id.json",
           "description": "The signal to target"
         },
         "value_type": {
@@ -25305,7 +25305,7 @@ export const core_SignalTargeting = {
       "description": "Categorical signal targeting - target users with specific values",
       "properties": {
         "signal_id": {
-          "$ref": "/schemas/3.0.6/core/signal-id.json",
+          "$ref": "/schemas/3.0.8/core/signal-id.json",
           "description": "The signal to target"
         },
         "value_type": {
@@ -25334,7 +25334,7 @@ export const core_SignalTargeting = {
       "description": "Numeric signal targeting - target users within a value range. If min_value is provided, it must be <= max_value. Values should be within the signal's defined range (see signal definition).",
       "properties": {
         "signal_id": {
-          "$ref": "/schemas/3.0.6/core/signal-id.json",
+          "$ref": "/schemas/3.0.8/core/signal-id.json",
           "description": "The signal to target"
         },
         "value_type": {
@@ -25362,7 +25362,7 @@ export const core_SignalTargeting = {
 
 export const core_Special = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/special.json",
+  "$id": "/schemas/3.0.8/core/special.json",
   "title": "Special",
   "description": "Event-anchored content tied to a real-world event or occasion. When present on a collection, indicates the collection is a special. When present on an installment, indicates that specific installment is event-anchored (overrides or supplements the collection-level special).",
   "type": "object",
@@ -25372,7 +25372,7 @@ export const core_Special = {
       "description": "Name of the event (e.g., 'Olympics 2028', 'Super Bowl LXI')"
     },
     "category": {
-      "$ref": "/schemas/3.0.6/enums/special-category.json",
+      "$ref": "/schemas/3.0.8/enums/special-category.json",
       "description": "Category of the event"
     },
     "starts": {
@@ -25394,7 +25394,7 @@ export const core_Special = {
 
 export const core_StartTiming = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/start-timing.json",
+  "$id": "/schemas/3.0.8/core/start-timing.json",
   "title": "Start Timing",
   "description": "Campaign start timing: 'asap' or ISO 8601 date-time",
   "oneOf": [
@@ -25413,7 +25413,7 @@ export const core_StartTiming = {
 
 export const core_StoreItem = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/store-item.json",
+  "$id": "/schemas/3.0.8/core/store-item.json",
   "title": "Store Item",
   "description": "A physical store or location within a store-type catalog. Carries the location data, catchment areas, and metadata that platforms use for proximity targeting, store locator creatives, and inventory-aware ad serving.",
   "type": "object",
@@ -25481,7 +25481,7 @@ export const core_StoreItem = {
       "type": "array",
       "description": "Catchment areas for this store. Each defines a reachable area using travel time (isochrone), simple radius, or pre-computed GeoJSON. Multiple catchments allow different modes — e.g., 15-minute drive AND 10-minute walk.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/catchment.json"
+        "$ref": "/schemas/3.0.8/core/catchment.json"
       },
       "minItems": 1
     },
@@ -25522,7 +25522,7 @@ export const core_StoreItem = {
       "minItems": 1
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -25673,13 +25673,13 @@ export const core_StoreItem = {
 
 export const core_Talent = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/talent.json",
+  "$id": "/schemas/3.0.8/core/talent.json",
   "title": "Talent",
   "description": "A person associated with a collection or installment, with an optional link to their brand.json identity",
   "type": "object",
   "properties": {
     "role": {
-      "$ref": "/schemas/3.0.6/enums/talent-role.json",
+      "$ref": "/schemas/3.0.8/enums/talent-role.json",
       "description": "Role of this person on the collection or installment"
     },
     "name": {
@@ -25701,7 +25701,7 @@ export const core_Talent = {
 
 export const core_Targeting = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/targeting.json",
+  "$id": "/schemas/3.0.8/core/targeting.json",
   "title": "Targeting Overlay",
   "description": "Optional restriction overlays for media buys. Most targeting should be expressed in the brief and handled by the publisher. These fields are for functional restrictions: geographic (RCT testing, regulatory compliance, proximity targeting), age verification (alcohol, gambling), device platform (app compatibility), language (localization), and keyword targeting (search/retail media).",
   "type": "object",
@@ -25749,7 +25749,7 @@ export const core_Targeting = {
         "type": "object",
         "properties": {
           "system": {
-            "$ref": "/schemas/3.0.6/enums/metro-system.json",
+            "$ref": "/schemas/3.0.8/enums/metro-system.json",
             "description": "Metro area classification system (e.g., 'nielsen_dma', 'uk_itl2')"
           },
           "values": {
@@ -25776,7 +25776,7 @@ export const core_Targeting = {
         "type": "object",
         "properties": {
           "system": {
-            "$ref": "/schemas/3.0.6/enums/metro-system.json",
+            "$ref": "/schemas/3.0.8/enums/metro-system.json",
             "description": "Metro area classification system (e.g., 'nielsen_dma', 'uk_itl2')"
           },
           "values": {
@@ -25803,7 +25803,7 @@ export const core_Targeting = {
         "type": "object",
         "properties": {
           "system": {
-            "$ref": "/schemas/3.0.6/enums/postal-system.json",
+            "$ref": "/schemas/3.0.8/enums/postal-system.json",
             "description": "Postal code system (e.g., 'us_zip', 'gb_outward'). System name encodes country and precision."
           },
           "values": {
@@ -25830,7 +25830,7 @@ export const core_Targeting = {
         "type": "object",
         "properties": {
           "system": {
-            "$ref": "/schemas/3.0.6/enums/postal-system.json",
+            "$ref": "/schemas/3.0.8/enums/postal-system.json",
             "description": "Postal code system (e.g., 'us_zip', 'gb_outward'). System name encodes country and precision."
           },
           "values": {
@@ -25854,7 +25854,7 @@ export const core_Targeting = {
       "type": "array",
       "description": "Restrict delivery to specific time windows. Each entry specifies days of week and an hour range.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/daypart-target.json"
+        "$ref": "/schemas/3.0.8/core/daypart-target.json"
       },
       "minItems": 1
     },
@@ -25885,18 +25885,18 @@ export const core_Targeting = {
       "minItems": 1
     },
     "frequency_cap": {
-      "$ref": "/schemas/3.0.6/core/frequency-cap.json"
+      "$ref": "/schemas/3.0.8/core/frequency-cap.json"
     },
     "property_list": {
-      "$ref": "/schemas/3.0.6/core/property-list-ref.json",
+      "$ref": "/schemas/3.0.8/core/property-list-ref.json",
       "description": "Reference to a property list for targeting specific properties within this product. The package runs on the intersection of the product's publisher_properties and this list. Sellers SHOULD return a validation error if the product has property_targeting_allowed: false."
     },
     "collection_list": {
-      "$ref": "/schemas/3.0.6/core/collection-list-ref.json",
+      "$ref": "/schemas/3.0.8/core/collection-list-ref.json",
       "description": "Reference to a collection list for including specific collections (programs, shows) within this product. The package runs on the intersection of matched collections and this list. Use for inclusion-based collection targeting. Seller must declare support in get_adcp_capabilities."
     },
     "collection_list_exclude": {
-      "$ref": "/schemas/3.0.6/core/collection-list-ref.json",
+      "$ref": "/schemas/3.0.8/core/collection-list-ref.json",
       "description": "Reference to a collection list for excluding specific collections (programs, shows) from this product. Matched collections must not carry the buyer's ads. Use for brand safety do-not-air lists. Seller must declare support in get_adcp_capabilities."
     },
     "age_restriction": {
@@ -25918,7 +25918,7 @@ export const core_Targeting = {
           "type": "array",
           "description": "Accepted verification methods. If omitted, any method the platform supports is acceptable.",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/age-verification-method.json"
+            "$ref": "/schemas/3.0.8/enums/age-verification-method.json"
           },
           "minItems": 1
         }
@@ -25932,7 +25932,7 @@ export const core_Targeting = {
       "type": "array",
       "description": "Restrict to specific platforms. Use for technical compatibility (app only works on iOS). Values from Sec-CH-UA-Platform standard, extended for CTV.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/device-platform.json"
+        "$ref": "/schemas/3.0.8/enums/device-platform.json"
       },
       "minItems": 1
     },
@@ -25940,7 +25940,7 @@ export const core_Targeting = {
       "type": "array",
       "description": "Restrict to specific device form factors. Use for campaigns targeting hardware categories rather than operating systems (e.g., mobile-only promotions, CTV campaigns).",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/device-type.json"
+        "$ref": "/schemas/3.0.8/enums/device-type.json"
       },
       "minItems": 1
     },
@@ -25948,7 +25948,7 @@ export const core_Targeting = {
       "type": "array",
       "description": "Exclude specific device form factors from delivery (e.g., exclude CTV for app-install campaigns).",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/device-type.json"
+        "$ref": "/schemas/3.0.8/enums/device-type.json"
       },
       "minItems": 1
     },
@@ -26018,7 +26018,7 @@ export const core_Targeting = {
                 "description": "Travel time limit."
               },
               "unit": {
-                "$ref": "/schemas/3.0.6/enums/travel-time-unit.json"
+                "$ref": "/schemas/3.0.8/enums/travel-time-unit.json"
               }
             },
             "required": [
@@ -26028,7 +26028,7 @@ export const core_Targeting = {
             "additionalProperties": false
           },
           "transport_mode": {
-            "$ref": "/schemas/3.0.6/enums/transport-mode.json",
+            "$ref": "/schemas/3.0.8/enums/transport-mode.json",
             "description": "Transportation mode for isochrone calculation. Required when travel_time is provided."
           },
           "radius": {
@@ -26041,7 +26041,7 @@ export const core_Targeting = {
                 "description": "Radius distance."
               },
               "unit": {
-                "$ref": "/schemas/3.0.6/enums/distance-unit.json",
+                "$ref": "/schemas/3.0.8/enums/distance-unit.json",
                 "description": "Distance unit."
               }
             },
@@ -26075,7 +26075,7 @@ export const core_Targeting = {
             "additionalProperties": false
           },
           "ext": {
-            "$ref": "/schemas/3.0.6/core/ext.json"
+            "$ref": "/schemas/3.0.8/core/ext.json"
           }
         },
         "oneOf": [
@@ -26167,7 +26167,7 @@ export const core_Targeting = {
             "description": "The keyword to target"
           },
           "match_type": {
-            "$ref": "/schemas/3.0.6/enums/match-type.json"
+            "$ref": "/schemas/3.0.8/enums/match-type.json"
           },
           "bid_price": {
             "type": "number",
@@ -26195,7 +26195,7 @@ export const core_Targeting = {
             "description": "The keyword to exclude"
           },
           "match_type": {
-            "$ref": "/schemas/3.0.6/enums/match-type.json"
+            "$ref": "/schemas/3.0.8/enums/match-type.json"
           }
         },
         "required": [
@@ -26212,7 +26212,7 @@ export const core_Targeting = {
 
 export const core_TasksGetRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/tasks-get-request.json",
+  "$id": "/schemas/3.0.8/core/tasks-get-request.json",
   "title": "Tasks Get Request",
   "description": "Request parameters for retrieving a specific task by ID with optional conversation history across all AdCP domains",
   "type": "object",
@@ -26234,10 +26234,10 @@ export const core_TasksGetRequest = {
       "description": "Include full conversation history for this task (may increase response size)"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -26263,7 +26263,7 @@ export const core_TasksGetRequest = {
 
 export const core_TasksGetResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/tasks-get-response.json",
+  "$id": "/schemas/3.0.8/core/tasks-get-response.json",
   "title": "Tasks Get Response",
   "description": "Response containing detailed information about a specific task including status and optional conversation history across all AdCP protocols",
   "type": "object",
@@ -26274,15 +26274,15 @@ export const core_TasksGetResponse = {
       "x-entity": "task"
     },
     "task_type": {
-      "$ref": "/schemas/3.0.6/enums/task-type.json",
+      "$ref": "/schemas/3.0.8/enums/task-type.json",
       "description": "Type of AdCP operation"
     },
     "protocol": {
-      "$ref": "/schemas/3.0.6/enums/adcp-protocol.json",
+      "$ref": "/schemas/3.0.8/enums/adcp-protocol.json",
       "description": "AdCP protocol this task belongs to"
     },
     "status": {
-      "$ref": "/schemas/3.0.6/enums/task-status.json",
+      "$ref": "/schemas/3.0.8/enums/task-status.json",
       "description": "Current task status"
     },
     "created_at": {
@@ -26348,7 +26348,7 @@ export const core_TasksGetResponse = {
           "description": "Additional error context",
           "properties": {
             "protocol": {
-              "$ref": "/schemas/3.0.6/enums/adcp-protocol.json",
+              "$ref": "/schemas/3.0.8/enums/adcp-protocol.json",
               "description": "AdCP protocol where error occurred"
             },
             "operation": {
@@ -26404,10 +26404,10 @@ export const core_TasksGetResponse = {
       }
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -26423,7 +26423,7 @@ export const core_TasksGetResponse = {
 
 export const core_TasksListRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/tasks-list-request.json",
+  "$id": "/schemas/3.0.8/core/tasks-list-request.json",
   "title": "Tasks List Request",
   "description": "Request parameters for listing and filtering async tasks across all AdCP protocols with state reconciliation capabilities",
   "type": "object",
@@ -26439,38 +26439,38 @@ export const core_TasksListRequest = {
       "description": "Filter criteria for querying tasks",
       "properties": {
         "protocol": {
-          "$ref": "/schemas/3.0.6/enums/adcp-protocol.json",
+          "$ref": "/schemas/3.0.8/enums/adcp-protocol.json",
           "description": "Filter by single AdCP protocol"
         },
         "protocols": {
           "type": "array",
           "description": "Filter by multiple AdCP protocols",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/adcp-protocol.json"
+            "$ref": "/schemas/3.0.8/enums/adcp-protocol.json"
           },
           "minItems": 1
         },
         "status": {
-          "$ref": "/schemas/3.0.6/enums/task-status.json",
+          "$ref": "/schemas/3.0.8/enums/task-status.json",
           "description": "Filter by single task status"
         },
         "statuses": {
           "type": "array",
           "description": "Filter by multiple task statuses",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/task-status.json"
+            "$ref": "/schemas/3.0.8/enums/task-status.json"
           },
           "minItems": 1
         },
         "task_type": {
-          "$ref": "/schemas/3.0.6/enums/task-type.json",
+          "$ref": "/schemas/3.0.8/enums/task-type.json",
           "description": "Filter by single task type"
         },
         "task_types": {
           "type": "array",
           "description": "Filter by multiple task types",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/task-type.json"
+            "$ref": "/schemas/3.0.8/enums/task-type.json"
           },
           "minItems": 1
         },
@@ -26531,7 +26531,7 @@ export const core_TasksListRequest = {
           "description": "Field to sort by"
         },
         "direction": {
-          "$ref": "/schemas/3.0.6/enums/sort-direction.json",
+          "$ref": "/schemas/3.0.8/enums/sort-direction.json",
           "default": "desc",
           "description": "Sort direction"
         }
@@ -26539,7 +26539,7 @@ export const core_TasksListRequest = {
       "additionalProperties": true
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-request.json"
+      "$ref": "/schemas/3.0.8/core/pagination-request.json"
     },
     "include_history": {
       "type": "boolean",
@@ -26547,10 +26547,10 @@ export const core_TasksListRequest = {
       "description": "Include full conversation history for each task (may significantly increase response size)"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true,
@@ -26609,7 +26609,7 @@ export const core_TasksListRequest = {
 
 export const core_TasksListResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/tasks-list-response.json",
+  "$id": "/schemas/3.0.8/core/tasks-list-response.json",
   "title": "Tasks List Response",
   "description": "Response from task listing query with filtered results and state reconciliation data across all AdCP domains",
   "type": "object",
@@ -26697,7 +26697,7 @@ export const core_TasksListResponse = {
             "x-entity": "task"
           },
           "task_type": {
-            "$ref": "/schemas/3.0.6/enums/task-type.json",
+            "$ref": "/schemas/3.0.8/enums/task-type.json",
             "description": "Type of AdCP operation"
           },
           "domain": {
@@ -26709,7 +26709,7 @@ export const core_TasksListResponse = {
             ]
           },
           "status": {
-            "$ref": "/schemas/3.0.6/enums/task-status.json",
+            "$ref": "/schemas/3.0.8/enums/task-status.json",
             "description": "Current task status"
           },
           "created_at": {
@@ -26744,13 +26744,13 @@ export const core_TasksListResponse = {
       }
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-response.json"
+      "$ref": "/schemas/3.0.8/core/pagination-response.json"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -26763,7 +26763,7 @@ export const core_TasksListResponse = {
 
 export const core_UserMatch = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/user-match.json",
+  "$id": "/schemas/3.0.8/core/user-match.json",
   "title": "User Match",
   "description": "User identifiers for attribution matching. Supports universal IDs, hashed identifiers, click IDs, and probabilistic matching.",
   "type": "object",
@@ -26775,7 +26775,7 @@ export const core_UserMatch = {
         "type": "object",
         "properties": {
           "type": {
-            "$ref": "/schemas/3.0.6/enums/uid-type.json",
+            "$ref": "/schemas/3.0.8/enums/uid-type.json",
             "description": "Universal ID type"
           },
           "value": {
@@ -26818,7 +26818,7 @@ export const core_UserMatch = {
       "description": "Client user agent string for probabilistic matching"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "anyOf": [
@@ -26854,7 +26854,7 @@ export const core_UserMatch = {
 
 export const core_VehicleItem = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/vehicle-item.json",
+  "$id": "/schemas/3.0.8/core/vehicle-item.json",
   "title": "Vehicle Item",
   "description": "A vehicle listing within a vehicle-type catalog. Carries the make/model, pricing, and specification data that platforms use for automotive inventory ads. Maps to Meta Automotive Inventory Ads, Microsoft Auto Inventory feeds, Google vehicle ads, and similar formats.",
   "type": "object",
@@ -26881,7 +26881,7 @@ export const core_VehicleItem = {
       "description": "Model year."
     },
     "price": {
-      "$ref": "/schemas/3.0.6/core/price.json",
+      "$ref": "/schemas/3.0.8/core/price.json",
       "description": "Vehicle price."
     },
     "condition": {
@@ -27012,12 +27012,12 @@ export const core_VehicleItem = {
       "type": "array",
       "description": "Typed creative asset pools for this vehicle. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (exterior hero), 'images_vertical' (9:16 for Stories), 'images_square' (1:1). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/offering-asset-group.json"
+        "$ref": "/schemas/3.0.8/core/offering-asset-group.json"
       },
       "minItems": 1
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -27086,7 +27086,7 @@ export const core_VehicleItem = {
 
 export const core_VendorPricingOption = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/vendor-pricing-option.json",
+  "$id": "/schemas/3.0.8/core/vendor-pricing-option.json",
   "title": "Vendor Pricing Option",
   "description": "A pricing option offered by a vendor agent (signals, creative, governance). Combines pricing_option_id with the pricing model fields. Pass pricing_option_id in report_usage for billing verification. All vendor discovery responses return pricing_options as an array — vendors may offer multiple options (volume tiers, context-specific rates, different models per product line).",
   "allOf": [
@@ -27104,14 +27104,14 @@ export const core_VendorPricingOption = {
       ]
     },
     {
-      "$ref": "/schemas/3.0.6/core/signal-pricing.json"
+      "$ref": "/schemas/3.0.8/core/signal-pricing.json"
     }
   ]
 } as const;
 
 export const core_XEntityTypes = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/core/x-entity-types.json",
+  "$id": "/schemas/3.0.8/core/x-entity-types.json",
   "title": "x-entity types",
   "description": "Registry of valid `x-entity` annotation values. Each value tags a schema field whose contents carry identity of the named entity type. The context-entity lint reads this registry to reject unknown `x-entity` values and to catch mismatches between storyboard capture and consume sites. See docs/contributing/x-entity-annotation.md for authoring guidance. To add a value, PR this file and extend the authoring doc.",
   "type": "string",
@@ -27181,11 +27181,11 @@ export const core_XEntityTypes = {
 
 export const creative_AssetTypes_Index = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/asset-types/index.json",
+  "$id": "/schemas/3.0.8/creative/asset-types/index.json",
   "title": "AdCP Asset Type Registry",
   "description": "Registry of asset types used in AdCP creative manifests. Each asset type defines the structure of actual content payloads (what you send), not requirements or constraints (which belong in format specifications).",
   "version": "1.0.0",
-  "lastUpdated": "2026-05-03",
+  "lastUpdated": "2026-05-08",
   "asset_types": {
     "image": {
       "description": "Static image asset (JPG, PNG, GIF, WebP, SVG)",
@@ -27291,16 +27291,16 @@ export const creative_AssetTypes_Index = {
     "creative_manifests": "Creative manifests provide actual asset content, keyed by asset_id from the format. Each asset value carries an `asset_type` discriminator (one of the registry keys) so validators can select the matching asset schema and report errors against only that branch. The format specification also defines what asset_type each asset_id should have — payload and format should agree.",
     "example_flow": "Format says 'hero_image' must be type 'image' with width 1200, height 627. Manifest provides hero_image: {url: '...', width: 1200, height: 627}. The format spec tells us it's an image type."
   },
-  "adcp_version": "3.0.6",
-  "baseUrl": "/schemas/3.0.6",
+  "adcp_version": "3.0.8",
+  "baseUrl": "/schemas/3.0.8",
   "versioning": {
-    "note": "AdCP uses build-time versioning. This directory contains schemas for AdCP 3.0.6. Full semantic versions are available at /schemas/{version}/ (e.g., /schemas/2.5.0/). Major version aliases point to the latest release: /schemas/v3/ → /schemas/3.0.6/."
+    "note": "AdCP uses build-time versioning. This directory contains schemas for AdCP 3.0.8. Full semantic versions are available at /schemas/{version}/ (e.g., /schemas/2.5.0/). Major version aliases point to the latest release: /schemas/v3/ → /schemas/3.0.8/."
   }
 } as const;
 
 export const creative_CreativeFeatureResult = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/creative-feature-result.json",
+  "$id": "/schemas/3.0.8/creative/creative-feature-result.json",
   "title": "Creative Feature Result",
   "description": "A single feature evaluation result for a creative. Uses the same value structure as property-feature-value (value, confidence, expires_at, etc.).",
   "type": "object",
@@ -27358,7 +27358,7 @@ export const creative_CreativeFeatureResult = {
       "$comment": "x-entity deliberately omitted — a PolicyEntry reference can resolve to either a governance_registry_policy or a governance_inline_policy depending on the authorizing entry's source. See issue #2685."
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -27370,7 +27370,7 @@ export const creative_CreativeFeatureResult = {
 
 export const creative_GetCreativeDeliveryRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/get-creative-delivery-request.json",
+  "$id": "/schemas/3.0.8/creative/get-creative-delivery-request.json",
   "title": "Get Creative Delivery Request",
   "description": "Request parameters for retrieving creative delivery data including variant-level metrics from a creative agent. At least one scoping filter (media_buy_ids or creative_ids) is required.",
   "type": "object",
@@ -27382,7 +27382,7 @@ export const creative_GetCreativeDeliveryRequest = {
       "maximum": 99
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account for routing and scoping. Limits results to creatives within this account."
     },
     "media_buy_ids": {
@@ -27419,14 +27419,14 @@ export const creative_GetCreativeDeliveryRequest = {
       "minimum": 1
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-request.json",
+      "$ref": "/schemas/3.0.8/core/pagination-request.json",
       "description": "Pagination parameters for the creatives array in the response. Uses cursor-based pagination consistent with other list operations."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "anyOf": [
@@ -27446,7 +27446,7 @@ export const creative_GetCreativeDeliveryRequest = {
 
 export const creative_GetCreativeDeliveryResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/get-creative-delivery-response.json",
+  "$id": "/schemas/3.0.8/creative/get-creative-delivery-response.json",
   "title": "Get Creative Delivery Response",
   "description": "Response payload for get_creative_delivery task. Returns creative delivery data with variant-level breakdowns including manifests and metrics.",
   "type": "object",
@@ -27508,11 +27508,11 @@ export const creative_GetCreativeDeliveryResponse = {
             "x-entity": "media_buy"
           },
           "format_id": {
-            "$ref": "/schemas/3.0.6/core/format-id.json",
+            "$ref": "/schemas/3.0.8/core/format-id.json",
             "description": "Format of this creative"
           },
           "totals": {
-            "$ref": "/schemas/3.0.6/core/delivery-metrics.json",
+            "$ref": "/schemas/3.0.8/core/delivery-metrics.json",
             "description": "Aggregate delivery metrics across all variants of this creative"
           },
           "variant_count": {
@@ -27524,7 +27524,7 @@ export const creative_GetCreativeDeliveryResponse = {
             "type": "array",
             "description": "Variant-level delivery breakdown. Each variant includes the rendered manifest and delivery metrics. For standard creatives, contains a single variant. For asset group optimization, one per combination. For generative creative, one per generated execution. Empty when a creative has no variants yet.",
             "items": {
-              "$ref": "/schemas/3.0.6/core/creative-variant.json"
+              "$ref": "/schemas/3.0.8/core/creative-variant.json"
             }
           }
         },
@@ -27570,14 +27570,14 @@ export const creative_GetCreativeDeliveryResponse = {
       "type": "array",
       "description": "Task-specific errors and warnings",
       "items": {
-        "$ref": "/schemas/3.0.6/core/error.json"
+        "$ref": "/schemas/3.0.8/core/error.json"
       }
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -27590,7 +27590,7 @@ export const creative_GetCreativeDeliveryResponse = {
 
 export const creative_GetCreativeFeaturesRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/get-creative-features-request.json",
+  "$id": "/schemas/3.0.8/creative/get-creative-features-request.json",
   "title": "Get Creative Features Request",
   "description": "Request payload for the get_creative_features task. Submits a creative manifest for evaluation by a governance agent, which analyzes the creative and returns scored feature values (brand safety, content categorization, quality metrics, etc.).",
   "type": "object",
@@ -27602,7 +27602,7 @@ export const creative_GetCreativeFeaturesRequest = {
       "maximum": 99
     },
     "creative_manifest": {
-      "$ref": "/schemas/3.0.6/core/creative-manifest.json",
+      "$ref": "/schemas/3.0.8/core/creative-manifest.json",
       "description": "The creative manifest to evaluate. Contains format_id and assets."
     },
     "feature_ids": {
@@ -27614,14 +27614,14 @@ export const creative_GetCreativeFeaturesRequest = {
       "minItems": 1
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account for billing this evaluation. Required when the governance agent charges per evaluation."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -27632,7 +27632,7 @@ export const creative_GetCreativeFeaturesRequest = {
 
 export const creative_GetCreativeFeaturesResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/get-creative-features-response.json",
+  "$id": "/schemas/3.0.8/creative/get-creative-features-response.json",
   "title": "Get Creative Features Response",
   "description": "Response payload for the get_creative_features task. Returns scored feature values from the governance agent's evaluation of the submitted creative manifest.",
   "type": "object",
@@ -27645,7 +27645,7 @@ export const creative_GetCreativeFeaturesResponse = {
           "type": "array",
           "description": "Feature values for the evaluated creative",
           "items": {
-            "$ref": "/schemas/3.0.6/creative/creative-feature-result.json"
+            "$ref": "/schemas/3.0.8/creative/creative-feature-result.json"
           }
         },
         "detail_url": {
@@ -27669,14 +27669,14 @@ export const creative_GetCreativeFeaturesResponse = {
           "description": "ISO 4217 currency code for vendor_cost."
         },
         "consumption": {
-          "$ref": "/schemas/3.0.6/core/creative-consumption.json",
+          "$ref": "/schemas/3.0.8/core/creative-consumption.json",
           "description": "Structured consumption details for this evaluation. Informational — lets the buyer verify that vendor_cost is consistent with the rate card. vendor_cost is the billing source of truth."
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -27690,14 +27690,14 @@ export const creative_GetCreativeFeaturesResponse = {
         "errors": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -27709,7 +27709,7 @@ export const creative_GetCreativeFeaturesResponse = {
 
 export const creative_ListCreativeFormatsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/list-creative-formats-request.json",
+  "$id": "/schemas/3.0.8/creative/list-creative-formats-request.json",
   "title": "List Creative Formats Request (Creative Agent)",
   "description": "Request parameters for discovering creative formats provided by this creative agent",
   "type": "object",
@@ -27724,7 +27724,7 @@ export const creative_ListCreativeFormatsRequest = {
       "type": "array",
       "description": "Return only these specific format IDs",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       },
       "minItems": 1
     },
@@ -27780,14 +27780,14 @@ export const creative_ListCreativeFormatsRequest = {
       "description": "Search for formats by name (case-insensitive partial match)"
     },
     "wcag_level": {
-      "$ref": "/schemas/3.0.6/enums/wcag-level.json",
+      "$ref": "/schemas/3.0.8/enums/wcag-level.json",
       "description": "Filter to formats that meet at least this WCAG conformance level (A < AA < AAA)"
     },
     "disclosure_positions": {
       "type": "array",
       "description": "Filter to formats that support all of these disclosure positions. When a format has disclosure_capabilities, match against those positions. Otherwise fall back to supported_disclosure_positions. Use to find formats compatible with a brief's compliance requirements.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/disclosure-position.json"
+        "$ref": "/schemas/3.0.8/enums/disclosure-position.json"
       },
       "minItems": 1,
       "uniqueItems": true
@@ -27796,7 +27796,7 @@ export const creative_ListCreativeFormatsRequest = {
       "type": "array",
       "description": "Filter to formats where each requested persistence mode is supported by at least one position in disclosure_capabilities. Different positions may satisfy different modes. Use to find formats compatible with jurisdiction-specific persistence requirements (e.g., continuous for EU AI Act).",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/disclosure-persistence.json"
+        "$ref": "/schemas/3.0.8/enums/disclosure-persistence.json"
       },
       "minItems": 1,
       "uniqueItems": true
@@ -27805,7 +27805,7 @@ export const creative_ListCreativeFormatsRequest = {
       "type": "array",
       "description": "Filter to formats whose output_format_ids includes any of these format IDs. Returns formats that can produce these outputs — inspect each result's input_format_ids to see what inputs they accept.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       },
       "minItems": 1
     },
@@ -27813,7 +27813,7 @@ export const creative_ListCreativeFormatsRequest = {
       "type": "array",
       "description": "Filter to formats whose input_format_ids includes any of these format IDs. Returns formats that accept these creatives as input — inspect each result's output_format_ids to see what they can produce.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       },
       "minItems": 1
     },
@@ -27823,17 +27823,17 @@ export const creative_ListCreativeFormatsRequest = {
       "description": "Include pricing_options on each format. Used by transformation and generation agents that charge per format or per unit of work. Requires account. When false or omitted, pricing is not computed."
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account reference for pricing. When provided with include_pricing, the agent returns pricing_options from this account's rate card on each format."
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-request.json"
+      "$ref": "/schemas/3.0.8/core/pagination-request.json"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true,
@@ -27860,7 +27860,7 @@ export const creative_ListCreativeFormatsRequest = {
 
 export const creative_ListCreativeFormatsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/list-creative-formats-response.json",
+  "$id": "/schemas/3.0.8/creative/list-creative-formats-response.json",
   "title": "List Creative Formats Response (Creative Agent)",
   "description": "Response payload for list_creative_formats task from creative agent - returns full format definitions",
   "type": "object",
@@ -27869,7 +27869,7 @@ export const creative_ListCreativeFormatsResponse = {
       "type": "array",
       "description": "Full format definitions for all formats this agent supports. Each format's authoritative source is indicated by its agent_url field.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format.json"
+        "$ref": "/schemas/3.0.8/core/format.json"
       }
     },
     "creative_agents": {
@@ -27891,7 +27891,7 @@ export const creative_ListCreativeFormatsResponse = {
             "type": "array",
             "description": "Capabilities this creative agent provides",
             "items": {
-              "$ref": "/schemas/3.0.6/enums/creative-agent-capability.json"
+              "$ref": "/schemas/3.0.8/enums/creative-agent-capability.json"
             }
           }
         },
@@ -27904,17 +27904,17 @@ export const creative_ListCreativeFormatsResponse = {
       "type": "array",
       "description": "Task-specific errors and warnings",
       "items": {
-        "$ref": "/schemas/3.0.6/core/error.json"
+        "$ref": "/schemas/3.0.8/core/error.json"
       }
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-response.json"
+      "$ref": "/schemas/3.0.8/core/pagination-response.json"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -27925,7 +27925,7 @@ export const creative_ListCreativeFormatsResponse = {
 
 export const creative_ListCreativesRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/list-creatives-request.json",
+  "$id": "/schemas/3.0.8/creative/list-creatives-request.json",
   "title": "List Creatives Request",
   "description": "Request parameters for querying creative assets from a creative library with filtering, sorting, and pagination. Implemented by any agent that hosts a creative library — creative agents (ad servers, creative platforms) and sales agents that manage creatives.",
   "type": "object",
@@ -27937,19 +27937,19 @@ export const creative_ListCreativesRequest = {
       "maximum": 99
     },
     "filters": {
-      "$ref": "/schemas/3.0.6/core/creative-filters.json"
+      "$ref": "/schemas/3.0.8/core/creative-filters.json"
     },
     "sort": {
       "type": "object",
       "description": "Sorting parameters",
       "properties": {
         "field": {
-          "$ref": "/schemas/3.0.6/enums/creative-sort-field.json",
+          "$ref": "/schemas/3.0.8/enums/creative-sort-field.json",
           "default": "created_date",
           "description": "Field to sort by"
         },
         "direction": {
-          "$ref": "/schemas/3.0.6/enums/sort-direction.json",
+          "$ref": "/schemas/3.0.8/enums/sort-direction.json",
           "default": "desc",
           "description": "Sort direction"
         }
@@ -27957,7 +27957,7 @@ export const creative_ListCreativesRequest = {
       "additionalProperties": true
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-request.json"
+      "$ref": "/schemas/3.0.8/core/pagination-request.json"
     },
     "include_assignments": {
       "type": "boolean",
@@ -27985,7 +27985,7 @@ export const creative_ListCreativesRequest = {
       "description": "Include pricing_options on each creative. Requires account to be provided. When false or omitted, pricing is not computed."
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account reference for pricing and access. When provided with include_pricing, the agent returns pricing_options from this account's rate card on each creative."
     },
     "fields": {
@@ -28012,10 +28012,10 @@ export const creative_ListCreativesRequest = {
       }
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true,
@@ -28110,7 +28110,7 @@ export const creative_ListCreativesRequest = {
 
 export const creative_ListCreativesResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/list-creatives-response.json",
+  "$id": "/schemas/3.0.8/creative/list-creatives-response.json",
   "title": "List Creatives Response",
   "description": "Response from creative library query with filtered results, metadata, and optional enriched data",
   "type": "object",
@@ -28144,7 +28144,7 @@ export const creative_ListCreativesResponse = {
               "type": "string"
             },
             "direction": {
-              "$ref": "/schemas/3.0.6/enums/sort-direction.json"
+              "$ref": "/schemas/3.0.8/enums/sort-direction.json"
             }
           }
         }
@@ -28156,7 +28156,7 @@ export const creative_ListCreativesResponse = {
       "additionalProperties": true
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-response.json"
+      "$ref": "/schemas/3.0.8/core/pagination-response.json"
     },
     "creatives": {
       "type": "array",
@@ -28170,7 +28170,7 @@ export const creative_ListCreativesResponse = {
             "x-entity": "creative"
           },
           "account": {
-            "$ref": "/schemas/3.0.6/core/account.json",
+            "$ref": "/schemas/3.0.8/core/account.json",
             "description": "Account that owns this creative"
           },
           "name": {
@@ -28178,11 +28178,11 @@ export const creative_ListCreativesResponse = {
             "description": "Human-readable creative name"
           },
           "format_id": {
-            "$ref": "/schemas/3.0.6/core/format-id.json",
+            "$ref": "/schemas/3.0.8/core/format-id.json",
             "description": "Format identifier specifying which format this creative conforms to"
           },
           "status": {
-            "$ref": "/schemas/3.0.6/enums/creative-status.json",
+            "$ref": "/schemas/3.0.8/enums/creative-status.json",
             "description": "Current approval status of the creative"
           },
           "created_date": {
@@ -28200,7 +28200,7 @@ export const creative_ListCreativesResponse = {
             "description": "Assets for this creative, keyed by asset_id. Each asset value carries an `asset_type` discriminator that selects the matching asset schema.",
             "patternProperties": {
               "^[a-z0-9_]+$": {
-                "$ref": "/schemas/3.0.6/core/assets/asset-union.json"
+                "$ref": "/schemas/3.0.8/core/assets/asset-union.json"
               }
             },
             "additionalProperties": true
@@ -28224,7 +28224,7 @@ export const creative_ListCreativesResponse = {
             "type": "array",
             "description": "Dynamic content variables (DCO slots) for this creative. Included when include_variables=true.",
             "items": {
-              "$ref": "/schemas/3.0.6/core/creative-variable.json"
+              "$ref": "/schemas/3.0.8/core/creative-variable.json"
             }
           },
           "assignments": {
@@ -28299,21 +28299,21 @@ export const creative_ListCreativesResponse = {
             "additionalProperties": true
           },
           "snapshot_unavailable_reason": {
-            "$ref": "/schemas/3.0.6/enums/snapshot-unavailable-reason.json",
+            "$ref": "/schemas/3.0.8/enums/snapshot-unavailable-reason.json",
             "description": "Machine-readable reason the snapshot is omitted. Present only when include_snapshot was true and snapshot data is unavailable for this creative."
           },
           "items": {
             "type": "array",
             "description": "Items for multi-asset formats like carousels and native ads (included when include_items=true)",
             "items": {
-              "$ref": "/schemas/3.0.6/core/creative-item.json"
+              "$ref": "/schemas/3.0.8/core/creative-item.json"
             }
           },
           "pricing_options": {
             "type": "array",
             "description": "Pricing options for using this creative (serving, delivery). Used by ad servers and library agents. Transformation agents expose format-level pricing on list_creative_formats instead. Present when include_pricing=true and account provided. The buyer passes the applied pricing_option_id in report_usage.",
             "items": {
-              "$ref": "/schemas/3.0.6/core/vendor-pricing-option.json"
+              "$ref": "/schemas/3.0.8/core/vendor-pricing-option.json"
             },
             "minItems": 1
           }
@@ -28377,7 +28377,7 @@ export const creative_ListCreativesResponse = {
       "type": "array",
       "description": "Task-specific errors (e.g., invalid filters, account not found)",
       "items": {
-        "$ref": "/schemas/3.0.6/core/error.json"
+        "$ref": "/schemas/3.0.8/core/error.json"
       }
     },
     "sandbox": {
@@ -28385,10 +28385,10 @@ export const creative_ListCreativesResponse = {
       "description": "When true, this response contains simulated data from sandbox mode."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -28510,7 +28510,7 @@ export const creative_ListCreativesResponse = {
 
 export const creative_PreviewCreativeRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/preview-creative-request.json",
+  "$id": "/schemas/3.0.8/creative/preview-creative-request.json",
   "title": "Preview Creative Request",
   "description": "Request to generate previews of creative manifests. Uses request_type to select single, batch, or variant mode.",
   "type": "object",
@@ -28531,11 +28531,11 @@ export const creative_PreviewCreativeRequest = {
       "description": "Preview mode. 'single' previews one creative manifest. 'batch' previews multiple creatives in one call. 'variant' replays a post-flight variant by ID."
     },
     "creative_manifest": {
-      "$ref": "/schemas/3.0.6/core/creative-manifest.json",
+      "$ref": "/schemas/3.0.8/core/creative-manifest.json",
       "description": "Complete creative manifest with all required assets for the format. Required when request_type is 'single'. Also accepted per item in batch mode."
     },
     "format_id": {
-      "$ref": "/schemas/3.0.6/core/format-id.json",
+      "$ref": "/schemas/3.0.8/core/format-id.json",
       "description": "Always a structured object {agent_url, id} — never a plain string. Format identifier for rendering the preview. Defaults to creative_manifest.format_id if omitted. Used in single mode."
     },
     "inputs": {
@@ -28572,11 +28572,11 @@ export const creative_PreviewCreativeRequest = {
       "description": "Specific template ID for custom format rendering. Used in single mode."
     },
     "quality": {
-      "$ref": "/schemas/3.0.6/enums/creative-quality.json",
+      "$ref": "/schemas/3.0.8/enums/creative-quality.json",
       "description": "Render quality. 'draft' produces fast, lower-fidelity renderings. 'production' produces full-quality renderings. In batch mode, sets the default for all requests (individual items can override)."
     },
     "output_format": {
-      "$ref": "/schemas/3.0.6/enums/preview-output-format.json",
+      "$ref": "/schemas/3.0.8/enums/preview-output-format.json",
       "default": "url",
       "description": "Output format. 'url' returns preview_url (iframe-embeddable URL), 'html' returns preview_html (raw HTML). In batch mode, sets the default for all requests (individual items can override). Default: 'url'."
     },
@@ -28592,11 +28592,11 @@ export const creative_PreviewCreativeRequest = {
         "type": "object",
         "properties": {
           "format_id": {
-            "$ref": "/schemas/3.0.6/core/format-id.json",
+            "$ref": "/schemas/3.0.8/core/format-id.json",
             "description": "Format identifier for rendering the preview. Defaults to creative_manifest.format_id if omitted."
           },
           "creative_manifest": {
-            "$ref": "/schemas/3.0.6/core/creative-manifest.json",
+            "$ref": "/schemas/3.0.8/core/creative-manifest.json",
             "description": "Complete creative manifest with all required assets."
           },
           "inputs": {
@@ -28633,11 +28633,11 @@ export const creative_PreviewCreativeRequest = {
             "description": "Specific template ID for custom format rendering"
           },
           "quality": {
-            "$ref": "/schemas/3.0.6/enums/creative-quality.json",
+            "$ref": "/schemas/3.0.8/enums/creative-quality.json",
             "description": "Render quality for this preview. Overrides batch-level default."
           },
           "output_format": {
-            "$ref": "/schemas/3.0.6/enums/preview-output-format.json",
+            "$ref": "/schemas/3.0.8/enums/preview-output-format.json",
             "default": "url",
             "description": "Output format for this preview. Overrides batch-level default."
           },
@@ -28665,10 +28665,10 @@ export const creative_PreviewCreativeRequest = {
       "x-entity": "creative"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -28723,7 +28723,7 @@ export const creative_PreviewCreativeRequest = {
 
 export const creative_PreviewCreativeResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/preview-creative-response.json",
+  "$id": "/schemas/3.0.8/creative/preview-creative-response.json",
   "title": "Preview Creative Response",
   "description": "Response containing preview links for one or more creatives. Format matches the request: single preview response for single requests, batch results for batch requests.",
   "oneOf": [
@@ -28751,7 +28751,7 @@ export const creative_PreviewCreativeResponse = {
                 "type": "array",
                 "description": "Array of rendered pieces for this preview variant. Most formats render as a single piece. Companion ad formats (video + banner), multi-placement formats, and adaptive formats render as multiple pieces.",
                 "items": {
-                  "$ref": "/schemas/3.0.6/creative/preview-render.json"
+                  "$ref": "/schemas/3.0.8/creative/preview-render.json"
                 },
                 "minItems": 1
               },
@@ -28799,10 +28799,10 @@ export const creative_PreviewCreativeResponse = {
           "description": "ISO 8601 timestamp when preview links expire"
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -28853,7 +28853,7 @@ export const creative_PreviewCreativeResponse = {
                         "renders": {
                           "type": "array",
                           "items": {
-                            "$ref": "/schemas/3.0.6/creative/preview-render.json"
+                            "$ref": "/schemas/3.0.8/creative/preview-render.json"
                           },
                           "minItems": 1
                         },
@@ -28905,7 +28905,7 @@ export const creative_PreviewCreativeResponse = {
                 "type": "array",
                 "description": "Errors for failed requests",
                 "items": {
-                  "$ref": "/schemas/3.0.6/core/error.json"
+                  "$ref": "/schemas/3.0.8/core/error.json"
                 },
                 "minItems": 1
               }
@@ -28946,10 +28946,10 @@ export const creative_PreviewCreativeResponse = {
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -28991,7 +28991,7 @@ export const creative_PreviewCreativeResponse = {
                 "type": "array",
                 "description": "Rendered pieces for this variant",
                 "items": {
-                  "$ref": "/schemas/3.0.6/creative/preview-render.json"
+                  "$ref": "/schemas/3.0.8/creative/preview-render.json"
                 },
                 "minItems": 1
               }
@@ -29004,7 +29004,7 @@ export const creative_PreviewCreativeResponse = {
           "minItems": 1
         },
         "manifest": {
-          "$ref": "/schemas/3.0.6/core/creative-manifest.json",
+          "$ref": "/schemas/3.0.8/core/creative-manifest.json",
           "description": "The rendered creative manifest for this variant — the actual output that was served, not the input assets"
         },
         "expires_at": {
@@ -29013,10 +29013,10 @@ export const creative_PreviewCreativeResponse = {
           "description": "ISO 8601 timestamp when preview links expire"
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -29031,7 +29031,7 @@ export const creative_PreviewCreativeResponse = {
 
 export const creative_PreviewRender = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/preview-render.json",
+  "$id": "/schemas/3.0.8/creative/preview-render.json",
   "title": "Preview Render",
   "description": "A single rendered piece of a creative preview with discriminated output format",
   "oneOf": [
@@ -29257,7 +29257,7 @@ export const creative_PreviewRender = {
 
 export const creative_SyncCreativesAsyncResponseInputRequired = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/sync-creatives-async-response-input-required.json",
+  "$id": "/schemas/3.0.8/creative/sync-creatives-async-response-input-required.json",
   "title": "Sync Creatives - Input Required",
   "description": "Payload when sync_creatives task is paused waiting for buyer clarification or approval.",
   "type": "object",
@@ -29272,10 +29272,10 @@ export const creative_SyncCreativesAsyncResponseInputRequired = {
       "description": "Reason code indicating why buyer input is needed"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -29283,16 +29283,16 @@ export const creative_SyncCreativesAsyncResponseInputRequired = {
 
 export const creative_SyncCreativesAsyncResponseSubmitted = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/sync-creatives-async-response-submitted.json",
+  "$id": "/schemas/3.0.8/creative/sync-creatives-async-response-submitted.json",
   "title": "Sync Creatives - Submitted",
   "description": "Payload acknowledging sync_creatives task is queued for processing.",
   "type": "object",
   "properties": {
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -29300,7 +29300,7 @@ export const creative_SyncCreativesAsyncResponseSubmitted = {
 
 export const creative_SyncCreativesAsyncResponseWorking = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/sync-creatives-async-response-working.json",
+  "$id": "/schemas/3.0.8/creative/sync-creatives-async-response-working.json",
   "title": "Sync Creatives - Working",
   "description": "Progress payload for active sync_creatives task.",
   "type": "object",
@@ -29336,10 +29336,10 @@ export const creative_SyncCreativesAsyncResponseWorking = {
       "description": "Total number of creatives to process"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -29347,7 +29347,7 @@ export const creative_SyncCreativesAsyncResponseWorking = {
 
 export const creative_SyncCreativesRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/sync-creatives-request.json",
+  "$id": "/schemas/3.0.8/creative/sync-creatives-request.json",
   "title": "Sync Creatives Request",
   "description": "Request parameters for syncing creative assets with upsert semantics - supports bulk operations, scoped updates, and assignment management",
   "x-mutates-state": true,
@@ -29360,14 +29360,14 @@ export const creative_SyncCreativesRequest = {
       "maximum": 99
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account that owns these creatives."
     },
     "creatives": {
       "type": "array",
       "description": "Array of creative assets to sync (create or update)",
       "items": {
-        "$ref": "/schemas/3.0.6/core/creative-asset.json"
+        "$ref": "/schemas/3.0.8/core/creative-asset.json"
       },
       "minItems": 1,
       "maxItems": 100
@@ -29439,19 +29439,19 @@ export const creative_SyncCreativesRequest = {
       "description": "When true, preview changes without applying them. Returns what would be created/updated/deleted."
     },
     "validation_mode": {
-      "$ref": "/schemas/3.0.6/enums/validation-mode.json",
+      "$ref": "/schemas/3.0.8/enums/validation-mode.json",
       "default": "strict",
       "description": "Validation strictness. 'strict' fails entire sync on any validation error. 'lenient' processes valid creatives and reports errors."
     },
     "push_notification_config": {
-      "$ref": "/schemas/3.0.6/core/push-notification-config.json",
+      "$ref": "/schemas/3.0.8/core/push-notification-config.json",
       "description": "Optional webhook configuration for async sync notifications. The agent will send a webhook when sync completes if the operation takes longer than immediate response time (typically for large bulk operations or manual approval/HITL)."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -29590,7 +29590,7 @@ export const creative_SyncCreativesRequest = {
 
 export const creative_SyncCreativesResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/creative/sync-creatives-response.json",
+  "$id": "/schemas/3.0.8/creative/sync-creatives-response.json",
   "title": "Sync Creatives Response",
   "description": "Response from creative sync operation. Exactly one of three shapes: (1) synchronous success — per-creative results in the creatives array (best-effort processing with per-item status/failures); (2) terminal failure — errors array with no creatives processed; (3) submitted task envelope — status 'submitted' with task_id when the whole operation is queued (batch ingestion, async review that must settle before per-item results can be issued). The submitted branch MAY carry advisory errors for non-blocking warnings; terminal failures belong in the error branch. Final per-item results land on the task completion artifact, not this envelope. These three shapes are mutually exclusive — a response has exactly one.",
   "type": "object",
@@ -29616,15 +29616,15 @@ export const creative_SyncCreativesResponse = {
                 "x-entity": "creative"
               },
               "account": {
-                "$ref": "/schemas/3.0.6/core/account.json",
+                "$ref": "/schemas/3.0.8/core/account.json",
                 "description": "Account that owns this creative"
               },
               "action": {
-                "$ref": "/schemas/3.0.6/enums/creative-action.json",
+                "$ref": "/schemas/3.0.8/enums/creative-action.json",
                 "description": "Action taken for this creative during this sync operation (lifecycle operation, not approval state)."
               },
               "status": {
-                "$ref": "/schemas/3.0.6/enums/creative-status.json",
+                "$ref": "/schemas/3.0.8/enums/creative-status.json",
                 "description": "Advisory review-lifecycle state of the creative after this sync — a UI hint and polling-scheduling signal, NOT a spend-authorization gate. Orthogonal to action — action says what the sync did (created, updated, ...); status says where the creative sits in review. Values come from CreativeStatus only (processing, pending_review, approved, rejected, archived) — never from CreativeAction. Sellers with async review return processing or pending_review; sellers with synchronous review MAY return a terminal value (approved, rejected). Buyers MUST NOT gate downstream spend or package activation on status: approved from this response — a compromised or buggy seller could declare approved while bypassing content-policy review. Reconcile via list_creatives or a signed review webhook before committing spend. Authoritative state is always via list_creatives. MUST be omitted when action is failed or deleted (the creative has no meaningful review state — failure details belong in the errors array; deleted creatives are gone from the library). Omit entirely when the seller has no review lifecycle at all."
               },
               "platform_id": {
@@ -29642,7 +29642,7 @@ export const creative_SyncCreativesResponse = {
                 "type": "array",
                 "description": "Validation or processing errors (only present when action='failed')",
                 "items": {
-                  "$ref": "/schemas/3.0.6/core/error.json"
+                  "$ref": "/schemas/3.0.8/core/error.json"
                 }
               },
               "warnings": {
@@ -29717,10 +29717,10 @@ export const creative_SyncCreativesResponse = {
           "description": "When true, this response contains simulated data from sandbox mode."
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -29761,15 +29761,15 @@ export const creative_SyncCreativesResponse = {
           "type": "array",
           "description": "Operation-level errors that prevented processing any creatives (e.g., authentication failure, service unavailable, invalid request format)",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -29835,14 +29835,14 @@ export const creative_SyncCreativesResponse = {
           "type": "array",
           "description": "Optional advisory errors accompanying the submitted envelope. Use only for non-blocking warnings (e.g., throttled_severity advisories, governance observations). Terminal failures belong in the error branch, not here.",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -29861,7 +29861,7 @@ export const creative_SyncCreativesResponse = {
 
 export const enums_AccountScope = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/account-scope.json",
+  "$id": "/schemas/3.0.8/enums/account-scope.json",
   "title": "Account Scope",
   "description": "How the seller scoped a billing account relative to the operator and brand dimensions.",
   "type": "string",
@@ -29881,7 +29881,7 @@ export const enums_AccountScope = {
 
 export const enums_AccountStatus = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/account-status.json",
+  "$id": "/schemas/3.0.8/enums/account-status.json",
   "title": "Account Status",
   "description": "Advertiser account status in the account lifecycle",
   "type": "string",
@@ -29905,7 +29905,7 @@ export const enums_AccountStatus = {
 
 export const enums_ActionSource = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/action-source.json",
+  "$id": "/schemas/3.0.8/enums/action-source.json",
   "title": "Action Source",
   "description": "Where the conversion event originated",
   "type": "string",
@@ -29935,7 +29935,7 @@ export const enums_ActionSource = {
 
 export const enums_AdcpProtocol = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/adcp-protocol.json",
+  "$id": "/schemas/3.0.8/enums/adcp-protocol.json",
   "title": "AdCP Protocol",
   "description": "AdCP protocols for task categorization — referenced by tasks-list-request, webhook payloads, and other task-lifecycle surfaces. Values are kebab-case. This enum shares the same axis as supported_protocols (see /schemas/protocol/get-adcp-capabilities-response.json), which uses snake_case on the wire. Compliance testing support is declared via the `capabilities.compliance_testing` block, not as a protocol value.",
   "type": "string",
@@ -29959,7 +29959,7 @@ export const enums_AdcpProtocol = {
 
 export const enums_AdjustmentKind = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/adjustment-kind.json",
+  "$id": "/schemas/3.0.8/enums/adjustment-kind.json",
   "title": "Price Adjustment Kind",
   "description": "Categorizes how a price adjustment affects the transaction",
   "type": "string",
@@ -29979,7 +29979,7 @@ export const enums_AdjustmentKind = {
 
 export const enums_AdvertiserIndustry = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/advertiser-industry.json",
+  "$id": "/schemas/3.0.8/enums/advertiser-industry.json",
   "title": "Advertiser Industry",
   "description": "Standardized advertiser industry classification. Top-level categories classify the advertiser's primary business. Dot-notation subcategories (e.g., 'media_entertainment.podcasts') provide platform-specific precision where needed. Sellers map these to platform-native codes (Spotify ADV categories, LinkedIn industry IDs, IAB Content Taxonomy, etc.). Sellers MUST accept unknown values gracefully — treat unrecognized values as the parent category (strip the subcategory) or as uncategorized. This ensures forward compatibility as the taxonomy evolves.",
   "type": "string",
@@ -30155,7 +30155,7 @@ export const enums_AdvertiserIndustry = {
 
 export const enums_AgeVerificationMethod = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/age-verification-method.json",
+  "$id": "/schemas/3.0.8/enums/age-verification-method.json",
   "title": "Age Verification Method",
   "description": "Methods for verifying user age for compliance. Does not include 'inferred' as it is not accepted for regulatory compliance.",
   "type": "string",
@@ -30170,7 +30170,7 @@ export const enums_AgeVerificationMethod = {
 
 export const enums_AssessmentStatus = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/assessment-status.json",
+  "$id": "/schemas/3.0.8/enums/assessment-status.json",
   "title": "Assessment Status",
   "description": "Standardized quality level for health and readiness assessments. Comparable across sellers — buyer agents should use this for cross-seller decisions.",
   "type": "string",
@@ -30190,7 +30190,7 @@ export const enums_AssessmentStatus = {
 
 export const enums_AssetContentType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/asset-content-type.json",
+  "$id": "/schemas/3.0.8/enums/asset-content-type.json",
   "title": "Asset Content Type",
   "description": "Types of content that can be used as creative assets. Describes what KIND of content an asset contains (image, video, code, etc.), not where it displays.",
   "type": "string",
@@ -30214,7 +30214,7 @@ export const enums_AssetContentType = {
 
 export const enums_AttributionModel = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/attribution-model.json",
+  "$id": "/schemas/3.0.8/enums/attribution-model.json",
   "title": "Attribution Model",
   "description": "Attribution model used for conversion measurement",
   "type": "string",
@@ -30229,7 +30229,7 @@ export const enums_AttributionModel = {
 
 export const enums_AudienceSource = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/audience-source.json",
+  "$id": "/schemas/3.0.8/enums/audience-source.json",
   "title": "Audience Source",
   "description": "Origin of an audience segment in delivery reporting breakdowns. Only 'synced' audiences are directly targetable via the targeting overlay; other sources are informational.",
   "type": "string",
@@ -30245,7 +30245,7 @@ export const enums_AudienceSource = {
 
 export const enums_AudienceStatus = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/audience-status.json",
+  "$id": "/schemas/3.0.8/enums/audience-status.json",
   "title": "Audience Status",
   "description": "Matching status of a synced audience on a seller platform. Present when the sync action is created, updated, or unchanged; absent when the action is deleted or failed. See the Audience Sync specialism for transition rules.",
   "type": "string",
@@ -30263,7 +30263,7 @@ export const enums_AudienceStatus = {
 
 export const enums_AudioChannelLayout = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/audio-channel-layout.json",
+  "$id": "/schemas/3.0.8/enums/audio-channel-layout.json",
   "title": "Audio Channel Layout",
   "description": "Audio channel configuration for audio and video assets",
   "type": "string",
@@ -30277,7 +30277,7 @@ export const enums_AudioChannelLayout = {
 
 export const enums_AuthScheme = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/auth-scheme.json",
+  "$id": "/schemas/3.0.8/enums/auth-scheme.json",
   "title": "Authentication Scheme",
   "description": "Authentication schemes for push notification endpoints",
   "type": "string",
@@ -30289,7 +30289,7 @@ export const enums_AuthScheme = {
 
 export const enums_AvailableMetric = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/available-metric.json",
+  "$id": "/schemas/3.0.8/enums/available-metric.json",
   "title": "Available Metric",
   "description": "Standard delivery and performance metrics available for reporting",
   "type": "string",
@@ -30321,7 +30321,7 @@ export const enums_AvailableMetric = {
 
 export const enums_BillingParty = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/billing-party.json",
+  "$id": "/schemas/3.0.8/enums/billing-party.json",
   "title": "Billing Party",
   "description": "Which party the seller invoices for an account. Determines the billing entity and invoicing flow.",
   "type": "string",
@@ -30339,7 +30339,7 @@ export const enums_BillingParty = {
 
 export const enums_BinaryVerdict = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/binary-verdict.json",
+  "$id": "/schemas/3.0.8/enums/binary-verdict.json",
   "title": "Binary Verdict",
   "description": "Strictly two-outcome evaluation result used for overall record-level verdicts in content standards tasks. For per-feature breakdowns that include warning and unevaluated states, see feature-check-status.",
   "type": "string",
@@ -30355,7 +30355,7 @@ export const enums_BinaryVerdict = {
 
 export const enums_BrandAgentType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/brand-agent-type.json",
+  "$id": "/schemas/3.0.8/enums/brand-agent-type.json",
   "title": "Brand Agent Type",
   "description": "Functional roles for agents declared in brand.json. Each type represents a distinct capability that a brand or house can expose via an agent endpoint.",
   "type": "string",
@@ -30383,7 +30383,7 @@ export const enums_BrandAgentType = {
 
 export const enums_CanceledBy = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/canceled-by.json",
+  "$id": "/schemas/3.0.8/enums/canceled-by.json",
   "title": "Canceled By",
   "description": "Identifies which party initiated a cancellation.",
   "type": "string",
@@ -30399,7 +30399,7 @@ export const enums_CanceledBy = {
 
 export const enums_CatalogAction = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/catalog-action.json",
+  "$id": "/schemas/3.0.8/enums/catalog-action.json",
   "title": "Catalog Action",
   "description": "Action taken on a catalog during sync operation",
   "type": "string",
@@ -30414,7 +30414,7 @@ export const enums_CatalogAction = {
 
 export const enums_CatalogItemStatus = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/catalog-item-status.json",
+  "$id": "/schemas/3.0.8/enums/catalog-item-status.json",
   "title": "Catalog Item Status",
   "description": "Approval status of an individual item within a synced catalog. Platforms review catalog items and may approve, reject, or flag them for issues (similar to Google Merchant Center product review).",
   "type": "string",
@@ -30434,7 +30434,7 @@ export const enums_CatalogItemStatus = {
 
 export const enums_CatalogType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/catalog-type.json",
+  "$id": "/schemas/3.0.8/enums/catalog-type.json",
   "title": "Catalog Type",
   "description": "The type of catalog feed. Determines the item schema and how the platform resolves catalog items. Multiple catalog types can be synced to the same account and referenced together in creatives.",
   "type": "string",
@@ -30457,7 +30457,7 @@ export const enums_CatalogType = {
 
 export const enums_Channels = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/channels.json",
+  "$id": "/schemas/3.0.8/enums/channels.json",
   "title": "Media Channel",
   "description": "Standardized advertising media channels describing how buyers allocate budget. Channels are planning abstractions, not technical substrates. See the Media Channel Taxonomy specification for detailed definitions.",
   "type": "string",
@@ -30509,7 +30509,7 @@ export const enums_Channels = {
 
 export const enums_CloudStorageProtocol = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/cloud-storage-protocol.json",
+  "$id": "/schemas/3.0.8/enums/cloud-storage-protocol.json",
   "title": "Cloud Storage Protocol",
   "description": "Cloud storage protocols supported for offline file delivery",
   "type": "string",
@@ -30522,7 +30522,7 @@ export const enums_CloudStorageProtocol = {
 
 export const enums_CoBrandingRequirement = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/co-branding-requirement.json",
+  "$id": "/schemas/3.0.8/enums/co-branding-requirement.json",
   "title": "Co-Branding Requirement",
   "description": "Co-branding policy for creatives (retailer/publisher brand inclusion)",
   "type": "string",
@@ -30535,7 +30535,7 @@ export const enums_CoBrandingRequirement = {
 
 export const enums_CollectionCadence = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/collection-cadence.json",
+  "$id": "/schemas/3.0.8/enums/collection-cadence.json",
   "title": "Collection Cadence",
   "description": "How frequently a collection releases new installments",
   "type": "string",
@@ -30559,7 +30559,7 @@ export const enums_CollectionCadence = {
 
 export const enums_CollectionKind = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/collection-kind.json",
+  "$id": "/schemas/3.0.8/enums/collection-kind.json",
   "title": "Collection Kind",
   "description": "What kind of content program a collection represents. Determines how installments should be interpreted by buyer agents.",
   "type": "string",
@@ -30579,7 +30579,7 @@ export const enums_CollectionKind = {
 
 export const enums_CollectionRelationship = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/collection-relationship.json",
+  "$id": "/schemas/3.0.8/enums/collection-relationship.json",
   "title": "Collection Relationship",
   "description": "How two collections are related. References are scoped to the same get_products response. Symmetric types (companion, crossover) do not require both collections to declare the relationship.",
   "type": "string",
@@ -30601,7 +30601,7 @@ export const enums_CollectionRelationship = {
 
 export const enums_CollectionStatus = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/collection-status.json",
+  "$id": "/schemas/3.0.8/enums/collection-status.json",
   "title": "Collection Status",
   "description": "Lifecycle status of a collection",
   "type": "string",
@@ -30621,7 +30621,7 @@ export const enums_CollectionStatus = {
 
 export const enums_ConsentBasis = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/consent-basis.json",
+  "$id": "/schemas/3.0.8/enums/consent-basis.json",
   "title": "Consent Basis",
   "description": "Common GDPR lawful bases relevant to advertising. Covers the Article 6(1) bases used in programmatic advertising contexts.",
   "type": "string",
@@ -30635,7 +30635,7 @@ export const enums_ConsentBasis = {
 
 export const enums_ContentIdType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/content-id-type.json",
+  "$id": "/schemas/3.0.8/enums/content-id-type.json",
   "title": "Content ID Type",
   "description": "Identifier type used in content_ids on conversion events to match back to catalog items. Omit when the identifier type is custom or not listed here.",
   "type": "string",
@@ -30657,7 +30657,7 @@ export const enums_ContentIdType = {
 
 export const enums_ContentRatingSystem = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/content-rating-system.json",
+  "$id": "/schemas/3.0.8/enums/content-rating-system.json",
   "title": "Content Rating System",
   "description": "Rating systems for content advisory classifications",
   "type": "string",
@@ -30691,7 +30691,7 @@ export const enums_ContentRatingSystem = {
 
 export const enums_CreativeAction = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/creative-action.json",
+  "$id": "/schemas/3.0.8/enums/creative-action.json",
   "title": "Creative Action",
   "description": "Action taken on a creative during sync operation",
   "type": "string",
@@ -30706,7 +30706,7 @@ export const enums_CreativeAction = {
 
 export const enums_CreativeAgentCapability = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/creative-agent-capability.json",
+  "$id": "/schemas/3.0.8/enums/creative-agent-capability.json",
   "title": "Creative Agent Capability",
   "description": "Capabilities supported by creative agents for format handling",
   "type": "string",
@@ -30721,7 +30721,7 @@ export const enums_CreativeAgentCapability = {
 
 export const enums_CreativeApprovalStatus = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/creative-approval-status.json",
+  "$id": "/schemas/3.0.8/enums/creative-approval-status.json",
   "title": "Creative Approval Status",
   "description": "Approval state of a creative on a specific package",
   "type": "string",
@@ -30739,7 +30739,7 @@ export const enums_CreativeApprovalStatus = {
 
 export const enums_CreativeIdentifierType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/creative-identifier-type.json",
+  "$id": "/schemas/3.0.8/enums/creative-identifier-type.json",
   "title": "Creative Identifier Type",
   "description": "Industry-standard identifier types for advertising creatives. These identifiers are managed by external registries and used across the supply chain to track and reference specific creative assets.",
   "type": "string",
@@ -30762,7 +30762,7 @@ export const enums_CreativeIdentifierType = {
 
 export const enums_CreativeQuality = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/creative-quality.json",
+  "$id": "/schemas/3.0.8/enums/creative-quality.json",
   "title": "Creative Quality",
   "description": "Quality tier for creative generation, controlling the fidelity and cost tradeoff",
   "type": "string",
@@ -30778,7 +30778,7 @@ export const enums_CreativeQuality = {
 
 export const enums_CreativeSortField = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/creative-sort-field.json",
+  "$id": "/schemas/3.0.8/enums/creative-sort-field.json",
   "title": "Creative Sort Field",
   "description": "Fields available for sorting creative library listings",
   "type": "string",
@@ -30793,7 +30793,7 @@ export const enums_CreativeSortField = {
 
 export const enums_CreativeStatus = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/creative-status.json",
+  "$id": "/schemas/3.0.8/enums/creative-status.json",
   "title": "Creative Status",
   "description": "Lifecycle status of a creative asset in a creative library. See the Creative Protocol specification for transition rules.",
   "type": "string",
@@ -30815,7 +30815,7 @@ export const enums_CreativeStatus = {
 
 export const enums_DaastTrackingEvent = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/daast-tracking-event.json",
+  "$id": "/schemas/3.0.8/enums/daast-tracking-event.json",
   "title": "DAAST Tracking Event",
   "description": "Tracking events for audio ads. Includes DAAST-applicable events from IAB VAST/DAAST conventions, plus flattened Impression, Error, and ViewableImpression elements. creativeView included for companion ad tracking. measurableImpression is an AdCP extension.",
   "type": "string",
@@ -30848,7 +30848,7 @@ export const enums_DaastTrackingEvent = {
 
 export const enums_DaastVersion = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/daast-version.json",
+  "$id": "/schemas/3.0.8/enums/daast-version.json",
   "title": "DAAST Version",
   "description": "Supported DAAST (Digital Audio Ad Serving Template) specification versions",
   "type": "string",
@@ -30860,7 +30860,7 @@ export const enums_DaastVersion = {
 
 export const enums_DayOfWeek = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/day-of-week.json",
+  "$id": "/schemas/3.0.8/enums/day-of-week.json",
   "title": "Day of Week",
   "description": "Days of the week for daypart targeting",
   "type": "string",
@@ -30877,7 +30877,7 @@ export const enums_DayOfWeek = {
 
 export const enums_DelegationAuthority = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/delegation-authority.json",
+  "$id": "/schemas/3.0.8/enums/delegation-authority.json",
   "title": "Delegation Authority",
   "description": "Authority level granted to a delegated agent operating against a campaign plan.",
   "type": "string",
@@ -30895,7 +30895,7 @@ export const enums_DelegationAuthority = {
 
 export const enums_DeliveryType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/delivery-type.json",
+  "$id": "/schemas/3.0.8/enums/delivery-type.json",
   "title": "Delivery Type",
   "description": "Type of inventory delivery",
   "type": "string",
@@ -30911,7 +30911,7 @@ export const enums_DeliveryType = {
 
 export const enums_DemographicSystem = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/demographic-system.json",
+  "$id": "/schemas/3.0.8/enums/demographic-system.json",
   "title": "Demographic System",
   "description": "Audience measurement systems for demographic notation in GRP forecasts and pricing",
   "type": "string",
@@ -30935,7 +30935,7 @@ export const enums_DemographicSystem = {
 
 export const enums_DerivativeType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/derivative-type.json",
+  "$id": "/schemas/3.0.8/enums/derivative-type.json",
   "title": "Derivative Type",
   "description": "What kind of derivative content an installment represents relative to its source installment. The source installment_id must reference an installment within the same response.",
   "type": "string",
@@ -30957,7 +30957,7 @@ export const enums_DerivativeType = {
 
 export const enums_DevicePlatform = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/device-platform.json",
+  "$id": "/schemas/3.0.8/enums/device-platform.json",
   "title": "Device Platform",
   "description": "Operating system platforms for device targeting. Browser values from Sec-CH-UA-Platform standard, extended for CTV.",
   "type": "string",
@@ -30979,7 +30979,7 @@ export const enums_DevicePlatform = {
 
 export const enums_DeviceType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/device-type.json",
+  "$id": "/schemas/3.0.8/enums/device-type.json",
   "title": "Device Type",
   "description": "Device form factor categories for targeting and reporting. Complements device-platform (operating system) with hardware classification. OpenRTB mapping: 1 (Mobile/Tablet General) → mobile, 2 (PC) → desktop, 4 (Phone) → mobile, 5 (Tablet) → tablet, 6 (Connected Device) → ctv, 7 (Set Top Box) → ctv. DOOH inventory uses dooh.",
   "type": "string",
@@ -30995,7 +30995,7 @@ export const enums_DeviceType = {
 
 export const enums_DigitalSourceType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/digital-source-type.json",
+  "$id": "/schemas/3.0.8/enums/digital-source-type.json",
   "title": "Digital Source Type",
   "description": "Classification of AI involvement in content creation, aligned with IPTC digitalsourcetype vocabulary. Used in provenance metadata to declare how a creative asset, artifact, or individual asset was produced.",
   "type": "string",
@@ -31025,7 +31025,7 @@ export const enums_DigitalSourceType = {
 
 export const enums_DimensionUnit = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/dimension-unit.json",
+  "$id": "/schemas/3.0.8/enums/dimension-unit.json",
   "title": "Dimension Unit",
   "description": "Units of measurement for creative format dimensions",
   "type": "string",
@@ -31041,7 +31041,7 @@ export const enums_DimensionUnit = {
 
 export const enums_DisclosurePersistence = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/disclosure-persistence.json",
+  "$id": "/schemas/3.0.8/enums/disclosure-persistence.json",
   "title": "Disclosure Persistence",
   "description": "How long a disclosure must persist during content playback or display. Different jurisdictions and regulations require different persistence behaviors for AI-generated content labels. When multiple sources specify persistence for the same jurisdiction (e.g., brief and provenance), the most restrictive mode applies: continuous > initial > flexible.",
   "type": "string",
@@ -31059,7 +31059,7 @@ export const enums_DisclosurePersistence = {
 
 export const enums_DisclosurePosition = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/disclosure-position.json",
+  "$id": "/schemas/3.0.8/enums/disclosure-position.json",
   "title": "Disclosure Position",
   "description": "Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.",
   "type": "string",
@@ -31077,7 +31077,7 @@ export const enums_DisclosurePosition = {
 
 export const enums_DistanceUnit = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/distance-unit.json",
+  "$id": "/schemas/3.0.8/enums/distance-unit.json",
   "title": "Distance Unit",
   "description": "Units of distance measurement for radius-based catchment areas.",
   "type": "string",
@@ -31095,7 +31095,7 @@ export const enums_DistanceUnit = {
 
 export const enums_DistributionIdentifierType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/distribution-identifier-type.json",
+  "$id": "/schemas/3.0.8/enums/distribution-identifier-type.json",
   "title": "Distribution Identifier Type",
   "description": "Platform-specific identifier types for collection distribution. Maps a collection to its presence on specific platforms, enabling cross-seller matching.",
   "type": "string",
@@ -31149,7 +31149,7 @@ export const enums_DistributionIdentifierType = {
 
 export const enums_ErrorCode = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/error-code.json",
+  "$id": "/schemas/3.0.8/enums/error-code.json",
   "title": "Error Code",
   "description": "Standard error code vocabulary for AdCP. Codes are machine-readable so agents can apply autonomous recovery strategies based on the recovery classification. Sellers MAY return codes not listed here for platform-specific errors — the error.json code field accepts any string. Agents MUST handle unknown codes by falling back to the recovery classification.",
   "type": "string",
@@ -31434,7 +31434,7 @@ export const enums_ErrorCode = {
 
 export const enums_EscalationSeverity = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/escalation-severity.json",
+  "$id": "/schemas/3.0.8/enums/escalation-severity.json",
   "title": "Escalation Severity",
   "description": "The severity level of a governance escalation.",
   "type": "string",
@@ -31452,7 +31452,7 @@ export const enums_EscalationSeverity = {
 
 export const enums_EventType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/event-type.json",
+  "$id": "/schemas/3.0.8/enums/event-type.json",
   "title": "Event Type",
   "description": "Standard marketing event types for event logging, aligned with IAB ECAPI",
   "type": "string",
@@ -31520,7 +31520,7 @@ export const enums_EventType = {
 
 export const enums_Exclusivity = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/exclusivity.json",
+  "$id": "/schemas/3.0.8/enums/exclusivity.json",
   "title": "Exclusivity",
   "description": "Whether a product offers exclusive access to its inventory",
   "type": "string",
@@ -31538,7 +31538,7 @@ export const enums_Exclusivity = {
 
 export const enums_FeatureCheckStatus = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/feature-check-status.json",
+  "$id": "/schemas/3.0.8/enums/feature-check-status.json",
   "title": "Feature Check Status",
   "description": "Per-feature evaluation outcome in content standards checks. For the two-outcome overall record verdict, see binary-verdict.",
   "type": "string",
@@ -31558,7 +31558,7 @@ export const enums_FeatureCheckStatus = {
 
 export const enums_FeedFormat = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/feed-format.json",
+  "$id": "/schemas/3.0.8/enums/feed-format.json",
   "title": "Feed Format",
   "description": "Catalog feed formats. Determines how the platform parses items from an external feed URL.",
   "type": "string",
@@ -31573,7 +31573,7 @@ export const enums_FeedFormat = {
 
 export const enums_FeedbackSource = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/feedback-source.json",
+  "$id": "/schemas/3.0.8/enums/feedback-source.json",
   "title": "Feedback Source",
   "description": "Source of performance feedback data",
   "type": "string",
@@ -31587,7 +31587,7 @@ export const enums_FeedbackSource = {
 
 export const enums_ForecastMethod = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/forecast-method.json",
+  "$id": "/schemas/3.0.8/enums/forecast-method.json",
   "title": "Forecast Method",
   "description": "Method used to produce a delivery forecast",
   "type": "string",
@@ -31605,7 +31605,7 @@ export const enums_ForecastMethod = {
 
 export const enums_ForecastRangeUnit = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/forecast-range-unit.json",
+  "$id": "/schemas/3.0.8/enums/forecast-range-unit.json",
   "title": "Forecast Range Unit",
   "description": "Describes how to interpret the points array in a DeliveryForecast — what axis the curve represents",
   "type": "string",
@@ -31633,7 +31633,7 @@ export const enums_ForecastRangeUnit = {
 
 export const enums_ForecastableMetric = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/forecastable-metric.json",
+  "$id": "/schemas/3.0.8/enums/forecastable-metric.json",
   "title": "Forecastable Metric",
   "description": "Standard delivery and engagement metric names for forecasts. For outcome/conversion forecasts (purchases, leads, app installs, etc.), use event-type enum values as metric keys instead. The ForecastPoint metrics map accepts any string key, so both forecastable-metric and event-type values can be used together.",
   "type": "string",
@@ -31677,7 +31677,7 @@ export const enums_ForecastableMetric = {
 
 export const enums_FormatIdParameter = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/format-id-parameter.json",
+  "$id": "/schemas/3.0.8/enums/format-id-parameter.json",
   "title": "Format ID Parameter",
   "description": "Types of parameters that template formats accept in format_id objects to create parameterized format identifiers",
   "type": "string",
@@ -31689,7 +31689,7 @@ export const enums_FormatIdParameter = {
 
 export const enums_FrameRateType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/frame-rate-type.json",
+  "$id": "/schemas/3.0.8/enums/frame-rate-type.json",
   "title": "Frame Rate Type",
   "description": "Whether the video uses a constant or variable frame rate. Broadcast and SSAI contexts require constant frame rate for seamless splicing.",
   "type": "string",
@@ -31705,7 +31705,7 @@ export const enums_FrameRateType = {
 
 export const enums_FrequencyCapScope = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/frequency-cap-scope.json",
+  "$id": "/schemas/3.0.8/enums/frequency-cap-scope.json",
   "title": "Frequency Cap Scope",
   "description": "Scope for frequency cap application",
   "type": "string",
@@ -31719,7 +31719,7 @@ export const enums_FrequencyCapScope = {
 
 export const enums_GenreTaxonomy = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/genre-taxonomy.json",
+  "$id": "/schemas/3.0.8/enums/genre-taxonomy.json",
   "title": "Genre Taxonomy",
   "description": "Taxonomy systems for genre classification. When declared, genre values should be valid identifiers within the specified taxonomy.",
   "type": "string",
@@ -31749,7 +31749,7 @@ export const enums_GenreTaxonomy = {
 
 export const enums_GeoLevel = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/geo-level.json",
+  "$id": "/schemas/3.0.8/enums/geo-level.json",
   "title": "Geographic Targeting Level",
   "description": "Geographic targeting granularity levels. Some levels (metro, postal_area) require a system specification.",
   "type": "string",
@@ -31763,7 +31763,7 @@ export const enums_GeoLevel = {
 
 export const enums_GopType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/gop-type.json",
+  "$id": "/schemas/3.0.8/enums/gop-type.json",
   "title": "GOP Type",
   "description": "Group of Pictures structure. SSAI and broadcast require closed GOPs for clean splice points; open GOPs may produce artifacts at ad boundaries.",
   "type": "string",
@@ -31779,7 +31779,7 @@ export const enums_GopType = {
 
 export const enums_GovernanceDecision = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/governance-decision.json",
+  "$id": "/schemas/3.0.8/enums/governance-decision.json",
   "title": "Governance Decision",
   "description": "Outcome of a governance check_governance call. Distinct from creative approval states (see creative-approval-status). 'conditions' is a flow-control value requiring the caller to re-call check_governance after adjusting parameters.",
   "type": "string",
@@ -31798,7 +31798,7 @@ export const enums_GovernanceDecision = {
 
 export const enums_GovernanceDomain = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/governance-domain.json",
+  "$id": "/schemas/3.0.8/enums/governance-domain.json",
   "title": "Governance Domain",
   "description": "Governance sub-domains that a registry policy applies to. Used to indicate which types of governance agents can evaluate this policy.",
   "type": "string",
@@ -31812,7 +31812,7 @@ export const enums_GovernanceDomain = {
 
 export const enums_GovernanceMode = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/governance-mode.json",
+  "$id": "/schemas/3.0.8/enums/governance-mode.json",
   "title": "Governance Mode",
   "description": "Operating mode for a governance agent. Controls whether findings block execution.",
   "x-status": "experimental",
@@ -31831,7 +31831,7 @@ export const enums_GovernanceMode = {
 
 export const enums_GovernancePhase = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/governance-phase.json",
+  "$id": "/schemas/3.0.8/enums/governance-phase.json",
   "title": "Governance Phase",
   "description": "The phase of the governed action's lifecycle that triggered the governance check.",
   "type": "string",
@@ -31844,7 +31844,7 @@ export const enums_GovernancePhase = {
 
 export const enums_HistoryEntryType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/history-entry-type.json",
+  "$id": "/schemas/3.0.8/enums/history-entry-type.json",
   "title": "History Entry Type",
   "description": "Type of entry in task execution history",
   "type": "string",
@@ -31856,7 +31856,7 @@ export const enums_HistoryEntryType = {
 
 export const enums_HttpMethod = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/http-method.json",
+  "$id": "/schemas/3.0.8/enums/http-method.json",
   "title": "HTTP Method",
   "description": "HTTP methods supported for webhook requests",
   "type": "string",
@@ -31868,7 +31868,7 @@ export const enums_HttpMethod = {
 
 export const enums_IdentifierTypes = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/identifier-types.json",
+  "$id": "/schemas/3.0.8/enums/identifier-types.json",
   "title": "Property Identifier Types",
   "description": "Valid identifier types for property identification across different media types",
   "type": "string",
@@ -31930,7 +31930,7 @@ export const enums_IdentifierTypes = {
 
 export const enums_InstallmentStatus = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/installment-status.json",
+  "$id": "/schemas/3.0.8/enums/installment-status.json",
   "title": "Installment Status",
   "description": "Lifecycle status of an installment",
   "type": "string",
@@ -31956,7 +31956,7 @@ export const enums_InstallmentStatus = {
 
 export const enums_JavascriptModuleType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/javascript-module-type.json",
+  "$id": "/schemas/3.0.8/enums/javascript-module-type.json",
   "title": "JavaScript Module Type",
   "description": "JavaScript module format types for creative assets",
   "type": "string",
@@ -31969,7 +31969,7 @@ export const enums_JavascriptModuleType = {
 
 export const enums_LandingPageRequirement = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/landing-page-requirement.json",
+  "$id": "/schemas/3.0.8/enums/landing-page-requirement.json",
   "title": "Landing Page Requirement",
   "description": "Landing page policy for creative click-through destinations",
   "type": "string",
@@ -31982,7 +31982,7 @@ export const enums_LandingPageRequirement = {
 
 export const enums_MakegoodRemedy = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/makegood-remedy.json",
+  "$id": "/schemas/3.0.8/enums/makegood-remedy.json",
   "title": "Makegood Remedy",
   "description": "Remedy types available when a performance standard or billing measurement threshold is breached.",
   "type": "string",
@@ -32000,7 +32000,7 @@ export const enums_MakegoodRemedy = {
 
 export const enums_MarkdownFlavor = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/markdown-flavor.json",
+  "$id": "/schemas/3.0.8/enums/markdown-flavor.json",
   "title": "Markdown Flavor",
   "description": "Markdown specification flavors supported for text assets",
   "type": "string",
@@ -32012,7 +32012,7 @@ export const enums_MarkdownFlavor = {
 
 export const enums_MatchIdType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/match-id-type.json",
+  "$id": "/schemas/3.0.8/enums/match-id-type.json",
   "title": "Match ID Type",
   "description": "Identifier types for audience match reporting. Combines hashed PII types (from audience-member.json field names) with universal ID types (from uid-type.json).",
   "type": "string",
@@ -32042,7 +32042,7 @@ export const enums_MatchIdType = {
 
 export const enums_MatchType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/match-type.json",
+  "$id": "/schemas/3.0.8/enums/match-type.json",
   "title": "Match Type",
   "description": "Keyword targeting match type. broad: ads may serve on queries semantically related to the keyword. phrase: ads serve when the query contains the keyword phrase. exact: ads serve only when the query matches the keyword exactly.",
   "type": "string",
@@ -32060,7 +32060,7 @@ export const enums_MatchType = {
 
 export const enums_MediaBuyStatus = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/media-buy-status.json",
+  "$id": "/schemas/3.0.8/enums/media-buy-status.json",
   "title": "Media Buy Status",
   "description": "Status of a media buy.",
   "type": "string",
@@ -32086,7 +32086,7 @@ export const enums_MediaBuyStatus = {
 
 export const enums_MediaBuyValidAction = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/media-buy-valid-action.json",
+  "$id": "/schemas/3.0.8/enums/media-buy-valid-action.json",
   "title": "Media Buy Valid Action",
   "description": "Actions the buyer can perform on a media buy",
   "type": "string",
@@ -32104,7 +32104,7 @@ export const enums_MediaBuyValidAction = {
 
 export const enums_MetricType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/metric-type.json",
+  "$id": "/schemas/3.0.8/enums/metric-type.json",
   "title": "Metric Type",
   "description": "Performance metric types for feedback and optimization",
   "type": "string",
@@ -32122,7 +32122,7 @@ export const enums_MetricType = {
 
 export const enums_MetroSystem = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/metro-system.json",
+  "$id": "/schemas/3.0.8/enums/metro-system.json",
   "title": "Metro Area System",
   "description": "Metro area classification systems for geographic targeting",
   "type": "string",
@@ -32137,7 +32137,7 @@ export const enums_MetroSystem = {
 
 export const enums_MoovAtomPosition = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/moov-atom-position.json",
+  "$id": "/schemas/3.0.8/enums/moov-atom-position.json",
   "title": "Moov Atom Position",
   "description": "Position of the moov atom in an MP4 container. 'start' enables progressive download without buffering the entire file; required for streaming ad delivery.",
   "type": "string",
@@ -32153,7 +32153,7 @@ export const enums_MoovAtomPosition = {
 
 export const enums_NotificationType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/notification-type.json",
+  "$id": "/schemas/3.0.8/enums/notification-type.json",
   "title": "Notification Type",
   "description": "Type of delivery notification for media buy reporting",
   "type": "string",
@@ -32167,7 +32167,7 @@ export const enums_NotificationType = {
 
 export const enums_OutcomeType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/outcome-type.json",
+  "$id": "/schemas/3.0.8/enums/outcome-type.json",
   "title": "Outcome Type",
   "description": "The type of outcome reported to a campaign governance agent after a seller interaction.",
   "type": "string",
@@ -32185,7 +32185,7 @@ export const enums_OutcomeType = {
 
 export const enums_Pacing = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/pacing.json",
+  "$id": "/schemas/3.0.8/enums/pacing.json",
   "title": "Pacing",
   "description": "Budget pacing strategy",
   "type": "string",
@@ -32203,7 +32203,7 @@ export const enums_Pacing = {
 
 export const enums_PaymentTerms = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/payment-terms.json",
+  "$id": "/schemas/3.0.8/enums/payment-terms.json",
   "title": "Payment Terms",
   "description": "Standard payment terms for AdCP accounts",
   "type": "string",
@@ -32227,7 +32227,7 @@ export const enums_PaymentTerms = {
 
 export const enums_PerformanceStandardMetric = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/performance-standard-metric.json",
+  "$id": "/schemas/3.0.8/enums/performance-standard-metric.json",
   "title": "Performance Standard Metric",
   "description": "Performance metrics that support rate thresholds on media buys. Each metric specifies whether its threshold is a floor (must exceed) or ceiling (must not exceed).",
   "type": "string",
@@ -32249,7 +32249,7 @@ export const enums_PerformanceStandardMetric = {
 
 export const enums_PolicyCategory = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/policy-category.json",
+  "$id": "/schemas/3.0.8/enums/policy-category.json",
   "title": "Policy Category",
   "description": "The nature of the obligation a policy represents.",
   "type": "string",
@@ -32265,7 +32265,7 @@ export const enums_PolicyCategory = {
 
 export const enums_PolicyEnforcement = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/policy-enforcement.json",
+  "$id": "/schemas/3.0.8/enums/policy-enforcement.json",
   "title": "Policy Enforcement Level",
   "description": "How governance agents treat violations of a policy. Uses RFC 2119 keywords.",
   "type": "string",
@@ -32283,7 +32283,7 @@ export const enums_PolicyEnforcement = {
 
 export const enums_PostalSystem = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/postal-system.json",
+  "$id": "/schemas/3.0.8/enums/postal-system.json",
   "title": "Postal Code System",
   "description": "Postal code systems for geographic targeting. System names encode country and precision level.",
   "type": "string",
@@ -32304,7 +32304,7 @@ export const enums_PostalSystem = {
 
 export const enums_PreviewOutputFormat = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/preview-output-format.json",
+  "$id": "/schemas/3.0.8/enums/preview-output-format.json",
   "title": "Preview Output Format",
   "description": "Output format for creative previews",
   "type": "string",
@@ -32316,7 +32316,7 @@ export const enums_PreviewOutputFormat = {
 
 export const enums_PricingModel = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/pricing-model.json",
+  "$id": "/schemas/3.0.8/enums/pricing-model.json",
   "title": "Pricing Model",
   "description": "Supported pricing models for advertising products",
   "type": "string",
@@ -32346,7 +32346,7 @@ export const enums_PricingModel = {
 
 export const enums_ProductionQuality = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/production-quality.json",
+  "$id": "/schemas/3.0.8/enums/production-quality.json",
   "title": "Production Quality",
   "description": "Production quality tier for collection content. Maps to OpenRTB content.prodq: professional=1, prosumer=2, ugc=3. Seller-declared — no external validation.",
   "type": "string",
@@ -32364,7 +32364,7 @@ export const enums_ProductionQuality = {
 
 export const enums_PropertyType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/property-type.json",
+  "$id": "/schemas/3.0.8/enums/property-type.json",
   "title": "Property Type",
   "description": "Types of addressable advertising properties with verifiable ownership. Property types are a subset of media channels - they represent inventory surfaces that can be validated via adagents.json.",
   "type": "string",
@@ -32396,7 +32396,7 @@ export const enums_PropertyType = {
 
 export const enums_ProposalStatus = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/proposal-status.json",
+  "$id": "/schemas/3.0.8/enums/proposal-status.json",
   "title": "Proposal Status",
   "description": "Lifecycle status of a proposal. Absent means the proposal is ready to buy (backward compatible with pre-v3.1 proposals). 'draft' indicates indicative pricing that must be finalized before purchase. 'committed' indicates firm pricing with inventory reserved until expires_at.",
   "type": "string",
@@ -32412,7 +32412,7 @@ export const enums_ProposalStatus = {
 
 export const enums_PublisherIdentifierTypes = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/publisher-identifier-types.json",
+  "$id": "/schemas/3.0.8/enums/publisher-identifier-types.json",
   "title": "Publisher Identifier Types",
   "description": "Valid identifier types for publisher/legal entity identification",
   "type": "string",
@@ -32432,7 +32432,7 @@ export const enums_PublisherIdentifierTypes = {
 
 export const enums_PurchaseType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/purchase-type.json",
+  "$id": "/schemas/3.0.8/enums/purchase-type.json",
   "title": "Purchase Type",
   "description": "The type of financial commitment being governed.",
   "type": "string",
@@ -32446,7 +32446,7 @@ export const enums_PurchaseType = {
 
 export const enums_ReachUnit = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/reach-unit.json",
+  "$id": "/schemas/3.0.8/enums/reach-unit.json",
   "title": "Reach Unit",
   "description": "Unit of measurement for reach and audience size metrics. Different channels and measurement providers count reach in fundamentally different units, making cross-channel comparison impossible without declaring the unit.",
   "type": "string",
@@ -32470,7 +32470,7 @@ export const enums_ReachUnit = {
 
 export const enums_ReportingFrequency = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/reporting-frequency.json",
+  "$id": "/schemas/3.0.8/enums/reporting-frequency.json",
   "title": "Reporting Frequency",
   "description": "Available frequencies for delivery reports and metrics updates",
   "type": "string",
@@ -32483,7 +32483,7 @@ export const enums_ReportingFrequency = {
 
 export const enums_ResponseType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/response-type.json",
+  "$id": "/schemas/3.0.8/enums/response-type.json",
   "title": "TMP Response Type",
   "description": "What the publisher wants back from a TMP context match. Determines the richness level of the buyer's offer response.",
   "type": "string",
@@ -32503,7 +32503,7 @@ export const enums_ResponseType = {
 
 export const enums_RestrictedAttribute = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/restricted-attribute.json",
+  "$id": "/schemas/3.0.8/enums/restricted-attribute.json",
   "title": "Restricted Attribute",
   "description": "Personal data categories that may be restricted from use in audience targeting. Combines GDPR Article 9 special categories with US civil-rights protected classes (FHA familial_status, ADEA age). Used in two places: (1) on campaign plans via restricted_attributes to declare which categories are prohibited, and (2) on signal-definition.json via restricted_attributes to declare which categories a signal touches. Governance agents match plan restrictions against signal declarations for structural validation.",
   "type": "string",
@@ -32535,7 +32535,7 @@ export const enums_RestrictedAttribute = {
 
 export const enums_RightType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/right-type.json",
+  "$id": "/schemas/3.0.8/enums/right-type.json",
   "title": "Right Type",
   "description": "Categories of intellectual property rights that can be licensed through the brand protocol.",
   "x-status": "experimental",
@@ -32558,7 +32558,7 @@ export const enums_RightType = {
 
 export const enums_RightUse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/right-use.json",
+  "$id": "/schemas/3.0.8/enums/right-use.json",
   "title": "Right Use",
   "description": "Types of rights usage that can be licensed through the brand protocol. Aligned with DDEX UseType direction for interoperability with music and media rights systems.",
   "x-status": "experimental",
@@ -32595,7 +32595,7 @@ export const enums_RightUse = {
 
 export const enums_RightsBillingPeriod = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/rights-billing-period.json",
+  "$id": "/schemas/3.0.8/enums/rights-billing-period.json",
   "title": "Rights Billing Period",
   "description": "Billing period for brand rights pricing",
   "type": "string",
@@ -32611,7 +32611,7 @@ export const enums_RightsBillingPeriod = {
 
 export const enums_ScanType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/scan-type.json",
+  "$id": "/schemas/3.0.8/enums/scan-type.json",
   "title": "Scan Type",
   "description": "Video scan method. Modern digital delivery requires progressive scan; interlaced is retained for broadcast legacy content.",
   "type": "string",
@@ -32627,7 +32627,7 @@ export const enums_ScanType = {
 
 export const enums_SiSessionStatus = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/si-session-status.json",
+  "$id": "/schemas/3.0.8/enums/si-session-status.json",
   "title": "SI Session Status",
   "description": "State of a Sponsored Intelligence session between a host and a brand agent",
   "type": "string",
@@ -32647,7 +32647,7 @@ export const enums_SiSessionStatus = {
 
 export const enums_SignalCatalogType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/signal-catalog-type.json",
+  "$id": "/schemas/3.0.8/enums/signal-catalog-type.json",
   "title": "Signal Catalog Type",
   "description": "Types of signal catalogs available for audience targeting",
   "type": "string",
@@ -32665,7 +32665,7 @@ export const enums_SignalCatalogType = {
 
 export const enums_SignalSource = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/signal-source.json",
+  "$id": "/schemas/3.0.8/enums/signal-source.json",
   "title": "Signal Source",
   "description": "Source type for signal identifiers. Determines how the signal is referenced and whether authorization can be externally verified.",
   "type": "string",
@@ -32681,7 +32681,7 @@ export const enums_SignalSource = {
 
 export const enums_SignalValueType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/signal-value-type.json",
+  "$id": "/schemas/3.0.8/enums/signal-value-type.json",
   "title": "Signal Value Type",
   "description": "The data type of a signal's values, determining how it can be targeted",
   "type": "string",
@@ -32699,7 +32699,7 @@ export const enums_SignalValueType = {
 
 export const enums_SnapshotUnavailableReason = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/snapshot-unavailable-reason.json",
+  "$id": "/schemas/3.0.8/enums/snapshot-unavailable-reason.json",
   "title": "Snapshot Unavailable Reason",
   "description": "Machine-readable reason a delivery snapshot was requested but could not be returned. Present only when include_snapshot was true and snapshot data is unavailable.",
   "type": "string",
@@ -32717,7 +32717,7 @@ export const enums_SnapshotUnavailableReason = {
 
 export const enums_SortDirection = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/sort-direction.json",
+  "$id": "/schemas/3.0.8/enums/sort-direction.json",
   "title": "Sort Direction",
   "description": "Sort direction for list queries",
   "type": "string",
@@ -32729,7 +32729,7 @@ export const enums_SortDirection = {
 
 export const enums_SortMetric = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/sort-metric.json",
+  "$id": "/schemas/3.0.8/enums/sort-metric.json",
   "title": "Sort Metric",
   "description": "Numeric delivery metrics available for sorting breakdown rows. Subset of delivery-metrics fields that are flat numeric values (excludes nested objects like quartile_data, dooh_metrics, viewability, by_event_type, by_action_source).",
   "type": "string",
@@ -32761,7 +32761,7 @@ export const enums_SortMetric = {
 
 export const enums_SpecialCategory = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/special-category.json",
+  "$id": "/schemas/3.0.8/enums/special-category.json",
   "title": "Special Category",
   "description": "Category of special or event-anchored content",
   "type": "string",
@@ -32797,7 +32797,7 @@ export const enums_SpecialCategory = {
 
 export const enums_Specialism = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/specialism.json",
+  "$id": "/schemas/3.0.8/enums/specialism.json",
   "title": "AdCP Specialism",
   "description": "Specialized capability claims an agent can make. Each specialism maps to a compliance storyboard bundle published at /compliance/{version}/specialisms/{id}/. An agent asserts specialisms it supports in get_adcp_capabilities; the AAO compliance runner executes the matching storyboards to verify the claim.",
   "type": "string",
@@ -32853,7 +32853,7 @@ export const enums_Specialism = {
 
 export const enums_TalentRole = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/talent-role.json",
+  "$id": "/schemas/3.0.8/enums/talent-role.json",
   "title": "Talent Role",
   "description": "Role of a person associated with a collection or installment",
   "type": "string",
@@ -32883,7 +32883,7 @@ export const enums_TalentRole = {
 
 export const enums_TaskStatus = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/task-status.json",
+  "$id": "/schemas/3.0.8/enums/task-status.json",
   "title": "Task Status",
   "description": "Standardized task status values based on A2A TaskState enum. Indicates the current state of any AdCP operation.",
   "type": "string",
@@ -32913,7 +32913,7 @@ export const enums_TaskStatus = {
 
 export const enums_TaskType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/task-type.json",
+  "$id": "/schemas/3.0.8/enums/task-type.json",
   "title": "Task Type",
   "description": "Valid AdCP task types across all domains. These represent the complete set of operations that can be tracked via the task management system.",
   "type": "string",
@@ -32971,7 +32971,7 @@ export const enums_TaskType = {
 
 export const enums_TransportMode = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/transport-mode.json",
+  "$id": "/schemas/3.0.8/enums/transport-mode.json",
   "title": "Transport Mode",
   "description": "Transportation modes for isochrone-based catchment area calculations. Determines how travel time translates to geographic reach.",
   "type": "string",
@@ -32991,7 +32991,7 @@ export const enums_TransportMode = {
 
 export const enums_TravelTimeUnit = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/travel-time-unit.json",
+  "$id": "/schemas/3.0.8/enums/travel-time-unit.json",
   "title": "Travel Time Unit",
   "description": "Time unit for isochrone (travel-time catchment) calculations.",
   "type": "string",
@@ -33007,7 +33007,7 @@ export const enums_TravelTimeUnit = {
 
 export const enums_UidType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/uid-type.json",
+  "$id": "/schemas/3.0.8/enums/uid-type.json",
   "title": "UID Type",
   "description": "Type of user identifier. Used in audience sync, event logging, and TMP identity match requests to tell the receiver which identity graph to resolve against.",
   "type": "string",
@@ -33039,7 +33039,7 @@ export const enums_UidType = {
 
 export const enums_UniversalMacro = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/universal-macro.json",
+  "$id": "/schemas/3.0.8/enums/universal-macro.json",
   "title": "Universal Macro",
   "description": "Standardized macro placeholders for dynamic value substitution in creative tracking URLs. Macros are replaced with actual values at impression time. See docs/creative/universal-macros.mdx for detailed documentation.",
   "type": "string",
@@ -33189,7 +33189,7 @@ export const enums_UniversalMacro = {
 
 export const enums_UpdateFrequency = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/update-frequency.json",
+  "$id": "/schemas/3.0.8/enums/update-frequency.json",
   "title": "Update Frequency",
   "description": "Frequency of product catalog updates",
   "type": "string",
@@ -33203,7 +33203,7 @@ export const enums_UpdateFrequency = {
 
 export const enums_UrlAssetType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/url-asset-type.json",
+  "$id": "/schemas/3.0.8/enums/url-asset-type.json",
   "title": "URL Asset Type",
   "description": "Types of URL assets for tracking and click-through purposes",
   "type": "string",
@@ -33216,7 +33216,7 @@ export const enums_UrlAssetType = {
 
 export const enums_ValidationMode = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/validation-mode.json",
+  "$id": "/schemas/3.0.8/enums/validation-mode.json",
   "title": "Validation Mode",
   "description": "Creative validation strictness levels",
   "type": "string",
@@ -33228,7 +33228,7 @@ export const enums_ValidationMode = {
 
 export const enums_VastTrackingEvent = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/vast-tracking-event.json",
+  "$id": "/schemas/3.0.8/enums/vast-tracking-event.json",
   "title": "VAST Tracking Event",
   "description": "Tracking events for video ads. Includes IAB VAST 4.2 TrackingEvents, plus flattened representations of Impression, Error, VideoClicks, and ViewableImpression elements. fullscreen/exitFullscreen retained for VAST 2.x/3.x compatibility. measurableImpression is an AdCP extension for MRC measurability signals.",
   "type": "string",
@@ -33270,7 +33270,7 @@ export const enums_VastTrackingEvent = {
 
 export const enums_VastVersion = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/vast-version.json",
+  "$id": "/schemas/3.0.8/enums/vast-version.json",
   "title": "VAST Version",
   "description": "Supported VAST (Video Ad Serving Template) specification versions",
   "type": "string",
@@ -33285,7 +33285,7 @@ export const enums_VastVersion = {
 
 export const enums_ViewabilityStandard = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/viewability-standard.json",
+  "$id": "/schemas/3.0.8/enums/viewability-standard.json",
   "title": "Viewability Standard",
   "description": "Viewability measurement standard applied to determine whether an impression qualifies as viewable. These are materially different thresholds and should not be compared across standards.",
   "type": "string",
@@ -33301,7 +33301,7 @@ export const enums_ViewabilityStandard = {
 
 export const enums_WcagLevel = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/wcag-level.json",
+  "$id": "/schemas/3.0.8/enums/wcag-level.json",
   "title": "WCAG Level",
   "description": "Web Content Accessibility Guidelines conformance level",
   "type": "string",
@@ -33319,7 +33319,7 @@ export const enums_WcagLevel = {
 
 export const enums_WebhookResponseType = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/webhook-response-type.json",
+  "$id": "/schemas/3.0.8/enums/webhook-response-type.json",
   "title": "Webhook Response Type",
   "description": "Expected response content type from webhook endpoints",
   "type": "string",
@@ -33333,7 +33333,7 @@ export const enums_WebhookResponseType = {
 
 export const enums_WebhookSecurityMethod = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/enums/webhook-security-method.json",
+  "$id": "/schemas/3.0.8/enums/webhook-security-method.json",
   "title": "Webhook Security Method",
   "description": "Security methods for authenticating webhook requests",
   "type": "string",
@@ -33346,7 +33346,7 @@ export const enums_WebhookSecurityMethod = {
 
 export const errorDetails_AccountSetupRequired = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/error-details/account-setup-required.json",
+  "$id": "/schemas/3.0.8/error-details/account-setup-required.json",
   "title": "Account Setup Required Details",
   "description": "Recommended details shape for ACCOUNT_SETUP_REQUIRED errors. Provides setup URL and remaining steps.",
   "type": "object",
@@ -33369,7 +33369,7 @@ export const errorDetails_AccountSetupRequired = {
 
 export const errorDetails_AudienceTooSmall = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/error-details/audience-too-small.json",
+  "$id": "/schemas/3.0.8/error-details/audience-too-small.json",
   "title": "Audience Too Small Details",
   "description": "Recommended details shape for AUDIENCE_TOO_SMALL errors. Provides size thresholds so agents can broaden targeting.",
   "type": "object",
@@ -33388,7 +33388,7 @@ export const errorDetails_AudienceTooSmall = {
 
 export const errorDetails_BudgetTooLow = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/error-details/budget-too-low.json",
+  "$id": "/schemas/3.0.8/error-details/budget-too-low.json",
   "title": "Budget Too Low Details",
   "description": "Recommended details shape for BUDGET_TOO_LOW errors. Provides the seller's minimum budget so agents can adjust.",
   "type": "object",
@@ -33407,7 +33407,7 @@ export const errorDetails_BudgetTooLow = {
 
 export const errorDetails_Conflict = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/error-details/conflict.json",
+  "$id": "/schemas/3.0.8/error-details/conflict.json",
   "title": "Conflict Details",
   "description": "Recommended details shape for CONFLICT errors. Provides version information so agents can re-read the resource and retry.",
   "type": "object",
@@ -33436,7 +33436,7 @@ export const errorDetails_Conflict = {
 
 export const errorDetails_CreativeRejected = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/error-details/creative-rejected.json",
+  "$id": "/schemas/3.0.8/error-details/creative-rejected.json",
   "title": "Creative Rejected Details",
   "description": "Recommended details shape for CREATIVE_REJECTED errors. Provides policy reference and rejection reasons so agents can revise.",
   "type": "object",
@@ -33464,7 +33464,7 @@ export const errorDetails_CreativeRejected = {
 
 export const errorDetails_PolicyViolation = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/error-details/policy-violation.json",
+  "$id": "/schemas/3.0.8/error-details/policy-violation.json",
   "title": "Policy Violation Details",
   "description": "Recommended details shape for POLICY_VIOLATION errors. Provides policy reference and violated rules so agents can adjust requests.",
   "type": "object",
@@ -33492,7 +33492,7 @@ export const errorDetails_PolicyViolation = {
 
 export const errorDetails_RateLimited = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/error-details/rate-limited.json",
+  "$id": "/schemas/3.0.8/error-details/rate-limited.json",
   "title": "Rate Limited Details",
   "description": "Recommended details shape for RATE_LIMITED errors. Provides rate limit window information so agents can plan request pacing.",
   "type": "object",
@@ -33524,7 +33524,7 @@ export const errorDetails_RateLimited = {
 
 export const errorDetails_VendorErrorCodes = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/error-details/vendor-error-codes.json",
+  "$id": "/schemas/3.0.8/error-details/vendor-error-codes.json",
   "title": "Vendor Error Code Registry",
   "description": "Registry of vendor-prefixed error codes (X_{VENDOR}_{CODE}). Sellers register their vendor prefix and codes here to prevent collisions. Standard error codes are in error-code.json. To register a new vendor prefix, submit a PR adding your entry to the vendors object.",
   "type": "object",
@@ -33580,7 +33580,7 @@ export const errorDetails_VendorErrorCodes = {
 
 export const extensions_ExtensionMeta = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/extensions/extension-meta.json",
+  "$id": "/schemas/3.0.8/extensions/extension-meta.json",
   "title": "AdCP Extension File Schema",
   "description": "Schema that all extension files must follow. Combines metadata (valid_from, docs_url) with the actual extension data schema. Extensions are auto-discovered from /schemas/extensions/*.json and included in versioned builds based on valid_from/valid_until.",
   "type": "object",
@@ -33650,17 +33650,17 @@ export const extensions_ExtensionMeta = {
 
 export const extensions_Index = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/extensions/index.json",
+  "$id": "/schemas/3.0.8/extensions/index.json",
   "title": "AdCP Extension Registry",
   "description": "Auto-generated registry of formal AdCP extensions. Extensions provide typed schemas for vendor-specific or domain-specific data within the ext field. Agents declare which extensions they support in their agent card.",
   "_generated": true,
-  "_generatedAt": "2026-05-03T17:47:30.065Z",
+  "_generatedAt": "2026-05-08T14:02:02.623Z",
   "extensions": {}
 } as const;
 
 export const governance_AttributeDefinition = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/governance/attribute-definition.json",
+  "$id": "/schemas/3.0.8/governance/attribute-definition.json",
   "title": "Attribute Definition",
   "description": "Definition of a restricted personal data attribute in the policy registry. Attributes are the shared vocabulary used across campaign plans (restricted_attributes), signal definitions (restricted_attributes), and data marketplace catalogs. Each definition documents the regulatory basis, scope, and common signal patterns for the attribute category.",
   "type": "object",
@@ -33743,7 +33743,7 @@ export const governance_AttributeDefinition = {
 
 export const governance_AudienceConstraints = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/governance/audience-constraints.json",
+  "$id": "/schemas/3.0.8/governance/audience-constraints.json",
   "title": "Audience Constraints",
   "description": "Buyer-defined audience targeting constraints for a campaign plan. Specifies who the campaign should and should not reach. The governance agent evaluates seller targeting against these constraints during check_governance.",
   "type": "object",
@@ -33752,7 +33752,7 @@ export const governance_AudienceConstraints = {
       "type": "array",
       "description": "Desired audience criteria. The seller's targeting should align with these. Each criterion is evaluated independently — the combined targeting should satisfy at least one inclusion criterion.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/audience-selector.json"
+        "$ref": "/schemas/3.0.8/core/audience-selector.json"
       },
       "minItems": 1
     },
@@ -33760,7 +33760,7 @@ export const governance_AudienceConstraints = {
       "type": "array",
       "description": "Excluded audience criteria. The seller's targeting must not overlap with these. Exclusions take precedence over inclusions. Used for protected groups, vulnerable communities, regulatory restrictions, or brand safety.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/audience-selector.json"
+        "$ref": "/schemas/3.0.8/core/audience-selector.json"
       },
       "minItems": 1
     }
@@ -33771,7 +33771,7 @@ export const governance_AudienceConstraints = {
 
 export const governance_CheckGovernanceRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/governance/check-governance-request.json",
+  "$id": "/schemas/3.0.8/governance/check-governance-request.json",
   "title": "Check Governance Request",
   "description": "Universal governance check for campaign actions. The governance agent infers the check type from the fields present: tool+payload = intent check (proposed, orchestrator-side). planned_delivery = execution check (committed, seller-side). governance_context maintains lifecycle continuity across either check type — its presence alone does not determine binding. To check budget availability without a specific action, omit tool and payload.",
   "x-status": "experimental",
@@ -33794,7 +33794,7 @@ export const governance_CheckGovernanceRequest = {
       "description": "URL of the agent making the request."
     },
     "purchase_type": {
-      "$ref": "/schemas/3.0.6/enums/purchase-type.json",
+      "$ref": "/schemas/3.0.8/enums/purchase-type.json",
       "description": "The type of financial commitment being checked. Determines which budget allocation (if any) to validate against. Defaults to 'media_buy' when omitted.",
       "default": "media_buy"
     },
@@ -33815,12 +33815,12 @@ export const governance_CheckGovernanceRequest = {
       "pattern": "^[\\x20-\\x7E]+$"
     },
     "phase": {
-      "$ref": "/schemas/3.0.6/enums/governance-phase.json",
+      "$ref": "/schemas/3.0.8/enums/governance-phase.json",
       "description": "The phase of the governed action's lifecycle. 'purchase': initial commitment (create_media_buy, acquire_rights, activate_signal). 'modification': update to existing commitment. 'delivery': periodic delivery or usage reporting. Defaults to 'purchase' if omitted.",
       "default": "purchase"
     },
     "planned_delivery": {
-      "$ref": "/schemas/3.0.6/core/planned-delivery.json",
+      "$ref": "/schemas/3.0.8/core/planned-delivery.json",
       "description": "What the seller will actually deliver. Present on execution checks."
     },
     "delivery_metrics": {
@@ -33951,14 +33951,14 @@ export const governance_CheckGovernanceRequest = {
       "maxLength": 1000
     },
     "invoice_recipient": {
-      "$ref": "/schemas/3.0.6/core/business-entity.json",
+      "$ref": "/schemas/3.0.8/core/business-entity.json",
       "description": "Invoice recipient from the purchase request. MUST be present when the tool payload includes invoice_recipient, so the governance agent can validate billing changes."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -33970,7 +33970,7 @@ export const governance_CheckGovernanceRequest = {
 
 export const governance_CheckGovernanceResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/governance/check-governance-response.json",
+  "$id": "/schemas/3.0.8/governance/check-governance-response.json",
   "title": "Check Governance Response",
   "description": "Governance agent's response to a check request. Returns whether the action is approved under the governance plan.",
   "x-status": "experimental",
@@ -33982,7 +33982,7 @@ export const governance_CheckGovernanceResponse = {
       "x-entity": "governance_check"
     },
     "status": {
-      "$ref": "/schemas/3.0.6/enums/governance-decision.json"
+      "$ref": "/schemas/3.0.8/enums/governance-decision.json"
     },
     "plan_id": {
       "type": "string",
@@ -34014,7 +34014,7 @@ export const governance_CheckGovernanceResponse = {
             "x-entity": "governance_plan"
           },
           "severity": {
-            "$ref": "/schemas/3.0.6/enums/escalation-severity.json"
+            "$ref": "/schemas/3.0.8/enums/escalation-severity.json"
           },
           "explanation": {
             "type": "string",
@@ -34094,7 +34094,7 @@ export const governance_CheckGovernanceResponse = {
       "description": "Policy IDs evaluated during this check. Includes registry policy IDs (resolved via the policy registry) and any inline `policy_id`s declared in the plan's `custom_policies`."
     },
     "mode": {
-      "$ref": "/schemas/3.0.6/enums/governance-mode.json",
+      "$ref": "/schemas/3.0.8/enums/governance-mode.json",
       "description": "Governance enforcement mode active when this check was evaluated. Allows counterparties, regulators, and auditors to distinguish whether a finding blocked execution (enforce) or was logged silently (audit)."
     },
     "governance_context": {
@@ -34105,10 +34105,10 @@ export const governance_CheckGovernanceResponse = {
       "pattern": "^[\\x20-\\x7E]+$"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -34188,7 +34188,7 @@ export const governance_CheckGovernanceResponse = {
 
 export const governance_GetPlanAuditLogsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/governance/get-plan-audit-logs-request.json",
+  "$id": "/schemas/3.0.8/governance/get-plan-audit-logs-request.json",
   "title": "Get Plan Audit Logs Request",
   "description": "Retrieve governance state and audit trail for one or more plans.",
   "x-status": "experimental",
@@ -34229,7 +34229,7 @@ export const governance_GetPlanAuditLogsRequest = {
     "purchase_types": {
       "type": "array",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/purchase-type.json"
+        "$ref": "/schemas/3.0.8/enums/purchase-type.json"
       },
       "minItems": 1,
       "description": "Filter audit entries by purchase type. Returns only checks and outcomes matching these purchase types (e.g., ['rights_license'] to see all rights activity)."
@@ -34240,10 +34240,10 @@ export const governance_GetPlanAuditLogsRequest = {
       "default": false
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "anyOf": [
@@ -34268,7 +34268,7 @@ export const governance_GetPlanAuditLogsRequest = {
 
 export const governance_GetPlanAuditLogsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/governance/get-plan-audit-logs-response.json",
+  "$id": "/schemas/3.0.8/governance/get-plan-audit-logs-response.json",
   "title": "Get Plan Audit Logs Response",
   "description": "Governance state and audit trail for one or more plans.",
   "x-status": "experimental",
@@ -34519,7 +34519,7 @@ export const governance_GetPlanAuditLogsResponse = {
                   "description": "The AdCP tool (present for check entries)."
                 },
                 "status": {
-                  "$ref": "/schemas/3.0.6/enums/governance-decision.json",
+                  "$ref": "/schemas/3.0.8/enums/governance-decision.json",
                   "description": "Governance check status (present for check entries)."
                 },
                 "check_type": {
@@ -34531,7 +34531,7 @@ export const governance_GetPlanAuditLogsResponse = {
                   "description": "Whether the check was an intent check (orchestrator) or execution check (seller). Inferred from the fields present on the original check request. Present for check entries."
                 },
                 "mode": {
-                  "$ref": "/schemas/3.0.6/enums/governance-mode.json",
+                  "$ref": "/schemas/3.0.8/enums/governance-mode.json",
                   "description": "Governance mode active at the moment this specific check was evaluated. Governance agents SHOULD populate this field on check entries, recording the mode from their runtime configuration at the moment check_governance was processed — not derived from a plan field. This is a per-check value: if the operator changes mode between checks for the same governed action, each entry records the mode active for that entry. A future `governed_actions[].mode` field would describe the action's current mode, which may differ from the most recent entry's `mode` if the plan has since been re-synced. Absent for outcome entries and for pre-3.1 governance agents that do not surface mode on audit responses."
                 },
                 "explanation": {
@@ -34566,7 +34566,7 @@ export const governance_GetPlanAuditLogsResponse = {
                         "$comment": "x-entity deliberately omitted — audit log findings mirror check_governance findings and can reference either a governance_registry_policy or a governance_inline_policy (see #2685)."
                       },
                       "severity": {
-                        "$ref": "/schemas/3.0.6/enums/escalation-severity.json"
+                        "$ref": "/schemas/3.0.8/enums/escalation-severity.json"
                       },
                       "explanation": {
                         "type": "string"
@@ -34586,7 +34586,7 @@ export const governance_GetPlanAuditLogsResponse = {
                   }
                 },
                 "outcome": {
-                  "$ref": "/schemas/3.0.6/enums/outcome-type.json",
+                  "$ref": "/schemas/3.0.8/enums/outcome-type.json",
                   "description": "Outcome type (present for outcome entries)."
                 },
                 "committed_budget": {
@@ -34603,7 +34603,7 @@ export const governance_GetPlanAuditLogsResponse = {
                   "description": "Audit-layer binding to the plan revision this attestation was evaluated over — base64url_no_pad(SHA-256(JCS(plan_payload))) per Plan binding and audit in the campaign-governance specification. Present on check entries. Auditors and buyer-side compliance verify by recomputing over the retained plan revision and byte-comparing the decoded 32-byte digests."
                 },
                 "purchase_type": {
-                  "$ref": "/schemas/3.0.6/enums/purchase-type.json",
+                  "$ref": "/schemas/3.0.8/enums/purchase-type.json",
                   "description": "Purchase type for this entry."
                 },
                 "outcome_status": {
@@ -34630,7 +34630,7 @@ export const governance_GetPlanAuditLogsResponse = {
                   "description": "Governance context correlating this action's lifecycle."
                 },
                 "purchase_type": {
-                  "$ref": "/schemas/3.0.6/enums/purchase-type.json",
+                  "$ref": "/schemas/3.0.8/enums/purchase-type.json",
                   "description": "Type of financial commitment."
                 },
                 "status": {
@@ -34678,10 +34678,10 @@ export const governance_GetPlanAuditLogsResponse = {
       }
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -34692,7 +34692,7 @@ export const governance_GetPlanAuditLogsResponse = {
 
 export const governance_PolicyCategoryDefinition = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/governance/policy-category-definition.json",
+  "$id": "/schemas/3.0.8/governance/policy-category-definition.json",
   "title": "Policy Category Definition",
   "description": "Definition of a policy category in the registry. Policy categories group related regulatory regimes (e.g., 'children_directed' groups COPPA, UK AADC, GDPR Article 8). Used on campaign plans (plan.policy_categories), signal definitions (signal-definition.policy_categories), and policy entries (policy-entry.policy_categories) to connect campaigns and data to the right regulatory frameworks.",
   "type": "object",
@@ -34751,7 +34751,7 @@ export const governance_PolicyCategoryDefinition = {
       "type": "array",
       "description": "Restricted attribute categories that regulations in this category prohibit for targeting. Governance agents enforce these when the category is active on a plan — if a plan declares policy_categories: ['fair_housing'], the governance agent restricts targeting on these attributes.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/restricted-attribute.json"
+        "$ref": "/schemas/3.0.8/enums/restricted-attribute.json"
       }
     },
     "requires_human_review": {
@@ -34788,7 +34788,7 @@ export const governance_PolicyCategoryDefinition = {
 
 export const governance_PolicyEntry = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/governance/policy-entry.json",
+  "$id": "/schemas/3.0.8/governance/policy-entry.json",
   "title": "Policy Entry",
   "description": "A policy — either published to the shared registry (with full regulatory metadata) or authored inline by a buyer for their own campaign (lightweight, metadata optional). Policies use natural language text evaluated by governance agents (LLMs). Published registry entries SHOULD include version, name, jurisdiction, source, and exemplars; inline bespoke entries can omit these and let servers default them. Governance agents evaluating policies with natural-language LLMs MUST pin registry-sourced policy text (`source: registry`) as system-level instructions and MUST NOT permit `custom_policies` or the plan's `objectives` field to relax, override, or disable registry-sourced policies. Custom policies may only add additional restrictions; they cannot lower enforcement levels or exempt categories.",
   "type": "object",
@@ -34821,11 +34821,11 @@ export const governance_PolicyEntry = {
       "description": "Brief summary of what this policy covers."
     },
     "category": {
-      "$ref": "/schemas/3.0.6/enums/policy-category.json",
+      "$ref": "/schemas/3.0.8/enums/policy-category.json",
       "description": "The nature of the obligation: regulation (legal requirement) or standard (best practice). Optional for inline bespoke policies — defaults to \"standard\"."
     },
     "enforcement": {
-      "$ref": "/schemas/3.0.6/enums/policy-enforcement.json",
+      "$ref": "/schemas/3.0.8/enums/policy-enforcement.json",
       "description": "How governance agents treat violations. Regulations are typically \"must\"; standards are typically \"should\"."
     },
     "requires_human_review": {
@@ -34860,14 +34860,14 @@ export const governance_PolicyEntry = {
     "channels": {
       "type": "array",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/channels.json"
+        "$ref": "/schemas/3.0.8/enums/channels.json"
       },
       "description": "Advertising channels this policy applies to. If omitted or null, the policy applies to all channels."
     },
     "governance_domains": {
       "type": "array",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/governance-domain.json"
+        "$ref": "/schemas/3.0.8/enums/governance-domain.json"
       },
       "description": "Governance sub-domains this policy applies to. Determines which types of governance agents can declare registry:{policy_id} features. For example, a policy with domains [\"creative\", \"property\"] can be declared as a feature by both creative and property governance agents."
     },
@@ -34921,7 +34921,7 @@ export const governance_PolicyEntry = {
       "additionalProperties": false
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -34954,7 +34954,7 @@ export const governance_PolicyEntry = {
 
 export const governance_PolicyRef = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/governance/policy-ref.json",
+  "$id": "/schemas/3.0.8/governance/policy-ref.json",
   "title": "Policy Reference",
   "description": "A reference to a policy in the policy registry. Used in brand compliance configurations to declare which registry policies apply.",
   "type": "object",
@@ -34982,7 +34982,7 @@ export const governance_PolicyRef = {
 
 export const governance_ReportPlanOutcomeRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/governance/report-plan-outcome-request.json",
+  "$id": "/schemas/3.0.8/governance/report-plan-outcome-request.json",
   "title": "Report Plan Outcome Request",
   "description": "Report the outcome of an action to the governance agent. Called by the orchestrator (buyer-side agent) after a seller responds. This is the 'after' half of the governance loop. Sellers do not call this task -- they report delivery data via check_governance with phase 'delivery'.",
   "x-status": "experimental",
@@ -35013,12 +35013,12 @@ export const governance_ReportPlanOutcomeRequest = {
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "purchase_type": {
-      "$ref": "/schemas/3.0.6/enums/purchase-type.json",
+      "$ref": "/schemas/3.0.8/enums/purchase-type.json",
       "description": "The type of financial commitment this outcome is for. Determines which budget allocation (if any) to charge against. Defaults to 'media_buy' when omitted.",
       "default": "media_buy"
     },
     "outcome": {
-      "$ref": "/schemas/3.0.6/enums/outcome-type.json",
+      "$ref": "/schemas/3.0.8/enums/outcome-type.json",
       "description": "Outcome type."
     },
     "seller_response": {
@@ -35050,7 +35050,7 @@ export const governance_ReportPlanOutcomeRequest = {
           }
         },
         "planned_delivery": {
-          "$ref": "/schemas/3.0.6/core/planned-delivery.json",
+          "$ref": "/schemas/3.0.8/core/planned-delivery.json",
           "description": "What the seller said it will deliver. When seller-side governance is not configured, this is the governance agent's only view of the seller's delivery parameters."
         },
         "creative_deadline": {
@@ -35131,10 +35131,10 @@ export const governance_ReportPlanOutcomeRequest = {
       "pattern": "^[\\x20-\\x7E]+$"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -35148,7 +35148,7 @@ export const governance_ReportPlanOutcomeRequest = {
 
 export const governance_ReportPlanOutcomeResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/governance/report-plan-outcome-response.json",
+  "$id": "/schemas/3.0.8/governance/report-plan-outcome-response.json",
   "title": "Report Plan Outcome Response",
   "description": "Response from reporting an action outcome. Only returned to the orchestrator (buyer-side agent) that manages the plan. Sellers report delivery data via check_governance with phase 'delivery', not via this task.",
   "x-status": "experimental",
@@ -35181,7 +35181,7 @@ export const governance_ReportPlanOutcomeResponse = {
             "description": "Which validation category flagged the issue."
           },
           "severity": {
-            "$ref": "/schemas/3.0.6/enums/escalation-severity.json",
+            "$ref": "/schemas/3.0.8/enums/escalation-severity.json",
             "description": "Finding severity."
           },
           "explanation": {
@@ -35223,10 +35223,10 @@ export const governance_ReportPlanOutcomeResponse = {
       "default": false
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -35238,7 +35238,7 @@ export const governance_ReportPlanOutcomeResponse = {
 
 export const governance_SyncPlansRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/governance/sync-plans-request.json",
+  "$id": "/schemas/3.0.8/governance/sync-plans-request.json",
   "title": "Sync Plans Request",
   "description": "Push campaign plans to the governance agent. A plan defines the authorized parameters for a campaign -- budget limits, channels, flight dates, and authorized markets.",
   "x-status": "experimental",
@@ -35270,7 +35270,7 @@ export const governance_SyncPlansRequest = {
             "x-entity": "governance_plan"
           },
           "brand": {
-            "$ref": "/schemas/3.0.6/core/brand-ref.json",
+            "$ref": "/schemas/3.0.8/core/brand-ref.json",
             "description": "Brand or organization being governed. For campaign plans, the governance agent resolves the brand's compliance configuration. For portfolio plans, this is the holding company or parent organization."
           },
           "objectives": {
@@ -35307,7 +35307,7 @@ export const governance_SyncPlansRequest = {
                 "type": "object",
                 "description": "Optional budget partition across purchase types. Keys are purchase-type enum values (media_buy, rights_license, signal_activation, creative_services). When present, the governance agent validates spend against both the total and the per-type allocation. When absent, all spend counts against the single total regardless of purchase type.",
                 "propertyNames": {
-                  "$ref": "/schemas/3.0.6/enums/purchase-type.json"
+                  "$ref": "/schemas/3.0.8/enums/purchase-type.json"
                 },
                 "additionalProperties": {
                   "type": "object",
@@ -35368,14 +35368,14 @@ export const governance_SyncPlansRequest = {
               "required": {
                 "type": "array",
                 "items": {
-                  "$ref": "/schemas/3.0.6/enums/channels.json"
+                  "$ref": "/schemas/3.0.8/enums/channels.json"
                 },
                 "description": "Channels that must be included in the media mix."
               },
               "allowed": {
                 "type": "array",
                 "items": {
-                  "$ref": "/schemas/3.0.6/enums/channels.json"
+                  "$ref": "/schemas/3.0.8/enums/channels.json"
                 },
                 "description": "Channels the orchestrator may use."
               },
@@ -35452,14 +35452,14 @@ export const governance_SyncPlansRequest = {
             "minItems": 1
           },
           "audience": {
-            "$ref": "/schemas/3.0.6/governance/audience-constraints.json",
+            "$ref": "/schemas/3.0.8/governance/audience-constraints.json",
             "description": "Audience targeting constraints. Defines who the campaign should reach (include) and must not reach (exclude). The governance agent evaluates seller targeting against these constraints."
           },
           "restricted_attributes": {
             "type": "array",
             "description": "Personal data categories that must not be used for targeting in this campaign. Applies horizontally across all audience criteria. Used for EU DSA Article 26 compliance (prohibits targeting on GDPR Article 9 special categories) and similar regulations. The governance agent flags any audience targeting that references these attributes.",
             "items": {
-              "$ref": "/schemas/3.0.6/enums/restricted-attribute.json"
+              "$ref": "/schemas/3.0.8/enums/restricted-attribute.json"
             },
             "minItems": 1
           },
@@ -35484,7 +35484,7 @@ export const governance_SyncPlansRequest = {
           "custom_policies": {
             "type": "array",
             "items": {
-              "$ref": "/schemas/3.0.6/governance/policy-entry.json"
+              "$ref": "/schemas/3.0.8/governance/policy-entry.json"
             },
             "description": "Bespoke policies specific to this campaign, using the same shape as registry entries. Each policy has a policy_id, enforcement (must|should), and natural-language policy text. Governance findings reference policy_id to identify which policy triggered. For quick authoring, omit version/name/category — servers default them."
           },
@@ -35511,7 +35511,7 @@ export const governance_SyncPlansRequest = {
                   "description": "URL of the delegated agent."
                 },
                 "authority": {
-                  "$ref": "/schemas/3.0.6/enums/delegation-authority.json",
+                  "$ref": "/schemas/3.0.8/enums/delegation-authority.json",
                   "description": "Authority level granted to this agent."
                 },
                 "budget_limit": {
@@ -35591,7 +35591,7 @@ export const governance_SyncPlansRequest = {
               "shared_exclusions": {
                 "type": "array",
                 "items": {
-                  "$ref": "/schemas/3.0.6/governance/policy-entry.json"
+                  "$ref": "/schemas/3.0.8/governance/policy-entry.json"
                 },
                 "description": "Bespoke exclusion policies applied across all member plans, using the same shape as registry entries. Authored typically as enforcement: must policies with exclusion language in the policy text (e.g., 'No advertising on properties owned by competitor holding companies')."
               }
@@ -35602,7 +35602,7 @@ export const governance_SyncPlansRequest = {
             "additionalProperties": false
           },
           "ext": {
-            "$ref": "/schemas/3.0.6/core/ext.json"
+            "$ref": "/schemas/3.0.8/core/ext.json"
           }
         },
         "required": [
@@ -35673,10 +35673,10 @@ export const governance_SyncPlansRequest = {
       }
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -35688,7 +35688,7 @@ export const governance_SyncPlansRequest = {
 
 export const governance_SyncPlansResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/governance/sync-plans-response.json",
+  "$id": "/schemas/3.0.8/governance/sync-plans-response.json",
   "title": "Sync Plans Response",
   "description": "Response from syncing campaign plans. Returns status and active validation categories for each plan.",
   "x-status": "experimental",
@@ -35763,7 +35763,7 @@ export const governance_SyncPlansResponse = {
                   "description": "How this policy was included. 'explicit': referenced in the brand compliance configuration. 'auto_applied': matched automatically by jurisdiction or policy category."
                 },
                 "enforcement": {
-                  "$ref": "/schemas/3.0.6/enums/policy-enforcement.json",
+                  "$ref": "/schemas/3.0.8/enums/policy-enforcement.json",
                   "description": "Enforcement level for this policy."
                 },
                 "reason": {
@@ -35794,10 +35794,10 @@ export const governance_SyncPlansResponse = {
       "default": false
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -35807,9 +35807,9 @@ export const governance_SyncPlansResponse = {
 } as const;
 
 export const manifest = {
-  "$schema": "/schemas/3.0.6/manifest.schema.json",
-  "adcp_version": "3.0.6",
-  "generated_at": "2026-05-03T17:47:30.187Z",
+  "$schema": "/schemas/3.0.8/manifest.schema.json",
+  "adcp_version": "3.0.8",
+  "generated_at": "2026-05-08T14:02:02.755Z",
   "tools": {
     "acquire_rights": {
       "protocol": "brand",
@@ -36999,7 +36999,7 @@ export const manifest = {
 
 export const manifestSchema = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/manifest.schema.json",
+  "$id": "/schemas/3.0.8/manifest.schema.json",
   "title": "AdCP Manifest",
   "description": "Machine-readable registry of every AdCP tool, error code, and specialism for a given AdCP version. SDKs consume this artifact at codegen time to derive their tool/error tables instead of hand-transcribing the spec. Replaces three categories of drift documented in adcp#3725: hand-rolled tool-by-protocol arrays, hand-classified error recovery, and hand-listed specialism→tool mappings.",
   "type": "object",
@@ -37202,7 +37202,7 @@ export const manifestSchema = {
 
 export const mediaBuy_BuildCreativeAsyncResponseInputRequired = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/build-creative-async-response-input-required.json",
+  "$id": "/schemas/3.0.8/media-buy/build-creative-async-response-input-required.json",
   "title": "Build Creative - Input Required",
   "description": "Payload when build_creative is paused waiting for user input. May occur during generation when the agent needs creative direction, or when brand guidelines require approval.",
   "type": "object",
@@ -37220,14 +37220,14 @@ export const mediaBuy_BuildCreativeAsyncResponseInputRequired = {
       "type": "array",
       "description": "Optional validation errors or warnings explaining why input is required.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/error.json"
+        "$ref": "/schemas/3.0.8/core/error.json"
       }
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -37235,16 +37235,16 @@ export const mediaBuy_BuildCreativeAsyncResponseInputRequired = {
 
 export const mediaBuy_BuildCreativeAsyncResponseSubmitted = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/build-creative-async-response-submitted.json",
+  "$id": "/schemas/3.0.8/media-buy/build-creative-async-response-submitted.json",
   "title": "Build Creative - Submitted",
   "description": "Payload acknowledging the build_creative task is queued.",
   "type": "object",
   "properties": {
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -37252,7 +37252,7 @@ export const mediaBuy_BuildCreativeAsyncResponseSubmitted = {
 
 export const mediaBuy_BuildCreativeAsyncResponseWorking = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/build-creative-async-response-working.json",
+  "$id": "/schemas/3.0.8/media-buy/build-creative-async-response-working.json",
   "title": "Build Creative - Working",
   "description": "Progress payload for active build_creative task. Returned during AI generation, format transformation, or complex library retrieval with macro resolution.",
   "type": "object",
@@ -37278,10 +37278,10 @@ export const mediaBuy_BuildCreativeAsyncResponseWorking = {
       "description": "Current step number"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -37289,7 +37289,7 @@ export const mediaBuy_BuildCreativeAsyncResponseWorking = {
 
 export const mediaBuy_BuildCreativeRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/build-creative-request.json",
+  "$id": "/schemas/3.0.8/media-buy/build-creative-request.json",
   "title": "Build Creative Request",
   "description": "Request to transform, generate, or retrieve a creative manifest. Supports three modes: (1) generation from a brief or seed assets, (2) transformation of an existing manifest, (3) retrieval from a creative library by creative_id. Produces target manifest(s) in the specified format(s). Provide either target_format_id for a single format or target_format_ids for multiple formats.",
   "x-mutates-state": true,
@@ -37306,7 +37306,7 @@ export const mediaBuy_BuildCreativeRequest = {
       "description": "Natural language instructions for the transformation or generation. For pure generation, this is the creative brief. For transformation, this provides guidance on how to adapt the creative. For refinement, this describes the desired changes."
     },
     "creative_manifest": {
-      "$ref": "/schemas/3.0.6/core/creative-manifest.json",
+      "$ref": "/schemas/3.0.8/core/creative-manifest.json",
       "description": "Creative manifest to transform or generate from. For pure generation, this should include the target format_id and any required input assets. For transformation (e.g., resizing, reformatting), this is the complete creative to adapt. When creative_id is provided, the agent resolves the creative from its library and this field is ignored."
     },
     "creative_id": {
@@ -37329,27 +37329,27 @@ export const mediaBuy_BuildCreativeRequest = {
       "x-entity": "package"
     },
     "target_format_id": {
-      "$ref": "/schemas/3.0.6/core/format-id.json",
+      "$ref": "/schemas/3.0.8/core/format-id.json",
       "description": "Single format ID to generate. Mutually exclusive with target_format_ids. The format definition specifies required input assets and output structure."
     },
     "target_format_ids": {
       "type": "array",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       },
       "minItems": 1,
       "description": "Array of format IDs to generate in a single call. Mutually exclusive with target_format_id. The creative agent produces one manifest per format. Each format definition specifies its own required input assets and output structure."
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account reference for pricing and billing. When present, the creative agent applies account-specific pricing from the rate card, records the build against the account for billing, and can enforce account-level quotas or entitlements. Required by creative agents that charge for their services."
     },
     "brand": {
-      "$ref": "/schemas/3.0.6/core/brand-ref.json",
+      "$ref": "/schemas/3.0.8/core/brand-ref.json",
       "description": "Brand reference for creative generation. Resolved to full brand identity (colors, logos, tone) at execution time."
     },
     "quality": {
-      "$ref": "/schemas/3.0.6/enums/creative-quality.json",
+      "$ref": "/schemas/3.0.8/enums/creative-quality.json",
       "description": "Quality tier for generation. 'draft' produces fast, lower-fidelity output for iteration and review. 'production' produces full-quality output for final delivery. If omitted, the creative agent uses its own default. For non-generative transforms (e.g., format resizing), creative agents MAY ignore this field."
     },
     "item_limit": {
@@ -37391,11 +37391,11 @@ export const mediaBuy_BuildCreativeRequest = {
       "minItems": 1
     },
     "preview_quality": {
-      "$ref": "/schemas/3.0.6/enums/creative-quality.json",
+      "$ref": "/schemas/3.0.8/enums/creative-quality.json",
       "description": "Render quality for inline preview when include_preview is true. 'draft' produces fast, lower-fidelity renderings. 'production' produces full-quality renderings. Independent of the build quality parameter — you can build at draft quality and preview at production quality, or vice versa. If omitted, the creative agent uses its own default. Ignored when include_preview is false or omitted."
     },
     "preview_output_format": {
-      "$ref": "/schemas/3.0.6/enums/preview-output-format.json",
+      "$ref": "/schemas/3.0.8/enums/preview-output-format.json",
       "default": "url",
       "description": "Output format for preview renders when include_preview is true. 'url' returns preview_url (iframe-embeddable URL), 'html' returns preview_html (raw HTML). Ignored when include_preview is false or omitted."
     },
@@ -37414,10 +37414,10 @@ export const mediaBuy_BuildCreativeRequest = {
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -37428,7 +37428,7 @@ export const mediaBuy_BuildCreativeRequest = {
 
 export const mediaBuy_BuildCreativeResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/build-creative-response.json",
+  "$id": "/schemas/3.0.8/media-buy/build-creative-response.json",
   "title": "Build Creative Response",
   "description": "Response containing the transformed or generated creative manifest(s), ready for use with preview_creative or sync_creatives. Returns either a single creative_manifest, an array of creative_manifests (for multi-format requests), or error information.",
   "type": "object",
@@ -37439,7 +37439,7 @@ export const mediaBuy_BuildCreativeResponse = {
       "type": "object",
       "properties": {
         "creative_manifest": {
-          "$ref": "/schemas/3.0.6/core/creative-manifest.json",
+          "$ref": "/schemas/3.0.8/core/creative-manifest.json",
           "description": "The generated or transformed creative manifest"
         },
         "sandbox": {
@@ -37469,7 +37469,7 @@ export const mediaBuy_BuildCreativeResponse = {
                     "type": "array",
                     "description": "Array of rendered pieces for this preview variant. Most formats render as a single piece. Companion ad formats render as multiple pieces.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/creative/preview-render.json"
+                      "$ref": "/schemas/3.0.8/creative/preview-render.json"
                     },
                     "minItems": 1
                   },
@@ -37524,7 +37524,7 @@ export const mediaBuy_BuildCreativeResponse = {
           ]
         },
         "preview_error": {
-          "$ref": "/schemas/3.0.6/core/error.json",
+          "$ref": "/schemas/3.0.8/core/error.json",
           "description": "When include_preview was true in the request but preview generation failed. Uses the standard error structure with code, message, and recovery classification. Distinguishes 'agent does not support inline preview' (preview and preview_error both absent) from 'preview generation failed' (preview absent, preview_error present). Omitted when preview succeeded or was not requested."
         },
         "pricing_option_id": {
@@ -37543,14 +37543,14 @@ export const mediaBuy_BuildCreativeResponse = {
           "description": "ISO 4217 currency code for vendor_cost."
         },
         "consumption": {
-          "$ref": "/schemas/3.0.6/core/creative-consumption.json",
+          "$ref": "/schemas/3.0.8/core/creative-consumption.json",
           "description": "Structured consumption details for this build. Informational — lets the buyer verify that vendor_cost is consistent with the rate card. vendor_cost is the billing source of truth."
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -37566,7 +37566,7 @@ export const mediaBuy_BuildCreativeResponse = {
         "creative_manifests": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/core/creative-manifest.json"
+            "$ref": "/schemas/3.0.8/core/creative-manifest.json"
           },
           "minItems": 1,
           "description": "Array of generated creative manifests, one per requested format. Each manifest contains its own format_id identifying which format it was generated for."
@@ -37595,14 +37595,14 @@ export const mediaBuy_BuildCreativeResponse = {
                     "description": "Unique identifier for this preview"
                   },
                   "format_id": {
-                    "$ref": "/schemas/3.0.6/core/format-id.json",
+                    "$ref": "/schemas/3.0.8/core/format-id.json",
                     "description": "The format this preview was generated for. Matches one of the requested target_format_ids."
                   },
                   "renders": {
                     "type": "array",
                     "description": "Array of rendered pieces for this format's preview. Most formats render as a single piece. Companion ad formats render as multiple pieces.",
                     "items": {
-                      "$ref": "/schemas/3.0.6/creative/preview-render.json"
+                      "$ref": "/schemas/3.0.8/creative/preview-render.json"
                     },
                     "minItems": 1
                   },
@@ -37658,7 +37658,7 @@ export const mediaBuy_BuildCreativeResponse = {
           ]
         },
         "preview_error": {
-          "$ref": "/schemas/3.0.6/core/error.json",
+          "$ref": "/schemas/3.0.8/core/error.json",
           "description": "When include_preview was true in the request but preview generation failed. Uses the standard error structure with code, message, and recovery classification. Omitted when preview succeeded or was not requested."
         },
         "pricing_option_id": {
@@ -37677,14 +37677,14 @@ export const mediaBuy_BuildCreativeResponse = {
           "description": "ISO 4217 currency code for vendor_cost."
         },
         "consumption": {
-          "$ref": "/schemas/3.0.6/core/creative-consumption.json",
+          "$ref": "/schemas/3.0.8/core/creative-consumption.json",
           "description": "Structured consumption details for this build. Informational — lets the buyer verify that vendor_cost is consistent with the rate card."
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -37701,15 +37701,15 @@ export const mediaBuy_BuildCreativeResponse = {
           "type": "array",
           "description": "Array of errors explaining why creative generation failed",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -37722,7 +37722,7 @@ export const mediaBuy_BuildCreativeResponse = {
 
 export const mediaBuy_CreateMediaBuyAsyncResponseInputRequired = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/create-media-buy-async-response-input-required.json",
+  "$id": "/schemas/3.0.8/media-buy/create-media-buy-async-response-input-required.json",
   "title": "Create Media Buy - Input Required",
   "description": "Payload when task is paused waiting for user input or approval.",
   "type": "object",
@@ -37739,14 +37739,14 @@ export const mediaBuy_CreateMediaBuyAsyncResponseInputRequired = {
       "type": "array",
       "description": "Optional validation errors or warnings for debugging purposes. Helps explain why input is required.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/error.json"
+        "$ref": "/schemas/3.0.8/core/error.json"
       }
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -37754,16 +37754,16 @@ export const mediaBuy_CreateMediaBuyAsyncResponseInputRequired = {
 
 export const mediaBuy_CreateMediaBuyAsyncResponseSubmitted = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/create-media-buy-async-response-submitted.json",
+  "$id": "/schemas/3.0.8/media-buy/create-media-buy-async-response-submitted.json",
   "title": "Create Media Buy - Submitted",
   "description": "Payload acknowledging the task is queued. Usually empty or just context.",
   "type": "object",
   "properties": {
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -37771,7 +37771,7 @@ export const mediaBuy_CreateMediaBuyAsyncResponseSubmitted = {
 
 export const mediaBuy_CreateMediaBuyAsyncResponseWorking = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/create-media-buy-async-response-working.json",
+  "$id": "/schemas/3.0.8/media-buy/create-media-buy-async-response-working.json",
   "title": "Create Media Buy - Working",
   "description": "Progress payload for active create_media_buy task.",
   "type": "object",
@@ -37797,10 +37797,10 @@ export const mediaBuy_CreateMediaBuyAsyncResponseWorking = {
       "description": "Current step number"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -37808,7 +37808,7 @@ export const mediaBuy_CreateMediaBuyAsyncResponseWorking = {
 
 export const mediaBuy_CreateMediaBuyRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/create-media-buy-request.json",
+  "$id": "/schemas/3.0.8/media-buy/create-media-buy-request.json",
   "title": "Create Media Buy Request",
   "description": "Request parameters for creating a media buy. Supports two modes: (1) Manual mode - provide packages array with explicit line item configurations, or (2) Proposal mode - provide proposal_id and total_budget to execute a proposal from get_products. One of packages or proposal_id must be provided.",
   "x-mutates-state": true,
@@ -37833,7 +37833,7 @@ export const mediaBuy_CreateMediaBuyRequest = {
       "x-entity": "governance_plan"
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account to bill for this media buy. Pass a natural key (brand, operator, optional sandbox) or a seller-assigned account_id from list_accounts."
     },
     "proposal_id": {
@@ -37864,20 +37864,20 @@ export const mediaBuy_CreateMediaBuyRequest = {
       "type": "array",
       "description": "Array of package configurations. Required when not using proposal_id. When executing a proposal, this can be omitted and packages will be derived from the proposal's allocations.",
       "items": {
-        "$ref": "/schemas/3.0.6/media-buy/package-request.json"
+        "$ref": "/schemas/3.0.8/media-buy/package-request.json"
       },
       "minItems": 1
     },
     "brand": {
-      "$ref": "/schemas/3.0.6/core/brand-ref.json",
+      "$ref": "/schemas/3.0.8/core/brand-ref.json",
       "description": "Brand reference for this media buy. Resolved to full brand identity at execution time from brand.json or the registry."
     },
     "advertiser_industry": {
-      "$ref": "/schemas/3.0.6/enums/advertiser-industry.json",
+      "$ref": "/schemas/3.0.8/enums/advertiser-industry.json",
       "description": "Industry classification for this specific campaign. A brand may operate across multiple industries (brand.json industries field), but each media buy targets one. For example, a consumer health company running a wellness campaign sends 'healthcare.wellness', not 'cpg'. Sellers map this to platform-native codes (e.g., Spotify ADV categories, LinkedIn industry IDs). When omitted, sellers may infer from the brand manifest's industries field."
     },
     "invoice_recipient": {
-      "$ref": "/schemas/3.0.6/core/business-entity.json",
+      "$ref": "/schemas/3.0.8/core/business-entity.json",
       "description": "Override the account's default billing entity for this specific buy. When provided, the seller invoices this entity instead. The seller MUST validate the invoice recipient is authorized for this account. When governance_agents are configured, the seller MUST include invoice_recipient in the check_governance request."
     },
     "io_acceptance": {
@@ -37921,7 +37921,7 @@ export const mediaBuy_CreateMediaBuyRequest = {
       "description": "Agency estimate or authorization number. Primary financial reference for broadcast buys — links the order to the agency's media plan and billing system. Travels with the order and Ad-IDs through the transaction lifecycle."
     },
     "start_time": {
-      "$ref": "/schemas/3.0.6/core/start-timing.json"
+      "$ref": "/schemas/3.0.8/core/start-timing.json"
     },
     "end_time": {
       "type": "string",
@@ -37929,11 +37929,11 @@ export const mediaBuy_CreateMediaBuyRequest = {
       "description": "Campaign end date/time in ISO 8601 format"
     },
     "push_notification_config": {
-      "$ref": "/schemas/3.0.6/core/push-notification-config.json",
+      "$ref": "/schemas/3.0.8/core/push-notification-config.json",
       "description": "Optional webhook configuration for async task status notifications. Publisher will send webhooks when status changes (working, input-required, completed, failed). The client generates an operation_id and embeds it in the URL before sending — the publisher echoes it back in webhook payloads for correlation."
     },
     "reporting_webhook": {
-      "$ref": "/schemas/3.0.6/core/reporting-webhook.json",
+      "$ref": "/schemas/3.0.8/core/reporting-webhook.json",
       "description": "Optional webhook configuration for automated reporting delivery"
     },
     "artifact_webhook": {
@@ -37959,7 +37959,7 @@ export const mediaBuy_CreateMediaBuyRequest = {
               "type": "array",
               "description": "Array of authentication schemes. Supported: ['Bearer'] for simple token auth, ['HMAC-SHA256'] for signature verification (recommended for production)",
               "items": {
-                "$ref": "/schemas/3.0.6/enums/auth-scheme.json"
+                "$ref": "/schemas/3.0.8/enums/auth-scheme.json"
               },
               "minItems": 1,
               "maxItems": 1
@@ -38007,10 +38007,10 @@ export const mediaBuy_CreateMediaBuyRequest = {
       "additionalProperties": true
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -38030,7 +38030,7 @@ export const mediaBuy_CreateMediaBuyRequest = {
 
 export const mediaBuy_CreateMediaBuyResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/create-media-buy-response.json",
+  "$id": "/schemas/3.0.8/media-buy/create-media-buy-response.json",
   "title": "Create Media Buy Response",
   "description": "Response payload for create_media_buy. Exactly one of three shapes: (1) synchronous success — media_buy_id and packages are issued in-line, no status or a MediaBuyStatus value (pending_creatives / pending_start / active); (2) terminal failure — an errors array with no media-buy artifact and status != 'submitted'; (3) submitted task envelope — status 'submitted' with task_id, the media buy is queued or awaiting a human decision (e.g., IO signing), and media_buy_id / packages land on the task's completion artifact, not this response. The submitted branch MAY carry advisory errors for non-blocking warnings; terminal failures belong in the error branch. These three shapes are mutually exclusive — a response has exactly one.",
   "type": "object",
@@ -38046,15 +38046,15 @@ export const mediaBuy_CreateMediaBuyResponse = {
           "x-entity": "media_buy"
         },
         "account": {
-          "$ref": "/schemas/3.0.6/core/account.json",
+          "$ref": "/schemas/3.0.8/core/account.json",
           "description": "Account billed for this media buy. Includes advertiser, billing proxy (if any), and rate card applied."
         },
         "invoice_recipient": {
-          "$ref": "/schemas/3.0.6/core/business-entity.json",
+          "$ref": "/schemas/3.0.8/core/business-entity.json",
           "description": "Per-buy invoice recipient, echoed from the request when provided. Confirms the seller accepted the billing override. Bank details are omitted (write-only)."
         },
         "status": {
-          "$ref": "/schemas/3.0.6/enums/media-buy-status.json",
+          "$ref": "/schemas/3.0.8/enums/media-buy-status.json",
           "description": "Initial media buy status. Either 'pending_creatives' (awaiting creative assets), 'pending_start' (ready to serve, waiting for flight date), or 'active' (immediate activation)."
         },
         "confirmed_at": {
@@ -38076,18 +38076,18 @@ export const mediaBuy_CreateMediaBuyResponse = {
           "type": "array",
           "description": "Actions the buyer can perform on this media buy after creation. Saves a round-trip to get_media_buys.",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/media-buy-valid-action.json"
+            "$ref": "/schemas/3.0.8/enums/media-buy-valid-action.json"
           }
         },
         "packages": {
           "type": "array",
           "description": "Array of created packages with complete state information",
           "items": {
-            "$ref": "/schemas/3.0.6/core/package.json"
+            "$ref": "/schemas/3.0.8/core/package.json"
           }
         },
         "planned_delivery": {
-          "$ref": "/schemas/3.0.6/core/planned-delivery.json",
+          "$ref": "/schemas/3.0.8/core/planned-delivery.json",
           "description": "The seller's interpreted delivery parameters. Describes what the seller will actually run -- geo, channels, flight dates, frequency caps, and budget. Present when the account has governance_agents or when the seller chooses to provide delivery transparency."
         },
         "sandbox": {
@@ -38095,10 +38095,10 @@ export const mediaBuy_CreateMediaBuyResponse = {
           "description": "When true, this response contains simulated data from sandbox mode."
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -38121,15 +38121,15 @@ export const mediaBuy_CreateMediaBuyResponse = {
           "type": "array",
           "description": "Array of errors explaining why the operation failed",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -38190,14 +38190,14 @@ export const mediaBuy_CreateMediaBuyResponse = {
           "type": "array",
           "description": "Optional advisory errors accompanying the submitted envelope. Use only for non-blocking warnings (e.g., throttled_severity advisories, governance observations). Terminal failures belong in the error branch, not here.",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           }
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -38225,7 +38225,7 @@ export const mediaBuy_CreateMediaBuyResponse = {
 
 export const mediaBuy_GetMediaBuyDeliveryRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/get-media-buy-delivery-request.json",
+  "$id": "/schemas/3.0.8/media-buy/get-media-buy-delivery-request.json",
   "title": "Get Media Buy Delivery Request",
   "description": "Request parameters for retrieving comprehensive delivery metrics",
   "type": "object",
@@ -38237,7 +38237,7 @@ export const mediaBuy_GetMediaBuyDeliveryRequest = {
       "maximum": 99
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Filter delivery data to a specific account. When omitted, returns data across all accessible accounts."
     },
     "media_buy_ids": {
@@ -38252,12 +38252,12 @@ export const mediaBuy_GetMediaBuyDeliveryRequest = {
     "status_filter": {
       "oneOf": [
         {
-          "$ref": "/schemas/3.0.6/enums/media-buy-status.json"
+          "$ref": "/schemas/3.0.8/enums/media-buy-status.json"
         },
         {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/media-buy-status.json"
+            "$ref": "/schemas/3.0.8/enums/media-buy-status.json"
           },
           "minItems": 1
         }
@@ -38286,7 +38286,7 @@ export const mediaBuy_GetMediaBuyDeliveryRequest = {
         "post_click": {
           "allOf": [
             {
-              "$ref": "/schemas/3.0.6/core/duration.json"
+              "$ref": "/schemas/3.0.8/core/duration.json"
             }
           ],
           "description": "Post-click attribution window to apply."
@@ -38294,13 +38294,13 @@ export const mediaBuy_GetMediaBuyDeliveryRequest = {
         "post_view": {
           "allOf": [
             {
-              "$ref": "/schemas/3.0.6/core/duration.json"
+              "$ref": "/schemas/3.0.8/core/duration.json"
             }
           ],
           "description": "Post-view attribution window to apply."
         },
         "model": {
-          "$ref": "/schemas/3.0.6/enums/attribution-model.json",
+          "$ref": "/schemas/3.0.8/enums/attribution-model.json",
           "description": "Attribution model to use. When omitted, the seller applies their default model."
         }
       },
@@ -38315,16 +38315,16 @@ export const mediaBuy_GetMediaBuyDeliveryRequest = {
           "description": "Request geographic breakdown. Check reporting_capabilities.supports_geo_breakdown for available levels and systems.",
           "properties": {
             "geo_level": {
-              "$ref": "/schemas/3.0.6/enums/geo-level.json",
+              "$ref": "/schemas/3.0.8/enums/geo-level.json",
               "description": "Geographic granularity level for the breakdown"
             },
             "system": {
               "oneOf": [
                 {
-                  "$ref": "/schemas/3.0.6/enums/metro-system.json"
+                  "$ref": "/schemas/3.0.8/enums/metro-system.json"
                 },
                 {
-                  "$ref": "/schemas/3.0.6/enums/postal-system.json"
+                  "$ref": "/schemas/3.0.8/enums/postal-system.json"
                 }
               ],
               "description": "Classification system for metro or postal_area levels (e.g., 'nielsen_dma', 'us_zip'). Required when geo_level is 'metro' or 'postal_area'."
@@ -38336,7 +38336,7 @@ export const mediaBuy_GetMediaBuyDeliveryRequest = {
               "description": "Maximum number of geo entries to return. Defaults to 25. When truncated, by_geo_truncated is true in the response."
             },
             "sort_by": {
-              "$ref": "/schemas/3.0.6/enums/sort-metric.json",
+              "$ref": "/schemas/3.0.8/enums/sort-metric.json",
               "description": "Metric to sort breakdown rows by (descending). Falls back to 'spend' if the seller does not report the requested metric.",
               "default": "spend"
             }
@@ -38356,7 +38356,7 @@ export const mediaBuy_GetMediaBuyDeliveryRequest = {
               "description": "Maximum number of entries to return. When omitted, all entries are returned (the enum is small and bounded)."
             },
             "sort_by": {
-              "$ref": "/schemas/3.0.6/enums/sort-metric.json",
+              "$ref": "/schemas/3.0.8/enums/sort-metric.json",
               "description": "Metric to sort breakdown rows by (descending). Falls back to 'spend' if the seller does not report the requested metric.",
               "default": "spend"
             }
@@ -38373,7 +38373,7 @@ export const mediaBuy_GetMediaBuyDeliveryRequest = {
               "description": "Maximum number of entries to return. When omitted, all entries are returned (the enum is small and bounded)."
             },
             "sort_by": {
-              "$ref": "/schemas/3.0.6/enums/sort-metric.json",
+              "$ref": "/schemas/3.0.8/enums/sort-metric.json",
               "description": "Metric to sort breakdown rows by (descending). Falls back to 'spend' if the seller does not report the requested metric.",
               "default": "spend"
             }
@@ -38391,7 +38391,7 @@ export const mediaBuy_GetMediaBuyDeliveryRequest = {
               "description": "Maximum number of entries to return. Defaults to 25."
             },
             "sort_by": {
-              "$ref": "/schemas/3.0.6/enums/sort-metric.json",
+              "$ref": "/schemas/3.0.8/enums/sort-metric.json",
               "description": "Metric to sort breakdown rows by (descending). Falls back to 'spend' if the seller does not report the requested metric.",
               "default": "spend"
             }
@@ -38409,7 +38409,7 @@ export const mediaBuy_GetMediaBuyDeliveryRequest = {
               "description": "Maximum number of entries to return. Defaults to 25."
             },
             "sort_by": {
-              "$ref": "/schemas/3.0.6/enums/sort-metric.json",
+              "$ref": "/schemas/3.0.8/enums/sort-metric.json",
               "description": "Metric to sort breakdown rows by (descending). Falls back to 'spend' if the seller does not report the requested metric.",
               "default": "spend"
             }
@@ -38420,10 +38420,10 @@ export const mediaBuy_GetMediaBuyDeliveryRequest = {
       "additionalProperties": true
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -38431,7 +38431,7 @@ export const mediaBuy_GetMediaBuyDeliveryRequest = {
 
 export const mediaBuy_GetMediaBuyDeliveryResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/get-media-buy-delivery-response.json",
+  "$id": "/schemas/3.0.8/media-buy/get-media-buy-delivery-response.json",
   "title": "Get Media Buy Delivery Response",
   "description": "Response payload for get_media_buy_delivery task",
   "type": "object",
@@ -38493,7 +38493,7 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
       "pattern": "^[A-Z]{3}$"
     },
     "attribution_window": {
-      "$ref": "/schemas/3.0.6/core/attribution-window.json",
+      "$ref": "/schemas/3.0.8/core/attribution-window.json",
       "description": "Attribution methodology and lookback windows used for conversion metrics in this response. All media buys from a single seller share the same attribution methodology. Enables cross-platform comparison (e.g., Amazon 14-day click vs. Criteo 30-day click)."
     },
     "aggregated_totals": {
@@ -38565,7 +38565,7 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
         "reach_unit": {
           "allOf": [
             {
-              "$ref": "/schemas/3.0.6/enums/reach-unit.json"
+              "$ref": "/schemas/3.0.8/enums/reach-unit.json"
             }
           ],
           "description": "Unit of measurement for reach. Only present when all aggregated media buys use the same reach_unit."
@@ -38625,13 +38625,13 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
             "description": "Indicates this delivery contains updated data for a previously reported period. Buyer should replace previous period data with these totals."
           },
           "pricing_model": {
-            "$ref": "/schemas/3.0.6/enums/pricing-model.json",
+            "$ref": "/schemas/3.0.8/enums/pricing-model.json",
             "description": "Pricing model used for this media buy"
           },
           "totals": {
             "allOf": [
               {
-                "$ref": "/schemas/3.0.6/core/delivery-metrics.json"
+                "$ref": "/schemas/3.0.8/core/delivery-metrics.json"
               },
               {
                 "type": "object",
@@ -38655,7 +38655,7 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
             "items": {
               "allOf": [
                 {
-                  "$ref": "/schemas/3.0.6/core/delivery-metrics.json"
+                  "$ref": "/schemas/3.0.8/core/delivery-metrics.json"
                 },
                 {
                   "type": "object",
@@ -38671,7 +38671,7 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
                       "minimum": 0
                     },
                     "pricing_model": {
-                      "$ref": "/schemas/3.0.6/enums/pricing-model.json",
+                      "$ref": "/schemas/3.0.8/enums/pricing-model.json",
                       "description": "The pricing model used for this package (e.g., cpm, cpcv, cpp). Indicates how the package is billed and which metrics are most relevant for optimization."
                     },
                     "rate": {
@@ -38728,7 +38728,7 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
                       "items": {
                         "allOf": [
                           {
-                            "$ref": "/schemas/3.0.6/core/delivery-metrics.json"
+                            "$ref": "/schemas/3.0.8/core/delivery-metrics.json"
                           },
                           {
                             "type": "object",
@@ -38738,7 +38738,7 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
                                 "description": "Catalog item identifier (e.g., SKU, GTIN, job_id, offering_id)"
                               },
                               "content_id_type": {
-                                "$ref": "/schemas/3.0.6/enums/content-id-type.json",
+                                "$ref": "/schemas/3.0.8/enums/content-id-type.json",
                                 "description": "Identifier type for this content_id"
                               }
                             },
@@ -38757,7 +38757,7 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
                       "items": {
                         "allOf": [
                           {
-                            "$ref": "/schemas/3.0.6/core/delivery-metrics.json"
+                            "$ref": "/schemas/3.0.8/core/delivery-metrics.json"
                           },
                           {
                             "type": "object",
@@ -38789,7 +38789,7 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
                       "items": {
                         "allOf": [
                           {
-                            "$ref": "/schemas/3.0.6/core/delivery-metrics.json"
+                            "$ref": "/schemas/3.0.8/core/delivery-metrics.json"
                           },
                           {
                             "type": "object",
@@ -38799,7 +38799,7 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
                                 "description": "The targeted keyword"
                               },
                               "match_type": {
-                                "$ref": "/schemas/3.0.6/enums/match-type.json"
+                                "$ref": "/schemas/3.0.8/enums/match-type.json"
                               }
                             },
                             "required": [
@@ -38818,13 +38818,13 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
                       "items": {
                         "allOf": [
                           {
-                            "$ref": "/schemas/3.0.6/core/delivery-metrics.json"
+                            "$ref": "/schemas/3.0.8/core/delivery-metrics.json"
                           },
                           {
                             "type": "object",
                             "properties": {
                               "geo_level": {
-                                "$ref": "/schemas/3.0.6/enums/geo-level.json",
+                                "$ref": "/schemas/3.0.8/enums/geo-level.json",
                                 "description": "Geographic level of this entry (country, region, metro, postal_area)"
                               },
                               "system": {
@@ -38860,13 +38860,13 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
                       "items": {
                         "allOf": [
                           {
-                            "$ref": "/schemas/3.0.6/core/delivery-metrics.json"
+                            "$ref": "/schemas/3.0.8/core/delivery-metrics.json"
                           },
                           {
                             "type": "object",
                             "properties": {
                               "device_type": {
-                                "$ref": "/schemas/3.0.6/enums/device-type.json",
+                                "$ref": "/schemas/3.0.8/enums/device-type.json",
                                 "description": "Device form factor (desktop, mobile, tablet, ctv, dooh, unknown)"
                               }
                             },
@@ -38889,13 +38889,13 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
                       "items": {
                         "allOf": [
                           {
-                            "$ref": "/schemas/3.0.6/core/delivery-metrics.json"
+                            "$ref": "/schemas/3.0.8/core/delivery-metrics.json"
                           },
                           {
                             "type": "object",
                             "properties": {
                               "device_platform": {
-                                "$ref": "/schemas/3.0.6/enums/device-platform.json",
+                                "$ref": "/schemas/3.0.8/enums/device-platform.json",
                                 "description": "Operating system platform"
                               }
                             },
@@ -38918,7 +38918,7 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
                       "items": {
                         "allOf": [
                           {
-                            "$ref": "/schemas/3.0.6/core/delivery-metrics.json"
+                            "$ref": "/schemas/3.0.8/core/delivery-metrics.json"
                           },
                           {
                             "type": "object",
@@ -38929,7 +38929,7 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
                                 "x-entity": "audience"
                               },
                               "audience_source": {
-                                "$ref": "/schemas/3.0.6/enums/audience-source.json",
+                                "$ref": "/schemas/3.0.8/enums/audience-source.json",
                                 "description": "Origin of the audience segment (synced, platform, third_party, lookalike, retargeting, unknown)"
                               },
                               "audience_name": {
@@ -38957,7 +38957,7 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
                       "items": {
                         "allOf": [
                           {
-                            "$ref": "/schemas/3.0.6/core/delivery-metrics.json"
+                            "$ref": "/schemas/3.0.8/core/delivery-metrics.json"
                           },
                           {
                             "type": "object",
@@ -39112,7 +39112,7 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
       "type": "array",
       "description": "Task-specific errors and warnings (e.g., missing delivery data, reporting platform issues)",
       "items": {
-        "$ref": "/schemas/3.0.6/core/error.json"
+        "$ref": "/schemas/3.0.8/core/error.json"
       }
     },
     "sandbox": {
@@ -39120,10 +39120,10 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
       "description": "When true, this response contains simulated data from sandbox mode."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -39136,7 +39136,7 @@ export const mediaBuy_GetMediaBuyDeliveryResponse = {
 
 export const mediaBuy_GetMediaBuysRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/get-media-buys-request.json",
+  "$id": "/schemas/3.0.8/media-buy/get-media-buys-request.json",
   "title": "Get Media Buys Request",
   "description": "Request parameters for retrieving media buy status, creative approval state, and optional delivery snapshots",
   "type": "object",
@@ -39148,7 +39148,7 @@ export const mediaBuy_GetMediaBuysRequest = {
       "maximum": 99
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account to retrieve media buys for. When omitted, returns data across all accessible accounts."
     },
     "media_buy_ids": {
@@ -39163,12 +39163,12 @@ export const mediaBuy_GetMediaBuysRequest = {
     "status_filter": {
       "oneOf": [
         {
-          "$ref": "/schemas/3.0.6/enums/media-buy-status.json"
+          "$ref": "/schemas/3.0.8/enums/media-buy-status.json"
         },
         {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/media-buy-status.json"
+            "$ref": "/schemas/3.0.8/enums/media-buy-status.json"
           },
           "minItems": 1
         }
@@ -39188,14 +39188,14 @@ export const mediaBuy_GetMediaBuysRequest = {
       "default": 0
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-request.json",
+      "$ref": "/schemas/3.0.8/core/pagination-request.json",
       "description": "Cursor-based pagination controls. Strongly recommended when querying broad scopes (for example, all active media buys in an account)."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -39203,7 +39203,7 @@ export const mediaBuy_GetMediaBuysRequest = {
 
 export const mediaBuy_GetMediaBuysResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/get-media-buys-response.json",
+  "$id": "/schemas/3.0.8/media-buy/get-media-buys-response.json",
   "title": "Get Media Buys Response",
   "description": "Response payload for get_media_buys task. Returns media buy configuration, creative approval state, and optional delivery snapshots.",
   "type": "object",
@@ -39220,15 +39220,15 @@ export const mediaBuy_GetMediaBuysResponse = {
             "x-entity": "media_buy"
           },
           "account": {
-            "$ref": "/schemas/3.0.6/core/account.json",
+            "$ref": "/schemas/3.0.8/core/account.json",
             "description": "Account billed for this media buy"
           },
           "invoice_recipient": {
-            "$ref": "/schemas/3.0.6/core/business-entity.json",
+            "$ref": "/schemas/3.0.8/core/business-entity.json",
             "description": "Per-buy invoice recipient when provided at creation. Confirms the seller accepted the billing override. Bank details are omitted (write-only)."
           },
           "status": {
-            "$ref": "/schemas/3.0.6/enums/media-buy-status.json"
+            "$ref": "/schemas/3.0.8/enums/media-buy-status.json"
           },
           "currency": {
             "type": "string",
@@ -39274,7 +39274,7 @@ export const mediaBuy_GetMediaBuysResponse = {
                 "description": "ISO 8601 timestamp when this media buy was canceled."
               },
               "canceled_by": {
-                "$ref": "/schemas/3.0.6/enums/canceled-by.json",
+                "$ref": "/schemas/3.0.8/enums/canceled-by.json",
                 "description": "Which party initiated the cancellation."
               },
               "reason": {
@@ -39304,7 +39304,7 @@ export const mediaBuy_GetMediaBuysResponse = {
             "type": "array",
             "description": "Actions the buyer can perform on this media buy in its current state. Eliminates the need for agents to internalize the state machine — the seller declares what is permitted right now.",
             "items": {
-              "$ref": "/schemas/3.0.6/enums/media-buy-valid-action.json"
+              "$ref": "/schemas/3.0.8/enums/media-buy-valid-action.json"
             }
           },
           "history": {
@@ -39342,7 +39342,7 @@ export const mediaBuy_GetMediaBuysResponse = {
                   "x-entity": "package"
                 },
                 "ext": {
-                  "$ref": "/schemas/3.0.6/core/ext.json"
+                  "$ref": "/schemas/3.0.8/core/ext.json"
                 }
               },
               "required": [
@@ -39392,7 +39392,7 @@ export const mediaBuy_GetMediaBuysResponse = {
                   "minimum": 0
                 },
                 "targeting_overlay": {
-                  "$ref": "/schemas/3.0.6/core/targeting.json",
+                  "$ref": "/schemas/3.0.8/core/targeting.json",
                   "description": "Targeting overlay applied to this package, echoed from the most recent create_media_buy or update_media_buy. Sellers SHOULD echo any persisted targeting so buyers can verify what was stored without replaying their own request. Sellers claiming the property-lists or collection-lists specialisms MUST include, within this targeting_overlay, the PropertyListReference / CollectionListReference they persisted."
                 },
                 "start_time": {
@@ -39427,7 +39427,7 @@ export const mediaBuy_GetMediaBuysResponse = {
                       "description": "ISO 8601 timestamp when this package was canceled."
                     },
                     "canceled_by": {
-                      "$ref": "/schemas/3.0.6/enums/canceled-by.json",
+                      "$ref": "/schemas/3.0.8/enums/canceled-by.json",
                       "description": "Which party initiated the package cancellation."
                     },
                     "reason": {
@@ -39455,7 +39455,7 @@ export const mediaBuy_GetMediaBuysResponse = {
                         "x-entity": "creative"
                       },
                       "approval_status": {
-                        "$ref": "/schemas/3.0.6/enums/creative-approval-status.json"
+                        "$ref": "/schemas/3.0.8/enums/creative-approval-status.json"
                       },
                       "rejection_reason": {
                         "type": "string",
@@ -39473,11 +39473,11 @@ export const mediaBuy_GetMediaBuysResponse = {
                   "type": "array",
                   "description": "Format IDs from the original create_media_buy format_ids_to_provide that have not yet been uploaded via sync_creatives. When empty or absent, all required formats have been provided.",
                   "items": {
-                    "$ref": "/schemas/3.0.6/core/format-id.json"
+                    "$ref": "/schemas/3.0.8/core/format-id.json"
                   }
                 },
                 "snapshot_unavailable_reason": {
-                  "$ref": "/schemas/3.0.6/enums/snapshot-unavailable-reason.json",
+                  "$ref": "/schemas/3.0.8/enums/snapshot-unavailable-reason.json",
                   "description": "Machine-readable reason the snapshot is omitted. Present only when include_snapshot was true and snapshot is unavailable for this package."
                 },
                 "snapshot": {
@@ -39532,7 +39532,7 @@ export const mediaBuy_GetMediaBuysResponse = {
                       ]
                     },
                     "ext": {
-                      "$ref": "/schemas/3.0.6/core/ext.json",
+                      "$ref": "/schemas/3.0.8/core/ext.json",
                       "description": "Optional extension object for seller-specific snapshot fields."
                     }
                   },
@@ -39545,7 +39545,7 @@ export const mediaBuy_GetMediaBuysResponse = {
                   "additionalProperties": true
                 },
                 "ext": {
-                  "$ref": "/schemas/3.0.6/core/ext.json"
+                  "$ref": "/schemas/3.0.8/core/ext.json"
                 }
               },
               "required": [
@@ -39555,7 +39555,7 @@ export const mediaBuy_GetMediaBuysResponse = {
             }
           },
           "ext": {
-            "$ref": "/schemas/3.0.6/core/ext.json"
+            "$ref": "/schemas/3.0.8/core/ext.json"
           }
         },
         "required": [
@@ -39572,11 +39572,11 @@ export const mediaBuy_GetMediaBuysResponse = {
       "type": "array",
       "description": "Task-specific errors (e.g., media buy not found)",
       "items": {
-        "$ref": "/schemas/3.0.6/core/error.json"
+        "$ref": "/schemas/3.0.8/core/error.json"
       }
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-response.json",
+      "$ref": "/schemas/3.0.8/core/pagination-response.json",
       "description": "Pagination metadata for the media_buys array."
     },
     "sandbox": {
@@ -39584,10 +39584,10 @@ export const mediaBuy_GetMediaBuysResponse = {
       "description": "When true, this response contains simulated data from sandbox mode."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -39598,7 +39598,7 @@ export const mediaBuy_GetMediaBuysResponse = {
 
 export const mediaBuy_GetProductsAsyncResponseInputRequired = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/get-products-async-response-input-required.json",
+  "$id": "/schemas/3.0.8/media-buy/get-products-async-response-input-required.json",
   "title": "Get Products - Input Required",
   "description": "Payload when search is paused waiting for user clarification.",
   "type": "object",
@@ -39615,7 +39615,7 @@ export const mediaBuy_GetProductsAsyncResponseInputRequired = {
       "type": "array",
       "description": "Partial product results that may help inform the clarification",
       "items": {
-        "$ref": "/schemas/3.0.6/core/product.json"
+        "$ref": "/schemas/3.0.8/core/product.json"
       }
     },
     "suggestions": {
@@ -39626,10 +39626,10 @@ export const mediaBuy_GetProductsAsyncResponseInputRequired = {
       }
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -39637,7 +39637,7 @@ export const mediaBuy_GetProductsAsyncResponseInputRequired = {
 
 export const mediaBuy_GetProductsAsyncResponseSubmitted = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/get-products-async-response-submitted.json",
+  "$id": "/schemas/3.0.8/media-buy/get-products-async-response-submitted.json",
   "title": "Get Products - Submitted",
   "description": "Payload acknowledging the search is queued. Usually for custom/bespoke product curation.",
   "type": "object",
@@ -39648,10 +39648,10 @@ export const mediaBuy_GetProductsAsyncResponseSubmitted = {
       "description": "Estimated completion time for the search"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -39659,7 +39659,7 @@ export const mediaBuy_GetProductsAsyncResponseSubmitted = {
 
 export const mediaBuy_GetProductsAsyncResponseWorking = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/get-products-async-response-working.json",
+  "$id": "/schemas/3.0.8/media-buy/get-products-async-response-working.json",
   "title": "Get Products - Working",
   "description": "Progress payload for active get_products task.",
   "type": "object",
@@ -39683,10 +39683,10 @@ export const mediaBuy_GetProductsAsyncResponseWorking = {
       "description": "Current step number (1-indexed)"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -39694,7 +39694,7 @@ export const mediaBuy_GetProductsAsyncResponseWorking = {
 
 export const mediaBuy_GetProductsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/get-products-request.json",
+  "$id": "/schemas/3.0.8/media-buy/get-products-request.json",
   "title": "Get Products Request",
   "description": "Request parameters for discovering or refining advertising products. buying_mode declares the buyer's intent: 'brief' for curated discovery, 'wholesale' for raw catalog access, or 'refine' to iterate on known products and proposals.",
   "type": "object",
@@ -39819,31 +39819,31 @@ export const mediaBuy_GetProductsRequest = {
       }
     },
     "brand": {
-      "$ref": "/schemas/3.0.6/core/brand-ref.json",
+      "$ref": "/schemas/3.0.8/core/brand-ref.json",
       "description": "Brand reference for product discovery context. Resolved to full brand identity at execution time."
     },
     "catalog": {
-      "$ref": "/schemas/3.0.6/core/catalog.json",
+      "$ref": "/schemas/3.0.8/core/catalog.json",
       "description": "Catalog of items the buyer wants to promote. The seller matches catalog items against its inventory and returns products where matches exist. Supports all catalog types: a job catalog finds job ad products, a product catalog finds sponsored product slots. Reference a synced catalog by catalog_id, or provide inline items."
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account for product lookup. Returns products with pricing specific to this account's rate card."
     },
     "preferred_delivery_types": {
       "type": "array",
       "description": "Delivery types the buyer prefers, in priority order. Unlike filters.delivery_type which excludes non-matching products, this signals preference for curation — the publisher may still include other delivery types when they match the brief well.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/delivery-type.json"
+        "$ref": "/schemas/3.0.8/enums/delivery-type.json"
       },
       "minItems": 1,
       "uniqueItems": true
     },
     "filters": {
-      "$ref": "/schemas/3.0.6/core/product-filters.json"
+      "$ref": "/schemas/3.0.8/core/product-filters.json"
     },
     "property_list": {
-      "$ref": "/schemas/3.0.6/core/property-list-ref.json",
+      "$ref": "/schemas/3.0.8/core/property-list-ref.json",
       "description": "[AdCP 3.0] Reference to an externally managed property list. When provided, the sales agent should filter products to only those available on properties in the list."
     },
     "fields": {
@@ -39889,16 +39889,16 @@ export const mediaBuy_GetProductsRequest = {
     "time_budget": {
       "allOf": [
         {
-          "$ref": "/schemas/3.0.6/core/duration.json"
+          "$ref": "/schemas/3.0.8/core/duration.json"
         }
       ],
       "description": "Maximum time the buyer will commit to this request. The seller returns the best results achievable within this budget and does not start processes (human approvals, expensive external queries) that cannot complete in time. When omitted, the seller decides timing."
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-request.json"
+      "$ref": "/schemas/3.0.8/core/pagination-request.json"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "required_policies": {
       "type": "array",
@@ -39908,7 +39908,7 @@ export const mediaBuy_GetProductsRequest = {
       "description": "Registry policy IDs that the buyer requires to be enforced for products in this response. Sellers filter products to only those that comply with or already enforce the requested policies."
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -39924,7 +39924,7 @@ export const mediaBuy_GetProductsRequest = {
 
 export const mediaBuy_GetProductsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/get-products-response.json",
+  "$id": "/schemas/3.0.8/media-buy/get-products-response.json",
   "title": "Get Products Response",
   "description": "Response payload for get_products task",
   "type": "object",
@@ -39933,21 +39933,21 @@ export const mediaBuy_GetProductsResponse = {
       "type": "array",
       "description": "Array of matching products",
       "items": {
-        "$ref": "/schemas/3.0.6/core/product.json"
+        "$ref": "/schemas/3.0.8/core/product.json"
       }
     },
     "proposals": {
       "type": "array",
       "description": "Optional array of proposed media plans with budget allocations across products. Publishers include proposals when they can provide strategic guidance based on the brief. Proposals are actionable - buyers can refine them via follow-up get_products calls within the same session, or execute them directly via create_media_buy.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/proposal.json"
+        "$ref": "/schemas/3.0.8/core/proposal.json"
       }
     },
     "errors": {
       "type": "array",
       "description": "Task-specific errors and warnings (e.g., product filtering issues)",
       "items": {
-        "$ref": "/schemas/3.0.6/core/error.json"
+        "$ref": "/schemas/3.0.8/core/error.json"
       }
     },
     "property_list_applied": {
@@ -40085,7 +40085,7 @@ export const mediaBuy_GetProductsResponse = {
           "estimated_wait": {
             "allOf": [
               {
-                "$ref": "/schemas/3.0.6/core/duration.json"
+                "$ref": "/schemas/3.0.8/core/duration.json"
               }
             ],
             "description": "How much additional time would resolve this scope. Allows the buyer to decide whether to retry with a larger time_budget."
@@ -40099,17 +40099,17 @@ export const mediaBuy_GetProductsResponse = {
       }
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-response.json"
+      "$ref": "/schemas/3.0.8/core/pagination-response.json"
     },
     "sandbox": {
       "type": "boolean",
       "description": "When true, this response contains simulated data from sandbox mode."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -40120,7 +40120,7 @@ export const mediaBuy_GetProductsResponse = {
 
 export const mediaBuy_ListCreativeFormatsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/list-creative-formats-request.json",
+  "$id": "/schemas/3.0.8/media-buy/list-creative-formats-request.json",
   "title": "List Creative Formats Request",
   "description": "Request parameters for discovering supported creative formats",
   "type": "object",
@@ -40135,7 +40135,7 @@ export const mediaBuy_ListCreativeFormatsRequest = {
       "type": "array",
       "description": "Return only these specific format IDs (e.g., from get_products response)",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       },
       "minItems": 1
     },
@@ -40143,7 +40143,7 @@ export const mediaBuy_ListCreativeFormatsRequest = {
       "type": "array",
       "description": "Filter to formats that include these asset types. For third-party tags, search for 'html' or 'javascript'. E.g., ['image', 'text'] returns formats with images and text, ['javascript'] returns formats accepting JavaScript tags.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/asset-content-type.json"
+        "$ref": "/schemas/3.0.8/enums/asset-content-type.json"
       },
       "minItems": 1
     },
@@ -40172,14 +40172,14 @@ export const mediaBuy_ListCreativeFormatsRequest = {
       "description": "Search for formats by name (case-insensitive partial match)"
     },
     "wcag_level": {
-      "$ref": "/schemas/3.0.6/enums/wcag-level.json",
+      "$ref": "/schemas/3.0.8/enums/wcag-level.json",
       "description": "Filter to formats that meet at least this WCAG conformance level (A < AA < AAA)"
     },
     "disclosure_positions": {
       "type": "array",
       "description": "Filter to formats that support all of these disclosure positions. When a format has disclosure_capabilities, match against those positions. Otherwise fall back to supported_disclosure_positions. Use to find formats compatible with a brief's compliance requirements.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/disclosure-position.json"
+        "$ref": "/schemas/3.0.8/enums/disclosure-position.json"
       },
       "minItems": 1,
       "uniqueItems": true
@@ -40188,7 +40188,7 @@ export const mediaBuy_ListCreativeFormatsRequest = {
       "type": "array",
       "description": "Filter to formats where each requested persistence mode is supported by at least one position in disclosure_capabilities. Different positions may satisfy different modes. Use to find formats compatible with jurisdiction-specific persistence requirements (e.g., continuous for EU AI Act).",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/disclosure-persistence.json"
+        "$ref": "/schemas/3.0.8/enums/disclosure-persistence.json"
       },
       "minItems": 1,
       "uniqueItems": true
@@ -40197,7 +40197,7 @@ export const mediaBuy_ListCreativeFormatsRequest = {
       "type": "array",
       "description": "Filter to formats whose output_format_ids includes any of these format IDs. Returns formats that can produce these outputs — inspect each result's input_format_ids to see what inputs they accept.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       },
       "minItems": 1
     },
@@ -40205,18 +40205,18 @@ export const mediaBuy_ListCreativeFormatsRequest = {
       "type": "array",
       "description": "Filter to formats whose input_format_ids includes any of these format IDs. Returns formats that accept these creatives as input — inspect each result's output_format_ids to see what they can produce.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       },
       "minItems": 1
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-request.json"
+      "$ref": "/schemas/3.0.8/core/pagination-request.json"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -40224,7 +40224,7 @@ export const mediaBuy_ListCreativeFormatsRequest = {
 
 export const mediaBuy_ListCreativeFormatsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/list-creative-formats-response.json",
+  "$id": "/schemas/3.0.8/media-buy/list-creative-formats-response.json",
   "title": "List Creative Formats Response",
   "description": "Response payload for list_creative_formats task",
   "type": "object",
@@ -40233,7 +40233,7 @@ export const mediaBuy_ListCreativeFormatsResponse = {
       "type": "array",
       "description": "Full format definitions for all formats this agent supports. Each format's authoritative source is indicated by its agent_url field.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format.json"
+        "$ref": "/schemas/3.0.8/core/format.json"
       }
     },
     "creative_agents": {
@@ -40255,7 +40255,7 @@ export const mediaBuy_ListCreativeFormatsResponse = {
             "type": "array",
             "description": "Capabilities this creative agent provides",
             "items": {
-              "$ref": "/schemas/3.0.6/enums/creative-agent-capability.json"
+              "$ref": "/schemas/3.0.8/enums/creative-agent-capability.json"
             }
           }
         },
@@ -40268,21 +40268,21 @@ export const mediaBuy_ListCreativeFormatsResponse = {
       "type": "array",
       "description": "Task-specific errors and warnings (e.g., format availability issues)",
       "items": {
-        "$ref": "/schemas/3.0.6/core/error.json"
+        "$ref": "/schemas/3.0.8/core/error.json"
       }
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-response.json"
+      "$ref": "/schemas/3.0.8/core/pagination-response.json"
     },
     "sandbox": {
       "type": "boolean",
       "description": "When true, this response contains simulated data from sandbox mode."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -40293,7 +40293,7 @@ export const mediaBuy_ListCreativeFormatsResponse = {
 
 export const mediaBuy_LogEventRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/log-event-request.json",
+  "$id": "/schemas/3.0.8/media-buy/log-event-request.json",
   "title": "Log Event Request",
   "description": "Request parameters for logging marketing events",
   "x-mutates-state": true,
@@ -40318,7 +40318,7 @@ export const mediaBuy_LogEventRequest = {
       "type": "array",
       "description": "Events to log",
       "items": {
-        "$ref": "/schemas/3.0.6/core/event.json"
+        "$ref": "/schemas/3.0.8/core/event.json"
       },
       "minItems": 1,
       "maxItems": 10000
@@ -40331,10 +40331,10 @@ export const mediaBuy_LogEventRequest = {
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -40347,7 +40347,7 @@ export const mediaBuy_LogEventRequest = {
 
 export const mediaBuy_LogEventResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/log-event-response.json",
+  "$id": "/schemas/3.0.8/media-buy/log-event-response.json",
   "title": "Log Event Response",
   "description": "Response from event logging operation. Returns either event processing results OR operation-level errors.",
   "type": "object",
@@ -40412,10 +40412,10 @@ export const mediaBuy_LogEventResponse = {
           "description": "When true, this response contains simulated data from sandbox mode."
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -40438,15 +40438,15 @@ export const mediaBuy_LogEventResponse = {
           "type": "array",
           "description": "Operation-level errors",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -40478,7 +40478,7 @@ export const mediaBuy_LogEventResponse = {
 
 export const mediaBuy_PackageRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/package-request.json",
+  "$id": "/schemas/3.0.8/media-buy/package-request.json",
   "title": "Package Request",
   "description": "Package configuration for media buy creation",
   "type": "object",
@@ -40498,7 +40498,7 @@ export const mediaBuy_PackageRequest = {
       "type": "array",
       "description": "Array of format IDs that will be used for this package - must be supported by the product. If omitted, defaults to all formats supported by the product.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       },
       "minItems": 1
     },
@@ -40508,7 +40508,7 @@ export const mediaBuy_PackageRequest = {
       "minimum": 0
     },
     "pacing": {
-      "$ref": "/schemas/3.0.6/enums/pacing.json"
+      "$ref": "/schemas/3.0.8/enums/pacing.json"
     },
     "pricing_option_id": {
       "type": "string",
@@ -40547,29 +40547,29 @@ export const mediaBuy_PackageRequest = {
       "type": "array",
       "description": "Catalogs this package promotes. Each catalog MUST have a distinct type (e.g., one product catalog, one store catalog). This constraint is enforced at the application level — sellers MUST reject requests containing multiple catalogs of the same type with a validation_error. Makes the package catalog-driven: one budget envelope, platform optimizes across items.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/catalog.json"
+        "$ref": "/schemas/3.0.8/core/catalog.json"
       }
     },
     "optimization_goals": {
       "type": "array",
       "description": "Optimization targets for this package. The seller optimizes delivery toward these goals in priority order. Common pattern: event goals (purchase, install) as primary targets at priority 1; metric goals (clicks, views) as secondary proxy signals at priority 2+.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/optimization-goal.json"
+        "$ref": "/schemas/3.0.8/core/optimization-goal.json"
       },
       "minItems": 1
     },
     "targeting_overlay": {
-      "$ref": "/schemas/3.0.6/core/targeting.json"
+      "$ref": "/schemas/3.0.8/core/targeting.json"
     },
     "measurement_terms": {
-      "$ref": "/schemas/3.0.6/core/measurement-terms.json",
+      "$ref": "/schemas/3.0.8/core/measurement-terms.json",
       "description": "Buyer's proposed billing measurement and makegood terms. Overrides product defaults. Seller accepts (echoed on confirmed package), rejects with TERMS_REJECTED, or adjusts. When absent, product's measurement_terms apply."
     },
     "performance_standards": {
       "type": "array",
       "description": "Buyer's proposed performance standards for this package. Overrides product defaults. Seller accepts, rejects with TERMS_REJECTED, or adjusts. When absent, product's performance_standards apply.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/performance-standard.json"
+        "$ref": "/schemas/3.0.8/core/performance-standard.json"
       },
       "minItems": 1
     },
@@ -40577,7 +40577,7 @@ export const mediaBuy_PackageRequest = {
       "type": "array",
       "description": "Assign existing library creatives to this package with optional weights and placement targeting",
       "items": {
-        "$ref": "/schemas/3.0.6/core/creative-assignment.json"
+        "$ref": "/schemas/3.0.8/core/creative-assignment.json"
       },
       "minItems": 1
     },
@@ -40585,7 +40585,7 @@ export const mediaBuy_PackageRequest = {
       "type": "array",
       "description": "Upload new creative assets and assign to this package (creatives will be added to library). Use creative_assignments instead for existing library creatives.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/creative-asset.json"
+        "$ref": "/schemas/3.0.8/core/creative-asset.json"
       },
       "minItems": 1,
       "maxItems": 100
@@ -40596,10 +40596,10 @@ export const mediaBuy_PackageRequest = {
       "description": "Agency estimate or authorization number for this package. Overrides the media buy-level estimate number when different packages correspond to different agency estimates (e.g., different stations or flights within the same buy)."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -40612,7 +40612,7 @@ export const mediaBuy_PackageRequest = {
 
 export const mediaBuy_PackageUpdate = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/package-update.json",
+  "$id": "/schemas/3.0.8/media-buy/package-update.json",
   "title": "Package Update",
   "description": "Package update configuration for update_media_buy. Identifies package by package_id and specifies fields to modify. Fields not present are left unchanged. Note: product_id, format_ids, and pricing_option_id cannot be changed after creation.",
   "type": "object",
@@ -40628,7 +40628,7 @@ export const mediaBuy_PackageUpdate = {
       "minimum": 0
     },
     "pacing": {
-      "$ref": "/schemas/3.0.6/enums/pacing.json"
+      "$ref": "/schemas/3.0.8/enums/pacing.json"
     },
     "bid_price": {
       "type": "number",
@@ -40671,7 +40671,7 @@ export const mediaBuy_PackageUpdate = {
       "type": "array",
       "description": "Replace the catalogs this package promotes. Uses replacement semantics — the provided array replaces the current list. Omit to leave catalogs unchanged.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/catalog.json"
+        "$ref": "/schemas/3.0.8/core/catalog.json"
       },
       "minItems": 1
     },
@@ -40679,12 +40679,12 @@ export const mediaBuy_PackageUpdate = {
       "type": "array",
       "description": "Replace all optimization goals for this package. Uses replacement semantics — omit to leave goals unchanged.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/optimization-goal.json"
+        "$ref": "/schemas/3.0.8/core/optimization-goal.json"
       },
       "minItems": 1
     },
     "targeting_overlay": {
-      "$ref": "/schemas/3.0.6/core/targeting.json",
+      "$ref": "/schemas/3.0.8/core/targeting.json",
       "description": "Targeting overlay to apply to this package. Uses replacement semantics — the full overlay replaces the previous one. Omit to leave targeting unchanged. For keyword and negative keyword updates, prefer the incremental operations (keyword_targets_add, keyword_targets_remove, negative_keywords_add, negative_keywords_remove) which avoid replacing the full overlay. Sellers SHOULD return a validation error if targeting_overlay.keyword_targets is present in the same request as keyword_targets_add or keyword_targets_remove, and likewise for negative_keywords."
     },
     "keyword_targets_add": {
@@ -40699,7 +40699,7 @@ export const mediaBuy_PackageUpdate = {
             "description": "The keyword to target"
           },
           "match_type": {
-            "$ref": "/schemas/3.0.6/enums/match-type.json"
+            "$ref": "/schemas/3.0.8/enums/match-type.json"
           },
           "bid_price": {
             "type": "number",
@@ -40727,7 +40727,7 @@ export const mediaBuy_PackageUpdate = {
             "description": "The keyword to stop targeting"
           },
           "match_type": {
-            "$ref": "/schemas/3.0.6/enums/match-type.json"
+            "$ref": "/schemas/3.0.8/enums/match-type.json"
           }
         },
         "required": [
@@ -40750,7 +40750,7 @@ export const mediaBuy_PackageUpdate = {
             "description": "The keyword to exclude"
           },
           "match_type": {
-            "$ref": "/schemas/3.0.6/enums/match-type.json"
+            "$ref": "/schemas/3.0.8/enums/match-type.json"
           }
         },
         "required": [
@@ -40773,7 +40773,7 @@ export const mediaBuy_PackageUpdate = {
             "description": "The keyword to stop excluding"
           },
           "match_type": {
-            "$ref": "/schemas/3.0.6/enums/match-type.json"
+            "$ref": "/schemas/3.0.8/enums/match-type.json"
           }
         },
         "required": [
@@ -40788,23 +40788,23 @@ export const mediaBuy_PackageUpdate = {
       "type": "array",
       "description": "Replace creative assignments for this package with optional weights and placement targeting. Uses replacement semantics - omit to leave assignments unchanged.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/creative-assignment.json"
+        "$ref": "/schemas/3.0.8/core/creative-assignment.json"
       }
     },
     "creatives": {
       "type": "array",
       "description": "Upload new creative assets and assign to this package (creatives will be added to library). Use creative_assignments instead for existing library creatives.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/creative-asset.json"
+        "$ref": "/schemas/3.0.8/core/creative-asset.json"
       },
       "minItems": 1,
       "maxItems": 100
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -40815,7 +40815,7 @@ export const mediaBuy_PackageUpdate = {
 
 export const mediaBuy_ProvidePerformanceFeedbackRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/provide-performance-feedback-request.json",
+  "$id": "/schemas/3.0.8/media-buy/provide-performance-feedback-request.json",
   "title": "Provide Performance Feedback Request",
   "description": "Request payload for provide_performance_feedback task",
   "x-mutates-state": true,
@@ -40841,7 +40841,7 @@ export const mediaBuy_ProvidePerformanceFeedbackRequest = {
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "measurement_period": {
-      "$ref": "/schemas/3.0.6/core/datetime-range.json",
+      "$ref": "/schemas/3.0.8/core/datetime-range.json",
       "description": "Time period for performance measurement"
     },
     "performance_index": {
@@ -40862,20 +40862,20 @@ export const mediaBuy_ProvidePerformanceFeedbackRequest = {
       "x-entity": "creative"
     },
     "metric_type": {
-      "$ref": "/schemas/3.0.6/enums/metric-type.json",
+      "$ref": "/schemas/3.0.8/enums/metric-type.json",
       "description": "The business metric being measured",
       "default": "overall_performance"
     },
     "feedback_source": {
-      "$ref": "/schemas/3.0.6/enums/feedback-source.json",
+      "$ref": "/schemas/3.0.8/enums/feedback-source.json",
       "description": "Source of the performance data",
       "default": "buyer_attribution"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -40889,7 +40889,7 @@ export const mediaBuy_ProvidePerformanceFeedbackRequest = {
 
 export const mediaBuy_ProvidePerformanceFeedbackResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/provide-performance-feedback-response.json",
+  "$id": "/schemas/3.0.8/media-buy/provide-performance-feedback-response.json",
   "title": "Provide Performance Feedback Response",
   "description": "Response payload for provide_performance_feedback task. Returns either success confirmation OR error information, never both.",
   "type": "object",
@@ -40909,10 +40909,10 @@ export const mediaBuy_ProvidePerformanceFeedbackResponse = {
           "description": "When true, this response contains simulated data from sandbox mode."
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -40934,15 +40934,15 @@ export const mediaBuy_ProvidePerformanceFeedbackResponse = {
           "type": "array",
           "description": "Array of errors explaining why feedback was rejected (e.g., invalid measurement period, missing campaign data)",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -40969,7 +40969,7 @@ export const mediaBuy_ProvidePerformanceFeedbackResponse = {
 
 export const mediaBuy_SyncAudiencesRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/sync-audiences-request.json",
+  "$id": "/schemas/3.0.8/media-buy/sync-audiences-request.json",
   "title": "Sync Audiences Request",
   "description": "Request parameters for managing CRM-based audiences on an account with upsert semantics. Existing audiences matched by audience_id are updated, new ones are created. Members are specified as delta operations: add appends new members, remove drops existing ones. Recommend no more than 100,000 members per call; for larger lists, chunk and call incrementally using add/remove deltas. When delete_missing is true, buyer-managed audiences on the account not in this request are removed — do not combine with omitted audiences or all buyer-managed audiences will be deleted. When audiences is omitted, the call is discovery-only: it returns all audiences on the account without modification.",
   "x-mutates-state": true,
@@ -40989,7 +40989,7 @@ export const mediaBuy_SyncAudiencesRequest = {
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account to manage audiences for."
     },
     "audiences": {
@@ -41034,7 +41034,7 @@ export const mediaBuy_SyncAudiencesRequest = {
             "type": "array",
             "description": "Members to add to this audience. Hashed before sending — normalize emails to lowercase+trim, phones to E.164.",
             "items": {
-              "$ref": "/schemas/3.0.6/core/audience-member.json"
+              "$ref": "/schemas/3.0.8/core/audience-member.json"
             },
             "minItems": 1
           },
@@ -41042,7 +41042,7 @@ export const mediaBuy_SyncAudiencesRequest = {
             "type": "array",
             "description": "Members to remove from this audience. If the same identifier appears in both add and remove in a single request, remove takes precedence.",
             "items": {
-              "$ref": "/schemas/3.0.6/core/audience-member.json"
+              "$ref": "/schemas/3.0.8/core/audience-member.json"
             },
             "minItems": 1
           },
@@ -41051,7 +41051,7 @@ export const mediaBuy_SyncAudiencesRequest = {
             "description": "When true, delete this audience from the account entirely. All other fields on this audience object are ignored. Use this to delete a specific audience without affecting others."
           },
           "consent_basis": {
-            "$ref": "/schemas/3.0.6/enums/consent-basis.json",
+            "$ref": "/schemas/3.0.8/enums/consent-basis.json",
             "description": "GDPR lawful basis for processing this audience list. Informational — not validated by the protocol, but required by some sellers operating in regulated markets (e.g. EU). When omitted, the buyer asserts they have a lawful basis appropriate to their jurisdiction."
           }
         },
@@ -41067,10 +41067,10 @@ export const mediaBuy_SyncAudiencesRequest = {
       "description": "When true, buyer-managed audiences on the account not included in this sync will be removed. Does not affect seller-managed audiences. Do not combine with an omitted audiences array or all buyer-managed audiences will be deleted."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -41097,7 +41097,7 @@ export const mediaBuy_SyncAudiencesRequest = {
 
 export const mediaBuy_SyncAudiencesResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/sync-audiences-response.json",
+  "$id": "/schemas/3.0.8/media-buy/sync-audiences-response.json",
   "title": "Sync Audiences Response",
   "description": "Response from audience sync operation. Returns either per-audience results OR operation-level errors.",
   "type": "object",
@@ -41138,7 +41138,7 @@ export const mediaBuy_SyncAudiencesResponse = {
                 "description": "Action taken for this audience. 'status' is present when action is created, updated, or unchanged. 'status' is absent when action is deleted or failed."
               },
               "status": {
-                "$ref": "/schemas/3.0.6/enums/audience-status.json",
+                "$ref": "/schemas/3.0.8/enums/audience-status.json",
                 "description": "Matching status. Present when action is created, updated, or unchanged; absent when action is deleted or failed."
               },
               "uploaded_count": {
@@ -41169,7 +41169,7 @@ export const mediaBuy_SyncAudiencesResponse = {
                   "type": "object",
                   "properties": {
                     "id_type": {
-                      "$ref": "/schemas/3.0.6/enums/match-id-type.json",
+                      "$ref": "/schemas/3.0.8/enums/match-id-type.json",
                       "description": "Identifier type. Combines hashed PII types (hashed_email, hashed_phone) with universal ID types (rampid, uid2, maid, etc.)."
                     },
                     "submitted": {
@@ -41213,7 +41213,7 @@ export const mediaBuy_SyncAudiencesResponse = {
                 "type": "array",
                 "description": "Errors for this audience (only present when action='failed')",
                 "items": {
-                  "$ref": "/schemas/3.0.6/core/error.json"
+                  "$ref": "/schemas/3.0.8/core/error.json"
                 }
               }
             },
@@ -41229,10 +41229,10 @@ export const mediaBuy_SyncAudiencesResponse = {
           "description": "When true, this response contains simulated data from sandbox mode."
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -41254,15 +41254,15 @@ export const mediaBuy_SyncAudiencesResponse = {
           "type": "array",
           "description": "Operation-level errors that prevented processing",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -41289,7 +41289,7 @@ export const mediaBuy_SyncAudiencesResponse = {
 
 export const mediaBuy_SyncCatalogsAsyncResponseInputRequired = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/sync-catalogs-async-response-input-required.json",
+  "$id": "/schemas/3.0.8/media-buy/sync-catalogs-async-response-input-required.json",
   "title": "Sync Catalogs - Input Required",
   "description": "Payload when sync_catalogs task is paused waiting for buyer clarification or approval.",
   "type": "object",
@@ -41305,10 +41305,10 @@ export const mediaBuy_SyncCatalogsAsyncResponseInputRequired = {
       "description": "Reason code indicating why buyer input is needed. APPROVAL_REQUIRED: platform requires explicit approval before activating the catalog. FEED_VALIDATION: feed URL returned unexpected format or schema errors. ITEM_REVIEW: platform flagged items for manual review. FEED_ACCESS: platform cannot access the feed URL (authentication, CORS, etc.)."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -41316,16 +41316,16 @@ export const mediaBuy_SyncCatalogsAsyncResponseInputRequired = {
 
 export const mediaBuy_SyncCatalogsAsyncResponseSubmitted = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/sync-catalogs-async-response-submitted.json",
+  "$id": "/schemas/3.0.8/media-buy/sync-catalogs-async-response-submitted.json",
   "title": "Sync Catalogs - Submitted",
   "description": "Payload acknowledging sync_catalogs task is queued for processing.",
   "type": "object",
   "properties": {
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -41333,7 +41333,7 @@ export const mediaBuy_SyncCatalogsAsyncResponseSubmitted = {
 
 export const mediaBuy_SyncCatalogsAsyncResponseWorking = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/sync-catalogs-async-response-working.json",
+  "$id": "/schemas/3.0.8/media-buy/sync-catalogs-async-response-working.json",
   "title": "Sync Catalogs - Working",
   "description": "Progress payload for active sync_catalogs task.",
   "type": "object",
@@ -41379,10 +41379,10 @@ export const mediaBuy_SyncCatalogsAsyncResponseWorking = {
       "description": "Total number of catalog items to process across all catalogs"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -41390,7 +41390,7 @@ export const mediaBuy_SyncCatalogsAsyncResponseWorking = {
 
 export const mediaBuy_SyncCatalogsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/sync-catalogs-request.json",
+  "$id": "/schemas/3.0.8/media-buy/sync-catalogs-request.json",
   "title": "Sync Catalogs Request",
   "description": "Request parameters for syncing catalog feeds with upsert semantics. Supports bulk operations across multiple catalog types (products, inventory, stores, promotions, offerings). Existing catalogs matched by catalog_id are updated, new ones are created. When catalogs is omitted, the call is discovery-only: returns all catalogs on the account without modification.",
   "x-mutates-state": true,
@@ -41410,14 +41410,14 @@ export const mediaBuy_SyncCatalogsRequest = {
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account that owns these catalogs."
     },
     "catalogs": {
       "type": "array",
       "description": "Array of catalog feeds to sync (create or update). When omitted, the call is discovery-only and returns all existing catalogs on the account without modification.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/catalog.json"
+        "$ref": "/schemas/3.0.8/core/catalog.json"
       },
       "minItems": 1,
       "maxItems": 50
@@ -41443,19 +41443,19 @@ export const mediaBuy_SyncCatalogsRequest = {
       "description": "When true, preview changes without applying them. Returns what would be created/updated/deleted."
     },
     "validation_mode": {
-      "$ref": "/schemas/3.0.6/enums/validation-mode.json",
+      "$ref": "/schemas/3.0.8/enums/validation-mode.json",
       "default": "strict",
       "description": "Validation strictness. 'strict' fails entire sync on any validation error. 'lenient' processes valid catalogs and reports errors."
     },
     "push_notification_config": {
-      "$ref": "/schemas/3.0.6/core/push-notification-config.json",
+      "$ref": "/schemas/3.0.8/core/push-notification-config.json",
       "description": "Optional webhook configuration for async sync notifications. Publisher will send webhook when sync completes if operation takes longer than immediate response time (common for large feeds requiring platform review)."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -41553,7 +41553,7 @@ export const mediaBuy_SyncCatalogsRequest = {
 
 export const mediaBuy_SyncCatalogsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/sync-catalogs-response.json",
+  "$id": "/schemas/3.0.8/media-buy/sync-catalogs-response.json",
   "title": "Sync Catalogs Response",
   "description": "Response from catalog sync operation. Returns either per-catalog results (best-effort processing) OR operation-level errors (complete failure). Platforms may approve, reject, or flag individual items within each catalog (similar to Google Merchant Center product review).",
   "type": "object",
@@ -41579,7 +41579,7 @@ export const mediaBuy_SyncCatalogsResponse = {
                 "x-entity": "catalog"
               },
               "action": {
-                "$ref": "/schemas/3.0.6/enums/catalog-action.json",
+                "$ref": "/schemas/3.0.8/enums/catalog-action.json",
                 "description": "Action taken for this catalog"
               },
               "platform_id": {
@@ -41617,7 +41617,7 @@ export const mediaBuy_SyncCatalogsResponse = {
                       "description": "ID of the catalog item with an issue"
                     },
                     "status": {
-                      "$ref": "/schemas/3.0.6/enums/catalog-item-status.json",
+                      "$ref": "/schemas/3.0.8/enums/catalog-item-status.json",
                       "description": "Item review status"
                     },
                     "reasons": {
@@ -41656,7 +41656,7 @@ export const mediaBuy_SyncCatalogsResponse = {
                 "type": "array",
                 "description": "Validation or processing errors (only present when action='failed')",
                 "items": {
-                  "$ref": "/schemas/3.0.6/core/error.json"
+                  "$ref": "/schemas/3.0.8/core/error.json"
                 }
               },
               "warnings": {
@@ -41702,10 +41702,10 @@ export const mediaBuy_SyncCatalogsResponse = {
           "description": "When true, this response contains simulated data from sandbox mode."
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -41727,15 +41727,15 @@ export const mediaBuy_SyncCatalogsResponse = {
           "type": "array",
           "description": "Operation-level errors that prevented processing any catalogs (e.g., authentication failure, service unavailable, invalid request format)",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -41767,7 +41767,7 @@ export const mediaBuy_SyncCatalogsResponse = {
 
 export const mediaBuy_SyncEventSourcesRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/sync-event-sources-request.json",
+  "$id": "/schemas/3.0.8/media-buy/sync-event-sources-request.json",
   "title": "Sync Event Sources Request",
   "description": "Request parameters for configuring event sources on an account with upsert semantics. Existing event sources matched by event_source_id are updated, new ones are created. When delete_missing is true, buyer-managed event sources on the account not in this request are removed. When event_sources is omitted, the call is discovery-only: it returns all event sources on the account without modification. The response always includes both synced and seller-managed event sources for full visibility.",
   "x-mutates-state": true,
@@ -41787,7 +41787,7 @@ export const mediaBuy_SyncEventSourcesRequest = {
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account to configure event sources for."
     },
     "event_sources": {
@@ -41810,7 +41810,7 @@ export const mediaBuy_SyncEventSourcesRequest = {
             "type": "array",
             "description": "Event types this source handles (e.g. purchase, lead). If omitted, accepts all event types.",
             "items": {
-              "$ref": "/schemas/3.0.6/enums/event-type.json"
+              "$ref": "/schemas/3.0.8/enums/event-type.json"
             },
             "minItems": 1
           },
@@ -41835,10 +41835,10 @@ export const mediaBuy_SyncEventSourcesRequest = {
       "description": "When true, event sources not included in this sync will be removed"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -41850,7 +41850,7 @@ export const mediaBuy_SyncEventSourcesRequest = {
 
 export const mediaBuy_SyncEventSourcesResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/sync-event-sources-response.json",
+  "$id": "/schemas/3.0.8/media-buy/sync-event-sources-response.json",
   "title": "Sync Event Sources Response",
   "description": "Response from event source sync operation. Returns either per-source results OR operation-level errors.",
   "type": "object",
@@ -41883,11 +41883,11 @@ export const mediaBuy_SyncEventSourcesResponse = {
                 "type": "array",
                 "description": "Event types this source handles",
                 "items": {
-                  "$ref": "/schemas/3.0.6/enums/event-type.json"
+                  "$ref": "/schemas/3.0.8/enums/event-type.json"
                 }
               },
               "action_source": {
-                "$ref": "/schemas/3.0.6/enums/action-source.json",
+                "$ref": "/schemas/3.0.8/enums/action-source.json",
                 "description": "Type of event source (website pixel, app SDK, in-store, etc.)"
               },
               "managed_by": {
@@ -41935,14 +41935,14 @@ export const mediaBuy_SyncEventSourcesResponse = {
                 "description": "Action taken for this event source"
               },
               "health": {
-                "$ref": "/schemas/3.0.6/core/event-source-health.json",
+                "$ref": "/schemas/3.0.8/core/event-source-health.json",
                 "description": "Health assessment for this event source. Reflects event volume, data quality, and parameter completeness. Sellers that support health scoring include this on every source (buyer-managed and seller-managed). Absent when the seller does not evaluate event source health."
               },
               "errors": {
                 "type": "array",
                 "description": "Errors for this event source (only present when action='failed')",
                 "items": {
-                  "$ref": "/schemas/3.0.6/core/error.json"
+                  "$ref": "/schemas/3.0.8/core/error.json"
                 }
               }
             },
@@ -41958,10 +41958,10 @@ export const mediaBuy_SyncEventSourcesResponse = {
           "description": "When true, this response contains simulated data from sandbox mode."
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -41983,15 +41983,15 @@ export const mediaBuy_SyncEventSourcesResponse = {
           "type": "array",
           "description": "Operation-level errors that prevented processing",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -42018,7 +42018,7 @@ export const mediaBuy_SyncEventSourcesResponse = {
 
 export const mediaBuy_UpdateMediaBuyAsyncResponseInputRequired = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/update-media-buy-async-response-input-required.json",
+  "$id": "/schemas/3.0.8/media-buy/update-media-buy-async-response-input-required.json",
   "title": "Update Media Buy - Input Required",
   "description": "Payload when update_media_buy task is paused waiting for user input or approval.",
   "type": "object",
@@ -42032,10 +42032,10 @@ export const mediaBuy_UpdateMediaBuyAsyncResponseInputRequired = {
       "description": "Reason code indicating why input is needed"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -42043,16 +42043,16 @@ export const mediaBuy_UpdateMediaBuyAsyncResponseInputRequired = {
 
 export const mediaBuy_UpdateMediaBuyAsyncResponseSubmitted = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/update-media-buy-async-response-submitted.json",
+  "$id": "/schemas/3.0.8/media-buy/update-media-buy-async-response-submitted.json",
   "title": "Update Media Buy - Submitted",
   "description": "Payload acknowledging update_media_buy task is queued for processing.",
   "type": "object",
   "properties": {
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -42060,7 +42060,7 @@ export const mediaBuy_UpdateMediaBuyAsyncResponseSubmitted = {
 
 export const mediaBuy_UpdateMediaBuyAsyncResponseWorking = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/update-media-buy-async-response-working.json",
+  "$id": "/schemas/3.0.8/media-buy/update-media-buy-async-response-working.json",
   "title": "Update Media Buy - Working",
   "description": "Progress payload for active update_media_buy task.",
   "type": "object",
@@ -42086,10 +42086,10 @@ export const mediaBuy_UpdateMediaBuyAsyncResponseWorking = {
       "description": "Current step number"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -42097,7 +42097,7 @@ export const mediaBuy_UpdateMediaBuyAsyncResponseWorking = {
 
 export const mediaBuy_UpdateMediaBuyRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/update-media-buy-request.json",
+  "$id": "/schemas/3.0.8/media-buy/update-media-buy-request.json",
   "title": "Update Media Buy Request",
   "description": "Request parameters for updating campaign and package settings",
   "x-mutates-state": true,
@@ -42110,7 +42110,7 @@ export const mediaBuy_UpdateMediaBuyRequest = {
       "maximum": 99
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account that owns this media buy. Pass a natural key (brand, operator, optional sandbox) or a seller-assigned account_id from list_accounts. Required for governance checks and account resolution."
     },
     "media_buy_id": {
@@ -42138,7 +42138,7 @@ export const mediaBuy_UpdateMediaBuyRequest = {
       "maxLength": 500
     },
     "start_time": {
-      "$ref": "/schemas/3.0.6/core/start-timing.json"
+      "$ref": "/schemas/3.0.8/core/start-timing.json"
     },
     "end_time": {
       "type": "string",
@@ -42149,28 +42149,28 @@ export const mediaBuy_UpdateMediaBuyRequest = {
       "type": "array",
       "description": "Package-specific updates for existing packages",
       "items": {
-        "$ref": "/schemas/3.0.6/media-buy/package-update.json"
+        "$ref": "/schemas/3.0.8/media-buy/package-update.json"
       },
       "minItems": 1
     },
     "invoice_recipient": {
-      "$ref": "/schemas/3.0.6/core/business-entity.json",
+      "$ref": "/schemas/3.0.8/core/business-entity.json",
       "description": "Update who receives the invoice for this buy. When provided, the seller invoices this entity instead of the account's default billing_entity. The seller MUST validate the invoice recipient is authorized for this account. When governance_agents are configured, the seller MUST include invoice_recipient in the check_governance request."
     },
     "new_packages": {
       "type": "array",
       "description": "New packages to add to this media buy. Uses the same schema as create_media_buy packages. Sellers that support mid-flight package additions advertise add_packages in valid_actions. Sellers that do not support this MUST reject with UNSUPPORTED_FEATURE.",
       "items": {
-        "$ref": "/schemas/3.0.6/media-buy/package-request.json"
+        "$ref": "/schemas/3.0.8/media-buy/package-request.json"
       },
       "minItems": 1
     },
     "reporting_webhook": {
-      "$ref": "/schemas/3.0.6/core/reporting-webhook.json",
+      "$ref": "/schemas/3.0.8/core/reporting-webhook.json",
       "description": "Optional webhook configuration for automated reporting delivery. Updates the reporting configuration for this media buy."
     },
     "push_notification_config": {
-      "$ref": "/schemas/3.0.6/core/push-notification-config.json",
+      "$ref": "/schemas/3.0.8/core/push-notification-config.json",
       "description": "Optional webhook configuration for async update notifications. Publisher will send webhook when update completes if operation takes longer than immediate response time. This is separate from reporting_webhook which configures ongoing campaign reporting."
     },
     "idempotency_key": {
@@ -42181,10 +42181,10 @@ export const mediaBuy_UpdateMediaBuyRequest = {
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -42197,7 +42197,7 @@ export const mediaBuy_UpdateMediaBuyRequest = {
 
 export const mediaBuy_UpdateMediaBuyResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/media-buy/update-media-buy-response.json",
+  "$id": "/schemas/3.0.8/media-buy/update-media-buy-response.json",
   "title": "Update Media Buy Response",
   "description": "Response payload for update_media_buy task. Returns either complete success data OR error information, never both. This enforces atomic operation semantics - updates are either fully applied or not applied at all.",
   "type": "object",
@@ -42213,7 +42213,7 @@ export const mediaBuy_UpdateMediaBuyResponse = {
           "x-entity": "media_buy"
         },
         "status": {
-          "$ref": "/schemas/3.0.6/enums/media-buy-status.json",
+          "$ref": "/schemas/3.0.8/enums/media-buy-status.json",
           "description": "Media buy status after the update. Present when the update changes the media buy's status (e.g., cancellation transitions to 'canceled', pause transitions to 'paused')."
         },
         "revision": {
@@ -42230,21 +42230,21 @@ export const mediaBuy_UpdateMediaBuyResponse = {
           "description": "ISO 8601 timestamp when changes take effect (null if pending approval)"
         },
         "invoice_recipient": {
-          "$ref": "/schemas/3.0.6/core/business-entity.json",
+          "$ref": "/schemas/3.0.8/core/business-entity.json",
           "description": "Updated invoice recipient, echoed from the request when provided. Confirms the seller accepted the billing override. Bank details are omitted (write-only)."
         },
         "affected_packages": {
           "type": "array",
           "description": "Array of packages that were modified with complete state information",
           "items": {
-            "$ref": "/schemas/3.0.6/core/package.json"
+            "$ref": "/schemas/3.0.8/core/package.json"
           }
         },
         "valid_actions": {
           "type": "array",
           "description": "Actions the buyer can perform after this update. Saves a round-trip to get_media_buys.",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/media-buy-valid-action.json"
+            "$ref": "/schemas/3.0.8/enums/media-buy-valid-action.json"
           }
         },
         "sandbox": {
@@ -42252,10 +42252,10 @@ export const mediaBuy_UpdateMediaBuyResponse = {
           "description": "When true, this response contains simulated data from sandbox mode."
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -42277,15 +42277,15 @@ export const mediaBuy_UpdateMediaBuyResponse = {
           "type": "array",
           "description": "Array of errors explaining why the operation failed",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -42317,7 +42317,7 @@ export const mediaBuy_UpdateMediaBuyResponse = {
 
 export const pricingOptions_CpaOption = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/pricing-options/cpa-option.json",
+  "$id": "/schemas/3.0.8/pricing-options/cpa-option.json",
   "title": "CPA Pricing Option",
   "description": "Cost Per Acquisition pricing. Advertiser pays a fixed price when a specified conversion event occurs. The event_type field declares which event triggers billing (e.g., purchase, lead, app_install).",
   "type": "object",
@@ -42334,7 +42334,7 @@ export const pricingOptions_CpaOption = {
     "event_type": {
       "allOf": [
         {
-          "$ref": "/schemas/3.0.6/enums/event-type.json"
+          "$ref": "/schemas/3.0.8/enums/event-type.json"
         }
       ],
       "description": "The conversion event type that triggers billing (e.g., purchase, lead, app_install)"
@@ -42370,13 +42370,13 @@ export const pricingOptions_CpaOption = {
     },
     "price_breakdown": {
       "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
-      "$ref": "/schemas/3.0.6/pricing-options/price-breakdown.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-breakdown.json"
     },
     "eligible_adjustments": {
       "type": "array",
       "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/adjustment-kind.json"
+        "$ref": "/schemas/3.0.8/enums/adjustment-kind.json"
       },
       "uniqueItems": true
     }
@@ -42393,7 +42393,7 @@ export const pricingOptions_CpaOption = {
 
 export const pricingOptions_CpcOption = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/pricing-options/cpc-option.json",
+  "$id": "/schemas/3.0.8/pricing-options/cpc-option.json",
   "title": "CPC Pricing Option",
   "description": "Cost Per Click pricing. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
   "type": "object",
@@ -42435,7 +42435,7 @@ export const pricingOptions_CpcOption = {
     },
     "price_guidance": {
       "description": "Optional pricing guidance for auction-based bidding",
-      "$ref": "/schemas/3.0.6/pricing-options/price-guidance.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-guidance.json"
     },
     "min_spend_per_package": {
       "type": "number",
@@ -42444,13 +42444,13 @@ export const pricingOptions_CpcOption = {
     },
     "price_breakdown": {
       "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
-      "$ref": "/schemas/3.0.6/pricing-options/price-breakdown.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-breakdown.json"
     },
     "eligible_adjustments": {
       "type": "array",
       "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/adjustment-kind.json"
+        "$ref": "/schemas/3.0.8/enums/adjustment-kind.json"
       },
       "uniqueItems": true
     }
@@ -42465,7 +42465,7 @@ export const pricingOptions_CpcOption = {
 
 export const pricingOptions_CpcvOption = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/pricing-options/cpcv-option.json",
+  "$id": "/schemas/3.0.8/pricing-options/cpcv-option.json",
   "title": "CPCV Pricing Option",
   "description": "Cost Per Completed View (100% video/audio completion) pricing. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
   "type": "object",
@@ -42507,7 +42507,7 @@ export const pricingOptions_CpcvOption = {
     },
     "price_guidance": {
       "description": "Optional pricing guidance for auction-based bidding",
-      "$ref": "/schemas/3.0.6/pricing-options/price-guidance.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-guidance.json"
     },
     "min_spend_per_package": {
       "type": "number",
@@ -42516,13 +42516,13 @@ export const pricingOptions_CpcvOption = {
     },
     "price_breakdown": {
       "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
-      "$ref": "/schemas/3.0.6/pricing-options/price-breakdown.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-breakdown.json"
     },
     "eligible_adjustments": {
       "type": "array",
       "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/adjustment-kind.json"
+        "$ref": "/schemas/3.0.8/enums/adjustment-kind.json"
       },
       "uniqueItems": true
     }
@@ -42537,7 +42537,7 @@ export const pricingOptions_CpcvOption = {
 
 export const pricingOptions_CpmOption = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/pricing-options/cpm-option.json",
+  "$id": "/schemas/3.0.8/pricing-options/cpm-option.json",
   "title": "CPM Pricing Option",
   "description": "Cost Per Mille (cost per 1,000 impressions) pricing. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
   "type": "object",
@@ -42579,7 +42579,7 @@ export const pricingOptions_CpmOption = {
     },
     "price_guidance": {
       "description": "Optional pricing guidance for auction-based bidding",
-      "$ref": "/schemas/3.0.6/pricing-options/price-guidance.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-guidance.json"
     },
     "min_spend_per_package": {
       "type": "number",
@@ -42588,13 +42588,13 @@ export const pricingOptions_CpmOption = {
     },
     "price_breakdown": {
       "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
-      "$ref": "/schemas/3.0.6/pricing-options/price-breakdown.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-breakdown.json"
     },
     "eligible_adjustments": {
       "type": "array",
       "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/adjustment-kind.json"
+        "$ref": "/schemas/3.0.8/enums/adjustment-kind.json"
       },
       "uniqueItems": true
     }
@@ -42609,7 +42609,7 @@ export const pricingOptions_CpmOption = {
 
 export const pricingOptions_CppOption = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/pricing-options/cpp-option.json",
+  "$id": "/schemas/3.0.8/pricing-options/cpp-option.json",
   "title": "CPP Pricing Option",
   "description": "Cost Per Point (Gross Rating Point) pricing for TV and audio campaigns. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
   "type": "object",
@@ -42646,14 +42646,14 @@ export const pricingOptions_CppOption = {
     },
     "price_guidance": {
       "description": "Optional pricing guidance for auction-based bidding",
-      "$ref": "/schemas/3.0.6/pricing-options/price-guidance.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-guidance.json"
     },
     "parameters": {
       "type": "object",
       "description": "CPP-specific parameters for demographic targeting",
       "properties": {
         "demographic_system": {
-          "$ref": "/schemas/3.0.6/enums/demographic-system.json",
+          "$ref": "/schemas/3.0.8/enums/demographic-system.json",
           "description": "Measurement system for the demographic field. Defaults to nielsen when omitted."
         },
         "demographic": {
@@ -42678,13 +42678,13 @@ export const pricingOptions_CppOption = {
     },
     "price_breakdown": {
       "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
-      "$ref": "/schemas/3.0.6/pricing-options/price-breakdown.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-breakdown.json"
     },
     "eligible_adjustments": {
       "type": "array",
       "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/adjustment-kind.json"
+        "$ref": "/schemas/3.0.8/enums/adjustment-kind.json"
       },
       "uniqueItems": true
     }
@@ -42700,7 +42700,7 @@ export const pricingOptions_CppOption = {
 
 export const pricingOptions_CpvOption = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/pricing-options/cpv-option.json",
+  "$id": "/schemas/3.0.8/pricing-options/cpv-option.json",
   "title": "CPV Pricing Option",
   "description": "Cost Per View (at publisher-defined threshold) pricing for video/audio. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
   "type": "object",
@@ -42742,7 +42742,7 @@ export const pricingOptions_CpvOption = {
     },
     "price_guidance": {
       "description": "Optional pricing guidance for auction-based bidding",
-      "$ref": "/schemas/3.0.6/pricing-options/price-guidance.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-guidance.json"
     },
     "parameters": {
       "type": "object",
@@ -42786,13 +42786,13 @@ export const pricingOptions_CpvOption = {
     },
     "price_breakdown": {
       "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
-      "$ref": "/schemas/3.0.6/pricing-options/price-breakdown.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-breakdown.json"
     },
     "eligible_adjustments": {
       "type": "array",
       "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/adjustment-kind.json"
+        "$ref": "/schemas/3.0.8/enums/adjustment-kind.json"
       },
       "uniqueItems": true
     }
@@ -42808,7 +42808,7 @@ export const pricingOptions_CpvOption = {
 
 export const pricingOptions_FlatRateOption = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/pricing-options/flat-rate-option.json",
+  "$id": "/schemas/3.0.8/pricing-options/flat-rate-option.json",
   "title": "Flat Rate Pricing Option",
   "description": "Flat rate pricing for sponsorships, takeovers, and DOOH exclusive placements. A fixed total cost regardless of delivery volume. For duration-scaled pricing (rate × time units), use the `time` model instead. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
   "type": "object",
@@ -42845,7 +42845,7 @@ export const pricingOptions_FlatRateOption = {
     },
     "price_guidance": {
       "description": "Optional pricing guidance for auction-based bidding",
-      "$ref": "/schemas/3.0.6/pricing-options/price-guidance.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-guidance.json"
     },
     "parameters": {
       "title": "DoohParameters",
@@ -42904,13 +42904,13 @@ export const pricingOptions_FlatRateOption = {
     },
     "price_breakdown": {
       "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
-      "$ref": "/schemas/3.0.6/pricing-options/price-breakdown.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-breakdown.json"
     },
     "eligible_adjustments": {
       "type": "array",
       "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/adjustment-kind.json"
+        "$ref": "/schemas/3.0.8/enums/adjustment-kind.json"
       },
       "uniqueItems": true
     }
@@ -42925,7 +42925,7 @@ export const pricingOptions_FlatRateOption = {
 
 export const pricingOptions_PriceBreakdown = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/pricing-options/price-breakdown.json",
+  "$id": "/schemas/3.0.8/pricing-options/price-breakdown.json",
   "title": "Price Breakdown",
   "description": "Breaks down the composition of fixed_price from a list (rate card) price through adjustments. Adjustments fall into four kinds: fees (increase buyer price), discounts (reduce buyer price), commissions (revenue splits that don't affect buyer price), and settlement terms (applied at invoicing). The invariant is: list_price with all fee and discount adjustments applied sequentially equals fixed_price. Fees increase the running price; discounts reduce it. This invariant applies only when fixed_price is present on the parent object; on auction-based packages the breakdown is informational only. All monetary values are rounded to currency precision at each step. Budgets are always denominated at the fixed_price level, inclusive of commissions.",
   "type": "object",
@@ -42942,7 +42942,7 @@ export const pricingOptions_PriceBreakdown = {
         "type": "object",
         "properties": {
           "kind": {
-            "$ref": "/schemas/3.0.6/enums/adjustment-kind.json"
+            "$ref": "/schemas/3.0.8/enums/adjustment-kind.json"
           },
           "name": {
             "type": "string",
@@ -43014,7 +43014,7 @@ export const pricingOptions_PriceBreakdown = {
 
 export const pricingOptions_PriceGuidance = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/pricing-options/price-guidance.json",
+  "$id": "/schemas/3.0.8/pricing-options/price-guidance.json",
   "title": "Price Guidance",
   "description": "Pricing guidance for auction-based bidding. Helps buyers calibrate bids with historical percentiles.",
   "type": "object",
@@ -43045,7 +43045,7 @@ export const pricingOptions_PriceGuidance = {
 
 export const pricingOptions_TimeOption = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/pricing-options/time-option.json",
+  "$id": "/schemas/3.0.8/pricing-options/time-option.json",
   "title": "Time-Based Pricing Option",
   "description": "Cost per time unit (hour, day, week, or month) - rate scales with campaign duration. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
   "type": "object",
@@ -43082,7 +43082,7 @@ export const pricingOptions_TimeOption = {
     },
     "price_guidance": {
       "description": "Optional pricing guidance for auction-based bidding",
-      "$ref": "/schemas/3.0.6/pricing-options/price-guidance.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-guidance.json"
     },
     "parameters": {
       "type": "object",
@@ -43121,13 +43121,13 @@ export const pricingOptions_TimeOption = {
     },
     "price_breakdown": {
       "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
-      "$ref": "/schemas/3.0.6/pricing-options/price-breakdown.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-breakdown.json"
     },
     "eligible_adjustments": {
       "type": "array",
       "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/adjustment-kind.json"
+        "$ref": "/schemas/3.0.8/enums/adjustment-kind.json"
       },
       "uniqueItems": true
     }
@@ -43143,7 +43143,7 @@ export const pricingOptions_TimeOption = {
 
 export const pricingOptions_VcpmOption = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/pricing-options/vcpm-option.json",
+  "$id": "/schemas/3.0.8/pricing-options/vcpm-option.json",
   "title": "vCPM Pricing Option",
   "description": "Viewable Cost Per Mille (cost per 1,000 viewable impressions) pricing - MRC viewability standard. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
   "type": "object",
@@ -43185,7 +43185,7 @@ export const pricingOptions_VcpmOption = {
     },
     "price_guidance": {
       "description": "Optional pricing guidance for auction-based bidding",
-      "$ref": "/schemas/3.0.6/pricing-options/price-guidance.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-guidance.json"
     },
     "min_spend_per_package": {
       "type": "number",
@@ -43194,13 +43194,13 @@ export const pricingOptions_VcpmOption = {
     },
     "price_breakdown": {
       "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
-      "$ref": "/schemas/3.0.6/pricing-options/price-breakdown.json"
+      "$ref": "/schemas/3.0.8/pricing-options/price-breakdown.json"
     },
     "eligible_adjustments": {
       "type": "array",
       "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/adjustment-kind.json"
+        "$ref": "/schemas/3.0.8/enums/adjustment-kind.json"
       },
       "uniqueItems": true
     }
@@ -43215,7 +43215,7 @@ export const pricingOptions_VcpmOption = {
 
 export const property_AuthorizationResult = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/authorization-result.json",
+  "$id": "/schemas/3.0.8/property/authorization-result.json",
   "title": "Authorization Result",
   "description": "Result of validating sales agent authorization for a property. Checks if the sales agent is listed in the property's adagents.json.",
   "type": "object",
@@ -43266,7 +43266,7 @@ export const property_AuthorizationResult = {
 
 export const property_BasePropertySource = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/base-property-source.json",
+  "$id": "/schemas/3.0.8/property/base-property-source.json",
   "title": "Base Property Source",
   "description": "A source of properties for a property list. Supports three selection patterns: publisher with tags, publisher with property IDs, or direct identifiers.",
   "discriminator": {
@@ -43292,7 +43292,7 @@ export const property_BasePropertySource = {
           "type": "array",
           "description": "Property tags from the publisher's adagents.json. Selects all properties with these tags.",
           "items": {
-            "$ref": "/schemas/3.0.6/core/property-tag.json"
+            "$ref": "/schemas/3.0.8/core/property-tag.json"
           },
           "minItems": 1
         }
@@ -43323,7 +43323,7 @@ export const property_BasePropertySource = {
           "type": "array",
           "description": "Specific property IDs from the publisher's adagents.json",
           "items": {
-            "$ref": "/schemas/3.0.6/core/property-id.json"
+            "$ref": "/schemas/3.0.8/core/property-id.json"
           },
           "minItems": 1
         }
@@ -43349,7 +43349,7 @@ export const property_BasePropertySource = {
           "type": "array",
           "description": "Direct property identifiers (domains, app IDs, etc.)",
           "items": {
-            "$ref": "/schemas/3.0.6/core/identifier.json"
+            "$ref": "/schemas/3.0.8/core/identifier.json"
           },
           "minItems": 1
         }
@@ -43365,7 +43365,7 @@ export const property_BasePropertySource = {
 
 export const property_CreatePropertyListRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/create-property-list-request.json",
+  "$id": "/schemas/3.0.8/property/create-property-list-request.json",
   "title": "Create Property List Request",
   "description": "Request parameters for creating a new property list",
   "x-mutates-state": true,
@@ -43378,7 +43378,7 @@ export const property_CreatePropertyListRequest = {
       "maximum": 99
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account that will own the list. Pass a natural key (brand, operator, optional sandbox) or a seller-assigned account_id from list_accounts. When omitted, the seller assigns the list to the agent's default account if exactly one is accessible; otherwise returns an error."
     },
     "name": {
@@ -43393,16 +43393,16 @@ export const property_CreatePropertyListRequest = {
       "type": "array",
       "description": "Array of property sources to evaluate. Each entry is a discriminated union: publisher_tags (publisher_domain + tags), publisher_ids (publisher_domain + property_ids), or identifiers (direct identifiers). If omitted, queries the agent's entire property database.",
       "items": {
-        "$ref": "/schemas/3.0.6/property/base-property-source.json"
+        "$ref": "/schemas/3.0.8/property/base-property-source.json"
       },
       "minItems": 1
     },
     "filters": {
-      "$ref": "/schemas/3.0.6/property/property-list-filters.json",
+      "$ref": "/schemas/3.0.8/property/property-list-filters.json",
       "description": "Dynamic filters to apply when resolving the list"
     },
     "brand": {
-      "$ref": "/schemas/3.0.6/core/brand-ref.json",
+      "$ref": "/schemas/3.0.8/core/brand-ref.json",
       "description": "Brand reference. When provided, the agent automatically applies appropriate rules based on brand characteristics (industry, target_audience, etc.). Resolved at execution time."
     },
     "idempotency_key": {
@@ -43413,10 +43413,10 @@ export const property_CreatePropertyListRequest = {
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -43428,13 +43428,13 @@ export const property_CreatePropertyListRequest = {
 
 export const property_CreatePropertyListResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/create-property-list-response.json",
+  "$id": "/schemas/3.0.8/property/create-property-list-response.json",
   "title": "Create Property List Response",
   "description": "Response payload for create_property_list task",
   "type": "object",
   "properties": {
     "list": {
-      "$ref": "/schemas/3.0.6/property/property-list.json",
+      "$ref": "/schemas/3.0.8/property/property-list.json",
       "description": "The created property list"
     },
     "auth_token": {
@@ -43447,10 +43447,10 @@ export const property_CreatePropertyListResponse = {
       "default": false
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -43462,7 +43462,7 @@ export const property_CreatePropertyListResponse = {
 
 export const property_DeletePropertyListRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/delete-property-list-request.json",
+  "$id": "/schemas/3.0.8/property/delete-property-list-request.json",
   "title": "Delete Property List Request",
   "description": "Request parameters for deleting a property list",
   "x-mutates-state": true,
@@ -43480,14 +43480,14 @@ export const property_DeletePropertyListRequest = {
       "x-entity": "property_list"
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     },
     "idempotency_key": {
       "type": "string",
@@ -43506,7 +43506,7 @@ export const property_DeletePropertyListRequest = {
 
 export const property_DeletePropertyListResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/delete-property-list-response.json",
+  "$id": "/schemas/3.0.8/property/delete-property-list-response.json",
   "title": "Delete Property List Response",
   "description": "Response payload for delete_property_list task",
   "type": "object",
@@ -43526,10 +43526,10 @@ export const property_DeletePropertyListResponse = {
       "default": false
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -43541,13 +43541,13 @@ export const property_DeletePropertyListResponse = {
 
 export const property_DeliveryRecord = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/delivery-record.json",
+  "$id": "/schemas/3.0.8/property/delivery-record.json",
   "title": "Delivery Record",
   "description": "A single delivery record representing impressions served to a property identifier. Used as input to validate_property_delivery.",
   "type": "object",
   "properties": {
     "identifier": {
-      "$ref": "/schemas/3.0.6/core/identifier.json",
+      "$ref": "/schemas/3.0.8/core/identifier.json",
       "description": "The property identifier where impressions were delivered"
     },
     "impressions": {
@@ -43565,7 +43565,7 @@ export const property_DeliveryRecord = {
       "description": "URL of the sales agent that sold this inventory. If provided, authorization is validated against the property's adagents.json."
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -43577,7 +43577,7 @@ export const property_DeliveryRecord = {
 
 export const property_GetPropertyListRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/get-property-list-request.json",
+  "$id": "/schemas/3.0.8/property/get-property-list-request.json",
   "title": "Get Property List Request",
   "description": "Request parameters for retrieving a property list with resolved identifiers",
   "type": "object",
@@ -43594,7 +43594,7 @@ export const property_GetPropertyListRequest = {
       "x-entity": "property_list"
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account that owns the list. Required when the authenticated agent has access to multiple accounts and the list_id is not globally unique within that scope; optional otherwise."
     },
     "resolve": {
@@ -43621,10 +43621,10 @@ export const property_GetPropertyListRequest = {
       "additionalProperties": false
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -43635,24 +43635,24 @@ export const property_GetPropertyListRequest = {
 
 export const property_GetPropertyListResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/get-property-list-response.json",
+  "$id": "/schemas/3.0.8/property/get-property-list-response.json",
   "title": "Get Property List Response",
   "description": "Response payload for get_property_list task. Returns identifiers only (not full property objects or scores). Consumers should cache the resolved identifiers and refresh based on cache_valid_until.",
   "type": "object",
   "properties": {
     "list": {
-      "$ref": "/schemas/3.0.6/property/property-list.json",
+      "$ref": "/schemas/3.0.8/property/property-list.json",
       "description": "The property list metadata (always returned)"
     },
     "identifiers": {
       "type": "array",
       "description": "Resolved identifiers that passed filters (if resolve=true). Cache these locally for real-time use.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/identifier.json"
+        "$ref": "/schemas/3.0.8/core/identifier.json"
       }
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-response.json"
+      "$ref": "/schemas/3.0.8/core/pagination-response.json"
     },
     "resolved_at": {
       "type": "string",
@@ -43670,15 +43670,15 @@ export const property_GetPropertyListResponse = {
       "additionalProperties": {
         "type": "array",
         "items": {
-          "$ref": "/schemas/3.0.6/core/identifier.json"
+          "$ref": "/schemas/3.0.8/core/identifier.json"
         }
       }
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -43689,7 +43689,7 @@ export const property_GetPropertyListResponse = {
 
 export const property_ListPropertyListsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/list-property-lists-request.json",
+  "$id": "/schemas/3.0.8/property/list-property-lists-request.json",
   "title": "List Property Lists Request",
   "description": "Request parameters for listing property lists",
   "type": "object",
@@ -43701,7 +43701,7 @@ export const property_ListPropertyListsRequest = {
       "maximum": 99
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Filter to lists owned by this account. When omitted, returns lists across all accounts accessible to the authenticated agent."
     },
     "name_contains": {
@@ -43709,13 +43709,13 @@ export const property_ListPropertyListsRequest = {
       "description": "Filter to lists whose name contains this string"
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-request.json"
+      "$ref": "/schemas/3.0.8/core/pagination-request.json"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": false
@@ -43723,7 +43723,7 @@ export const property_ListPropertyListsRequest = {
 
 export const property_ListPropertyListsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/list-property-lists-response.json",
+  "$id": "/schemas/3.0.8/property/list-property-lists-response.json",
   "title": "List Property Lists Response",
   "description": "Response payload for list_property_lists task",
   "type": "object",
@@ -43732,17 +43732,17 @@ export const property_ListPropertyListsResponse = {
       "type": "array",
       "description": "Array of property lists (metadata only, not resolved properties)",
       "items": {
-        "$ref": "/schemas/3.0.6/property/property-list.json"
+        "$ref": "/schemas/3.0.8/property/property-list.json"
       }
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-response.json"
+      "$ref": "/schemas/3.0.8/core/pagination-response.json"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -43753,7 +43753,7 @@ export const property_ListPropertyListsResponse = {
 
 export const property_PropertyError = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/property-error.json",
+  "$id": "/schemas/3.0.8/property/property-error.json",
   "title": "Property Error",
   "description": "Error information for a property that could not be evaluated",
   "type": "object",
@@ -43771,7 +43771,7 @@ export const property_PropertyError = {
       ]
     },
     "property": {
-      "$ref": "/schemas/3.0.6/core/property.json",
+      "$ref": "/schemas/3.0.8/core/property.json",
       "description": "The property that caused the error"
     },
     "message": {
@@ -43788,7 +43788,7 @@ export const property_PropertyError = {
 
 export const property_PropertyFeatureDefinition = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/property-feature-definition.json",
+  "$id": "/schemas/3.0.8/property/property-feature-definition.json",
   "title": "Property Feature Definition",
   "description": "Defines a feature that a governance agent can evaluate for properties. Used in get_adcp_capabilities to advertise agent capabilities.",
   "type": "object",
@@ -43871,7 +43871,7 @@ export const property_PropertyFeatureDefinition = {
       "description": "Version identifier for the methodology (for audit trails)"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -43885,7 +43885,7 @@ export const property_PropertyFeatureDefinition = {
 
 export const property_PropertyFeatureResult = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/property-feature-result.json",
+  "$id": "/schemas/3.0.8/property/property-feature-result.json",
   "title": "Property Feature Result",
   "description": "Feature values for a single property from a governance agent.",
   "type": "object",
@@ -43897,7 +43897,7 @@ export const property_PropertyFeatureResult = {
           "description": "Domain string (e.g., 'example.com')"
         },
         {
-          "$ref": "/schemas/3.0.6/core/property-id.json"
+          "$ref": "/schemas/3.0.8/core/property-id.json"
         }
       ],
       "description": "The property these features apply to"
@@ -43906,7 +43906,7 @@ export const property_PropertyFeatureResult = {
       "type": "object",
       "description": "Map of feature_id to feature value",
       "additionalProperties": {
-        "$ref": "/schemas/3.0.6/property/property-feature-value.json"
+        "$ref": "/schemas/3.0.8/property/property-feature-value.json"
       }
     },
     "coverage_status": {
@@ -43924,7 +43924,7 @@ export const property_PropertyFeatureResult = {
       "description": "When features were last evaluated for this property"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -43936,7 +43936,7 @@ export const property_PropertyFeatureResult = {
 
 export const property_PropertyFeatureValue = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/property-feature-value.json",
+  "$id": "/schemas/3.0.8/property/property-feature-value.json",
   "title": "Property Feature Value",
   "description": "A single feature value for a property. Structure varies by feature type (binary, quantitative, categorical).",
   "type": "object",
@@ -43985,7 +43985,7 @@ export const property_PropertyFeatureValue = {
       "additionalProperties": true
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -43996,7 +43996,7 @@ export const property_PropertyFeatureValue = {
 
 export const property_PropertyFeature = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/property-feature.json",
+  "$id": "/schemas/3.0.8/property/property-feature.json",
   "title": "Property Feature",
   "description": "A discrete feature assessment for a property (e.g., from app store privacy labels)",
   "type": "object",
@@ -44023,7 +44023,7 @@ export const property_PropertyFeature = {
 
 export const property_PropertyListChangedWebhook = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/property-list-changed-webhook.json",
+  "$id": "/schemas/3.0.8/property/property-list-changed-webhook.json",
   "title": "Property List Changed Webhook",
   "description": "Webhook notification sent when a property list's resolved properties change. Contains a summary only - recipients must call get_property_list to retrieve the updated properties. This keeps payloads small and avoids redundant data transfer.",
   "type": "object",
@@ -44083,7 +44083,7 @@ export const property_PropertyListChangedWebhook = {
       "description": "Cryptographic signature of the webhook payload, signed with the agent's private key. Recipients MUST verify this signature."
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -44098,7 +44098,7 @@ export const property_PropertyListChangedWebhook = {
 
 export const property_PropertyListFilters = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/property-list-filters.json",
+  "$id": "/schemas/3.0.8/property/property-list-filters.json",
   "title": "Property List Filters",
   "description": "Filters that dynamically modify a property list when resolved",
   "type": "object",
@@ -44116,7 +44116,7 @@ export const property_PropertyListFilters = {
       "type": "array",
       "description": "Property must support ANY of the listed channels. When omitted, no channel restriction is applied.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/channels.json"
+        "$ref": "/schemas/3.0.8/enums/channels.json"
       },
       "minItems": 1
     },
@@ -44124,7 +44124,7 @@ export const property_PropertyListFilters = {
       "type": "array",
       "description": "Filter to these property types",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/property-type.json"
+        "$ref": "/schemas/3.0.8/enums/property-type.json"
       },
       "minItems": 1
     },
@@ -44132,7 +44132,7 @@ export const property_PropertyListFilters = {
       "type": "array",
       "description": "Feature-based requirements. Property must pass ALL requirements (AND logic).",
       "items": {
-        "$ref": "/schemas/3.0.6/core/feature-requirement.json"
+        "$ref": "/schemas/3.0.8/core/feature-requirement.json"
       },
       "minItems": 1
     },
@@ -44140,7 +44140,7 @@ export const property_PropertyListFilters = {
       "type": "array",
       "description": "Identifiers to always exclude from results",
       "items": {
-        "$ref": "/schemas/3.0.6/core/identifier.json"
+        "$ref": "/schemas/3.0.8/core/identifier.json"
       },
       "minItems": 1
     }
@@ -44150,7 +44150,7 @@ export const property_PropertyListFilters = {
 
 export const property_PropertyList = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/property-list.json",
+  "$id": "/schemas/3.0.8/property/property-list.json",
   "title": "Property List",
   "description": "A managed property list with optional filters for dynamic evaluation. Lists are resolved at setup time and cached by orchestrators/sellers for real-time use.",
   "type": "object",
@@ -44169,22 +44169,22 @@ export const property_PropertyList = {
       "description": "Description of the list's purpose"
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account that owns this list. Returned as account_id form (seller-assigned identifier)."
     },
     "base_properties": {
       "type": "array",
       "description": "Array of property sources to evaluate. Each entry is a discriminated union: publisher_tags (publisher_domain + tags), publisher_ids (publisher_domain + property_ids), or identifiers (direct identifiers). If omitted, queries the agent's entire property database.",
       "items": {
-        "$ref": "/schemas/3.0.6/property/base-property-source.json"
+        "$ref": "/schemas/3.0.8/property/base-property-source.json"
       }
     },
     "filters": {
-      "$ref": "/schemas/3.0.6/property/property-list-filters.json",
+      "$ref": "/schemas/3.0.8/property/property-list-filters.json",
       "description": "Dynamic filters applied when resolving the list"
     },
     "brand": {
-      "$ref": "/schemas/3.0.6/core/brand-ref.json",
+      "$ref": "/schemas/3.0.8/core/brand-ref.json",
       "description": "Brand reference used to automatically apply appropriate rules. Resolved to full brand identity at execution time."
     },
     "webhook_url": {
@@ -44216,7 +44216,7 @@ export const property_PropertyList = {
       "type": "array",
       "description": "Pricing options for this property list. Present when the requesting account has a billing relationship with the list provider. The buyer passes the selected pricing_option_id in report_usage.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/vendor-pricing-option.json"
+        "$ref": "/schemas/3.0.8/core/vendor-pricing-option.json"
       },
       "minItems": 1
     }
@@ -44230,7 +44230,7 @@ export const property_PropertyList = {
 
 export const property_UpdatePropertyListRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/update-property-list-request.json",
+  "$id": "/schemas/3.0.8/property/update-property-list-request.json",
   "title": "Update Property List Request",
   "description": "Request parameters for updating an existing property list",
   "x-mutates-state": true,
@@ -44248,7 +44248,7 @@ export const property_UpdatePropertyListRequest = {
       "x-entity": "property_list"
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise."
     },
     "name": {
@@ -44263,15 +44263,15 @@ export const property_UpdatePropertyListRequest = {
       "type": "array",
       "description": "Complete replacement for the base properties list (not a patch). Each entry is a discriminated union: publisher_tags (publisher_domain + tags), publisher_ids (publisher_domain + property_ids), or identifiers (direct identifiers).",
       "items": {
-        "$ref": "/schemas/3.0.6/property/base-property-source.json"
+        "$ref": "/schemas/3.0.8/property/base-property-source.json"
       }
     },
     "filters": {
-      "$ref": "/schemas/3.0.6/property/property-list-filters.json",
+      "$ref": "/schemas/3.0.8/property/property-list-filters.json",
       "description": "Complete replacement for the filters (not a patch)"
     },
     "brand": {
-      "$ref": "/schemas/3.0.6/core/brand-ref.json",
+      "$ref": "/schemas/3.0.8/core/brand-ref.json",
       "description": "Update brand reference. Resolved to full brand identity at execution time."
     },
     "webhook_url": {
@@ -44280,10 +44280,10 @@ export const property_UpdatePropertyListRequest = {
       "description": "Update the webhook URL for list change notifications (set to empty string to remove)"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     },
     "idempotency_key": {
       "type": "string",
@@ -44302,13 +44302,13 @@ export const property_UpdatePropertyListRequest = {
 
 export const property_UpdatePropertyListResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/update-property-list-response.json",
+  "$id": "/schemas/3.0.8/property/update-property-list-response.json",
   "title": "Update Property List Response",
   "description": "Response payload for update_property_list task",
   "type": "object",
   "properties": {
     "list": {
-      "$ref": "/schemas/3.0.6/property/property-list.json",
+      "$ref": "/schemas/3.0.8/property/property-list.json",
       "description": "The updated property list"
     },
     "replayed": {
@@ -44317,10 +44317,10 @@ export const property_UpdatePropertyListResponse = {
       "default": false
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -44331,7 +44331,7 @@ export const property_UpdatePropertyListResponse = {
 
 export const property_ValidatePropertyDeliveryRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/validate-property-delivery-request.json",
+  "$id": "/schemas/3.0.8/property/validate-property-delivery-request.json",
   "title": "Validate Property Delivery Request",
   "description": "Request payload for validate_property_delivery task. Validates delivery records against a property list to determine compliance.",
   "type": "object",
@@ -44348,14 +44348,14 @@ export const property_ValidatePropertyDeliveryRequest = {
       "x-entity": "property_list"
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise."
     },
     "records": {
       "type": "array",
       "description": "Delivery records to validate. Each record represents impressions delivered to a property identifier.",
       "items": {
-        "$ref": "/schemas/3.0.6/property/delivery-record.json"
+        "$ref": "/schemas/3.0.8/property/delivery-record.json"
       },
       "minItems": 1,
       "maxItems": 10000
@@ -44366,10 +44366,10 @@ export const property_ValidatePropertyDeliveryRequest = {
       "description": "Include compliant records in results (default: only return non_compliant, unmodeled, and unidentified)"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -44381,7 +44381,7 @@ export const property_ValidatePropertyDeliveryRequest = {
 
 export const property_ValidatePropertyDeliveryResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/validate-property-delivery-response.json",
+  "$id": "/schemas/3.0.8/property/validate-property-delivery-response.json",
   "title": "Validate Property Delivery Response",
   "description": "Response payload for validate_property_delivery task. Returns aggregate compliance statistics and per-record validation results.",
   "type": "object",
@@ -44531,7 +44531,7 @@ export const property_ValidatePropertyDeliveryResponse = {
       "type": "array",
       "description": "Per-record validation results. By default only includes non_compliant and unknown records. Set include_compliant=true to include all records.",
       "items": {
-        "$ref": "/schemas/3.0.6/property/validation-result.json"
+        "$ref": "/schemas/3.0.8/property/validation-result.json"
       }
     },
     "validated_at": {
@@ -44545,10 +44545,10 @@ export const property_ValidatePropertyDeliveryResponse = {
       "description": "Timestamp of the property list resolution used for validation"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -44562,13 +44562,13 @@ export const property_ValidatePropertyDeliveryResponse = {
 
 export const property_ValidationResult = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/property/validation-result.json",
+  "$id": "/schemas/3.0.8/property/validation-result.json",
   "title": "Validation Result",
   "description": "Result of validating a single delivery record against a property list.",
   "type": "object",
   "properties": {
     "identifier": {
-      "$ref": "/schemas/3.0.6/core/identifier.json",
+      "$ref": "/schemas/3.0.8/core/identifier.json",
       "description": "The identifier that was validated"
     },
     "record_id": {
@@ -44601,7 +44601,7 @@ export const property_ValidationResult = {
             "description": "Which feature was evaluated. Data features come from the governance agent's feature catalog (e.g., 'mfa_score', 'carbon_score'). Record-level structural checks use reserved namespaces: 'record:list_membership', 'record:excluded', 'delivery:seller_authorization', 'delivery:click_url_presence'. Reserved prefixes: 'record:', 'delivery:'."
           },
           "status": {
-            "$ref": "/schemas/3.0.6/enums/feature-check-status.json"
+            "$ref": "/schemas/3.0.8/enums/feature-check-status.json"
           },
           "policy_id": {
             "type": "string",
@@ -44647,11 +44647,11 @@ export const property_ValidationResult = {
       }
     },
     "authorization": {
-      "$ref": "/schemas/3.0.6/property/authorization-result.json",
+      "$ref": "/schemas/3.0.8/property/authorization-result.json",
       "description": "Authorization validation result (only present if sales_agent_url was provided in the delivery record)"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -44664,7 +44664,7 @@ export const property_ValidationResult = {
 
 export const protocol_GetAdcpCapabilitiesRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/protocol/get-adcp-capabilities-request.json",
+  "$id": "/schemas/3.0.8/protocol/get-adcp-capabilities-request.json",
   "title": "Get AdCP Capabilities Request",
   "description": "Request payload for get_adcp_capabilities task. Protocol-level capability discovery that works across all AdCP protocols.",
   "type": "object",
@@ -44691,10 +44691,10 @@ export const protocol_GetAdcpCapabilitiesRequest = {
       "minItems": 1
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "additionalProperties": true
@@ -44702,7 +44702,7 @@ export const protocol_GetAdcpCapabilitiesRequest = {
 
 export const protocol_GetAdcpCapabilitiesResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/protocol/get-adcp-capabilities-response.json",
+  "$id": "/schemas/3.0.8/protocol/get-adcp-capabilities-response.json",
   "title": "Get AdCP Capabilities Response",
   "description": "Response payload for get_adcp_capabilities task. Protocol-level capability discovery across all AdCP protocols. Each protocol has its own capability section.",
   "type": "object",
@@ -44809,7 +44809,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
           "type": "array",
           "description": "Billing models this seller supports. operator: seller invoices the operator (agency or brand buying direct). agent: agent consolidates billing. advertiser: seller invoices the advertiser directly, even when a different operator places orders on their behalf. The buyer must pass one of these values in sync_accounts.",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/billing-party.json"
+            "$ref": "/schemas/3.0.8/enums/billing-party.json"
           },
           "minItems": 1
         },
@@ -44841,7 +44841,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
           "type": "array",
           "description": "Pricing models this seller supports across its product portfolio. Buyers can use this for pre-flight filtering before querying individual products. Individual products may support a subset of these models.",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/pricing-model.json"
+            "$ref": "/schemas/3.0.8/enums/pricing-model.json"
           },
           "minItems": 1,
           "uniqueItems": true
@@ -44863,13 +44863,13 @@ export const protocol_GetAdcpCapabilitiesResponse = {
           "type": "array",
           "description": "Cloud storage protocols this seller supports for offline file delivery. Only meaningful when reporting_delivery_methods includes 'offline'. Buyers express a protocol preference in sync_accounts; the seller provisions the account's reporting_bucket using a supported protocol.",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/cloud-storage-protocol.json"
+            "$ref": "/schemas/3.0.8/enums/cloud-storage-protocol.json"
           },
           "minItems": 1,
           "uniqueItems": true
         },
         "features": {
-          "$ref": "/schemas/3.0.6/core/media-buy-features.json"
+          "$ref": "/schemas/3.0.8/core/media-buy-features.json"
         },
         "execution": {
           "type": "object",
@@ -45021,7 +45021,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
                       "type": "array",
                       "description": "Age verification methods this seller supports",
                       "items": {
-                        "$ref": "/schemas/3.0.6/enums/age-verification-method.json"
+                        "$ref": "/schemas/3.0.8/enums/age-verification-method.json"
                       }
                     }
                   }
@@ -45038,7 +45038,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
                       "type": "array",
                       "description": "Match types this seller supports for keyword targets. Sellers must reject goals with unsupported match types.",
                       "items": {
-                        "$ref": "/schemas/3.0.6/enums/match-type.json"
+                        "$ref": "/schemas/3.0.8/enums/match-type.json"
                       },
                       "minItems": 1
                     }
@@ -45055,7 +45055,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
                       "type": "array",
                       "description": "Match types this seller supports for negative keywords. Sellers must reject goals with unsupported match types.",
                       "items": {
-                        "$ref": "/schemas/3.0.6/enums/match-type.json"
+                        "$ref": "/schemas/3.0.8/enums/match-type.json"
                       },
                       "minItems": 1
                     }
@@ -45084,7 +45084,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
                       "type": "array",
                       "description": "Transport modes supported for travel_time isochrones. Only relevant when travel_time is true.",
                       "items": {
-                        "$ref": "/schemas/3.0.6/enums/transport-mode.json"
+                        "$ref": "/schemas/3.0.8/enums/transport-mode.json"
                       },
                       "minItems": 1
                     }
@@ -45118,7 +45118,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
               "type": "array",
               "description": "Universal ID types accepted for audience matching (MAIDs, RampID, UID2, etc.). MAID support varies significantly by platform — check this field before sending uids with type: maid.",
               "items": {
-                "$ref": "/schemas/3.0.6/enums/uid-type.json"
+                "$ref": "/schemas/3.0.8/enums/uid-type.json"
               },
               "minItems": 1
             },
@@ -45161,7 +45161,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
               "type": "array",
               "description": "Event types this seller can track and attribute. If omitted, all standard event types are supported.",
               "items": {
-                "$ref": "/schemas/3.0.6/enums/event-type.json"
+                "$ref": "/schemas/3.0.8/enums/event-type.json"
               },
               "minItems": 1
             },
@@ -45169,7 +45169,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
               "type": "array",
               "description": "Universal ID types accepted for user matching",
               "items": {
-                "$ref": "/schemas/3.0.6/enums/uid-type.json"
+                "$ref": "/schemas/3.0.8/enums/uid-type.json"
               },
               "minItems": 1
             },
@@ -45189,7 +45189,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
               "type": "array",
               "description": "Action sources this seller accepts events from",
               "items": {
-                "$ref": "/schemas/3.0.6/enums/action-source.json"
+                "$ref": "/schemas/3.0.8/enums/action-source.json"
               },
               "minItems": 1
             },
@@ -45200,14 +45200,14 @@ export const protocol_GetAdcpCapabilitiesResponse = {
                 "type": "object",
                 "properties": {
                   "event_type": {
-                    "$ref": "/schemas/3.0.6/enums/event-type.json",
+                    "$ref": "/schemas/3.0.8/enums/event-type.json",
                     "description": "Event type this window applies to, or omit for default window"
                   },
                   "post_click": {
                     "type": "array",
                     "description": "Available post-click attribution windows (e.g. [{\"interval\": 7, \"unit\": \"days\"}])",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/duration.json"
+                      "$ref": "/schemas/3.0.8/core/duration.json"
                     },
                     "minItems": 1
                   },
@@ -45215,7 +45215,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
                     "type": "array",
                     "description": "Available post-view attribution windows (e.g. [{\"interval\": 1, \"unit\": \"days\"}])",
                     "items": {
-                      "$ref": "/schemas/3.0.6/core/duration.json"
+                      "$ref": "/schemas/3.0.8/core/duration.json"
                     },
                     "minItems": 1
                   }
@@ -45241,7 +45241,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
               "type": "array",
               "description": "Channels for which the seller can provide content artifacts. Helps buyers understand which parts of a mixed-channel buy will have content standards coverage.",
               "items": {
-                "$ref": "/schemas/3.0.6/enums/channels.json"
+                "$ref": "/schemas/3.0.8/enums/channels.json"
               },
               "minItems": 1
             },
@@ -45268,7 +45268,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
               "type": "array",
               "description": "Primary advertising channels in this portfolio",
               "items": {
-                "$ref": "/schemas/3.0.6/enums/channels.json"
+                "$ref": "/schemas/3.0.8/enums/channels.json"
               }
             },
             "primary_countries": {
@@ -45507,7 +45507,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
           ]
         },
         "capabilities": {
-          "$ref": "/schemas/3.0.6/sponsored-intelligence/si-capabilities.json",
+          "$ref": "/schemas/3.0.8/sponsored-intelligence/si-capabilities.json",
           "description": "Modalities, components, and commerce capabilities"
         },
         "brand_url": {
@@ -45536,7 +45536,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
           "description": "Types of rights available through this agent",
           "x-status": "experimental",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/right-type.json"
+            "$ref": "/schemas/3.0.8/enums/right-type.json"
           }
         },
         "available_uses": {
@@ -45544,7 +45544,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
           "description": "Rights uses available across this agent's roster",
           "x-status": "experimental",
           "items": {
-            "$ref": "/schemas/3.0.6/enums/right-use.json"
+            "$ref": "/schemas/3.0.8/enums/right-use.json"
           }
         },
         "generation_providers": {
@@ -45759,7 +45759,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
       "type": "array",
       "description": "Optional — specialized compliance claims this agent supports. Values MUST be kebab-case enum IDs (e.g., 'creative-generative', 'sales-non-guaranteed'). An agent that implements a specialism's tools but omits its ID from this array will receive 'No applicable tracks found' from the compliance runner — tracks for that specialism are not evaluated even if every tool works. Omitting the field means the agent declares no specialism claims (it still passes the universal + domain-baseline storyboards implied by supported_protocols). Each specialism maps to a storyboard bundle at /compliance/{version}/specialisms/{id}/ that the AAO compliance runner executes to verify the claim. Each specialism rolls up to one of the protocols in supported_protocols — the runner rejects a specialism claim whose parent protocol is missing. Only list specialisms your agent actually implements — the AAO Verified badge enumerates which specialisms were demonstrably passed.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/specialism.json"
+        "$ref": "/schemas/3.0.8/enums/specialism.json"
       },
       "uniqueItems": true
     },
@@ -45792,14 +45792,14 @@ export const protocol_GetAdcpCapabilitiesResponse = {
       "type": "array",
       "description": "Task-specific errors and warnings",
       "items": {
-        "$ref": "/schemas/3.0.6/core/error.json"
+        "$ref": "/schemas/3.0.8/core/error.json"
       }
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -45811,7 +45811,7 @@ export const protocol_GetAdcpCapabilitiesResponse = {
 
 export const signals_ActivateSignalRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/signals/activate-signal-request.json",
+  "$id": "/schemas/3.0.8/signals/activate-signal-request.json",
   "title": "Activate Signal Request",
   "description": "Request parameters for activating or deactivating a signal on deployment targets",
   "x-mutates-state": true,
@@ -45841,7 +45841,7 @@ export const signals_ActivateSignalRequest = {
       "type": "array",
       "description": "Target destination(s) for activation. If the authenticated caller matches one of these destinations, activation keys will be included in the response.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/destination.json"
+        "$ref": "/schemas/3.0.8/core/destination.json"
       },
       "minItems": 1
     },
@@ -45851,7 +45851,7 @@ export const signals_ActivateSignalRequest = {
       "x-entity": "vendor_pricing_option"
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account for this activation. Associates with a commercial relationship established via sync_accounts."
     },
     "idempotency_key": {
@@ -45862,10 +45862,10 @@ export const signals_ActivateSignalRequest = {
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -45878,7 +45878,7 @@ export const signals_ActivateSignalRequest = {
 
 export const signals_ActivateSignalResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/signals/activate-signal-response.json",
+  "$id": "/schemas/3.0.8/signals/activate-signal-response.json",
   "title": "Activate Signal Response",
   "description": "Response payload for activate_signal task. Returns either complete success data OR error information, never both. This enforces atomic operation semantics - the signal is either fully activated or not activated at all.",
   "type": "object",
@@ -45892,7 +45892,7 @@ export const signals_ActivateSignalResponse = {
           "type": "array",
           "description": "Array of deployment results for each deployment target",
           "items": {
-            "$ref": "/schemas/3.0.6/core/deployment.json"
+            "$ref": "/schemas/3.0.8/core/deployment.json"
           }
         },
         "sandbox": {
@@ -45900,10 +45900,10 @@ export const signals_ActivateSignalResponse = {
           "description": "When true, this response contains simulated data from sandbox mode."
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -45925,15 +45925,15 @@ export const signals_ActivateSignalResponse = {
           "type": "array",
           "description": "Array of errors explaining why activation failed (e.g., platform connectivity issues, signal definition problems, authentication failures)",
           "items": {
-            "$ref": "/schemas/3.0.6/core/error.json"
+            "$ref": "/schemas/3.0.8/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "/schemas/3.0.6/core/context.json"
+          "$ref": "/schemas/3.0.8/core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.6/core/ext.json"
+          "$ref": "/schemas/3.0.8/core/ext.json"
         }
       },
       "required": [
@@ -45960,7 +45960,7 @@ export const signals_ActivateSignalResponse = {
 
 export const signals_GetSignalsRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/signals/get-signals-request.json",
+  "$id": "/schemas/3.0.8/signals/get-signals-request.json",
   "title": "Get Signals Request",
   "description": "Request parameters for discovering and refining signals. Use signal_spec for natural language discovery, signal_ids for exact lookups, or both to refine previous results (signal_ids anchor the starting set, signal_spec guides adjustments).",
   "type": "object",
@@ -45972,7 +45972,7 @@ export const signals_GetSignalsRequest = {
       "maximum": 99
     },
     "account": {
-      "$ref": "/schemas/3.0.6/core/account-ref.json",
+      "$ref": "/schemas/3.0.8/core/account-ref.json",
       "description": "Account for this request. When provided, the signals agent returns per-account pricing options if configured."
     },
     "signal_spec": {
@@ -45983,7 +45983,7 @@ export const signals_GetSignalsRequest = {
       "type": "array",
       "description": "Specific signals to look up by data provider and ID. Returns exact matches from the data provider's catalog. When combined with signal_spec, these signals anchor the starting set and signal_spec guides adjustments.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/signal-id.json"
+        "$ref": "/schemas/3.0.8/core/signal-id.json"
       },
       "minItems": 1
     },
@@ -45991,7 +45991,7 @@ export const signals_GetSignalsRequest = {
       "type": "array",
       "description": "Filter signals to those activatable on specific agents/platforms. When omitted, returns all signals available on the current agent. If the authenticated caller matches one of these destinations, activation keys will be included in the response.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/destination.json"
+        "$ref": "/schemas/3.0.8/core/destination.json"
       },
       "minItems": 1
     },
@@ -46005,7 +46005,7 @@ export const signals_GetSignalsRequest = {
       "minItems": 1
     },
     "filters": {
-      "$ref": "/schemas/3.0.6/core/signal-filters.json"
+      "$ref": "/schemas/3.0.8/core/signal-filters.json"
     },
     "max_results": {
       "type": "integer",
@@ -46014,14 +46014,14 @@ export const signals_GetSignalsRequest = {
       "minimum": 1
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-request.json",
+      "$ref": "/schemas/3.0.8/core/pagination-request.json",
       "description": "Pagination parameters. Use pagination.max_results (max: 100, default: 50) and pagination.cursor for cursor-based page walks. When the deprecated top-level max_results field is also present, pagination.max_results takes precedence."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "anyOf": [
@@ -46041,7 +46041,7 @@ export const signals_GetSignalsRequest = {
 
 export const signals_GetSignalsResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/signals/get-signals-response.json",
+  "$id": "/schemas/3.0.8/signals/get-signals-response.json",
   "title": "Get Signals Response",
   "description": "Response payload for get_signals task",
   "type": "object",
@@ -46053,7 +46053,7 @@ export const signals_GetSignalsResponse = {
         "type": "object",
         "properties": {
           "signal_id": {
-            "$ref": "/schemas/3.0.6/core/signal-id.json",
+            "$ref": "/schemas/3.0.8/core/signal-id.json",
             "description": "Universal signal identifier referencing the data provider's catalog. Use this to verify authorization and look up signal definitions."
           },
           "signal_agent_segment_id": {
@@ -46070,7 +46070,7 @@ export const signals_GetSignalsResponse = {
             "description": "Detailed signal description"
           },
           "value_type": {
-            "$ref": "/schemas/3.0.6/enums/signal-value-type.json",
+            "$ref": "/schemas/3.0.8/enums/signal-value-type.json",
             "description": "The data type of this signal's values (binary, categorical, numeric)"
           },
           "categories": {
@@ -46100,7 +46100,7 @@ export const signals_GetSignalsResponse = {
             "additionalProperties": false
           },
           "signal_type": {
-            "$ref": "/schemas/3.0.6/enums/signal-catalog-type.json",
+            "$ref": "/schemas/3.0.8/enums/signal-catalog-type.json",
             "description": "Catalog type of signal (marketplace, custom, owned)"
           },
           "data_provider": {
@@ -46117,14 +46117,14 @@ export const signals_GetSignalsResponse = {
             "type": "array",
             "description": "Array of deployment targets",
             "items": {
-              "$ref": "/schemas/3.0.6/core/deployment.json"
+              "$ref": "/schemas/3.0.8/core/deployment.json"
             }
           },
           "pricing_options": {
             "type": "array",
             "description": "Pricing options available for this signal. The buyer selects one and passes its pricing_option_id in report_usage for billing verification.",
             "items": {
-              "$ref": "/schemas/3.0.6/core/vendor-pricing-option.json"
+              "$ref": "/schemas/3.0.8/core/vendor-pricing-option.json"
             },
             "minItems": 1
           }
@@ -46147,21 +46147,21 @@ export const signals_GetSignalsResponse = {
       "type": "array",
       "description": "Task-specific errors and warnings (e.g., signal discovery or pricing issues)",
       "items": {
-        "$ref": "/schemas/3.0.6/core/error.json"
+        "$ref": "/schemas/3.0.8/core/error.json"
       }
     },
     "pagination": {
-      "$ref": "/schemas/3.0.6/core/pagination-response.json"
+      "$ref": "/schemas/3.0.8/core/pagination-response.json"
     },
     "sandbox": {
       "type": "boolean",
       "description": "When true, this response contains simulated data from sandbox mode."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -46172,7 +46172,7 @@ export const signals_GetSignalsResponse = {
 
 export const sponsoredIntelligence_SiCapabilities = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/sponsored-intelligence/si-capabilities.json",
+  "$id": "/schemas/3.0.8/sponsored-intelligence/si-capabilities.json",
   "title": "SI Capabilities",
   "description": "Capabilities that a brand agent declares or a host supports",
   "x-status": "experimental",
@@ -46327,7 +46327,7 @@ export const sponsoredIntelligence_SiCapabilities = {
 
 export const sponsoredIntelligence_SiGetOfferingRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/sponsored-intelligence/si-get-offering-request.json",
+  "$id": "/schemas/3.0.8/sponsored-intelligence/si-get-offering-request.json",
   "title": "SI Get Offering Request",
   "description": "Get offering details and availability before session handoff. Returns offering information, availability status, and optionally matching products based on context.",
   "x-status": "experimental",
@@ -46349,7 +46349,7 @@ export const sponsoredIntelligence_SiGetOfferingRequest = {
       "description": "Optional natural language description of user intent for personalized results (e.g., 'mens size 14 near Cincinnati'). Must be anonymous - no PII."
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "include_products": {
       "type": "boolean",
@@ -46364,7 +46364,7 @@ export const sponsoredIntelligence_SiGetOfferingRequest = {
       "description": "Maximum number of matching products to return"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -46375,7 +46375,7 @@ export const sponsoredIntelligence_SiGetOfferingRequest = {
 
 export const sponsoredIntelligence_SiGetOfferingResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/sponsored-intelligence/si-get-offering-response.json",
+  "$id": "/schemas/3.0.8/sponsored-intelligence/si-get-offering-response.json",
   "title": "SI Get Offering Response",
   "description": "Offering details, availability status, and optionally matching products. Use the offering_token in si_initiate_session for correlation.",
   "x-status": "experimental",
@@ -46507,15 +46507,15 @@ export const sponsoredIntelligence_SiGetOfferingResponse = {
     "errors": {
       "type": "array",
       "items": {
-        "$ref": "/schemas/3.0.6/core/error.json"
+        "$ref": "/schemas/3.0.8/core/error.json"
       },
       "description": "Errors during offering lookup"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -46526,7 +46526,7 @@ export const sponsoredIntelligence_SiGetOfferingResponse = {
 
 export const sponsoredIntelligence_SiIdentity = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/sponsored-intelligence/si-identity.json",
+  "$id": "/schemas/3.0.8/sponsored-intelligence/si-identity.json",
   "title": "SI Identity",
   "description": "User identity shared with brand agent (with explicit consent)",
   "x-status": "experimental",
@@ -46631,7 +46631,7 @@ export const sponsoredIntelligence_SiIdentity = {
 
 export const sponsoredIntelligence_SiInitiateSessionRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/sponsored-intelligence/si-initiate-session-request.json",
+  "$id": "/schemas/3.0.8/sponsored-intelligence/si-initiate-session-request.json",
   "title": "SI Initiate Session Request",
   "description": "Host initiates a session with a brand agent",
   "x-status": "experimental",
@@ -46649,10 +46649,10 @@ export const sponsoredIntelligence_SiInitiateSessionRequest = {
       "description": "Natural language description of user intent — the conversation handoff from the host describing what the user needs from the brand agent"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "identity": {
-      "$ref": "/schemas/3.0.6/sponsored-intelligence/si-identity.json"
+      "$ref": "/schemas/3.0.8/sponsored-intelligence/si-identity.json"
     },
     "media_buy_id": {
       "type": "string",
@@ -46669,7 +46669,7 @@ export const sponsoredIntelligence_SiInitiateSessionRequest = {
       "x-entity": "offering"
     },
     "supported_capabilities": {
-      "$ref": "/schemas/3.0.6/sponsored-intelligence/si-capabilities.json",
+      "$ref": "/schemas/3.0.8/sponsored-intelligence/si-capabilities.json",
       "description": "What capabilities the host supports"
     },
     "offering_token": {
@@ -46684,7 +46684,7 @@ export const sponsoredIntelligence_SiInitiateSessionRequest = {
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -46697,7 +46697,7 @@ export const sponsoredIntelligence_SiInitiateSessionRequest = {
 
 export const sponsoredIntelligence_SiInitiateSessionResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/sponsored-intelligence/si-initiate-session-response.json",
+  "$id": "/schemas/3.0.8/sponsored-intelligence/si-initiate-session-response.json",
   "title": "SI Initiate Session Response",
   "description": "Brand agent's response to session initiation",
   "x-status": "experimental",
@@ -46719,7 +46719,7 @@ export const sponsoredIntelligence_SiInitiateSessionResponse = {
         "ui_elements": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/sponsored-intelligence/si-ui-element.json"
+            "$ref": "/schemas/3.0.8/sponsored-intelligence/si-ui-element.json"
           },
           "description": "Visual components to render"
         }
@@ -46727,11 +46727,11 @@ export const sponsoredIntelligence_SiInitiateSessionResponse = {
       "additionalProperties": true
     },
     "negotiated_capabilities": {
-      "$ref": "/schemas/3.0.6/sponsored-intelligence/si-capabilities.json",
+      "$ref": "/schemas/3.0.8/sponsored-intelligence/si-capabilities.json",
       "description": "Intersection of brand and host capabilities for this session"
     },
     "session_status": {
-      "$ref": "/schemas/3.0.6/enums/si-session-status.json",
+      "$ref": "/schemas/3.0.8/enums/si-session-status.json",
       "description": "Current session lifecycle state. Returned in initiation, message, and termination responses."
     },
     "session_ttl_seconds": {
@@ -46742,15 +46742,15 @@ export const sponsoredIntelligence_SiInitiateSessionResponse = {
     "errors": {
       "type": "array",
       "items": {
-        "$ref": "/schemas/3.0.6/core/error.json"
+        "$ref": "/schemas/3.0.8/core/error.json"
       },
       "description": "Errors during session initiation"
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -46762,7 +46762,7 @@ export const sponsoredIntelligence_SiInitiateSessionResponse = {
 
 export const sponsoredIntelligence_SiSendMessageRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/sponsored-intelligence/si-send-message-request.json",
+  "$id": "/schemas/3.0.8/sponsored-intelligence/si-send-message-request.json",
   "title": "SI Send Message Request",
   "description": "Send a message to the brand agent within an active session",
   "x-status": "experimental",
@@ -46807,10 +46807,10 @@ export const sponsoredIntelligence_SiSendMessageRequest = {
       "additionalProperties": true
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -46834,7 +46834,7 @@ export const sponsoredIntelligence_SiSendMessageRequest = {
 
 export const sponsoredIntelligence_SiSendMessageResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/sponsored-intelligence/si-send-message-response.json",
+  "$id": "/schemas/3.0.8/sponsored-intelligence/si-send-message-response.json",
   "title": "SI Send Message Response",
   "description": "Brand agent's response to a user message",
   "x-status": "experimental",
@@ -46854,13 +46854,13 @@ export const sponsoredIntelligence_SiSendMessageResponse = {
           "description": "Conversational message from brand agent"
         },
         "surface": {
-          "$ref": "/schemas/3.0.6/a2ui/surface.json",
+          "$ref": "/schemas/3.0.8/a2ui/surface.json",
           "description": "A2UI surface with interactive components"
         },
         "ui_elements": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/3.0.6/sponsored-intelligence/si-ui-element.json"
+            "$ref": "/schemas/3.0.8/sponsored-intelligence/si-ui-element.json"
           },
           "description": "Visual components to render (DEPRECATED: use surface instead)",
           "deprecated": true
@@ -46873,7 +46873,7 @@ export const sponsoredIntelligence_SiSendMessageResponse = {
       "description": "MCP resource URI for hosts with MCP Apps support (e.g., ui://si/session-abc123)"
     },
     "session_status": {
-      "$ref": "/schemas/3.0.6/enums/si-session-status.json",
+      "$ref": "/schemas/3.0.8/enums/si-session-status.json",
       "description": "Current session status. On a successful response, one of: active, pending_handoff, or complete. Terminated sessions return error codes (SESSION_NOT_FOUND or SESSION_TERMINATED) instead of a success response."
     },
     "handoff": {
@@ -46939,14 +46939,14 @@ export const sponsoredIntelligence_SiSendMessageResponse = {
     "errors": {
       "type": "array",
       "items": {
-        "$ref": "/schemas/3.0.6/core/error.json"
+        "$ref": "/schemas/3.0.8/core/error.json"
       }
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -46958,7 +46958,7 @@ export const sponsoredIntelligence_SiSendMessageResponse = {
 
 export const sponsoredIntelligence_SiTerminateSessionRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/sponsored-intelligence/si-terminate-session-request.json",
+  "$id": "/schemas/3.0.8/sponsored-intelligence/si-terminate-session-request.json",
   "title": "SI Terminate Session Request",
   "description": "Request to terminate an SI session. Naturally idempotent — `session_id` is the dedup boundary, and terminating an already-terminated session is a no-op that returns the same terminal state. No `idempotency_key` is needed on this request.",
   "x-status": "experimental",
@@ -47021,10 +47021,10 @@ export const sponsoredIntelligence_SiTerminateSessionRequest = {
       "additionalProperties": true
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -47036,7 +47036,7 @@ export const sponsoredIntelligence_SiTerminateSessionRequest = {
 
 export const sponsoredIntelligence_SiTerminateSessionResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/sponsored-intelligence/si-terminate-session-response.json",
+  "$id": "/schemas/3.0.8/sponsored-intelligence/si-terminate-session-response.json",
   "title": "SI Terminate Session Response",
   "description": "Confirmation of session termination",
   "x-status": "experimental",
@@ -47052,7 +47052,7 @@ export const sponsoredIntelligence_SiTerminateSessionResponse = {
       "description": "Whether session was successfully terminated"
     },
     "session_status": {
-      "$ref": "/schemas/3.0.6/enums/si-session-status.json",
+      "$ref": "/schemas/3.0.8/enums/si-session-status.json",
       "description": "Resulting session state. 'complete' for handoff_transaction/handoff_complete, 'terminated' for user_exit/session_timeout/host_terminated."
     },
     "acp_handoff": {
@@ -47104,14 +47104,14 @@ export const sponsoredIntelligence_SiTerminateSessionResponse = {
     "errors": {
       "type": "array",
       "items": {
-        "$ref": "/schemas/3.0.6/core/error.json"
+        "$ref": "/schemas/3.0.8/core/error.json"
       }
     },
     "context": {
-      "$ref": "/schemas/3.0.6/core/context.json"
+      "$ref": "/schemas/3.0.8/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.6/core/ext.json"
+      "$ref": "/schemas/3.0.8/core/ext.json"
     }
   },
   "required": [
@@ -47123,7 +47123,7 @@ export const sponsoredIntelligence_SiTerminateSessionResponse = {
 
 export const sponsoredIntelligence_SiUiElement = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/sponsored-intelligence/si-ui-element.json",
+  "$id": "/schemas/3.0.8/sponsored-intelligence/si-ui-element.json",
   "title": "SI UI Element",
   "description": "Standard visual component that brand returns and host renders",
   "x-status": "experimental",
@@ -47465,7 +47465,7 @@ export const sponsoredIntelligence_SiUiElement = {
 
 export const tmp_AvailablePackage = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/tmp/available-package.json",
+  "$id": "/schemas/3.0.8/tmp/available-package.json",
   "title": "Available Package",
   "description": "A package available for contextual matching. Synced to providers at media buy creation time — not sent per request. Providers cache this metadata and use it when evaluating context match requests for the placement. The `seller_agent` field binds the package to the originating seller agent; providers MUST use this binding rather than re-deriving seller identity from media_buy_id.",
   "x-status": "experimental",
@@ -47480,21 +47480,21 @@ export const tmp_AvailablePackage = {
       "description": "Media buy that this package belongs to"
     },
     "seller_agent": {
-      "$ref": "/schemas/3.0.6/core/seller-agent-ref.json",
+      "$ref": "/schemas/3.0.8/core/seller-agent-ref.json",
       "description": "The seller agent that owns this package. `agent_url` MUST match one of `authorized_agents[].url` in the publisher's adagents.json authoritative for every property this package may serve. Providers SHOULD validate at sync time and reject mismatches with `seller_not_authorized`. Cached alongside the package and used for offer attribution, per-seller observability, and dispute resolution — not for request-time filtering."
     },
     "format_ids": {
       "type": "array",
       "description": "Creative format identifiers eligible for this package. Uses the standard AdCP format-id object with agent_url and id for unambiguous format resolution across namespaces.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/format-id.json"
+        "$ref": "/schemas/3.0.8/core/format-id.json"
       }
     },
     "catalogs": {
       "type": "array",
       "description": "The buyer's catalogs attached to this package, with selectors (ids, gtins, tags, category, query) scoping which items are in play. References synced catalogs by catalog_id. The provider resolves items from its cached copy.",
       "items": {
-        "$ref": "/schemas/3.0.6/core/catalog.json"
+        "$ref": "/schemas/3.0.8/core/catalog.json"
       }
     }
   },
@@ -47508,7 +47508,7 @@ export const tmp_AvailablePackage = {
 
 export const tmp_ContextMatchRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/tmp/context-match-request.json",
+  "$id": "/schemas/3.0.8/tmp/context-match-request.json",
   "title": "Context Match Request",
   "description": "Sent by publisher to router or provider to evaluate packages against contextual signals. The provider uses its synced package set for the placement. MUST NOT contain user identity. The request_id MUST NOT correlate with any identity match request_id. Extension fields (ext, context) are intentionally omitted — extension data in the context path could inadvertently carry or correlate user identity signals.",
   "x-status": "experimental",
@@ -47545,11 +47545,11 @@ export const tmp_ContextMatchRequest = {
       "description": "Property catalog UUID (UUID v7). Globally unique, stable identifier assigned by the property catalog. The primary key for TMP matching and property list targeting."
     },
     "property_id": {
-      "$ref": "/schemas/3.0.6/core/property-id.json",
+      "$ref": "/schemas/3.0.8/core/property-id.json",
       "description": "Publisher's human-readable property slug (e.g., 'cnn_homepage'). Optional when property_rid is present. Useful for logging and debugging."
     },
     "property_type": {
-      "$ref": "/schemas/3.0.6/enums/property-type.json",
+      "$ref": "/schemas/3.0.8/enums/property-type.json",
       "description": "Type of the publisher property"
     },
     "placement_id": {
@@ -47557,7 +47557,7 @@ export const tmp_ContextMatchRequest = {
       "description": "Placement identifier from the publisher's placement registry in adagents.json. Identifies where on the property this ad opportunity exists. One placement per request."
     },
     "artifact": {
-      "$ref": "/schemas/3.0.6/content-standards/artifact.json",
+      "$ref": "/schemas/3.0.8/content-standards/artifact.json",
       "description": "Full content artifact adjacent to this ad opportunity. Same schema used for content standards evaluation. The publisher sends the artifact when they want the buyer to evaluate the full content. Contractual protections govern buyer use. TEE deployment upgrades contractual trust to cryptographic verification. Publishers MUST NOT include asset access credentials (bearer tokens, service accounts) — the router fans out to multiple buyer agents. For secured assets, use signed URLs with short expiry. Routers MUST strip access fields from artifacts before forwarding."
     },
     "artifact_refs": {
@@ -47614,7 +47614,7 @@ export const tmp_ContextMatchRequest = {
           "description": "Metro area, using the same classification systems as AdCP targeting.",
           "properties": {
             "system": {
-              "$ref": "/schemas/3.0.6/enums/metro-system.json",
+              "$ref": "/schemas/3.0.8/enums/metro-system.json",
               "description": "Metro area classification system (e.g., 'nielsen_dma', 'uk_itl2')."
             },
             "value": {
@@ -47729,7 +47729,7 @@ export const tmp_ContextMatchRequest = {
 
 export const tmp_ContextMatchResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/tmp/context-match-response.json",
+  "$id": "/schemas/3.0.8/tmp/context-match-response.json",
   "title": "Context Match Response",
   "description": "Response from router or provider with offers for matched packages. An empty offers array means no packages matched. For simple GAM integration, package_id flows as a macro via signals. For rich integrations, the offer includes brand, price, summary, and optionally an inline creative manifest. Extension fields (ext, context) are intentionally omitted — extension data in the context path could inadvertently carry or correlate user identity signals.",
   "x-status": "experimental",
@@ -47748,7 +47748,7 @@ export const tmp_ContextMatchResponse = {
       "type": "array",
       "description": "Offers from the buyer, one per activated package. An empty array means no packages matched. For simple activation, each offer has just package_id. For richer responses, offers include brand, price, summary, and creative manifest.",
       "items": {
-        "$ref": "/schemas/3.0.6/tmp/offer.json"
+        "$ref": "/schemas/3.0.8/tmp/offer.json"
       }
     },
     "cache_ttl": {
@@ -47804,7 +47804,7 @@ export const tmp_ContextMatchResponse = {
 
 export const tmp_Error = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/tmp/error.json",
+  "$id": "/schemas/3.0.8/tmp/error.json",
   "title": "TMP Error",
   "description": "Error response from a TMP provider or router. Returned instead of a normal response when the provider cannot process the request. Distinguishes errors from empty results (an empty offers array is a valid response meaning no matches, not an error).",
   "x-status": "experimental",
@@ -47847,7 +47847,7 @@ export const tmp_Error = {
 
 export const tmp_IdentityMatchRequest = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/tmp/identity-match-request.json",
+  "$id": "/schemas/3.0.8/tmp/identity-match-request.json",
   "title": "Identity Match Request",
   "description": "Sent by publisher to evaluate user eligibility for packages using an opaque identity token. MUST NOT contain page context. The request_id MUST NOT correlate with any context match request_id. The package_ids MUST include ALL active packages for the buyer, not just those on the current page, to prevent set-correlation attacks. Extension fields (ext, context) are intentionally omitted to prevent data leakage across the identity privacy boundary.",
   "x-status": "experimental",
@@ -47889,7 +47889,7 @@ export const tmp_IdentityMatchRequest = {
             "description": "Opaque token from an identity provider (ID5, LiveRamp, UID2) or publisher-generated. Buyer may map to internal identity graph but cannot reverse to PII."
           },
           "uid_type": {
-            "$ref": "/schemas/3.0.6/enums/uid-type.json",
+            "$ref": "/schemas/3.0.8/enums/uid-type.json",
             "description": "Type of the user identifier. Tells the buyer which identity graph to resolve against, avoiding trial-and-error matching."
           }
         },
@@ -47950,7 +47950,7 @@ export const tmp_IdentityMatchRequest = {
 
 export const tmp_IdentityMatchResponse = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/tmp/identity-match-response.json",
+  "$id": "/schemas/3.0.8/tmp/identity-match-response.json",
   "title": "Identity Match Response",
   "description": "Response indicating which packages the user is eligible for. The ttl_sec field defines a caching contract: the router caches this response and returns cached eligibility without re-querying the buyer during the TTL window. Extension fields (ext, context) are intentionally omitted to prevent data leakage across the identity privacy boundary.",
   "x-status": "experimental",
@@ -47994,7 +47994,7 @@ export const tmp_IdentityMatchResponse = {
 
 export const tmp_OfferPrice = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/tmp/offer-price.json",
+  "$id": "/schemas/3.0.8/tmp/offer-price.json",
   "title": "Offer Price",
   "description": "Lightweight price for a TMP offer. Used when the product supports variable pricing and the buyer specifies a price at match time.",
   "x-status": "experimental",
@@ -48032,7 +48032,7 @@ export const tmp_OfferPrice = {
 
 export const tmp_Offer = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/tmp/offer.json",
+  "$id": "/schemas/3.0.8/tmp/offer.json",
   "title": "Offer",
   "description": "A buyer's response to a context match request. Generalizes package activation — a simple activation is an offer with just package_id. A rich response includes brand, price, summary, and optionally an inline creative manifest.",
   "x-status": "experimental",
@@ -48043,15 +48043,15 @@ export const tmp_Offer = {
       "description": "Package identifier from the media buy."
     },
     "seller_agent": {
-      "$ref": "/schemas/3.0.6/core/seller-agent-ref.json",
+      "$ref": "/schemas/3.0.8/core/seller-agent-ref.json",
       "description": "Optional echo of the package's seller agent from sync-time metadata. Provided for publisher-side observability so log pipelines can attribute offers to sellers without round-tripping to the media-buy store. Non-authoritative: the binding on the cached AvailablePackage is source of truth. When omitted, the router MAY stamp this field from its cached package→seller map."
     },
     "brand": {
-      "$ref": "/schemas/3.0.6/core/brand-ref.json",
+      "$ref": "/schemas/3.0.8/core/brand-ref.json",
       "description": "Brand for this offer. Required when the product allows dynamic brands (brand selected at match time rather than fixed on the package). For single-brand packages, the brand is already known from the media buy."
     },
     "price": {
-      "$ref": "/schemas/3.0.6/tmp/offer-price.json",
+      "$ref": "/schemas/3.0.8/tmp/offer-price.json",
       "description": "Price for this offer. Only present when the product supports variable pricing. For fixed-price packages, price is already set on the media buy."
     },
     "summary": {
@@ -48059,7 +48059,7 @@ export const tmp_Offer = {
       "description": "Buyer-generated description of the offer, for the publisher to judge relevance. E.g., '50% off Goldenfield mayo — recipe integration'. The publisher (or their AI assistant) uses this to decide whether the offer fits the context."
     },
     "creative_manifest": {
-      "$ref": "/schemas/3.0.6/core/creative-manifest.json",
+      "$ref": "/schemas/3.0.8/core/creative-manifest.json",
       "description": "Full creative details, inline. When present, the publisher has everything needed to render. Inline for small creatives (markdown, product card). For large creatives (VAST, video), the manifest references external assets via URLs."
     },
     "macros": {
@@ -48078,7 +48078,7 @@ export const tmp_Offer = {
 
 export const tmp_ProviderRegistration = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.6/tmp/provider-registration.json",
+  "$id": "/schemas/3.0.8/tmp/provider-registration.json",
   "title": "TMP Provider Registration",
   "description": "Declares a TMP provider's endpoint, capabilities, and operational parameters. Used in router configuration (static YAML or dynamic API) and referenced by product-level provider entries. The publisher controls which providers participate in their ad decisioning. Endpoint URLs MUST be validated against SSRF, and dynamic registration endpoints MUST authenticate callers — see docs/trusted-match/specification#provider-registration-security.",
   "x-status": "experimental",
@@ -48114,7 +48114,7 @@ export const tmp_ProviderRegistration = {
       "type": "array",
       "description": "Identity types this provider can resolve. The router selects Identity Match providers whose uid_types overlaps with any uid_type in the request's identities array. MUST be present and non-empty when identity_match is true.",
       "items": {
-        "$ref": "/schemas/3.0.6/enums/uid-type.json"
+        "$ref": "/schemas/3.0.8/enums/uid-type.json"
       },
       "minItems": 1
     },

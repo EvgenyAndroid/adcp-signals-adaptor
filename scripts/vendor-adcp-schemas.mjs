@@ -32,7 +32,7 @@ const REPO_ROOT = dirname(__dirname);
 
 // Pin to a published AdCP spec release. Bump this constant + re-run
 // the script to refresh the vendored corpus.
-const ADCP_SPEC_VERSION = "3.0.6";
+const ADCP_SPEC_VERSION = "3.0.8";
 
 const VENDOR_DIR = join(REPO_ROOT, "vendor", "adcp");
 const TGZ_PATH = join(VENDOR_DIR, `${ADCP_SPEC_VERSION}.tgz`);

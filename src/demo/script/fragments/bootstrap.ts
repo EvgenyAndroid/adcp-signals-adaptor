@@ -129,7 +129,7 @@ _refreshConformancePill();
 //────────────────────────────────────────────────────────────────────────
 // AdCP 3.0 conformance helpers — replace legacy 2.x shapes the demo
 // client used to emit. The trace inspector validates every request
-// against the canonical schema (currently pinned at 3.0.6 — see
+// against the canonical schema (currently pinned at 3.0.8 — see
 // scripts/vendor-adcp-schemas.mjs); sending the right shape keeps OUR
 // own traces clean (✓ schema valid) so the workshop demonstration of
 // "validation surfaces drift" stays focused on PEER drift (Dstillery)

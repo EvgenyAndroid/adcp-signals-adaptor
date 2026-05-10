@@ -3,7 +3,8 @@
 // Pin the AdCP 3.0.x VERSION_UNSUPPORTED contract:
 //
 //   * adcp_major_version omitted → ok (seller assumes its highest)
-//   * adcp_major_version in supported set ([2, 3]) → ok
+//   * adcp_major_version in supported set ([3]) → ok
+//     Narrowed from [2, 3] -> [3] in PR #247 (v2 claim was paper-only).
 //   * adcp_major_version OUT of supported set → error with code
 //     VERSION_UNSUPPORTED in the JSON-RPC error.data
 //   * Recovery carve-out: get_adcp_capabilities with unsupported
@@ -71,11 +72,11 @@ describe("VERSION_UNSUPPORTED enforcement", () => {
     expect(body.error).toBeDefined();
     expect(body.error?.code).toBe(-32000); // MCP_TOOL_ERROR transport marker
     expect(body.error?.message).toContain("VERSION_UNSUPPORTED" === "VERSION_UNSUPPORTED" ? "not supported" : "");
-    expect(body.error?.message).toContain("[2, 3]");
+    expect(body.error?.message).toContain("[3]");
     // Spec error code travels in error.data per rpcError helper
     const data = body.error?.data as { code?: string; supported_major_versions?: number[] };
     expect(data?.code).toBe("VERSION_UNSUPPORTED");
-    expect(data?.supported_major_versions).toEqual([2, 3]);
+    expect(data?.supported_major_versions).toEqual([3]);
   });
 
   it("get_signals with adcp_major_version: 1 (below range) returns VERSION_UNSUPPORTED", async () => {

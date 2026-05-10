@@ -44,6 +44,7 @@ const CACHE_KEY = "adcp_capabilities_v24";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
+import { COMPLIANCE_STATE } from "../constants/complianceState";
 
 const VALID_PROTOCOLS = new Set([
   "media_buy",
@@ -361,33 +362,25 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       // scenario explanations. Surfaced in-band so any reviewer hitting
       // /capabilities (e.g. a HoldCo procurement check) sees the score
       // and the structural ceiling without needing to read SEC42_*.md.
-      // Updated manually after each `npm run compliance` against prod.
+      //
+      // `last_run` + counts + scenarios_run live in
+      // src/constants/complianceState.ts and are auto-updated by
+      // scripts/run-compliance.mjs on every passing run (PR #249). The
+      // 5.25 runner restored error_handling / schema_compliance /
+      // validation tracks for signals-only agents — adcp#2916 was
+      // effectively unblocked by capability-aware skip_if landing in
+      // the runner. Applicable count is now 7/7 (was 4/4 under the 5.21
+      // regression).
       compliance: {
         spec_version: "adcp_3.0",
         client_runner: "@adcp/client@5.25.1",
-        last_run: "2026-05-08",
-        // The 5.25 runner restored the error_handling / schema_compliance
-        // / validation scenario tracks for signals-only agents — adcp
-        // issue #2916 was effectively unblocked by capability-aware
-        // skip_if logic landing in the runner. Applicable count is now
-        // 7/7 (was 4/4 under the 5.21 regression).
-        //
-        // Refreshed by the AdCP daily watcher (.github/adcp-watch-config.json)
-        // on each spec/SDK/scenario change; last sync 2026-05-07.
+        last_run: COMPLIANCE_STATE.last_run,
         results: {
-          applicable: 7,
-          passed: 7,
-          failed: 0,
-          skipped: 32,
-          scenarios_run: [
-            "capability_discovery",
-            "discovery",
-            "error_handling",
-            "health_check",
-            "schema_compliance",
-            "signals_flow",
-            "validation",
-          ],
+          applicable: COMPLIANCE_STATE.results.applicable,
+          passed: COMPLIANCE_STATE.results.passed,
+          failed: COMPLIANCE_STATE.results.failed,
+          skipped: COMPLIANCE_STATE.results.skipped,
+          scenarios_run: COMPLIANCE_STATE.scenarios_run,
         },
         // Non-applicable scenarios are now exclusively the media-buy /
         // creative / governance / brand-rights tracks that require tools

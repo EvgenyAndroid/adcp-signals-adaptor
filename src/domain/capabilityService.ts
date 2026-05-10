@@ -37,14 +37,27 @@
 // changes, so clients that cache by key pick up the new fields.
 // Cache key carries a monotonic version suffix. Bump on every change to
 // the static capability shape so already-warmed KV entries don't serve
-// stale fields after a deploy. Bumps:
+// stale fields after a deploy. The manual `v24/v25/…` prefix bumps on
+// *shape* changes (new fields, removed fields, schema-version cliffs).
+// *Value* refreshes piggyback automatically via the suffix derived from
+// SPEC_VERSION + COMPLIANCE_STATE.last_run — that way a `complianceState.ts`
+// rewrite from `npm run compliance` or a `specVersion.ts` bump immediately
+// invalidates the cache without anyone remembering to touch this file.
+// PR #249's stale-cache incident (the new last_run sat behind a v24 blob
+// for 7 minutes after deploy until manual KV delete) was the catalyst.
+// Bumps:
 //   v23 → previous baseline
 //   v24 → Sec-31v: added top-level `specialisms` for AAO badge issuance
-const CACHE_KEY = "adcp_capabilities_v24";
+const CACHE_KEY_PREFIX = "adcp_capabilities_v24";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
 import { COMPLIANCE_STATE } from "../constants/complianceState";
+import { SPEC_VERSION } from "../constants/specVersion";
+
+/** Cache key folds in the spec version + compliance-state pointer so any
+ *  value-only refresh auto-invalidates without a manual prefix bump. */
+const CACHE_KEY = `${CACHE_KEY_PREFIX}_${SPEC_VERSION}_${COMPLIANCE_STATE.last_run}`;
 
 const VALID_PROTOCOLS = new Set([
   "media_buy",

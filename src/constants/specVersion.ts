@@ -14,6 +14,28 @@ export const ADCP_MAJOR_LINE = "3.0 GA";
 /** Specific spec patch version we're tested against. Bump on each
  *  successful conformance pass against a new patch.
  *
+ *  3.0.11 (2026-05-11): storyboard-only — collapses the
+ *  `key_reuse_conflict` phase of `universal/idempotency.yaml` into
+ *  `replay_same_payload` as a fourth step, to make an adcp-client
+ *  runner fix safe to land. Release notes: "no behavior change for
+ *  sellers, only restructures the storyboard." Wire format unchanged.
+ *
+ *  3.0.10 (2026-05-10): storyboard-only — converts the remaining
+ *  12 static `idempotency_key` literals across error / governance /
+ *  signal / schema-validation / creative-ad-server scenarios to
+ *  `$generate:uuid_v4#<alias>` form. Prevents idempotency-cache
+ *  collisions on re-runs. Wire format unchanged.
+ *
+ *  3.0.9 (between 3.0.8 and 3.0.10): patch-eligible, no normative
+ *  change for sellers; bundled here for completeness as we jumped
+ *  the version straight from 3.0.8 → 3.0.11.
+ *
+ *  Schema corpus remains vendored at 3.0.8 — 3.0.9 / 3.0.10 / 3.0.11
+ *  made no schema changes (all storyboard / harness patches), so
+ *  re-running scripts/vendor-adcp-schemas.mjs would produce a
+ *  bit-identical tree with only the `$id` paths bumped. Re-vendor
+ *  on the next spec release that actually touches schemas.
+ *
  *  3.0.8 (2026-05-08): conformance-harness fix — UUID-aliased
  *  idempotency_keys across 15 storyboard steps in 9 scenarios
  *  (extends the #4218 precedent to the rest of the suite). Affects
@@ -53,7 +75,7 @@ export const ADCP_MAJOR_LINE = "3.0 GA";
  *  scripts/vendor-adcp-schemas.mjs; the trace inspector validates
  *  every payload against /schemas/<this-version>/ identifiers.
  */
-export const SPEC_VERSION = "3.0.8";
+export const SPEC_VERSION = "3.0.11";
 
 /** Composite label for UI display: "3.0 GA · 3.0.4". */
 export const SPEC_LABEL = ADCP_MAJOR_LINE + " · " + SPEC_VERSION;

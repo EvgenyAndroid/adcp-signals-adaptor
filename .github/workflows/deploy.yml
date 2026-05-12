@@ -60,12 +60,17 @@ jobs:
             echo "::error::Could not parse SPEC_VERSION from src/constants/specVersion.ts"
             exit 1
           fi
-          actual=$(curl -sSI https://adcp.signal-stack.io/.well-known/adagents.json \
-            | grep -i '^x-adcp-spec-version:' | awk '{print $2}' | tr -d '\r\n')
-          echo "Expected: $expected"
-          echo "Actual:   $actual"
-          if [ "$actual" != "$expected" ]; then
-            echo "::error::Spec version drift — header is $actual, source says $expected. Deploy may not have propagated, or constant wasn't bumped."
-            exit 1
-          fi
-          echo "X-AdCP-Spec-Version $actual matches source ✓"
+          # Retry to absorb Cloudflare edge propagation lag after deploy —
+          # the new worker version can take ~15-30s to be live globally.
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            actual=$(curl -sSI https://adcp.signal-stack.io/.well-known/adagents.json \
+              | grep -i '^x-adcp-spec-version:' | awk '{print $2}' | tr -d '\r\n' || echo "")
+            echo "Attempt $i: expected=$expected actual=$actual"
+            if [ "$actual" = "$expected" ]; then
+              echo "X-AdCP-Spec-Version $actual matches source ✓"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::Spec version drift after 10 attempts — header is $actual, source says $expected. Deploy may not have propagated, or constant wasn't bumped at the emit site (src/routes/adagents.ts)."
+          exit 1

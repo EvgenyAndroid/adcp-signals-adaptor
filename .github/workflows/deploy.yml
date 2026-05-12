@@ -62,8 +62,12 @@ jobs:
           fi
           # Retry to absorb Cloudflare edge propagation lag after deploy —
           # the new worker version can take ~15-30s to be live globally.
+          # NOTE: must be a GET, not HEAD — the .well-known route doesn't
+          # currently register a HEAD handler and returns 404 to HEAD requests.
+          # Using `-D -` to dump headers + `-o /dev/null` to drop the body keeps
+          # the method as GET while only exposing the header lines to grep.
           for i in 1 2 3 4 5 6 7 8 9 10; do
-            actual=$(curl -sSI https://adcp.signal-stack.io/.well-known/adagents.json \
+            actual=$(curl -sS -D - -o /dev/null https://adcp.signal-stack.io/.well-known/adagents.json \
               | grep -i '^x-adcp-spec-version:' | awk '{print $2}' | tr -d '\r\n' || echo "")
             echo "Attempt $i: expected=$expected actual=$actual"
             if [ "$actual" = "$expected" ]; then

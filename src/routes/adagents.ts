@@ -28,6 +28,7 @@
 import type { Env } from "../types/env";
 import { Validator } from "@cfworker/json-schema";
 import { loadAdcpCorpus, ADCP_SPEC_VERSION } from "../schemas/adcp";
+import { SPEC_VERSION } from "../constants/specVersion";
 
 export interface AdagentsDocument {
   $schema: string;
@@ -107,7 +108,12 @@ export function handleAdAgents(request: Request, _env: Env): Response {
       "Content-Type": "application/json",
       "Cache-Control": "public, max-age=3600",
       "Access-Control-Allow-Origin": "*",
-      "X-AdCP-Spec-Version": ADCP_SPEC_VERSION,
+      // Conformance-claim version, not the vendored-schema corpus version.
+      // The two can diverge for storyboard/harness-only spec patches (3.0.9
+      // -> 3.0.10 -> 3.0.11 made no schema changes); the corpus stays pinned
+      // at 3.0.8 until a spec release actually touches schemas. SPEC_VERSION
+      // is the single source of truth for what we claim to conform to.
+      "X-AdCP-Spec-Version": SPEC_VERSION,
     },
   });
 }
@@ -349,7 +355,7 @@ export async function handleAdagentsProbe(_request: Request, _env: Env): Promise
   // worst-case latency of the response is the slowest probe (3s).
   const results = await Promise.all(probeable.map((a) => probePeerAdagents(a)));
   const summary = {
-    spec_version: ADCP_SPEC_VERSION,
+    spec_version: SPEC_VERSION,
     probed_count: results.length,
     counts: {
       ok: results.filter((r) => r.status === "ok").length,

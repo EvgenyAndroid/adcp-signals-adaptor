@@ -14,6 +14,21 @@ export const ADCP_MAJOR_LINE = "3.0 GA";
 /** Specific spec patch version we're tested against. Bump on each
  *  successful conformance pass against a new patch.
  *
+ *  3.0.12 (2026-05-13): two real schema changes (triggers re-vendor):
+ *  (1) `account.supported_billing` gated by `media_buy` in
+ *  `supported_protocols` via a root `allOf` if/then guard — relaxes
+ *  what was previously an unconditional MUST on every agent. No
+ *  impact on us (we don't expose `media_buy`); SDKs using codegens
+ *  that drop draft-07 if/then need a runtime guard. (2) TMP
+ *  `identity-match-request.json` requires `seller_agent_url` (was
+ *  optional) and relaxes `package_ids` to optional. Experimental
+ *  schema we don't ride. Also two storyboard additions:
+ *  `comply_controller_mode_gate` universal storyboard + the
+ *  `force_scenario_unsupported` errata clarifying that UNKNOWN_SCENARIO
+ *  on `force_*` controller steps grades `not_applicable`. We don't
+ *  implement `comply_test_controller`, so those are informational.
+ *  Re-vendored corpus (3.0.8 → 3.0.12) in the same PR.
+ *
  *  3.0.11 (2026-05-11): storyboard-only — collapses the
  *  `key_reuse_conflict` phase of `universal/idempotency.yaml` into
  *  `replay_same_payload` as a fourth step, to make an adcp-client
@@ -26,15 +41,18 @@ export const ADCP_MAJOR_LINE = "3.0 GA";
  *  `$generate:uuid_v4#<alias>` form. Prevents idempotency-cache
  *  collisions on re-runs. Wire format unchanged.
  *
- *  3.0.9 (between 3.0.8 and 3.0.10): patch-eligible, no normative
- *  change for sellers; bundled here for completeness as we jumped
- *  the version straight from 3.0.8 → 3.0.11.
+ *  3.0.9 (2026-05-09): the HMAC-framing fix — `reporting-webhook.json`,
+ *  `auth-scheme.json`, `create-media-buy-request.json:artifact_webhook`,
+ *  and `call-adcp-agent SKILL.md` realigned to RFC 9421 default (HMAC
+ *  marked as the deprecated legacy fallback, removed in 4.0). This is
+ *  adcp#4271 landing — supersedes our closed inventory PRs #4273/#4275
+ *  per maintainer triage on adcp#4270. Description-only on the schemas,
+ *  no wire shape change.
  *
- *  Schema corpus remains vendored at 3.0.8 — 3.0.9 / 3.0.10 / 3.0.11
- *  made no schema changes (all storyboard / harness patches), so
- *  re-running scripts/vendor-adcp-schemas.mjs would produce a
- *  bit-identical tree with only the `$id` paths bumped. Re-vendor
- *  on the next spec release that actually touches schemas.
+ *  Schema corpus was vendored at 3.0.8 through this point — 3.0.9 /
+ *  3.0.10 / 3.0.11 were storyboard / harness / description-only and
+ *  didn't justify a re-vendor. 3.0.12 has real schema changes, so the
+ *  corpus and `src/schemas/adcp/index.ts` are refreshed in this PR.
  *
  *  3.0.8 (2026-05-08): conformance-harness fix — UUID-aliased
  *  idempotency_keys across 15 storyboard steps in 9 scenarios
@@ -75,7 +93,7 @@ export const ADCP_MAJOR_LINE = "3.0 GA";
  *  scripts/vendor-adcp-schemas.mjs; the trace inspector validates
  *  every payload against /schemas/<this-version>/ identifiers.
  */
-export const SPEC_VERSION = "3.0.11";
+export const SPEC_VERSION = "3.0.12";
 
 /** Composite label for UI display: "3.0 GA · 3.0.4". */
 export const SPEC_LABEL = ADCP_MAJOR_LINE + " · " + SPEC_VERSION;

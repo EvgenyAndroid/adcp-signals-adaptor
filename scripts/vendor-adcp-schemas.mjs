@@ -31,8 +31,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = dirname(__dirname);
 
 // Pin to a published AdCP spec release. Bump this constant + re-run
-// the script to refresh the vendored corpus.
-const ADCP_SPEC_VERSION = "3.0.8";
+// the script to refresh the vendored corpus. Should stay in lockstep
+// with src/constants/specVersion.ts:SPEC_VERSION — drift between the
+// two means /capabilities advertises one version while validators run
+// against another's schemas (the X-AdCP-Spec-Version header bug
+// surfaced in #253 was this drift in action).
+const ADCP_SPEC_VERSION = "3.0.12";
 
 const VENDOR_DIR = join(REPO_ROOT, "vendor", "adcp");
 const TGZ_PATH = join(VENDOR_DIR, `${ADCP_SPEC_VERSION}.tgz`);
@@ -69,7 +73,16 @@ function verifyTarball() {
 function extractTarball() {
   if (existsSync(SCHEMA_ROOT)) return;
   console.log(`[vendor-adcp-schemas] extracting ${TGZ_PATH} → ${VENDOR_DIR}`);
-  sh(`tar xzf "${TGZ_PATH}" -C "${VENDOR_DIR}"`);
+  // Use a working-directory swap instead of -C with absolute paths,
+  // because GNU tar on Windows (via Git Bash) mangles colon-prefixed
+  // Windows paths in two ways depending on the flags:
+  //   - Without --force-local: interprets `C:` as `host:path` (remote)
+  //   - With --force-local: still double-escapes backslashes when the
+  //     path crosses the cmd.exe → bash boundary via execSync
+  // Both problems vanish if neither tarball nor output dir argument
+  // carries an absolute Windows path. cd-then-tar with a relative
+  // tarball arg works cleanly on Windows AND POSIX.
+  sh(`cd "${VENDOR_DIR}" && tar xzf "${ADCP_SPEC_VERSION}.tgz"`);
 }
 
 fetchTarball();

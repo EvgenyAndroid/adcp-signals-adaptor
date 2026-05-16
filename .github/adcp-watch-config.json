@@ -47,6 +47,12 @@
       "number": 4288,
       "kind": "issue",
       "context": "Filed 2026-05-09 by @bokelley as the 4.0-milestoned structural follow-up after #4271 closed #4270. Drops `required: [\"authentication\"]` from reporting-webhook.json AND from the artifact_webhook block in create-media-buy-request.json (an extra surface beyond our original inventory, surfaced by upstream protocol-expert review during #4271). Schema descriptions already advertise the 4.0 behavior. Labels: claude-triaged, schema, needs-wg-review. Milestone: 4.0. Tracks our 9421-default opt-in path for both push-notification AND reporting webhooks — folds into trip-wire 3 of local issue #248 (item-3 migration). Drop after the 4.0 release lands or this issue is closed."
+    },
+    {
+      "repo": "adcontextprotocol/adcp",
+      "number": 4616,
+      "kind": "issue",
+      "context": "Filed 2026-05-16 by @bokelley as the umbrella framing for signal epistemic-model RFCs (#4472 PBA audience_model, #4475 structured market identifiers, @lszczesiak's ID-graph follow-up). Three cross-cutting decisions: D1 shared `{system, id, version?}` primitive vs per-dimension types; D2 vocabulary policy (adopt / carry by reference / accept fragmentation); D3 declarative-only vs attestation-capable. We posted implementer comment 4468154221 voting D1 shared primitive + offered to take a strawman draft-PR. Process proposal posted as comment 4468168781 — strawman by 2026-05-19, WG vote by 5/22, D1 in 3.1.x patch line by 5/28 (3.1.0 beta milestone due 5/29), row-level RFCs proceed in 4.0 against the decided shape, D2/D3 deferred to research-tier. Drop when D1 decision lands OR maintainer triages 'won't do for 3.1.x'."
     }
   ],
   "external_registries": [

@@ -1,12 +1,12 @@
 {
   "client_sdk": {
-    "package_name": "@adcp/client",
+    "package_name": "@adcp/sdk",
     "package_json_path": "package.json"
   },
   "secondary_sdks": [
     {
-      "package_name": "@adcp/sdk",
-      "context": "Renamed from @adcp/client at 5.23.0 (parallel-shipped through 5.25.1). 6.x onward is sdk-only — @adcp/client EOL at 5.25.1. Migration target: switch import in scripts/run-compliance.mjs + repin package.json. Watcher pings on every new release so we can audit before bumping."
+      "package_name": "@adcp/client",
+      "context": "Historical name — renamed to @adcp/sdk at 5.23.0 (parallel-shipped through 5.25.1). EOL at 5.25.1 as a separate package. Migration to @adcp/sdk@^7 completed in PR #257 (zod 3→4 alongside, since SDK 7.x peer-deps zod^4.1.5). Watcher keeps this entry to catch any unexpected republish (e.g. a security patch backport to the EOL line)."
     }
   ],
   "spec_repo": "adcontextprotocol/adcp",

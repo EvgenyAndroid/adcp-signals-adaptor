@@ -16,6 +16,7 @@
 // the updated file to deploy the new state to /capabilities.
 //
 // History (auto-prepended; manual entries also preserved across rewrites):
+//   2026-05-16 — auto-written by scripts/run-compliance.mjs (7/7 applicable, 32 skipped).
 //   2026-05-15 — auto-written by scripts/run-compliance.mjs (7/7 applicable, 32 skipped).
 //   2026-05-10 — auto-written by scripts/run-compliance.mjs (7/7 applicable, 32 skipped).
 //   2026-05-10 — bumped from 2026-05-08 in PR #249; introduced auto-write.
@@ -24,7 +25,7 @@
 
 export const COMPLIANCE_STATE = {
   /** ISO date (YYYY-MM-DD) of the last passing compliance run. */
-  last_run: "2026-05-15",
+  last_run: "2026-05-16",
 
   /** Scenario IDs that ran (i.e. were applicable to this agent's tool surface). */
   scenarios_run: [

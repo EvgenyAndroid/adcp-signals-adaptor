@@ -23,7 +23,7 @@ import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import pkg from "@adcp/client/testing";
+import pkg from "@adcp/sdk/testing";
 const { testAllScenarios, setAgentTesterLogger } = pkg;
 
 // Silence the runner's per-step `[INFO] Starting agent test {…}` chatter —
@@ -100,7 +100,7 @@ function findOrCreateTrackingIssue() {
   const seedBody = [
     "# AdCP Ecosystem Watcher",
     "",
-    "Automated daily monitor for the `@adcp/client` SDK, the AdCP spec, our tracked",
+    "Automated daily monitor for the `@adcp/sdk` SDK, the AdCP spec, our tracked",
     "upstream issues, and live compliance against the deployed adapter. Comments below",
     "are diff reports posted only when state changes — silence means nothing moved.",
     "",

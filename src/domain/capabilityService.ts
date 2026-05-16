@@ -386,7 +386,7 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       // regression).
       compliance: {
         spec_version: "adcp_3.0",
-        client_runner: "@adcp/client@5.25.1",
+        client_runner: "@adcp/sdk@7.5.0",
         last_run: COMPLIANCE_STATE.last_run,
         results: {
           applicable: COMPLIANCE_STATE.results.applicable,

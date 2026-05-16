@@ -51,12 +51,15 @@ function renderDevkitCode() {
   var origin = location.origin;
   var snippets = {
     typescript:
-      "// npm install @adcp/client\\n" +
-      "import { AdcpClient } from \\"@adcp/client\\";\\n" +
+      "// npm install @adcp/sdk\\n" +
+      "import { createSingleAgentClient } from \\"@adcp/sdk\\";\\n" +
       "\\n" +
-      "const client = new AdcpClient({\\n" +
-      "  endpoint: \\"" + origin + "/mcp\\",\\n" +
-      "  apiKey: process.env.ADCP_KEY!,  // bearer token\\n" +
+      "const client = createSingleAgentClient({\\n" +
+      "  id: \\"evgeny-signals\\",\\n" +
+      "  name: \\"Evgeny Signals Adaptor\\",\\n" +
+      "  agent_uri: \\"" + origin + "/mcp\\",\\n" +
+      "  protocol: \\"mcp\\",\\n" +
+      "  auth_token: process.env.ADCP_KEY!,  // bearer\\n" +
       "});\\n" +
       "\\n" +
       "const res = await client.getSignals({\\n" +

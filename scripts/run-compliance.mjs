@@ -1,6 +1,6 @@
 // scripts/run-compliance.mjs
-// Drives @adcp/client's compliance suite programmatically so we can pass a
-// `test_kit` — something the CLI (`npx @adcp/client storyboard run`) has no
+// Drives @adcp/sdk's compliance suite programmatically so we can pass a
+// `test_kit` — something the CLI (`npx @adcp/sdk storyboard run`) has no
 // flag for. Without the test_kit, security_baseline/oauth_discovery fires and
 // needs RFC 9728 protected-resource metadata we don't serve. With
 // `auth.api_key` + `probe_task: get_signals`, the runner takes the api-key
@@ -26,7 +26,10 @@
 //   API_KEY=... AGENT_URL=https://... node scripts/run-compliance.mjs --json
 //   node scripts/run-compliance.mjs --no-write    # read-only probe
 
-import pkg from "@adcp/client/testing";
+// Migrated from @adcp/client@5.25.1 → @adcp/sdk@^7 in PR #257. API surface
+// (testAllScenarios + formatSuiteResults*) and result shape unchanged across
+// the rename; only the package name + peer-dep zod^4 differ.
+import pkg from "@adcp/sdk/testing";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";

@@ -73,7 +73,7 @@
       "url": "https://agenticadvertising.org/api/registry/agents?capabilities=true",
       "agent_id_field": "url",
       "agent_summary_fields": ["name", "type"],
-      "context": "AAO official agent registry (https://agenticadvertising.org/registry/). Fires when agents are added, removed, or rename. Identity = agent URL (stable across renames; surfaces show the new name in the diff). Primary value: catch new ecosystem entrants without manual checks. As of 2026-05-04 the registry has 21 entries; we federate with ~6 of them via /agents/registry — when new agents appear we may want to add them to our local directory."
+      "context": "AAO official agent registry (https://agenticadvertising.org/registry/). Fires when agents are added, removed, or rename. Identity = agent URL (stable across renames; surfaces show the new name in the diff). Primary value: catch new ecosystem entrants without manual checks. As of 2026-05-17 the registry has 18 entries (was 21 on 2026-05-04; churn includes the Celtra trailing-slash dedup on 5/16). Type distribution: ~13 sales, 1 creative (Celtra), 1 buying (Swivel), 2 signals (us + Affinity Answers, added 2026-05-17). Affinity Answers (https://mcp.affinityanswers.com/mcp) is a pure-catalog signals provider — exposes only get_adcp_capabilities + get_signals, no activate_signal; data_provider_domains=[\"affinityanswers.com\"]; FastMCP-based; advertises a ui://signals/view.html MCP UI resource. Concrete D1 motivator: federation across two signals-only agents (us + AA) needs consistent reference-frame primitives, which is exactly what #4616's {system, value, version?} primitive provides. Federation candidate worth probing further if cross-agent signal search becomes a workshop priority."
     }
   ]
 }

@@ -28,19 +28,19 @@
       "repo": "adcontextprotocol/adcp",
       "number": 4009,
       "kind": "issue",
-      "context": "Filed 2026-05-03. Runner bug: signal_owned/activate_on_agent storyboard step omits required `destinations` and `idempotency_key` per /schemas/3.0.1/signals/activate-signal-request.json. Schema-conformant agents have no signal of intent (agent vs platform). Workshop-insurance defensive heuristic shipped in this repo (correlation_id parsing in src/mcp/server.ts:callActivateSignal — search 'REMOVE WHEN adcp#4009 ships'). When the storyboard fix ships and Addie's evaluator confirms badge issuance, REVERT the heuristic — restore the simpler 2-stage destinationType precedence."
+      "context": "Filed 2026-05-03. Runner bug: signal_owned/activate_on_agent storyboard step omits required `destinations` and `idempotency_key` per /schemas/3.0.1/signals/activate-signal-request.json. Schema-conformant agents have no signal of intent (agent vs platform). Workshop-insurance defensive heuristic shipped in this repo (correlation_id parsing in src/mcp/server.ts:callActivateSignal — search 'REMOVE WHEN adcp#4009 ships'). When the storyboard fix ships and Addie's evaluator confirms badge issuance, REVERT the heuristic — restore the simpler 2-stage destinationType precedence. Milestone: Evergreen (assigned 2026-05-17 by @bokelley) — not release-gated; fix lands whenever runner team gets to it."
     },
     {
       "repo": "adcontextprotocol/adcp",
       "number": 4205,
       "kind": "issue",
-      "context": "Filed 2026-05-07 via Addie. RFC 9421 webhook signing migration coordination. DEFERRED — blocked on #3064 (docs default to RFC 9421) + #3360 (grade tooling fails on HMAC-only). @bokelley reframed: 'the installed base of live buyer agents is ~empty right now' — it's an on-ramp problem, not migration. Original 80% threshold was meaningless against ~zero population. Right metric: 'no new HMAC implementers after date X', enforced via four on-ramp surfaces (docs / grade tooling / SDK ✓done / storyboards-untracked). Storyboard surface is the only piece without a tracker; we self-pledged to take it (see #4205 comment 4409426562). Resurfaces when #3064 + #3360 land. Discussion artifact: docs/DISCUSSION_SIGNAL_PAYMENTS.md v5."
+      "context": "Filed 2026-05-07 via Addie. RFC 9421 webhook signing migration coordination. DEFERRED — blocked on #3064 (docs default to RFC 9421) + #3360 (grade tooling fails on HMAC-only). @bokelley reframed: 'the installed base of live buyer agents is ~empty right now' — it's an on-ramp problem, not migration. Original 80% threshold was meaningless against ~zero population. Right metric: 'no new HMAC implementers after date X', enforced via four on-ramp surfaces (docs / grade tooling / SDK ✓done / storyboards-untracked). Storyboard surface is the only piece without a tracker; we self-pledged to take it (see #4205 comment 4409426562). Resurfaces when #3064 + #3360 land. Discussion artifact: docs/DISCUSSION_SIGNAL_PAYMENTS.md v5. Milestone: Evergreen (assigned 2026-05-17 by @bokelley) — not release-gated; continuous on-ramp metric. Practical implication for local issue #248 trip-wire 3 (\"4.0 lands and we have to do this anyway\"): 4.0 is no longer the explicit forcing function — the dependency surface is now milestone-less."
     },
     {
       "repo": "adcontextprotocol/adcp",
       "number": 4206,
       "kind": "issue",
-      "context": "Filed 2026-05-07 via Addie (Track A.0 JWKS adoption baseline gates signal-payment chain-of-custody work). DEFERRED — blocked on #4205. Same on-ramp reframe as #4205 applies: original 30% threshold was meaningless against ~zero population. Empirical adoption snapshot retained as named-partner inventory baseline for #3360, NOT as a WG-vote target. Resurfaces when #4205 resolves. Companion to docs/DISCUSSION_SIGNAL_PAYMENTS.md v5 + docs/SPEC_PROPOSAL_REVOKE_ACTIVATION.md."
+      "context": "Filed 2026-05-07 via Addie (Track A.0 JWKS adoption baseline gates signal-payment chain-of-custody work). DEFERRED — blocked on #4205. Same on-ramp reframe as #4205 applies: original 30% threshold was meaningless against ~zero population. Empirical adoption snapshot retained as named-partner inventory baseline for #3360, NOT as a WG-vote target. Resurfaces when #4205 resolves. Companion to docs/DISCUSSION_SIGNAL_PAYMENTS.md v5 + docs/SPEC_PROPOSAL_REVOKE_ACTIVATION.md. Milestone: Evergreen (assigned 2026-05-17 by @bokelley alongside #4205) — same continuous-adoption framing."
     },
     {
       "repo": "adcontextprotocol/adcp",

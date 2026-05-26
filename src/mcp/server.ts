@@ -700,6 +700,25 @@ async function callGetSignals(
     const cleanResponse: Record<string, unknown> = {
         signals: result.signals,
         pagination: paginationBlock,
+        // AdCP 3.1 added `cache_scope` as required on every get_signals
+        // response. Spec: "When the request did NOT include `account`, the
+        // agent MUST return `cache_scope: 'public'`. When the request
+        // included `account`, the agent MUST return either 'public' (this
+        // account prices off the public rate card — caller dedupes) or
+        // 'account' (account-specific overrides exist)."
+        //
+        // We have no account-overlay pricing — every signal in our catalog
+        // is on the public rate card regardless of caller — so we always
+        // return 'public'. Forward-compat with 3.1 (the field is required
+        // when schema validates against 3.1), back-compat with 3.0 (3.0
+        // schemas don't validate `cache_scope` so the extra field is
+        // permissive).
+        //
+        // Discovered via AAO registry grader marking us 'partial' on the
+        // signals track despite our internal 7.x SDK runs showing pass —
+        // 8.x runner + 3.1-beta schemas enforce this requirement that
+        // 7.x didn't surface.
+        cache_scope: "public" as const,
     };
     const proposals = (result as { proposals?: unknown[] }).proposals;
     if (proposals && proposals.length > 0) cleanResponse["proposals"] = proposals;

@@ -499,7 +499,7 @@ async function handleToolCall(
                 { status: "completed" },
                 conceptResult as Record<string, unknown>
             );
-            return toolResult(JSON.stringify(conceptResponse, null, 2), conceptResponse);
+            return toolResultJson(conceptResponse);
         }
         default:
             throw new McpToolError(`Tool not implemented: ${name}`);
@@ -540,7 +540,7 @@ async function callGetCapabilities(
     // structuredContent. Capability discovery is fully synchronous → completed.
     const response = withMcpEnvelope({ status: "completed" }, payload as Record<string, unknown>);
 
-    return toolResult(JSON.stringify(response, null, 2), response);
+    return toolResultJson(response);
 }
 
 async function callGetSignals(
@@ -781,7 +781,7 @@ async function callGetSignals(
     });
     await persistSignalTrace(env, _trace_get);
 
-    return toolResult(JSON.stringify(response, null, 2), response);
+    return toolResultJson(response);
 }
 
 async function callActivateSignal(
@@ -947,7 +947,7 @@ async function callActivateSignal(
         });
         await persistSignalTrace(env, _trace_act_ok);
 
-        return toolResult(JSON.stringify(specResponse, null, 2), specResponse);
+        return toolResultJson(specResponse);
     } catch (err) {
         // Sec-31x: Storyboard-safe unknown-signal handling.
         //
@@ -1122,7 +1122,7 @@ async function callActivateSignal(
                 duration_ms: Date.now() - _t0_activate,
             });
             await persistSignalTrace(env, _trace_act_synth);
-            return toolResult(JSON.stringify(syntheticResponse, null, 2), syntheticResponse);
+            return toolResultJson(syntheticResponse);
         }
         // Record the failure trace too — observability matters when
         // activation throws as much as when it succeeds.
@@ -1177,7 +1177,7 @@ async function callGetOperation(
             duration_ms: Date.now() - _t0,
         });
         await persistSignalTrace(env, _trace);
-        return toolResult(JSON.stringify(response, null, 2), response);
+        return toolResultJson(response);
     } catch (err) {
         const _trace = safeRecordSignalTrace({
             tool_name: "get_operation_status",
@@ -1271,7 +1271,7 @@ async function callGetSimilarSignals(
         result as Record<string, unknown>
     );
 
-    return toolResult(JSON.stringify(response, null, 2), response);
+    return toolResultJson(response);
 }
 
 async function callQuerySignalsNl(
@@ -1319,7 +1319,7 @@ async function callQuerySignalsNl(
     });
     await persistSignalTrace(env, _trace);
     if (structured && typeof structured === "object" && !Array.isArray(structured)) {
-        return toolResult(JSON.stringify(response, null, 2), response);
+        return toolResultJson(response);
     }
     return toolResult(text, structured);
 }
@@ -1355,25 +1355,6 @@ export function toolResult(text: string, structured?: unknown): unknown {
  * expectation: error responses are JSON-RPC SUCCESS with the failure surfaced
  * via MCP's `isError: true` flag + content carrying an `adcp_error` block.
  *
- * Shape:
- *   {
- *     content: [{ type: "text", text: JSON.stringify(structuredContent) }],
- *     isError: true,
- *     structuredContent: {
- *       status: "failed",
- *       adcp_version: "3.0",
- *       adcp_error: { code, message, recovery?, field?, details? },
- *       context?: <echoed buyer context>,
- *     }
- *   }
- *
- * Replaces the prior pattern of letting McpToolError bubble to a JSON-RPC
- * `error: {-32000, ...}` envelope. That shape worked for the SDK's
- * `testAllScenarios()` rubric but FAILS the `comply()` storyboards (the
- * runner AAO actually uses). Both `error_compliance_signals/validate_error_shape`
- * and `error_compliance_signals/validate_transport_binding` expect the
- * structured-success shape.
- *
  * `context` is echoed when present so buyer agents can correlate the
  * error to the originating request — `error_compliance_signals` also
  * checks `field_present: /context` for context round-trip.
@@ -1391,10 +1372,24 @@ export function toolError(
         structuredContent["context"] = context;
     }
     return {
-        content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+        content: [{ type: "text", text: JSON.stringify(structuredContent) }],
         isError: true,
         structuredContent,
     };
+}
+
+/**
+ * Build an MCP tool result from a structured JSON value, stringifying once
+ * compactly (no indent) for the content[].text mirror.
+ *
+ * Previously every call site did `toolResult(JSON.stringify(x, null, 2), x)`
+ * which (a) duplicated the stringify call, (b) inflated content[].text by
+ * ~30% via pretty-printing whitespace, and (c) pushed the get_signals
+ * response over the 64KB security_baseline/probe_api_key buffer in
+ * comply()'s grader (per the AAO regrade diagnostic, 2026-05-27).
+ */
+export function toolResultJson(structured: unknown): unknown {
+    return toolResult(JSON.stringify(structured), structured);
 }
 
 /**

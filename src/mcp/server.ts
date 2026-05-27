@@ -279,6 +279,36 @@ async function handleSingleMessage(
                             caller,
                         });
                     }
+                    // AdCP 3.1 transport binding: tool-level errors return as
+                    // JSON-RPC SUCCESS with isError:true in the result body, not
+                    // as JSON-RPC `error`. Per error_compliance_signals storyboard
+                    // (validate_transport_binding + validate_error_shape steps):
+                    // adcp_error.code must be a recognized AdCP code string AND
+                    // /context must echo back on errors too.
+                    if (err instanceof McpToolError) {
+                        const details = (err.details ?? {}) as Record<string, unknown>;
+                        const rawCode = details["code"];
+                        const code = typeof rawCode === "string" ? rawCode : "INTERNAL_ERROR";
+                        const adcpError: { code: string; message: string; recovery?: string; field?: string; details?: unknown; supported_major_versions?: number[] } = {
+                            code,
+                            message: err.message,
+                        };
+                        if (typeof details["recovery"] === "string") adcpError.recovery = details["recovery"] as string;
+                        if (typeof details["field"] === "string") adcpError.field = details["field"] as string;
+                        if (Array.isArray(details["supported_major_versions"])) adcpError.supported_major_versions = details["supported_major_versions"] as number[];
+                        // Preserve any other details (e.g. validation errors)
+                        // by attaching the original detail payload sans the
+                        // fields we've already lifted onto adcp_error.
+                        const knownKeys = new Set(["code", "recovery", "field", "supported_major_versions"]);
+                        const remainder: Record<string, unknown> = {};
+                        for (const [k, v] of Object.entries(details)) {
+                            if (!knownKeys.has(k)) remainder[k] = v;
+                        }
+                        if (Object.keys(remainder).length > 0) adcpError.details = remainder;
+                        const argObj = toolCallParams.arguments as Record<string, unknown> | undefined;
+                        const context = argObj && typeof argObj === "object" ? argObj["context"] : undefined;
+                        return rpcSuccess(id, toolError(adcpError, context));
+                    }
                     throw err;
                 }
             }
@@ -288,8 +318,16 @@ async function handleSingleMessage(
         }
     } catch (err) {
         if (id === undefined || id === null) return null;
+        // Tool-level errors are handled in the tools/call inner catch (they
+        // return MCP-style isError:true results, not JSON-RPC errors). This
+        // outer catch is for transport-level failures (invalid request,
+        // unknown method, unhandled exceptions outside tool dispatch).
+        // McpToolError shouldn't reach here in practice but keeping the
+        // branch for defensiveness — convert to MCP shape if it does.
         if (err instanceof McpToolError) {
-            return rpcError(id, MCP_TOOL_ERROR, err.message, err.details);
+            const details = (err.details ?? {}) as Record<string, unknown>;
+            const code = typeof details["code"] === "string" ? details["code"] as string : "INTERNAL_ERROR";
+            return rpcSuccess(id, toolError({ code, message: err.message }, undefined));
         }
         logger.error("mcp_unhandled_error", { method, error: String(err) });
         return rpcError(id, RPC_INTERNAL_ERROR, "Internal error");
@@ -978,7 +1016,16 @@ async function callActivateSignal(
             (p) => signalId.startsWith(p)
         );
         if (err instanceof NotFoundError && !isStoryboardFixture) {
-            throw new McpToolError(`Signal not found: ${signalId}`, { code: -32000 });
+            // AdCP spec error code for unresolvable references (per
+            // error_compliance_signals/nonexistent_signal storyboard).
+            // Previous `-32000` was the JSON-RPC transport code, not an
+            // AdCP error code — the compliance grader checks
+            // adcp_error.code against the spec enum.
+            throw new McpToolError(`Signal not found: ${signalId}`, {
+                code: "REFERENCE_NOT_FOUND",
+                recovery: "correctable",
+                field: "/signal_agent_segment_id",
+            });
         }
         if (err instanceof NotFoundError) {
             // Sec-31y: synthetic response MUST honor destinationType as
@@ -1181,7 +1228,11 @@ async function callGetSimilarSignals(
     const db = getDb(env);
 
     const refSignal = await findSignalById(db, signalId);
-    if (!refSignal) throw new McpToolError(`Signal not found: ${signalId}`);
+    if (!refSignal) throw new McpToolError(`Signal not found: ${signalId}`, {
+        code: "REFERENCE_NOT_FOUND",
+        recovery: "correctable",
+        field: "/signal_agent_segment_id",
+    });
 
     const { signals: allSignals } = await searchSignals(db, { limit: 200, offset: 0 });
     const candidates = allSignals.filter((s) => s.signalId !== signalId);
@@ -1315,6 +1366,54 @@ export function toolResult(text: string, structured?: unknown): unknown {
         result["structuredContent"] = structured;
     }
     return result;
+}
+
+/**
+ * Build the MCP-style error tool-result per AdCP 3.1 transport binding.
+ * Per the `error_compliance_signals` storyboard's `validate_transport_binding`
+ * expectation: error responses are JSON-RPC SUCCESS with the failure surfaced
+ * via MCP's `isError: true` flag + content carrying an `adcp_error` block.
+ *
+ * Shape:
+ *   {
+ *     content: [{ type: "text", text: JSON.stringify(structuredContent) }],
+ *     isError: true,
+ *     structuredContent: {
+ *       status: "failed",
+ *       adcp_version: "3.0",
+ *       adcp_error: { code, message, recovery?, field?, details? },
+ *       context?: <echoed buyer context>,
+ *     }
+ *   }
+ *
+ * Replaces the prior pattern of letting McpToolError bubble to a JSON-RPC
+ * `error: {-32000, ...}` envelope. That shape worked for the SDK's
+ * `testAllScenarios()` rubric but FAILS the `comply()` storyboards (the
+ * runner AAO actually uses). Both `error_compliance_signals/validate_error_shape`
+ * and `error_compliance_signals/validate_transport_binding` expect the
+ * structured-success shape.
+ *
+ * `context` is echoed when present so buyer agents can correlate the
+ * error to the originating request — `error_compliance_signals` also
+ * checks `field_present: /context` for context round-trip.
+ */
+export function toolError(
+    adcpError: { code: string; message: string; recovery?: string; field?: string; details?: unknown; supported_major_versions?: number[] },
+    context?: unknown,
+): unknown {
+    const structuredContent: Record<string, unknown> = {
+        status: "failed",
+        adcp_version: SERVED_ADCP_VERSION,
+        adcp_error: adcpError,
+    };
+    if (context !== undefined && context !== null && typeof context === "object" && !Array.isArray(context)) {
+        structuredContent["context"] = context;
+    }
+    return {
+        content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+        isError: true,
+        structuredContent,
+    };
 }
 
 /**

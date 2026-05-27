@@ -6,7 +6,12 @@
 //   * adcp_major_version in supported set ([3]) → ok
 //     Narrowed from [2, 3] -> [3] in PR #247 (v2 claim was paper-only).
 //   * adcp_major_version OUT of supported set → error with code
-//     VERSION_UNSUPPORTED in the JSON-RPC error.data
+//     VERSION_UNSUPPORTED — AdCP 3.1 transport binding (PR #263):
+//     returned as JSON-RPC SUCCESS with result.isError=true and
+//     result.structuredContent.adcp_error.code = "VERSION_UNSUPPORTED".
+//     Previously body.error.data.code (JSON-RPC error shape) — the
+//     `comply()` storyboard runner's validate_transport_binding step
+//     expects the isError-wrapped MCP shape, not JSON-RPC error.
 //   * Recovery carve-out: get_adcp_capabilities with unsupported
 //     version → still returns capabilities (so the buyer can discover
 //     the supported set and retry — the spec's documented recovery
@@ -33,7 +38,29 @@ function mcpReq(rpc: unknown, authHeader = `Bearer ${KEY}`): Request {
   });
 }
 
-async function call(req: Request): Promise<{ status: number; body: { id?: number; result?: unknown; error?: { code: number; message: string; data?: unknown } } }> {
+type McpResultBody = {
+  id?: number;
+  result?: {
+    isError?: boolean;
+    content?: unknown;
+    structuredContent?: {
+      status?: string;
+      adcp_version?: string;
+      adcp_error?: {
+        code?: string;
+        message?: string;
+        recovery?: string;
+        field?: string;
+        supported_major_versions?: number[];
+      };
+      context?: unknown;
+      [k: string]: unknown;
+    };
+  };
+  error?: { code: number; message: string; data?: unknown };
+};
+
+async function call(req: Request): Promise<{ status: number; body: McpResultBody }> {
   const res = await handleMcpRequest(req, env, logger);
   const text = await res.text();
   return { status: res.status, body: text ? JSON.parse(text) : {} };
@@ -61,6 +88,13 @@ describe("VERSION_UNSUPPORTED enforcement", () => {
     expect(body.result).toBeDefined();
   });
 
+  // Helper — extract adcp_error from the new MCP-style isError-wrapped result.
+  // PR #263 moved tool-level errors from JSON-RPC `error: {data: {...}}` to
+  // result.structuredContent.adcp_error per the AdCP 3.1 transport binding.
+  function adcpErrorOf(body: McpResultBody) {
+    return body.result?.structuredContent?.adcp_error;
+  }
+
   it("get_signals with adcp_major_version: 99 returns VERSION_UNSUPPORTED", async () => {
     const { body } = await call(mcpReq({
       jsonrpc: "2.0", id: 3, method: "tools/call",
@@ -69,14 +103,12 @@ describe("VERSION_UNSUPPORTED enforcement", () => {
         arguments: { signal_spec: "anything", adcp_major_version: 99 },
       },
     }));
-    expect(body.error).toBeDefined();
-    expect(body.error?.code).toBe(-32000); // MCP_TOOL_ERROR transport marker
-    expect(body.error?.message).toContain("VERSION_UNSUPPORTED" === "VERSION_UNSUPPORTED" ? "not supported" : "");
-    expect(body.error?.message).toContain("[3]");
-    // Spec error code travels in error.data per rpcError helper
-    const data = body.error?.data as { code?: string; supported_major_versions?: number[] };
-    expect(data?.code).toBe("VERSION_UNSUPPORTED");
-    expect(data?.supported_major_versions).toEqual([3]);
+    expect(body.error).toBeUndefined(); // AdCP 3.1: tool errors are JSON-RPC SUCCESS
+    expect(body.result).toBeDefined();
+    expect(body.result?.isError).toBe(true);
+    const adcp_error = adcpErrorOf(body);
+    expect(adcp_error?.code).toBe("VERSION_UNSUPPORTED");
+    expect(adcp_error?.supported_major_versions).toEqual([3]);
   });
 
   it("get_signals with adcp_major_version: 1 (below range) returns VERSION_UNSUPPORTED", async () => {
@@ -84,9 +116,8 @@ describe("VERSION_UNSUPPORTED enforcement", () => {
       jsonrpc: "2.0", id: 4, method: "tools/call",
       params: { name: "get_signals", arguments: { signal_spec: "anything", adcp_major_version: 1 } },
     }));
-    expect(body.error).toBeDefined();
-    const data = body.error?.data as { code?: string };
-    expect(data?.code).toBe("VERSION_UNSUPPORTED");
+    expect(body.result?.isError).toBe(true);
+    expect(adcpErrorOf(body)?.code).toBe("VERSION_UNSUPPORTED");
   });
 
   it("get_signals with adcp_major_version: 3 (in range) does NOT trip version check", async () => {
@@ -97,9 +128,8 @@ describe("VERSION_UNSUPPORTED enforcement", () => {
       jsonrpc: "2.0", id: 5, method: "tools/call",
       params: { name: "get_signals", arguments: { signal_spec: "anything", adcp_major_version: 3 } },
     }));
-    if (body.error) {
-      const data = body.error.data as { code?: string } | undefined;
-      expect(data?.code).not.toBe("VERSION_UNSUPPORTED");
+    if (body.result?.isError) {
+      expect(adcpErrorOf(body)?.code).not.toBe("VERSION_UNSUPPORTED");
     }
   });
 
@@ -108,9 +138,8 @@ describe("VERSION_UNSUPPORTED enforcement", () => {
       jsonrpc: "2.0", id: 6, method: "tools/call",
       params: { name: "get_signals", arguments: { signal_spec: "anything" } },
     }));
-    if (body.error) {
-      const data = body.error.data as { code?: string } | undefined;
-      expect(data?.code).not.toBe("VERSION_UNSUPPORTED");
+    if (body.result?.isError) {
+      expect(adcpErrorOf(body)?.code).not.toBe("VERSION_UNSUPPORTED");
     }
   });
 
@@ -122,9 +151,8 @@ describe("VERSION_UNSUPPORTED enforcement", () => {
         arguments: { signal_agent_segment_id: "sig_test", destinations: [{ type: "platform", platform: "mock_dsp" }], idempotency_key: "ik_smoke_aaaaaaaaaaaaaa", adcp_major_version: 4 },
       },
     }));
-    expect(body.error).toBeDefined();
-    const data = body.error?.data as { code?: string };
-    expect(data?.code).toBe("VERSION_UNSUPPORTED");
+    expect(body.result?.isError).toBe(true);
+    expect(adcpErrorOf(body)?.code).toBe("VERSION_UNSUPPORTED");
   });
 
   it("non-integer adcp_major_version (string '99') returns VERSION_UNSUPPORTED", async () => {
@@ -134,9 +162,8 @@ describe("VERSION_UNSUPPORTED enforcement", () => {
       jsonrpc: "2.0", id: 8, method: "tools/call",
       params: { name: "get_signals", arguments: { signal_spec: "anything", adcp_major_version: 3.5 } },
     }));
-    expect(body.error).toBeDefined();
-    const data = body.error?.data as { code?: string };
-    expect(data?.code).toBe("VERSION_UNSUPPORTED");
+    expect(body.result?.isError).toBe(true);
+    expect(adcpErrorOf(body)?.code).toBe("VERSION_UNSUPPORTED");
   });
 
   it("get_adcp_capabilities recovery error message tells buyer how to recover", async () => {
@@ -144,6 +171,6 @@ describe("VERSION_UNSUPPORTED enforcement", () => {
       jsonrpc: "2.0", id: 9, method: "tools/call",
       params: { name: "get_signals", arguments: { signal_spec: "anything", adcp_major_version: 99 } },
     }));
-    expect(body.error?.message).toContain("get_adcp_capabilities without adcp_major_version");
+    expect(adcpErrorOf(body)?.message).toContain("get_adcp_capabilities without adcp_major_version");
   });
 });

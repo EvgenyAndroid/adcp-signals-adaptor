@@ -1342,18 +1342,36 @@ export function toolResult(text: string, structured?: unknown): unknown {
  *   submitted | working | input-required | completed | canceled |
  *   failed | rejected | auth-required | unknown
  */
+/**
+ * Release-precision version negotiation echo per AdCP 3.1 spec
+ * (`version_negotiation/capabilities_advertise_and_echo` storyboard):
+ * every response envelope carries `adcp_version` declaring the release the
+ * seller actually served. SHOULD at 3.1, MUST at 4.0. Paired with
+ * `adcp.supported_versions` on the capabilities response body (the buyer
+ * pins against the array; the envelope confirms which one was served).
+ *
+ * We serve "3.0" today; bump to "3.1" alongside `supported_versions` when
+ * we re-vendor 3.1 GA and pass conformance.
+ */
+const SERVED_ADCP_VERSION = "3.0";
+
 function withMcpEnvelope(
     envelope: { status: string; task_id?: string; context_id?: string; message?: string },
     payload: Record<string, unknown>
 ): Record<string, unknown> {
-    const out: Record<string, unknown> = { status: envelope.status };
+    const out: Record<string, unknown> = {
+        status: envelope.status,
+        adcp_version: SERVED_ADCP_VERSION,
+    };
     if (envelope.task_id !== undefined) out["task_id"] = envelope.task_id;
     if (envelope.context_id !== undefined) out["context_id"] = envelope.context_id;
     if (envelope.message !== undefined) out["message"] = envelope.message;
     for (const [k, v] of Object.entries(payload)) {
         // Spread payload over envelope fields — payload wins on collision so
         // tools that legitimately surface their own status (e.g. get_operation_status)
-        // override the default.
+        // override the default. `adcp_version` is reserved envelope territory;
+        // payloads SHOULD NOT override it (the spec says the envelope echo is
+        // authoritative for what the seller served).
         out[k] = v;
     }
     return out;

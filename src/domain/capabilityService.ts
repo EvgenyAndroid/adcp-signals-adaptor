@@ -48,7 +48,12 @@
 // Bumps:
 //   v23 → previous baseline
 //   v24 → Sec-31v: added top-level `specialisms` for AAO badge issuance
-const CACHE_KEY_PREFIX = "adcp_capabilities_v24";
+//   v25 → added `adcp.supported_versions` (3.1 release-precision version
+//         negotiation, per the AAO `comply()` runner's
+//         `version_negotiation/capabilities_advertise_and_echo` storyboard).
+//         The cache-suffix derivation (SPEC_VERSION + last_run) wouldn't
+//         auto-invalidate a value-only field add, so we bump the prefix.
+const CACHE_KEY_PREFIX = "adcp_capabilities_v25";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
@@ -71,6 +76,16 @@ const VALID_PROTOCOLS = new Set([
 type AdcpCapabilities = {
   adcp: {
     major_versions: number[];
+    /**
+     * Release-precision version negotiation per AdCP 3.1
+     * (`version_negotiation/capabilities_advertise_and_echo` compliance
+     * storyboard). Array of release-precision strings (e.g. `["3.0"]`,
+     * `["3.0", "3.1"]`) declaring every release the seller speaks. SHOULD
+     * at 3.1, MUST at 4.0. Authoritative for buyer-side pinning. Strictly
+     * additive: `major_versions: [3]` stays as the 3.0-era surface; both
+     * fields co-exist. Buyers SHOULD prefer `supported_versions`.
+     */
+    supported_versions: string[];
     /**
      * Idempotency replay-window declaration. Required by the HEAD AdCP
      * capabilities schema (per upstream PR #2315 — the field landed without
@@ -127,6 +142,11 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       // after wiring real v2-shape handlers (currently no consumer
       // demand, since 3.0 GA shipped).
       major_versions: [3],
+      // Release-precision version negotiation per AdCP 3.1
+      // (`version_negotiation/capabilities_advertise_and_echo` storyboard).
+      // We advertise 3.0 today — when we re-vendor 3.1 GA and pass conformance,
+      // bump to ["3.0", "3.1"]. SHOULD at 3.1, MUST at 4.0.
+      supported_versions: ["3.0"],
       // HEAD schema models idempotency as a discriminated union keyed on
       // `supported`. The IdempotencySupported variant requires both
       // `supported: true` and `replay_ttl_seconds` (3600..604800 per spec).

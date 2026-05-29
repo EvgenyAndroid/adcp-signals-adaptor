@@ -13,12 +13,6 @@
   "tracking_issue_label": "adcp-watcher-tracker",
   "tracked_issues": [
     {
-      "repo": "adcontextprotocol/adcp",
-      "number": 2916,
-      "kind": "issue",
-      "context": "Q3 systemic FAIL→SKIP applicability bug, half-shipped 2026-04-30. Phase 1 (runner gate): adcp-client#1063 merged into @adcp/sdk 5.25.0+; runner now honors Storyboard.required_tools and emits clean skip_reason:'missing_tool' when no required tool is advertised. We're on 5.25.1 — already have it. Phase 2 (storyboard annotations, the remaining maintainer task): past_start_enforcement + peer media-buy storyboards still need required_tools:[create_media_buy,update_media_buy] in their YAML. Doesn't affect us — we're applicability-gated out of those storyboards via supported_protocols:[signals] before the tool gate fires. Status downgraded from needs-wg-review (bokelley, 2026-05-01); milestone still 3.1.0. Drop after phase 2 lands."
-    },
-    {
       "repo": "adcontextprotocol/adcp-client",
       "number": 1062,
       "kind": "issue",

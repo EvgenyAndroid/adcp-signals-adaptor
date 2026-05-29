@@ -53,7 +53,15 @@
 //         `version_negotiation/capabilities_advertise_and_echo` storyboard).
 //         The cache-suffix derivation (SPEC_VERSION + last_run) wouldn't
 //         auto-invalidate a value-only field add, so we bump the prefix.
-const CACHE_KEY_PREFIX = "adcp_capabilities_v25";
+//   v26 → REMOVED `adcp.supported_versions` (hotfix for badge loss on
+//         2026-05-29). The ["3.0"] value PR A added tripped AAO's
+//         3.1.0-beta.7 cache strict-incompatibility check and aborted
+//         the whole grading run, flipping verified:false. Without the
+//         field the runner falls back to major_versions: [3] and grades
+//         us with the latest 3.x cache (partial/silent on tracks, but
+//         GRADED → badge restored). Re-add `supported_versions:
+//         ["3.0", "3.1"]` only after conforming to 3.1 storyboards.
+const CACHE_KEY_PREFIX = "adcp_capabilities_v26";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
@@ -77,15 +85,20 @@ type AdcpCapabilities = {
   adcp: {
     major_versions: number[];
     /**
-     * Release-precision version negotiation per AdCP 3.1
-     * (`version_negotiation/capabilities_advertise_and_echo` compliance
-     * storyboard). Array of release-precision strings (e.g. `["3.0"]`,
-     * `["3.0", "3.1"]`) declaring every release the seller speaks. SHOULD
-     * at 3.1, MUST at 4.0. Authoritative for buyer-side pinning. Strictly
-     * additive: `major_versions: [3]` stays as the 3.0-era surface; both
-     * fields co-exist. Buyers SHOULD prefer `supported_versions`.
+     * NOTE: `supported_versions` (release-precision negotiation, 3.1) is
+     * intentionally OMITTED — PR A (#262) added it as `["3.0"]` and AAO's
+     * 3.1.0-beta.7 compliance grader treated that as "agent does not
+     * support 3.1 cache" and aborted ALL grading (verified flipped false,
+     * badge lost 2026-05-29 12:52Z). With the field absent the runner
+     * falls back to `major_versions: [3]` and grades us with the latest
+     * 3.x cache (partial/silent on some tracks, but graded → badge kept).
+     *
+     * Re-add `supported_versions: ["3.0", "3.1"]` ONLY after we conform
+     * to the 3.1 storyboards (PRs B/C/D + remaining gaps). Declaring 3.0
+     * alone is now operationally toxic — the 3.1.0-beta.7 cache strict-
+     * checks it. See watcher entry for #4288 + commit message of the
+     * hotfix that ships this for full context.
      */
-    supported_versions: string[];
     /**
      * Idempotency replay-window declaration. Required by the HEAD AdCP
      * capabilities schema (per upstream PR #2315 — the field landed without
@@ -142,11 +155,10 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       // after wiring real v2-shape handlers (currently no consumer
       // demand, since 3.0 GA shipped).
       major_versions: [3],
-      // Release-precision version negotiation per AdCP 3.1
-      // (`version_negotiation/capabilities_advertise_and_echo` storyboard).
-      // We advertise 3.0 today — when we re-vendor 3.1 GA and pass conformance,
-      // bump to ["3.0", "3.1"]. SHOULD at 3.1, MUST at 4.0.
-      supported_versions: ["3.0"],
+      // supported_versions intentionally OMITTED — see type def above.
+      // PR A's ["3.0"] declaration triggered AAO's 3.1.0-beta.7 cache to
+      // strict-abort the grading run, costing us the Verified badge on
+      // 2026-05-29. Re-add only once we conform to 3.1 storyboards.
       // HEAD schema models idempotency as a discriminated union keyed on
       // `supported`. The IdempotencySupported variant requires both
       // `supported: true` and `replay_ttl_seconds` (3600..604800 per spec).

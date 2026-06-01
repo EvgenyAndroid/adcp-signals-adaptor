@@ -36,7 +36,7 @@ const REPO_ROOT = dirname(__dirname);
 // two means /capabilities advertises one version while validators run
 // against another's schemas (the X-AdCP-Spec-Version header bug
 // surfaced in #253 was this drift in action).
-const ADCP_SPEC_VERSION = "3.0.12";
+const ADCP_SPEC_VERSION = "3.0.15";
 
 const VENDOR_DIR = join(REPO_ROOT, "vendor", "adcp");
 const TGZ_PATH = join(VENDOR_DIR, `${ADCP_SPEC_VERSION}.tgz`);

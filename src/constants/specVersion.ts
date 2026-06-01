@@ -93,7 +93,7 @@ export const ADCP_MAJOR_LINE = "3.0 GA";
  *  scripts/vendor-adcp-schemas.mjs; the trace inspector validates
  *  every payload against /schemas/<this-version>/ identifiers.
  */
-export const SPEC_VERSION = "3.0.12";
+export const SPEC_VERSION = "3.0.15";
 
 /** Composite label for UI display: "3.0 GA · 3.0.4". */
 export const SPEC_LABEL = ADCP_MAJOR_LINE + " · " + SPEC_VERSION;

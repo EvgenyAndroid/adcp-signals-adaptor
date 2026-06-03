@@ -52,11 +52,14 @@ describe("MCP tool definitions", () => {
     expect(getToolByName("generate_custom_signal")).toBeUndefined();
   });
 
-  it("activate_signal requires signal_agent_segment_id and deliver_to", () => {
+  it("activate_signal requires signal_agent_segment_id; accepts both destinations[] and deliver_to", () => {
     const tool = getToolByName("activate_signal")!;
     expect(tool.inputSchema.required).toContain("signal_agent_segment_id");
-    // Bug #10: required field is "deliver_to" (spec name), not "deployments" (old name)
-    expect(tool.inputSchema.required).toContain("deliver_to");
+    // deliver_to is now optional (back-compat) — spec-canonical callers use destinations[]
+    // Both are declared in the schema so the runner doesn't strip either.
+    expect(tool.inputSchema.properties).toHaveProperty("destinations");
+    expect(tool.inputSchema.properties).toHaveProperty("deliver_to");
+    expect(tool.inputSchema.properties).toHaveProperty("idempotency_key");
     expect(tool.inputSchema.required).not.toContain("deployments");
   });
 

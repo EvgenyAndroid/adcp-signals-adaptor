@@ -753,39 +753,24 @@ async function callActivateSignal(
     // whitelist check for agent activations (every signal MUST accept
     // type=agent per the AdCP signals spec).
     //
-    // Sec-31y: source-of-truth precedence is
+    // Sec-31y: source-of-truth precedence (2-stage) is
     //   1. firstEntry.type (destinations[0].type)  — canonical shape
     //   2. args.destinationType                    — top-level alias
-    //   3. correlation_id heuristic                — REMOVE WHEN adcp#4009 ships
-    //   4. default "platform"                      — backward-compat
+    //   → default "platform" — backward-compat
     //
-    // (2) was added when AAO's signal_owned storyboard turned out to
-    // sometimes send only the top-level field with no destinations
-    // array — without it, those requests fell through to "platform"
-    // even when the caller explicitly asked for agent.
+    // (2) covers callers that send only the top-level field with no
+    // destinations array — without it, those requests fall through to
+    // "platform" even when the caller explicitly asked for agent.
     //
-    // (3) — REMOVE WHEN adcp#4009 ships — workshop-insurance heuristic.
-    // The signal_owned storyboard's `activate_on_agent` step sends a
-    // request with NO destinations field (and no idempotency_key — both
-    // required per /schemas/3.0.x/signals/activate-signal-request.json).
-    // Filed as runner bug at https://github.com/adcontextprotocol/adcp/issues/4009.
-    // Until that ships, we fall back to parsing the storyboard's
-    // correlation_id ("signal_owned--activate_on_agent") to recover the
-    // intended destination type. This is non-portable and applies ONLY
-    // when destinations is absent + the correlation_id signals intent.
-    // Watch the AdCP daily watcher for issue #4009 closure → revert this
-    // block + restore the simpler 2-stage precedence above.
+    // The former stage-3 correlation_id heuristic (workshop insurance for
+    // runner bug adcp#4009, which omitted `destinations` on the
+    // signal_owned/activate_on_agent storyboard step) was removed
+    // 2026-06-03 after #4009 shipped: runner SDK 8.1.0-beta.13 now sends
+    // destinations[0].type + idempotency_key — verified live on the
+    // signal_owned/agent_activation scenario.
     const topLevelType = args["destinationType"] as string | undefined;
-    const correlationId = (args["context"] as Record<string, unknown> | undefined)?.["correlation_id"] as string | undefined;
-    const correlationHints = (() => {
-        if (raw !== undefined || topLevelType !== undefined) return undefined;
-        if (typeof correlationId !== "string") return undefined;
-        if (correlationId.includes("activate_on_agent")) return "agent" as const;
-        if (correlationId.includes("activate_on_platform")) return "platform" as const;
-        return undefined;
-    })();
     const destinationType: "platform" | "agent" =
-        firstType === "agent" || topLevelType === "agent" || correlationHints === "agent"
+        firstType === "agent" || topLevelType === "agent"
             ? "agent"
             : "platform";
 
@@ -824,11 +809,10 @@ async function callActivateSignal(
         const db = getDb(env);
         const result = await activateSignalService(db, env.SIGNALS_CACHE, req, logger);
 
-        // REMOVE WHEN adcp#4009 ships — when destinations is absent, the
-        // default mirrors destinationType (which the correlation_id heuristic
-        // above may have set to "agent"). Without this, real-signal requests
-        // with no destinations + agent intent would still emit a platform
-        // deployment.
+        // When `destinations` is absent (non-canonical / demo callers),
+        // synthesize a single deployment mirroring destinationType so the
+        // response still reflects agent-vs-platform intent. Canonical callers
+        // send `destinations`; this is the backward-compat fallback.
         const inputDeployments = Array.isArray(raw)
             ? (raw as Array<Record<string, unknown>>)
             : destinationType === "agent"

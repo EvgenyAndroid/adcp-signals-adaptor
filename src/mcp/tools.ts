@@ -261,9 +261,43 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                         "The signal to activate. From get_signals catalog or proposals array. " +
                         "Example: 'sig_high_income_households'",
                 },
+                // AdCP spec canonical top-level destinations array.
+                // The compliance runner (and spec-conformant buyers) send
+                // destinations[] directly at the top level. We also accept
+                // the legacy deliver_to.deployments nesting for back-compat
+                // with earlier callers — both are read in callActivateSignal.
+                destinations: {
+                    type: "array",
+                    description:
+                        "Spec-canonical activation targets. Each item is either " +
+                        "{ type: 'platform', platform: '...', account?: '...' } or " +
+                        "{ type: 'agent', agent_url: '...' }.",
+                    items: {
+                        type: "object",
+                        properties: {
+                            type: { type: "string", enum: ["platform", "agent"] },
+                            platform: { type: "string" },
+                            agent_url: { type: "string" },
+                            account: { type: "string" },
+                        },
+                        required: ["type"],
+                    },
+                },
+                // idempotency_key: required by the spec on every mutating
+                // tool. Declared here so the runner's field isn't stripped.
+                idempotency_key: {
+                    type: "string",
+                    description: "UUID v4 idempotency key. Reuse the same key on retries.",
+                },
+                // account: spec-level buyer account reference.
+                account: {
+                    type: "object",
+                    description: "Buyer account context (spec field — accepted and ignored for demo).",
+                    additionalProperties: true,
+                },
                 deliver_to: {
                     type: "object",
-                    description: "Required. Specifies where to activate the signal.",
+                    description: "Legacy nested shape — use destinations[] for new integrations.",
                     properties: {
                         deployments: {
                             type: "array",
@@ -304,7 +338,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                     description: "Optional notes about this activation.",
                 },
             },
-            required: ["signal_agent_segment_id", "deliver_to"],
+            required: ["signal_agent_segment_id"],
         },
         outputSchema: {
             type: "object",

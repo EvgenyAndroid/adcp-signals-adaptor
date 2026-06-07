@@ -33,7 +33,14 @@ import pkg from "@adcp/sdk/testing";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 const { testAllScenarios, formatSuiteResults, formatSuiteResultsJSON } = pkg;
+
+// The exact @adcp/sdk build that executes the suite. Captured here (not
+// hardcoded in capabilityService.ts) so /capabilities advertises the real
+// runner version and can never drift past a dependency bump.
+const require = createRequire(import.meta.url);
+const CLIENT_RUNNER = `@adcp/sdk@${require("@adcp/sdk/package.json").version}`;
 
 const AGENT_URL = process.env.AGENT_URL ?? "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp";
 const API_KEY = process.env.API_KEY ?? process.env.DEMO_API_KEY;
@@ -103,6 +110,10 @@ ${mergedHistory}
 export const COMPLIANCE_STATE = {
   /** ISO date (YYYY-MM-DD) of the last passing compliance run. */
   last_run: ${JSON.stringify(lastRun)},
+
+  /** The @adcp/sdk build that executed the suite, captured live by the
+   *  runner so /capabilities never advertises a stale runner version. */
+  client_runner: ${JSON.stringify(CLIENT_RUNNER)},
 
   /** Scenario IDs that ran (i.e. were applicable to this agent's tool surface). */
   scenarios_run: [

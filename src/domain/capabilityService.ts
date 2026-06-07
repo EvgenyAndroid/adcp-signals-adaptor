@@ -408,7 +408,7 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       // /capabilities (e.g. a HoldCo procurement check) sees the score
       // and the structural ceiling without needing to read SEC42_*.md.
       //
-      // `last_run` + counts + scenarios_run live in
+      // `last_run` + `client_runner` + counts + scenarios_run live in
       // src/constants/complianceState.ts and are auto-updated by
       // scripts/run-compliance.mjs on every passing run (PR #249). The
       // 5.25 runner restored error_handling / schema_compliance /
@@ -418,7 +418,7 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       // regression).
       compliance: {
         spec_version: "adcp_3.0",
-        client_runner: "@adcp/sdk@7.5.0",
+        client_runner: COMPLIANCE_STATE.client_runner,
         last_run: COMPLIANCE_STATE.last_run,
         results: {
           applicable: COMPLIANCE_STATE.results.applicable,

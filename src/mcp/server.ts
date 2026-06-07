@@ -550,6 +550,8 @@ async function callGetSignals(
     const _t0_get_signals = Date.now();
     const filters = args["filters"] as Record<string, unknown> | undefined;
     const pagination = args["pagination"] as Record<string, unknown> | undefined;
+    // adcp#5017: progressive-disclosure field selector. Absent → compact.
+    const fields = Array.isArray(args["fields"]) ? (args["fields"] as string[]) : undefined;
 
     // Sec-31w: AAO `signal_owned` storyboard's `filter_by_criteria` step
     // sends three filter keys we didn't previously honour:
@@ -633,6 +635,7 @@ async function callGetSignals(
             }
             return numArg(pagination?.["offset"], numArg(args["offset"], 0));
         })(),
+        ...(fields !== undefined ? { fields } : {}),
     };
 
     const db = getDb(env);

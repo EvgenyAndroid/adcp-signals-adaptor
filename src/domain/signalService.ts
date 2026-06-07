@@ -134,7 +134,7 @@ export async function searchSignalsService(
     });
   }
 
-  let summaries = toSignalSummaries(ranked);
+  let summaries = toSignalSummaries(ranked, req.fields);
 
   // Filter deployments by requested platforms. The request field is
   // `deployments` on SearchSignalsRequest (not `destinations` — that was

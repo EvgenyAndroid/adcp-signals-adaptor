@@ -72,7 +72,7 @@ import {
 async function loadCatalog(env: Env, _logger: Logger): Promise<SignalSummary[]> {
   const db = getDb(env);
   const { signals } = await searchSignals(db, { limit: 1000, offset: 0 });
-  return signals.map(toSignalSummary);
+  return signals.map((s) => toSignalSummary(s));
 }
 
 function indexById(catalog: SignalSummary[]): Map<string, SignalSummary> {

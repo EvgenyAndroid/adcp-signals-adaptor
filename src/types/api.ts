@@ -44,6 +44,10 @@ export interface SearchSignalsRequest {
   offset?: number;
   // AdCP brief — natural language, triggers custom segment proposals
   brief?: string;
+  // adcp#5017: progressive-disclosure field selector. When absent the response
+  // is compact (core fields only, no x_* extensions). Pass extension field
+  // names or "all" to include them inline.
+  fields?: string[];
 }
 
 export interface SearchSignalsResponse {

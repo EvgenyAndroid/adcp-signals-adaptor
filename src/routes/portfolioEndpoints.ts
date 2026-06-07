@@ -40,7 +40,7 @@ import {
 async function loadAllSignals(env: Env, _logger: Logger) {
   const db = getDb(env);
   const { signals } = await searchSignals(db, { limit: 1000, offset: 0 });
-  const summaries = signals.map(toSignalSummary);
+  const summaries = signals.map((s) => toSignalSummary(s));
   return { cats: signals, summaries };
 }
 

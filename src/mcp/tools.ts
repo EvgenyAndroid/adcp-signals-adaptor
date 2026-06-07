@@ -214,7 +214,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 },
                 max_results: {
                     type: "number",
-                    description: "Maximum number of signals to return. Default 20, max 100.",
+                    description: "Maximum number of signals to return. Default 5, max 100.",
                 },
                 pagination: {
                     type: "object",
@@ -222,6 +222,19 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                     properties: {
                         offset: { type: "number", description: "Pagination offset. Default 0." },
                         cursor: { type: "string", description: "Pagination cursor." },
+                        max_results: { type: "number", description: "Max results (preferred over top-level max_results)." },
+                    },
+                },
+                fields: {
+                    type: "array",
+                    description:
+                        "Extension fields to include inline. Omit for a compact discovery response " +
+                        "(core fields only). Use 'all' for everything, or name specific extensions: " +
+                        "'x_dts' (IAB DTS v1.2 label), 'x_ucp' (embedding/vector payload), " +
+                        "'x_cross_taxonomy' (cross-taxonomy bridge), 'x_analytics' (derived facets).",
+                    items: {
+                        type: "string",
+                        enum: ["x_dts", "x_ucp", "x_cross_taxonomy", "x_analytics", "all"],
                     },
                 },
             },

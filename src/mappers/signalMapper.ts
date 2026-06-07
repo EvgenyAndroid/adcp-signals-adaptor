@@ -282,7 +282,18 @@ export function buildDtsLabel(signal: CanonicalSignal): DtsV12Label {
 
 // ── Signal mapper ─────────────────────────────────────────────────────────────
 
-export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
+// adcp#5017: which x_* extension fields to include. Absent = compact (none).
+// "all" includes everything. Individual names are additive.
+const EXTENSION_FIELDS = ["x_dts", "x_ucp", "x_cross_taxonomy", "x_analytics"] as const;
+type ExtensionField = (typeof EXTENSION_FIELDS)[number];
+
+function wantField(field: ExtensionField, fields?: string[]): boolean {
+  if (fields === undefined) return false; // compact by default
+  if (fields.includes("all")) return true;
+  return fields.includes(field);
+}
+
+export function toSignalSummary(signal: CanonicalSignal, fields?: string[]): SignalSummary {
   const coveragePct = signal.estimatedAudienceSize
     ? Math.min(99, Math.round((signal.estimatedAudienceSize / TOTAL_ADDRESSABLE) * 100 * 10) / 10)
     : 0;
@@ -401,23 +412,33 @@ export function toSignalSummary(signal: CanonicalSignal): SignalSummary {
       : {}),
     ...(signal.geography ? { geography: signal.geography } : {}),
     status: signal.status,
-    x_dts: buildDtsLabel(signal),
-    x_ucp: toUcpHybridPayload(signal, buildDtsLabel(signal)),
-    x_cross_taxonomy: buildCrossTaxonomy(signal),
-    x_analytics: (() => {
-      // Sec-41: derived Tier 2/3 facets. All pure functions, deterministic.
-      const seasonality = deriveSeasonality(signal);
-      return {
-        seasonality,
-        decayHalfLifeDays: deriveDecayHalfLifeDays(signal),
-        volatilityIndex: deriveVolatilityIndex(seasonality),
-        authorityScore: deriveAuthorityScore(signal),
-        idStabilityClass: deriveIdStabilityClass(signal),
-      };
-    })(),
+    // adcp#5017: extension fields gated behind the `fields` selector.
+    // Default (fields=undefined) → compact response, no x_* inline.
+    ...(wantField("x_dts", fields) ? { x_dts: buildDtsLabel(signal) } : {}),
+    ...(wantField("x_ucp", fields)
+      ? { x_ucp: toUcpHybridPayload(signal, buildDtsLabel(signal)) }
+      : {}),
+    ...(wantField("x_cross_taxonomy", fields)
+      ? { x_cross_taxonomy: buildCrossTaxonomy(signal) }
+      : {}),
+    ...(wantField("x_analytics", fields)
+      ? {
+          x_analytics: (() => {
+            // Sec-41: derived Tier 2/3 facets. All pure functions, deterministic.
+            const seasonality = deriveSeasonality(signal);
+            return {
+              seasonality,
+              decayHalfLifeDays: deriveDecayHalfLifeDays(signal),
+              volatilityIndex: deriveVolatilityIndex(seasonality),
+              authorityScore: deriveAuthorityScore(signal),
+              idStabilityClass: deriveIdStabilityClass(signal),
+            };
+          })(),
+        }
+      : {}),
   };
 }
 
-export function toSignalSummaries(signals: CanonicalSignal[]): SignalSummary[] {
-  return signals.map(toSignalSummary);
+export function toSignalSummaries(signals: CanonicalSignal[], fields?: string[]): SignalSummary[] {
+  return signals.map((s) => toSignalSummary(s, fields));
 }

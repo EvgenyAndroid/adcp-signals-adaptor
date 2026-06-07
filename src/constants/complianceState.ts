@@ -30,6 +30,10 @@ export const COMPLIANCE_STATE = {
   /** ISO date (YYYY-MM-DD) of the last passing compliance run. */
   last_run: "2026-06-07",
 
+  /** The @adcp/sdk build that executed the suite, captured live by the
+   *  runner so /capabilities never advertises a stale runner version. */
+  client_runner: "@adcp/sdk@7.11.0",
+
   /** Scenario IDs that ran (i.e. were applicable to this agent's tool surface). */
   scenarios_run: [
     "capability_discovery",

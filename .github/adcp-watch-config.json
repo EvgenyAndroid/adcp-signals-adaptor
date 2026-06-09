@@ -35,6 +35,18 @@
       "number": 4288,
       "kind": "issue",
       "context": "Filed 2026-05-09 by @bokelley as the 4.0-milestoned structural follow-up after #4271 closed #4270. Drops `required: [\"authentication\"]` from reporting-webhook.json AND from the artifact_webhook block in create-media-buy-request.json (an extra surface beyond our original inventory, surfaced by upstream protocol-expert review during #4271). Schema descriptions already advertise the 4.0 behavior. Labels: claude-triaged, schema, needs-wg-review. Milestone: 4.0. Tracks our 9421-default opt-in path for both push-notification AND reporting webhooks — folds into trip-wire 3 of local issue #248 (item-3 migration). Drop after the 4.0 release lands or this issue is closed."
+    },
+    {
+      "repo": "adcontextprotocol/adcp",
+      "number": 5418,
+      "kind": "issue",
+      "context": "Filed 2026-06-08 by us (EvgenyAndroid). RFC: Runtime scope-binding attestation for signal activation and governed actions — a 3.1 signals+governance proposal adding per-invocation signal-quality attestation evidence to check_governance. Triaged by @bokelley 2026-06-08 (comment 4651062726): gap is real but the proposed ext.attestations[] placement is structurally wrong — ext is part of the plan_hash preimage, so per-invocation data invalidates every outstanding governance_context token on plan re-sync. Parked in Spec Backlog (milestone #9). WG decision pending between Option A (ext.attestations[], rejected) and Option B (first-class runtime_attestations[] field on the check_governance request — structurally sound, optional, back-compatible). Open blockers flagged by reviewers: two conflated concerns (signal quality vs delegation continuity, which delegations[] already covers), no attestation-provider registry ecosystem yet, unresolved new-MUST semantics. Resurfaces when @bokelley picks (A) a Governance WG design session for 3.1 alongside #2394/#2540, or (B) hold in backlog — or when a schema PR / WG decision lands. Labels: rfc, spec/protocol, signals, governance, needs-wg-review. Drop if closed not-planned."
+    },
+    {
+      "repo": "adcontextprotocol/adcp",
+      "number": 5429,
+      "kind": "issue",
+      "context": "Filed 2026-06-08 by us (EvgenyAndroid). BUG: AAO comply grader renders an all-pass run as Degraded for single-protocol (signals-only) agents — regression of our own #4065. Root cause (6-agent hunt, high confidence): PR #5328 (commit 162b72aa51, merged 2026-06-04T14:36Z) added a !hasCoverageGapSkip guard to effectiveRunStatus() in server/src/addie/services/compliance-testing.ts; skipReasonIsCoverageGap() classifies missing_test_controller as a coverage gap, so our core track (which skips the universal media-buy pagination storyboards that now carry requires:[controller]) sets has_coverage_gap_skip=true and blocks the pass->passing promotion -> partial -> degraded, despite core 13/13 + signals 9/9 all passing. Our agent is fully healthy (own SDK suite 7/7). Ask: exempt protocol-not-applicable / controller-gated skips from coverage-gap gating for single-protocol agents, OR add a passing-with-gaps state. Fires when fixed (badge re-clears to passing) or closed. Refs #5328 (cause), #4065 (prior art), #5343 (related UI). Drop when our badge returns to passing."
     }
   ],
   "external_registries": [

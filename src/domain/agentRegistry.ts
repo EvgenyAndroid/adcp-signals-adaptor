@@ -283,7 +283,7 @@ export const AGENT_REGISTRY: RegisteredAgent[] = [
     stage: "known_issue",
     role: "buying",
     protocols: ["adcp_3.0"],
-    notes: "Directory: type=sales (added 2026-05-08). Probe-untested in our federation flow; promote to stage:live once handshake confirmed.",
+    notes: "Directory: type=sales (added 2026-05-08). Probe-untested in our federation flow. REMOVED from the AAO directory 2026-06-11 (per AdCP daily watcher) — do NOT promote; entry kept for historical reference, candidate for deletion if it doesn't re-register.",
   },
   {
     id: "rediads",

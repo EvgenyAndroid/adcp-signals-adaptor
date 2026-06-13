@@ -184,13 +184,28 @@ async function buildNewState() {
     }
   }
 
-  // 3b. AdCP spec latest release
+  // 3b. AdCP spec latest release.
+  //     `/releases/latest` returns only the latest STABLE release — GitHub
+  //     excludes prereleases from that endpoint — so it sat at v3.0.15 and was
+  //     structurally blind to the entire 3.1.0-rc.* line (rc.10..rc.14 all
+  //     slipped past silently). Also track the latest PRERELEASE via `/releases`
+  //     (which DOES include prereleases, newest first) so each new RC fires a
+  //     state change. `latest_tag` keeps its stable-only meaning for callers.
   try {
-    const release = ghJson(`api repos/${config.spec_repo}/releases/latest`);
+    const stable = ghJson(`api repos/${config.spec_repo}/releases/latest`);
     newState.spec_release = {
-      latest_tag: release.tag_name,
-      published_at: release.published_at,
+      latest_tag: stable.tag_name,
+      published_at: stable.published_at,
     };
+    const all = ghJson(`api repos/${config.spec_repo}/releases?per_page=10`);
+    const newestPrerelease = Array.isArray(all)
+      ? all.find((r) => r.prerelease && !r.draft)
+      : null;
+    if (newestPrerelease && newestPrerelease.tag_name !== stable.tag_name) {
+      newState.spec_release.latest_prerelease_tag = newestPrerelease.tag_name;
+      newState.spec_release.latest_prerelease_published_at =
+        newestPrerelease.published_at;
+    }
   } catch (e) {
     newState.spec_release = { error: String(e.message ?? e) };
   }

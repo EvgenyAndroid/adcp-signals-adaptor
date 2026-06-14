@@ -14,6 +14,21 @@ export const ADCP_MAJOR_LINE = "3.0 GA";
 /** Specific spec patch version we're tested against. Bump on each
  *  successful conformance pass against a new patch.
  *
+ *  3.0.16 (2026-06-14): patch — ZERO source-schema change (git compare
+ *  v3.0.15...v3.0.16 touches no `schemas/source/*`; the 300-file diff is
+ *  `dist/` re-materialization). Content is compliance-storyboard
+ *  BACKPORTS to the 3.0.x line (idempotency webhook-placeholder,
+ *  past-start reject-or-adjust, initialized security-probe, RFC 9421
+ *  webhook-receiver-URL, media-buy state-transition false-failure fixes)
+ *  plus the proposal-finalize gate and TMP
+ *  `context-match-request.seller_agent_url`. All media-buy / security /
+ *  TMP — non-applicable to a signals-only agent; the backported
+ *  storyboard fixes only REDUCE false-failures. Our signals/core/protocol
+ *  wire surface is byte-identical to 3.0.15, so NO re-vendor: corpus +
+ *  ADCP_SPEC_VERSION stay at 3.0.15 (the same SPEC_VERSION-ahead-of-corpus
+ *  pattern used for 3.0.9–3.0.11). Re-verified live 7/7 before this bump.
+ *  (3.0.13–3.0.15 were folded into the prior bump; no per-patch notes.)
+ *
  *  3.0.12 (2026-05-13): two real schema changes (triggers re-vendor):
  *  (1) `account.supported_billing` gated by `media_buy` in
  *  `supported_protocols` via a root `allOf` if/then guard — relaxes
@@ -93,7 +108,7 @@ export const ADCP_MAJOR_LINE = "3.0 GA";
  *  scripts/vendor-adcp-schemas.mjs; the trace inspector validates
  *  every payload against /schemas/<this-version>/ identifiers.
  */
-export const SPEC_VERSION = "3.0.15";
+export const SPEC_VERSION = "3.0.16";
 
 /** Composite label for UI display: "3.0 GA · 3.0.4". */
 export const SPEC_LABEL = ADCP_MAJOR_LINE + " · " + SPEC_VERSION;

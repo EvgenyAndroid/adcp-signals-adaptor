@@ -14,6 +14,19 @@ export const ADCP_MAJOR_LINE = "3.0 GA";
 /** Specific spec patch version we're tested against. Bump on each
  *  successful conformance pass against a new patch.
  *
+ *  3.0.18 (2026-06-16): patch — same no-op as 3.0.16. `git compare
+ *  v3.0.16...v3.0.18` touches ZERO `schemas/source/*`. 3.0.17 + 3.0.18 are
+ *  compliance/storyboard false-failure fixes only: optional-tool
+ *  `requires_tool` skips now grade not_applicable instead of FAIL (same class
+ *  as our merged grader fix adcp#5429 — actively HELPS signals-only agents),
+ *  idempotency replay-key generation, webhook-URL-templating, and a
+ *  creative-preview skip fix. Wire surface byte-identical to 3.0.16; no
+ *  re-vendor (corpus + ADCP_SPEC_VERSION stay 3.0.15). Re-verified live 7/7.
+ *  POLICY (set here): the 3.0.x line now patches every 1–2 days with
+ *  storyboard-only / no-wire-change fixes. Do NOT bump SPEC_VERSION per
+ *  patch — bump only on a signals/core/protocol schema change, or to
+ *  batch-refresh occasionally. (3.0.17 skipped; folded into this bump.)
+ *
  *  3.0.16 (2026-06-14): patch — ZERO source-schema change (git compare
  *  v3.0.15...v3.0.16 touches no `schemas/source/*`; the 300-file diff is
  *  `dist/` re-materialization). Content is compliance-storyboard
@@ -108,7 +121,7 @@ export const ADCP_MAJOR_LINE = "3.0 GA";
  *  scripts/vendor-adcp-schemas.mjs; the trace inspector validates
  *  every payload against /schemas/<this-version>/ identifiers.
  */
-export const SPEC_VERSION = "3.0.16";
+export const SPEC_VERSION = "3.0.18";
 
 /** Composite label for UI display: "3.0 GA · 3.0.4". */
 export const SPEC_LABEL = ADCP_MAJOR_LINE + " · " + SPEC_VERSION;

@@ -153,19 +153,32 @@ function extractState(body) {
 async function buildNewState() {
   const newState = { last_check_utc: new Date().toISOString() };
 
-  // 3a. SDK pin vs latest published
+  // 3a. SDK pin vs the CONFORMANCE-CANONICAL dist-tags.
+  //     We deliberately do NOT track bare `latest`: it floats ahead on
+  //     dev-tooling point releases the deployed worker never imports (the
+  //     worker bundles vendored schemas — the SDK is only used by the
+  //     compliance runner), so `latest` churn (7.11.1→.2→.3 in three days)
+  //     was pure watcher noise. Track the `adcp-3.0` / `adcp-3.1` dist-tags
+  //     instead — the builds our storyboard suite actually grades against.
+  //     Fires only when a conformance build moves.
   const pkgJson = JSON.parse(readFileSync(config.client_sdk.package_json_path, "utf8"));
   const pin =
     pkgJson.devDependencies?.[config.client_sdk.package_name] ??
     pkgJson.dependencies?.[config.client_sdk.package_name] ??
     null;
-  let latest = null;
+  let distTags = null;
   try {
-    latest = JSON.parse(execSync(`npm view ${config.client_sdk.package_name} version --json`, { encoding: "utf8" }));
+    distTags = JSON.parse(execSync(`npm view ${config.client_sdk.package_name} dist-tags --json`, { encoding: "utf8" }));
   } catch (e) {
-    latest = { error: String(e.message ?? e) };
+    distTags = { error: String(e.message ?? e) };
   }
-  newState.client_sdk = { current_pin: pin, latest_published: latest };
+  newState.client_sdk = distTags?.error
+    ? { current_pin: pin, error: distTags.error }
+    : {
+        current_pin: pin,
+        conformance_3_0: distTags?.["adcp-3.0"] ?? null,
+        conformance_3_1: distTags?.["adcp-3.1"] ?? null,
+      };
 
   // 3a-bis. Secondary SDKs — packages we don't pin yet but want to watch
   // (e.g. @adcp/sdk while migrating off @adcp/client). Watcher pings on

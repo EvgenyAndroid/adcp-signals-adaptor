@@ -150,7 +150,7 @@ Trust IS the centerpiece here. This is where it can run.
 ### My adapter — concrete examples to pull up
 
 When I say "let me show you", I'm pulling up
-`https://adcp-signals-adaptor.evgeny-193.workers.dev/`. Here's what each
+`https://adcp.signal-stack.io/`. Here's what each
 tab demonstrates and the field-level talking points to make:
 
 - **Discover tab**: type a brief → fires `get_signals` → returns

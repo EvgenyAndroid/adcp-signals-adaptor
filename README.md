@@ -2,8 +2,8 @@
 
 A production-structured, AdCP 3.1-compliant Signals Provider built on Cloudflare Workers. Implements the full AdCP Signals Activation Protocol with IAB Data Transparency Standard v1.2 labeling, a UCP (User Context Protocol) embedding bridge, real OpenAI embedding vectors, a concept-level cross-taxonomy registry, natural language audience query, and a complete three-phase Vector Alignment Handshake — the first reference implementation combining the AdCP-UCP Bridge Profile with all UCP v0.2-draft extensions including GTS, Projector, and Handshake Simulator.
 
-**Live:** `https://adcp-signals-adaptor.evgeny-193.workers.dev`  
-**MCP:** `https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp`  
+**Live:** `https://adcp.signal-stack.io`  
+**MCP:** `https://adcp.signal-stack.io/mcp`  
 **GitHub:** `https://github.com/EvgenyAndroid/adcp-signals-adaptor`  
 **Trust model:** this is a single-operator demo — see [SECURITY_MODEL.md](SECURITY_MODEL.md) for the shared-LinkedIn-token constraint and when to revisit it.
 
@@ -154,7 +154,7 @@ Detailed protocol-level changes are in [docs/PROTOCOL_CHANGELOG.md](docs/PROTOCO
 Before two agents exchange embeddings they independently encode a shared concept-pair set and verify their vectors land in the same semantic neighbourhoods. This endpoint exposes the provider's GTS so a buyer agent can validate geometric + semantic compatibility before the VAC handshake.
 
 ```bash
-curl https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/gts \
+curl https://adcp.signal-stack.io/ucp/gts \
   | jq '{overall_pass, pass_rate, summary}'
 ```
 
@@ -185,7 +185,7 @@ Returns a 512×512 orthogonal rotation matrix mapping `openai-te3-small-d512-v1`
 > **API key:** gated routes require `Authorization: Bearer $DEMO_API_KEY`. Export the value you provisioned via `wrangler secret put DEMO_API_KEY` into your shell before running the examples below — e.g. `export DEMO_API_KEY=...`. The key is a Worker secret, not a checked-in constant.
 
 ```bash
-curl https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/projector \
+curl https://adcp.signal-stack.io/ucp/projector \
   -H "Authorization: Bearer $DEMO_API_KEY" \
   | jq '{from_space, to_space, status, anchor_count, signature}'
 ```
@@ -204,19 +204,19 @@ Accepts a buyer agent capability payload. Returns the negotiated outcome across 
 
 ```bash
 # Direct match
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/simulate-handshake \
+curl -X POST https://adcp.signal-stack.io/ucp/simulate-handshake \
   -H "Content-Type: application/json" \
   -d '{"buyer_space_ids":["openai-te3-small-d512-v1"],"buyer_ucp_version":"ucp-v1"}' \
   | jq '{outcome, matched_space}'
 
 # Projector path (different space)
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/simulate-handshake \
+curl -X POST https://adcp.signal-stack.io/ucp/simulate-handshake \
   -H "Content-Type: application/json" \
   -d '{"buyer_space_ids":["bert-base-uncased-v1"],"buyer_ucp_version":"ucp-v1"}' \
   | jq '{outcome, projector_endpoint, projector_status}'
 
 # Legacy fallback (incompatible version)
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/simulate-handshake \
+curl -X POST https://adcp.signal-stack.io/ucp/simulate-handshake \
   -H "Content-Type: application/json" \
   -d '{"buyer_space_ids":[],"buyer_ucp_version":"ucp-v0"}' \
   | jq '{outcome, fallback_mechanism}'
@@ -247,7 +247,7 @@ Every signal carries an `x_dts` object — IAB DTS v1.2 ("Privacy Update", April
   "x_dts": {
     "dts_version": "1.2",
     "provider_name": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
-    "provider_domain": "adcp-signals-adaptor.evgeny-193.workers.dev",
+    "provider_domain": "adcp.signal-stack.io",
     "provider_email": "evgeny@evgeny.dev",
     "audience_id": "sig_acs_graduate_high_income",
     "taxonomy_id_list": "11",
@@ -339,7 +339,7 @@ Every signal carries an `x_ucp` object — UCP HybridPayload per the AdCP-UCP Br
 ### GET /signals/:id/embedding
 
 ```bash
-curl https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/sig_drama_viewers/embedding \
+curl https://adcp.signal-stack.io/signals/sig_drama_viewers/embedding \
   -H "Authorization: Bearer $DEMO_API_KEY"
 ```
 
@@ -612,7 +612,7 @@ wrangler secret put TOKEN_ENCRYPTION_KEY
 # EMBEDDING_ENGINE = "llm"
 
 # Seed concept registry after deploy
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/concepts/seed \
+curl -X POST https://adcp.signal-stack.io/ucp/concepts/seed \
   -H "Authorization: Bearer $DEMO_API_KEY"
 ```
 

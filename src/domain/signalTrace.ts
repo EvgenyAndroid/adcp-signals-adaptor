@@ -112,7 +112,7 @@ export interface SignalTrace {
    *
    * - Outbound (federation): the URL we POSTed to (peer's /mcp endpoint).
    * - Inbound REST: our public URL for the matched route, e.g.
-   *   "https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/search".
+   *   "https://adcp.signal-stack.io/signals/search".
    * - Inbound MCP: our public /mcp endpoint URL.
    *
    * Surfacing this in the trace viewer answers "where did this request

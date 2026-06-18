@@ -31,7 +31,7 @@ If any fails: the worker rolled back, or a dependency drifted overnight. Fall ba
 
 ## T-60 minutes — visual smoke (the demo itself)
 
-Open https://adcp-signals-adaptor.evgeny-193.workers.dev/demo. Click through:
+Open https://adcp.signal-stack.io/demo. Click through:
 
 | Tab | What to verify | Time-box |
 |---|---|---|

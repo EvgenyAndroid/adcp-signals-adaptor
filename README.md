@@ -31,11 +31,11 @@ A production-structured, AdCP 3.1-compliant Signals Provider built on Cloudflare
 
 ## Protocol Compliance
 
-Implements AdCP Signals Activation Protocol v3.0 GA — 8 MCP tools. Capabilities response conforms to the [v3 schema](https://adcontextprotocol.org/schemas/v3/protocol/get-adcp-capabilities-response.json):
+Implements AdCP Signals Activation Protocol 3.1 GA — 8 MCP tools. Capabilities response conforms to the [v3 schema](https://adcontextprotocol.org/schemas/v3/protocol/get-adcp-capabilities-response.json):
 
 | Tool | Status | Notes |
 |---|---|---|
-| `get_adcp_capabilities` | ✅ | `adcp.major_versions: [2, 3]` + `supported_protocols: ["signals"]` + UCP block under `ext.ucp` + `adcp.idempotency.{supported, replay_ttl_seconds}` + `governance.mode` (advisory/audit/enforce). Accepts `protocols` filter param. |
+| `get_adcp_capabilities` | ✅ | `adcp.major_versions: [3]` + `adcp.supported_versions: ["3.0", "3.1"]` + `supported_protocols: ["signals"]` + UCP block under `ext.ucp` + `adcp.idempotency.{supported, replay_ttl_seconds}` + `governance.mode` (advisory/audit/enforce). Accepts `protocols` filter param. |
 | `get_signals` | ✅ | `signal_spec` + `deliver_to` (required) + relevance ranking + `x_dts` (with v3.0.1 `policy_attestations[]`) + `x_ucp` on every signal |
 | `activate_signal` | ✅ | `deliver_to` required. Async — returns `task_id + pending` immediately |
 | `get_operation_status` | ✅ | Aliases: `get_task_status`, `get_signal_status`. `destinations` field. |

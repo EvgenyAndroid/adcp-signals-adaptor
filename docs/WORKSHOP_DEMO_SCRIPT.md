@@ -1,7 +1,7 @@
 # AdCP Signals Workshop — Live Demo Script
 
 **For:** "Mini Governance & Signals Workshop — AAO" · May 7, 2026 · 9–12 NYC · iHeartMedia (in-person + remote)
-**Live reference:** https://adcp-signals-adaptor.evgeny-193.workers.dev/ → **Orchestrator** tab
+**Live reference:** https://adcp.signal-stack.io/ → **Orchestrator** tab
 **Companions:**
 - [WORKSHOP_BLOCK1_EXHIBITS.md](./WORKSHOP_BLOCK1_EXHIBITS.md) — signal-definition card, boundary diagram, trust contract strawman.
 - [WORKSHOP_PRE_FLIGHT.md](./WORKSHOP_PRE_FLIGHT.md) — morning-of runbook, smoke commands, anticipated Q&A.
@@ -187,16 +187,16 @@ For everything else (auth posture, real-time primitive, post-campaign feedback) 
 
 ```bash
 # Probe directory + per-agent tool surface
-curl -s https://adcp-signals-adaptor.evgeny-193.workers.dev/agents/probe-all \
+curl -s https://adcp.signal-stack.io/agents/probe-all \
   | jq '.alive_count, .results[] | {id, alive: .probe.alive, tools: (.probe.tools | length)}'
 
 # Run the workflow stream (one event per line)
-curl -s -N -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/agents/workflow/run/stream \
+curl -s -N -X POST https://adcp.signal-stack.io/agents/workflow/run/stream \
   -H "Content-Type: application/json" \
   -d '{"brief":"luxury travel APAC","timeout_ms":20000}'
 
 # Inspect the assembled create_media_buy payload (per-agent vendor adapter applied)
-curl -s -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/agents/workflow/fire-buy \
+curl -s -X POST https://adcp.signal-stack.io/agents/workflow/fire-buy \
   -H "Content-Type: application/json" \
   -d '{"agent_id":"adzymic_apx","product_id":"prod_X","signal_ids":["sig_X"],"format_ids":["fmt_X"],"brief":"demo"}' \
   | jq .

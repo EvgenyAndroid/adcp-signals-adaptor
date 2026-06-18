@@ -1,6 +1,6 @@
 # AdCP Signals Adaptor
 
-A production-structured, AdCP 3.0-rc-compliant Signals Provider built on Cloudflare Workers. Implements the full AdCP Signals Activation Protocol with IAB Data Transparency Standard v1.2 labeling, a UCP (User Context Protocol) embedding bridge, real OpenAI embedding vectors, a concept-level cross-taxonomy registry, natural language audience query, and a complete three-phase Vector Alignment Handshake — the first reference implementation combining the AdCP-UCP Bridge Profile with all UCP v0.2-draft extensions including GTS, Projector, and Handshake Simulator.
+A production-structured, AdCP 3.1-compliant Signals Provider built on Cloudflare Workers. Implements the full AdCP Signals Activation Protocol with IAB Data Transparency Standard v1.2 labeling, a UCP (User Context Protocol) embedding bridge, real OpenAI embedding vectors, a concept-level cross-taxonomy registry, natural language audience query, and a complete three-phase Vector Alignment Handshake — the first reference implementation combining the AdCP-UCP Bridge Profile with all UCP v0.2-draft extensions including GTS, Projector, and Handshake Simulator.
 
 **Live:** `https://adcp-signals-adaptor.evgeny-193.workers.dev`  
 **MCP:** `https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp`  
@@ -31,11 +31,11 @@ A production-structured, AdCP 3.0-rc-compliant Signals Provider built on Cloudfl
 
 ## Protocol Compliance
 
-Implements AdCP Signals Activation Protocol v3.0 GA — 8 MCP tools. Capabilities response conforms to the [v3 schema](https://adcontextprotocol.org/schemas/v3/protocol/get-adcp-capabilities-response.json):
+Implements AdCP Signals Activation Protocol 3.1 GA — 8 MCP tools. Capabilities response conforms to the [v3 schema](https://adcontextprotocol.org/schemas/v3/protocol/get-adcp-capabilities-response.json):
 
 | Tool | Status | Notes |
 |---|---|---|
-| `get_adcp_capabilities` | ✅ | `adcp.major_versions: [2, 3]` + `supported_protocols: ["signals"]` + UCP block under `ext.ucp` + `adcp.idempotency.{supported, replay_ttl_seconds}` + `governance.mode` (advisory/audit/enforce). Accepts `protocols` filter param. |
+| `get_adcp_capabilities` | ✅ | `adcp.major_versions: [3]` + `adcp.supported_versions: ["3.0", "3.1"]` + `supported_protocols: ["signals"]` + UCP block under `ext.ucp` + `adcp.idempotency.{supported, replay_ttl_seconds}` + `governance.mode` (advisory/audit/enforce). Accepts `protocols` filter param. |
 | `get_signals` | ✅ | `signal_spec` + `deliver_to` (required) + relevance ranking + `x_dts` (with v3.0.1 `policy_attestations[]`) + `x_ucp` on every signal |
 | `activate_signal` | ✅ | `deliver_to` required. Async — returns `task_id + pending` immediately |
 | `get_operation_status` | ✅ | Aliases: `get_task_status`, `get_signal_status`. `destinations` field. |

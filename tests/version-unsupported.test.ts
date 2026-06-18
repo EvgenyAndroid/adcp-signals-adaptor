@@ -173,4 +173,39 @@ describe("VERSION_UNSUPPORTED enforcement", () => {
     }));
     expect(adcpErrorOf(body)?.message).toContain("get_adcp_capabilities without adcp_major_version");
   });
+
+  // ── Release-precision pin (adcp_version, added in 3.1) ──────────────────
+  // Closes the live gap the 3.1 readiness audit found: adcp_version "4.0"
+  // returned status:completed while the deprecated integer pin
+  // adcp_major_version:9 was correctly rejected.
+
+  it("get_signals with adcp_version '4.0' (cross-major) returns VERSION_UNSUPPORTED", async () => {
+    const { body } = await call(mcpReq({
+      jsonrpc: "2.0", id: 10, method: "tools/call",
+      params: { name: "get_signals", arguments: { signal_spec: "anything", adcp_version: "4.0" } },
+    }));
+    expect(body.error).toBeUndefined();
+    expect(body.result?.isError).toBe(true);
+    expect(adcpErrorOf(body)?.code).toBe("VERSION_UNSUPPORTED");
+  });
+
+  it("get_signals with adcp_version '3.1' (supported release) does NOT trip version check", async () => {
+    const { body } = await call(mcpReq({
+      jsonrpc: "2.0", id: 11, method: "tools/call",
+      params: { name: "get_signals", arguments: { signal_spec: "anything", adcp_version: "3.1" } },
+    }));
+    if (body.result?.isError) {
+      expect(adcpErrorOf(body)?.code).not.toBe("VERSION_UNSUPPORTED");
+    }
+  });
+
+  it("get_signals with adcp_version '3.0' (still-supported release) does NOT trip version check", async () => {
+    const { body } = await call(mcpReq({
+      jsonrpc: "2.0", id: 12, method: "tools/call",
+      params: { name: "get_signals", arguments: { signal_spec: "anything", adcp_version: "3.0" } },
+    }));
+    if (body.result?.isError) {
+      expect(adcpErrorOf(body)?.code).not.toBe("VERSION_UNSUPPORTED");
+    }
+  });
 });

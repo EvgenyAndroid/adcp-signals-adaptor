@@ -9,10 +9,27 @@
 // new spec_release.latest_tag — post-workshop polish.
 
 /** Major-version line we conform to. Stable string for a long time. */
-export const ADCP_MAJOR_LINE = "3.0 GA";
+export const ADCP_MAJOR_LINE = "3.1 GA";
 
 /** Specific spec patch version we're tested against. Bump on each
  *  successful conformance pass against a new patch.
+ *
+ *  3.1.0 GA (2026-06-18): MINOR — promoted off the 3.0 line. AdCP 3.1
+ *  reached GA (stable tag v3.1.0; wire pin adcp_version "3.1"). Re-vendored
+ *  the corpus to v3.1.0 (ADCP_SPEC_VERSION + src/schemas/adcp/index.ts); the
+ *  3.1.0 release tgz keeps version-PREFIXED $ids (/schemas/3.1.0/...), so the
+ *  trace validator's INTERNAL_SCHEMA_PATHS (/schemas/${ADCP_SPEC_VERSION}/...)
+ *  resolves unchanged — no $id-plumbing change needed. Our live agent already
+ *  passed the v3.1.0 GA storyboard suite 7/7 (every schema-required signals
+ *  constraint — cache_scope, idempotency scoping, flat MCP envelope, required
+ *  item fields — satisfied before this bump). This PR also serves adcp_version
+ *  "3.1" (envelope echo), re-adds adcp.supported_versions ["3.0","3.1"] (now
+ *  safe: the 2026-05-29 badge-loss hotfix's documented re-add condition
+ *  "conform to 3.1 storyboards" is met), and rejects cross-major
+ *  release-precision adcp_version pins with VERSION_UNSUPPORTED (closes a live
+ *  gap where adcp_version "4.0" returned completed). Deferred optional polish:
+ *  in_flight_max_seconds, signals.discovery_modes, signal_ref, deeper
+ *  error.recovery fallback.
  *
  *  3.0.19 (2026-06-17): patch — same no-op as 3.0.16. `git compare
  *  v3.0.16...v3.0.19` touches ZERO `schemas/source/*`. 3.0.17–3.0.19 are
@@ -122,7 +139,7 @@ export const ADCP_MAJOR_LINE = "3.0 GA";
  *  scripts/vendor-adcp-schemas.mjs; the trace inspector validates
  *  every payload against /schemas/<this-version>/ identifiers.
  */
-export const SPEC_VERSION = "3.0.19";
+export const SPEC_VERSION = "3.1.0";
 
 /** Composite label for UI display: "3.0 GA · 3.0.4". */
 export const SPEC_LABEL = ADCP_MAJOR_LINE + " · " + SPEC_VERSION;

@@ -439,14 +439,33 @@ const SUPPORTED_MAJOR_VERSIONS: ReadonlyArray<number> = [3];
 function validateAdcpMajorVersion(toolName: string, args: Record<string, unknown>): void {
     // Recovery carve-out — see comment above.
     if (toolName === "get_adcp_capabilities") return;
+
+    // Deprecated integer pin (adcp_major_version). Honored through 3.x.
     const v = args["adcp_major_version"];
-    if (v === undefined || v === null) return; // omitted ⇒ seller's highest
-    const num = typeof v === "number" ? v : Number(v);
-    if (!Number.isInteger(num) || !SUPPORTED_MAJOR_VERSIONS.includes(num)) {
-        throw new McpToolError(
-            `adcp_major_version ${v} not supported. This seller supports: [${SUPPORTED_MAJOR_VERSIONS.join(", ")}]. Call get_adcp_capabilities without adcp_major_version to discover supported versions, then retry with a supported version.`,
-            { code: "VERSION_UNSUPPORTED", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS] },
-        );
+    if (v !== undefined && v !== null) {
+        const num = typeof v === "number" ? v : Number(v);
+        if (!Number.isInteger(num) || !SUPPORTED_MAJOR_VERSIONS.includes(num)) {
+            throw new McpToolError(
+                `adcp_major_version ${v} not supported. This seller supports: [${SUPPORTED_MAJOR_VERSIONS.join(", ")}]. Call get_adcp_capabilities without adcp_major_version to discover supported versions, then retry with a supported version.`,
+                { code: "VERSION_UNSUPPORTED", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS] },
+            );
+        }
+    }
+
+    // Release-precision pin (adcp_version, e.g. "3.1" / "4.0" — added in 3.1).
+    // Reject cross-MAJOR the same way the integer pin is rejected. Parses the
+    // leading major from "<major>.<minor>". Closes the live gap where
+    // adcp_version "4.0" returned `completed` while adcp_major_version:9 was
+    // correctly rejected. Omitted ⇒ seller serves its highest (SERVED_ADCP_VERSION).
+    const rel = args["adcp_version"];
+    if (rel !== undefined && rel !== null && rel !== "") {
+        const relMajor = parseInt(String(rel).split(".")[0] ?? "", 10);
+        if (!Number.isInteger(relMajor) || !SUPPORTED_MAJOR_VERSIONS.includes(relMajor)) {
+            throw new McpToolError(
+                `adcp_version ${rel} not supported. This seller supports releases 3.0 and 3.1 (major versions [${SUPPORTED_MAJOR_VERSIONS.join(", ")}]). Call get_adcp_capabilities to discover supported versions, then retry with a supported adcp_version.`,
+                { code: "VERSION_UNSUPPORTED", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS] },
+            );
+        }
     }
 }
 
@@ -1431,7 +1450,7 @@ export function toolResultJson(structured: unknown): unknown {
  * We serve "3.0" today; bump to "3.1" alongside `supported_versions` when
  * we re-vendor 3.1 GA and pass conformance.
  */
-const SERVED_ADCP_VERSION = "3.0";
+const SERVED_ADCP_VERSION = "3.1";
 
 function withMcpEnvelope(
     envelope: { status: string; task_id?: string; context_id?: string; message?: string },

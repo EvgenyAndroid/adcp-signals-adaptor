@@ -1,5 +1,7 @@
 # AdCP Signals Adaptor
 
+[![AAO Verified Signals Agent 3.0 (Spec)](https://agenticadvertising.org/api/registry/agents/https%3A%2F%2Fadcp.signal-stack.io%2Fmcp/badge/signals/3.0.svg)](https://agenticadvertising.org/registry/agents/https%3A%2F%2Fadcp.signal-stack.io%2Fmcp)
+
 A production-structured, AdCP 3.1-compliant Signals Provider built on Cloudflare Workers. Implements the full AdCP Signals Activation Protocol with IAB Data Transparency Standard v1.2 labeling, a UCP (User Context Protocol) embedding bridge, real OpenAI embedding vectors, a concept-level cross-taxonomy registry, natural language audience query, and a complete three-phase Vector Alignment Handshake — the first reference implementation combining the AdCP-UCP Bridge Profile with all UCP v0.2-draft extensions including GTS, Projector, and Handshake Simulator.
 
 **Live:** `https://adcp.signal-stack.io`  

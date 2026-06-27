@@ -587,6 +587,42 @@ export async function getAllSignalsForCatalog(db: DB): Promise<CatalogSignal[]> 
   }));
 }
 
+// ── AdCP 3.1 wholesale feed mirroring ─────────────────────────────────────────
+
+/** FNV-1a (32-bit) → 8-char hex. Same hash family used across the mock vendors. */
+function fnv1aHex(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+
+/**
+ * AdCP 3.1 wholesale feed mirroring: a deterministic version token over the
+ * full signal catalog. A buyer caches it from a get_signals response and passes
+ * it back as `if_wholesale_feed_version` for ETag-style conditional fetch — when
+ * it matches, the seller answers `unchanged: true` and skips the payload. The
+ * token rolls whenever a signal is added, removed, renamed, or re-sized, so it
+ * is a faithful catalog fingerprint (opaque to callers, per spec).
+ */
+/** Pure: deterministic feed token from a catalog snapshot. Order-independent. */
+export function feedTokenFor(
+  signals: Array<{ signalId: string; name: string; estimatedAudienceSize?: number | null }>,
+): string {
+  const material = signals
+    .map((s) => `${s.signalId}:${s.name}:${s.estimatedAudienceSize ?? 0}`)
+    .sort()
+    .join("|");
+  return `wf_${signals.length}_${fnv1aHex(material)}`;
+}
+
+export async function getWholesaleFeedVersion(db: DB): Promise<string> {
+  const { signals } = await searchSignals(db, { limit: 500, offset: 0 });
+  return feedTokenFor(signals);
+}
+
 /**
  * Infers dimension rules from signal IDs so the NL query resolver's
  * Pass 1 (exact rule match) fires correctly against the real D1 catalog.

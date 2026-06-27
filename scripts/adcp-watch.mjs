@@ -161,6 +161,11 @@ async function buildNewState() {
   //     was pure watcher noise. Track the `adcp-3.0` / `adcp-3.1` dist-tags
   //     instead — the builds our storyboard suite actually grades against.
   //     Fires only when a conformance build moves.
+  //     Post-GA (2026-06-26): upstream RETIRED the `adcp-3.1` parallel tag.
+  //     `latest` (9.x, GA) is now the canonical 3.1 conformance build, so
+  //     conformance_3_1 falls back to `latest` when `adcp-3.1` is absent —
+  //     otherwise it reads null forever and the 3.1 line goes untracked.
+  //     (Revisit if a future 4.0 line ever claims `latest`.)
   const pkgJson = JSON.parse(readFileSync(config.client_sdk.package_json_path, "utf8"));
   const pin =
     pkgJson.devDependencies?.[config.client_sdk.package_name] ??
@@ -177,7 +182,7 @@ async function buildNewState() {
     : {
         current_pin: pin,
         conformance_3_0: distTags?.["adcp-3.0"] ?? null,
-        conformance_3_1: distTags?.["adcp-3.1"] ?? null,
+        conformance_3_1: distTags?.["adcp-3.1"] ?? distTags?.["latest"] ?? null,
       };
 
   // 3a-bis. Secondary SDKs — packages we don't pin yet but want to watch

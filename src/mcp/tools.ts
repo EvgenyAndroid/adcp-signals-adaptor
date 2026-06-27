@@ -237,6 +237,14 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                         enum: ["x_dts", "x_ucp", "x_cross_taxonomy", "x_analytics", "all"],
                     },
                 },
+                if_wholesale_feed_version: {
+                    type: "string",
+                    description:
+                        "AdCP 3.1 wholesale feed mirroring. Echo the wholesale_feed_version " +
+                        "token from a prior response for ETag-style conditional fetch: if the " +
+                        "catalog is unchanged the response is { unchanged: true, signals: [] } " +
+                        "instead of the full payload.",
+                },
             },
             required: ["signal_spec", "deliver_to"],
         },

@@ -65,7 +65,10 @@
 //         promotion (2026-06-18). The v26 re-add condition is now met — the
 //         live agent passes the v3.1.0 GA storyboard suite 7/7. Prefix bump
 //         so the new field isn't served from a stale v26 blob.
-const CACHE_KEY_PREFIX = "adcp_capabilities_v27";
+//   v28 → added signals.discovery_modes ["brief","wholesale"] +
+//         signals.in_flight_max_seconds (3.1 wholesale-feed mirroring). Prefix
+//         bump so the new fields aren't served from a stale v27 blob.
+const CACHE_KEY_PREFIX = "adcp_capabilities_v28";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
@@ -247,6 +250,15 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       "temporal.volatility_index",
     ],
     signals: {
+      // AdCP 3.1 — declare the discovery enumeration modes we support:
+      // `brief` = NL/filter discovery via get_signals; `wholesale` = full
+      // catalog mirroring with a wholesale_feed_version token for ETag-style
+      // conditional fetch (if_wholesale_feed_version → unchanged:true).
+      discovery_modes: ["brief", "wholesale"],
+      // AdCP 3.1 — max wall-clock for an in-flight get_signals call. Our
+      // discovery is fully synchronous (one D1 query + map), so this is a
+      // conservative ceiling, not a typical latency.
+      in_flight_max_seconds: 30,
       // Sec-42: declare GA-required fields (additive; ext fields kept
       // for backward-compat + our own tooling).
       data_provider_domains: ["evgeny.dev"],

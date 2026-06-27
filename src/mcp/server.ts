@@ -24,7 +24,7 @@ import { findSignalById, searchSignals } from "../storage/signalRepo";
 import { createEmbeddingEngine } from "../ucp/embeddingEngine";
 import { cosineSimilarity } from "../domain/semanticResolver";
 import { toSignalSummary } from "../mappers/signalMapper";
-import { getAllSignalsForCatalog } from "../domain/signalService";
+import { getAllSignalsForCatalog, getWholesaleFeedVersion } from "../domain/signalService";
 import { handleNLQuery } from "../domain/nlQueryHandler";
 import { handleConceptToolCall } from "../domain/conceptHandler";
 import { compactObj } from "../utils/objects";
@@ -658,6 +658,39 @@ async function callGetSignals(
     };
 
     const db = getDb(env);
+
+    // AdCP 3.1 wholesale feed mirroring (ETag-style conditional fetch). A
+    // catalog-fingerprint token is emitted on every response; when the caller
+    // echoes a matching `if_wholesale_feed_version`, the catalog is unchanged
+    // since their last pull — answer `unchanged: true` and skip the (possibly
+    // large) payload entirely. Purely additive: 3.0 callers omit the field and
+    // always get the full response.
+    const wholesaleFeedVersion = await getWholesaleFeedVersion(db);
+    const ifWholesaleFeedVersion =
+        typeof args["if_wholesale_feed_version"] === "string"
+            ? (args["if_wholesale_feed_version"] as string)
+            : null;
+    if (ifWholesaleFeedVersion && ifWholesaleFeedVersion === wholesaleFeedVersion) {
+        const unchanged = withMcpEnvelope({ status: "completed" }, {
+            signals: [],
+            pagination: { has_more: false },
+            cache_scope: "public" as const,
+            wholesale_feed_version: wholesaleFeedVersion,
+            unchanged: true,
+        });
+        const _trace_unchanged = safeRecordSignalTrace({
+            tool_name: "get_signals",
+            direction: "inbound",
+            source: "mcp_external",
+            request_payload: args,
+            response_payload: unchanged,
+            response_status: "ok",
+            duration_ms: Date.now() - _t0_get_signals,
+        });
+        await persistSignalTrace(env, _trace_unchanged);
+        return toolResultJson(unchanged);
+    }
+
     // The compactObj-stripped req widens enum-typed fields (categoryType,
     // generationMode) to plain string. The runtime values are still the
     // canonical AdCP enum members — cast to satisfy the stricter typed
@@ -779,6 +812,9 @@ async function callGetSignals(
         // 8.x runner + 3.1-beta schemas enforce this requirement that
         // 7.x didn't surface.
         cache_scope: "public" as const,
+        // AdCP 3.1 wholesale feed mirroring — opaque catalog-version token the
+        // caller echoes as `if_wholesale_feed_version` for conditional fetch.
+        wholesale_feed_version: wholesaleFeedVersion,
     };
     const proposals = (result as { proposals?: unknown[] }).proposals;
     if (proposals && proposals.length > 0) cleanResponse["proposals"] = proposals;

@@ -691,11 +691,20 @@ async function callGetSignals(
         // which fails on KEY PRESENCE, so even `signals: []` violates it. Emitting
         // no signals key is what the wholesale-feed-signals/unchanged_probe
         // response_schema check validates.
+        //
+        // It MUST still echo the request's `context` block — the unchanged_probe
+        // step asserts `context.correlation_id` round-trips, same as the full
+        // response path below. The early return here skips that path, so echo it
+        // inline (opaque copy-through per /schemas/core/context.json).
+        const ctxEcho = args["context"];
         const unchanged = withMcpEnvelope({ status: "completed" }, {
             pagination: { has_more: false },
             cache_scope: "public" as const,
             wholesale_feed_version: wholesaleFeedVersion,
             unchanged: true,
+            ...(ctxEcho && typeof ctxEcho === "object" && !Array.isArray(ctxEcho)
+                ? { context: ctxEcho as Record<string, unknown> }
+                : {}),
         });
         const _trace_unchanged = safeRecordSignalTrace({
             tool_name: "get_signals",

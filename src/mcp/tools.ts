@@ -245,6 +245,14 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                         "catalog is unchanged the response is { unchanged: true, signals: [] } " +
                         "instead of the full payload.",
                 },
+                if_pricing_version: {
+                    type: "string",
+                    description:
+                        "AdCP 3.1 wholesale pricing-layer probe. Only valid alongside " +
+                        "if_wholesale_feed_version. This agent does not separate a pricing " +
+                        "layer — the wholesale_feed_version token covers both — so a standalone " +
+                        "if_pricing_version is rejected with INVALID_REQUEST.",
+                },
             },
             required: ["signal_spec", "deliver_to"],
         },

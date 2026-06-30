@@ -68,7 +68,12 @@
 //   v28 → added signals.discovery_modes ["brief","wholesale"] +
 //         signals.in_flight_max_seconds (3.1 wholesale-feed mirroring). Prefix
 //         bump so the new fields aren't served from a stale v27 blob.
-const CACHE_KEY_PREFIX = "adcp_capabilities_v28";
+//   v29 → added top-level `wholesale_feed_versioning: { supported: true }` to
+//         claim conditional-fetch capability credit (the get_signals handler
+//         already implements if_wholesale_feed_version + now rejects standalone
+//         if_pricing_version). cache_scope_account omitted (public-only). Prefix
+//         bump so the new field isn't served from a stale v28 blob.
+const CACHE_KEY_PREFIX = "adcp_capabilities_v29";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
@@ -123,6 +128,12 @@ type AdcpCapabilities = {
    */
   specialisms?: string[];
   signals?: unknown;
+  /**
+   * AdCP 3.1 conditional-fetch (if_wholesale_feed_version) capability. `supported`
+   * advertises ETag-style wholesale feed probes; `cache_scope_account` is omitted
+   * because we serve a single public layer (never emit cache_scope: 'account').
+   */
+  wholesale_feed_versioning?: unknown;
   media_buy?: unknown;
   governance?: unknown;
   sponsored_intelligence?: unknown;
@@ -249,6 +260,15 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       "temporal.decay_half_life",
       "temporal.volatility_index",
     ],
+    // AdCP 3.1 — advertise conditional-fetch support. The get_signals handler
+    // implements ETag-style wholesale feed probes (bootstrap mints a
+    // wholesale_feed_version token; a matching if_wholesale_feed_version returns
+    // unchanged:true with signals omitted, and a standalone if_pricing_version is
+    // rejected with INVALID_REQUEST). We serve a single public rate-card layer, so
+    // cache_scope_account is omitted (we never emit cache_scope: 'account'). This
+    // makes the wholesale-feed-signals conformance storyboard (gated on
+    // wholesale_feed_versioning.supported) applicable — we pass all three steps.
+    wholesale_feed_versioning: { supported: true },
     signals: {
       // AdCP 3.1 — declare the discovery enumeration modes we support:
       // `brief` = NL/filter discovery via get_signals; `wholesale` = full
@@ -759,6 +779,12 @@ export async function getCapabilities(
     // requested-protocols filter (the AAO badge runner reads it
     // independently of which protocol blocks are projected).
     ...(full.specialisms ? { specialisms: full.specialisms } : {}),
+    // wholesale_feed_versioning is a top-level, cross-cutting capability (it
+    // applies to get_signals AND get_products), not a per-protocol block — so
+    // it's always returned, regardless of the requested-protocols filter.
+    // Otherwise a `protocols: ["signals"]`-filtered probe would strip it and
+    // the wholesale-feed conformance storyboard would never see supported:true.
+    ...(full.wholesale_feed_versioning ? { wholesale_feed_versioning: full.wholesale_feed_versioning } : {}),
     ...(full.ext ? { ext: full.ext } : {}),
   };
   for (const key of PROTOCOL_BLOCK_KEYS) {

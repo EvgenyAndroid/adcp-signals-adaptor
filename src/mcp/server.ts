@@ -665,14 +665,33 @@ async function callGetSignals(
     // since their last pull — answer `unchanged: true` and skip the (possibly
     // large) payload entirely. Purely additive: 3.0 callers omit the field and
     // always get the full response.
-    const wholesaleFeedVersion = await getWholesaleFeedVersion(db);
     const ifWholesaleFeedVersion =
         typeof args["if_wholesale_feed_version"] === "string"
             ? (args["if_wholesale_feed_version"] as string)
             : null;
+    // `if_pricing_version` is only meaningful alongside `if_wholesale_feed_version`.
+    // We never emit a separate `pricing_version` (the catalog token covers both —
+    // the spec allows agents to "MAY use wholesale_feed_version for both"), so a
+    // standalone pricing probe is a malformed conditional fetch. Reject it per the
+    // wholesale-feed-signals/standalone_pricing_token_rejected conformance step.
+    const ifPricingVersion =
+        typeof args["if_pricing_version"] === "string"
+            ? (args["if_pricing_version"] as string)
+            : null;
+    if (ifPricingVersion && !ifWholesaleFeedVersion) {
+        throw new McpToolError(
+            "if_pricing_version is only valid alongside if_wholesale_feed_version",
+            { code: "INVALID_REQUEST", recovery: "correctable", field: "/if_pricing_version" },
+        );
+    }
+    const wholesaleFeedVersion = await getWholesaleFeedVersion(db);
     if (ifWholesaleFeedVersion && ifWholesaleFeedVersion === wholesaleFeedVersion) {
+        // The `unchanged: true` arm MUST omit the `signals` key entirely — the
+        // get-signals-response schema gates it with `not: { required: [signals] }`,
+        // which fails on KEY PRESENCE, so even `signals: []` violates it. Emitting
+        // no signals key is what the wholesale-feed-signals/unchanged_probe
+        // response_schema check validates.
         const unchanged = withMcpEnvelope({ status: "completed" }, {
-            signals: [],
             pagination: { has_more: false },
             cache_scope: "public" as const,
             wholesale_feed_version: wholesaleFeedVersion,

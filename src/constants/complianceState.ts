@@ -16,6 +16,7 @@
 // the updated file to deploy the new state to /capabilities.
 //
 // History (auto-prepended; manual entries also preserved across rewrites):
+//   2026-07-16 — auto-written by scripts/run-compliance.mjs (7/7 applicable, 32 skipped).
 //   2026-06-30 — auto-written by scripts/run-compliance.mjs (7/7 applicable, 32 skipped).
 //   2026-06-27 — auto-written by scripts/run-compliance.mjs (7/7 applicable, 32 skipped).
 //   2026-06-07 — auto-written by scripts/run-compliance.mjs (7/7 applicable, 32 skipped).
@@ -30,11 +31,11 @@
 
 export const COMPLIANCE_STATE = {
   /** ISO date (YYYY-MM-DD) of the last passing compliance run. */
-  last_run: "2026-06-30",
+  last_run: "2026-07-16",
 
   /** The @adcp/sdk build that executed the suite, captured live by the
    *  runner so /capabilities never advertises a stale runner version. */
-  client_runner: "@adcp/sdk@9.3.0",
+  client_runner: "@adcp/sdk@12.0.0",
 
   /** Scenario IDs that ran (i.e. were applicable to this agent's tool surface). */
   scenarios_run: [

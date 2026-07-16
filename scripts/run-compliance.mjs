@@ -29,11 +29,18 @@
 // Migrated from @adcp/client@5.25.1 → @adcp/sdk@^7 in PR #257. API surface
 // (testAllScenarios + formatSuiteResults*) and result shape unchanged across
 // the rename; only the package name + peer-dep zod^4 differ.
-import pkg from "@adcp/sdk/testing";
+//
+// Import shape: @adcp/sdk <=11 ships CJS only, where ESM interop exposes the
+// API as the namespace's `default`; @adcp/sdk >=12 ships a dual ESM build with
+// named exports and NO default. The namespace-import + `default ?? namespace`
+// fallback works on both, so ad-hoc re-verifies against newer SDKs
+// (npm install @adcp/sdk@latest --no-save) keep running without edits.
+import * as _testing from "@adcp/sdk/testing";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+const pkg = _testing.default ?? _testing;
 const { testAllScenarios, formatSuiteResults, formatSuiteResultsJSON } = pkg;
 
 // The exact @adcp/sdk build that executes the suite. Captured here (not

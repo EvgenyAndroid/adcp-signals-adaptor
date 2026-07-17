@@ -155,10 +155,49 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                         "Examples: 'high income households interested in luxury goods', " +
                         "'college-educated sci-fi fans aged 25-34', 'affluent cord cutters in top metros'.",
                 },
+                discovery_mode: {
+                    type: "string",
+                    enum: ["brief", "wholesale"],
+                    description:
+                        "Caller intent. 'brief' (default): semantic discovery via signal_spec / " +
+                        "signal_refs / signal_ids. 'wholesale': full priced-catalog mirroring with " +
+                        "wholesale_feed_version conditional fetch; lookup fields do not apply.",
+                },
+                signal_refs: {
+                    type: "array",
+                    minItems: 1,
+                    description:
+                        "AdCP 3.1 exact lookup: SignalRef objects (scope-discriminated — " +
+                        "product | data_provider | signal_source — each carrying signal_id). " +
+                        "Returns exact matches only; unknown refs yield an empty result, not an error. " +
+                        "Not valid in wholesale mode.",
+                    items: {
+                        type: "object",
+                        properties: {
+                            scope: { type: "string", enum: ["product", "data_provider", "signal_source"] },
+                            signal_id: { type: "string" },
+                        },
+                        required: ["signal_id"],
+                    },
+                },
                 signal_ids: {
                     type: "array",
-                    description: "Retrieve specific signals by ID instead of searching.",
-                    items: { type: "string" },
+                    minItems: 1,
+                    description:
+                        "DEPRECATED — use signal_refs. Legacy exact lookup: SignalId objects " +
+                        "({ id, ... }) per the spec; bare id strings also accepted for " +
+                        "backward compatibility. Exact matches only; unknown ids yield an " +
+                        "empty result.",
+                    items: {
+                        oneOf: [
+                            { type: "string" },
+                            {
+                                type: "object",
+                                properties: { id: { type: "string" } },
+                                required: ["id"],
+                            },
+                        ],
+                    },
                 },
                 deliver_to: {
                     type: "object",

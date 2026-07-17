@@ -23,7 +23,8 @@ import { requestId } from "../utils/ids";
 import { findSignalById, searchSignals } from "../storage/signalRepo";
 import { createEmbeddingEngine } from "../ucp/embeddingEngine";
 import { cosineSimilarity } from "../domain/semanticResolver";
-import { toSignalSummary } from "../mappers/signalMapper";
+import { toSignalSummary, toSignalSummaries } from "../mappers/signalMapper";
+import { getProposal } from "../storage/proposalCache";
 import { getAllSignalsForCatalog, getWholesaleFeedVersion } from "../domain/signalService";
 import { handleNLQuery } from "../domain/nlQueryHandler";
 import { handleConceptToolCall } from "../domain/conceptHandler";
@@ -562,6 +563,49 @@ async function callGetCapabilities(
     return toolResultJson(response);
 }
 
+// AdCP 3.1 exact lookup — extract the requested signal-id strings from
+// `signal_refs` (current surface: scope-discriminated SignalRef objects, all
+// variants carrying a `signal_id` string) and `signal_ids` (deprecated:
+// SignalId objects with `id`; legacy callers also send plain strings).
+// Liberal-in-what-we-accept: the first STRING-typed candidate wins — checked
+// in order signal_id, signal_id.id (a caller round-tripping one of OUR
+// response rows sends signal_id as the {source, agent_url, id} object, so the
+// nested id must be unwrapped, not skipped), id, signal_agent_segment_id.
+// Malformed entries are skipped; the caller still gets lookup semantics
+// (empty set) because the branch below gates on FIELD PRESENCE, not on how
+// many entries parsed. Scope qualifiers (data_provider_domain etc.) are
+// intentionally NOT enforced: a ref resolved against THIS agent is answered
+// from THIS agent's catalog, and an id that doesn't exist here simply
+// doesn't match.
+function extractRequestedSignalIds(args: Record<string, unknown>): string[] {
+    const out: string[] = [];
+    for (const key of ["signal_refs", "signal_ids"] as const) {
+        const arr = args[key];
+        if (!Array.isArray(arr)) continue;
+        for (const item of arr) {
+            if (typeof item === "string") {
+                if (item.length > 0) out.push(item);
+                continue;
+            }
+            if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+            const o = item as Record<string, unknown>;
+            const sid = o["signal_id"];
+            const nestedId =
+                sid && typeof sid === "object" && !Array.isArray(sid)
+                    ? (sid as Record<string, unknown>)["id"]
+                    : undefined;
+            const candidates = [sid, nestedId, o["id"], o["signal_agent_segment_id"]];
+            for (const c of candidates) {
+                if (typeof c === "string" && c.length > 0) {
+                    out.push(c);
+                    break;
+                }
+            }
+        }
+    }
+    return out;
+}
+
 async function callGetSignals(
     args: Record<string, unknown>,
     env: Env
@@ -719,11 +763,67 @@ async function callGetSignals(
         return toolResultJson(unchanged);
     }
 
+    // AdCP 3.1 exact lookup: `signal_refs` ("Returns exact matches for the
+    // requested SignalRef values") and deprecated `signal_ids`. Gated on FIELD
+    // PRESENCE (not extracted-id count) so a present-but-malformed lookup array
+    // still gets lookup semantics — signals: [] — instead of falling through to
+    // the browse page, which is precisely the unrelated-rows-mistaken-for-
+    // matches bug this branch exists to fix. Non-wholesale only: the spec's
+    // MUST-NOT binds the caller there, and the SDK's own wholesale storyboard
+    // sends a fallback signal_spec we must keep ignoring, so wholesale-mode
+    // arg handling stays untouched.
+    const lookupRequested =
+        args["discovery_mode"] !== "wholesale" &&
+        (Array.isArray(args["signal_refs"]) || Array.isArray(args["signal_ids"]));
+
     // The compactObj-stripped req widens enum-typed fields (categoryType,
     // generationMode) to plain string. The runtime values are still the
     // canonical AdCP enum members — cast to satisfy the stricter typed
     // signature on searchSignalsService.
-    const result = await searchSignalsService(db, env.SIGNALS_CACHE, req as SearchSignalsRequest);
+    const result = lookupRequested
+        ? await (async () => {
+            // Resolve each requested id DIRECTLY against D1 (findSignalById —
+            // the same resolution activate_signal uses), NOT via a catalog
+            // page: searchSignalsService clamps limit to MAX_LIMIT=100 and the
+            // deployed catalog is ~512 rows, so any paged fetch silently
+            // false-empties lookups for signals past the page. Per-id
+            // resolution has no ceiling and also finds brief-mode PROPOSAL
+            // signals that live only in KV until first activation (the
+            // getProposal fallback) — so discover-via-brief → confirm-via-ref
+            // → activate round-trips. Visibility rule preserved: D1 rows are
+            // returned only when status === "available", matching the search
+            // surface (signalRepo filters s.status = 'available'); ids that
+            // miss both stores simply don't match. Matches return in requested
+            // order, deduped; no-match → signals: [] (same empty-not-error
+            // contract as the Sec-31w filter pass). Combined with signal_spec,
+            // the ref matches are the anchored result set — the spec's
+            // "returned first" is trivially satisfied by returning exactly
+            // them.
+            const requestedIds = extractRequestedSignalIds(args);
+            const seen = new Set<string>();
+            const found: Awaited<ReturnType<typeof findSignalById>>[] = [];
+            for (const id of requestedIds) {
+                if (seen.has(id)) continue;
+                seen.add(id);
+                const sig = await findSignalById(db, id);
+                if (sig && sig.status === "available") {
+                    found.push(sig);
+                    continue;
+                }
+                const proposal = await getProposal(env.SIGNALS_CACHE, id);
+                if (proposal) found.push(proposal);
+            }
+            const matches = toSignalSummaries(
+                found.filter((s): s is NonNullable<typeof s> => s !== null),
+                fields
+            );
+            return {
+                signals: matches,
+                totalCount: matches.length,
+                hasMore: false,
+            } as Awaited<ReturnType<typeof searchSignalsService>>;
+        })()
+        : await searchSignalsService(db, env.SIGNALS_CACHE, req as SearchSignalsRequest);
 
     // Sec-31w: post-search filter pass for the storyboard filter keys
     // captured above. Each predicate is a no-op when its filter is null,

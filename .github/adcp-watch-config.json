@@ -10,6 +10,14 @@
     }
   ],
   "spec_repo": "adcontextprotocol/adcp",
+  "spec_schema_drift_dirs_context": "Directories tree-SHA-diffed between the latest stable spec tag and main, so the watcher reports WHICH files moved rather than only that a version shipped. Scoped to what a signals-only agent can be graded on: the signals request/response schemas, the shared core + protocol schemas they $ref, the signals scenario storyboards, and the universal storyboards every agent runs. Deliberately excludes media-buy / creative / brand / governance dirs — churn there is constant and cannot affect us. Reported drift is NOT automatically a problem: core/targeting.json and the universal contract docs change often for media-buy reasons. The watcher surfaces; a human judges.",
+  "spec_schema_drift_dirs": [
+    "static/schemas/source/signals",
+    "static/schemas/source/core",
+    "static/schemas/source/protocol",
+    "static/compliance/source/protocols/signals/scenarios",
+    "static/compliance/source/universal"
+  ],
   "tracking_issue_label": "adcp-watcher-tracker",
   "tracked_issues": [
     {

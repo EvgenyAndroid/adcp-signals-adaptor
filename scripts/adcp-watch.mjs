@@ -228,6 +228,59 @@ async function buildNewState() {
     newState.spec_release = { error: String(e.message ?? e) };
   }
 
+  // 3b-bis. Signals-relevant SCHEMA DRIFT: latest stable tag vs. main.
+  //
+  // The release check above sees THAT a version shipped; it cannot see WHAT
+  // changed inside it. That gap was live: v3.1.2→v3.1.4 looked identical at
+  // the version level while `signals/activate-signal-request.json` gained
+  // `governance_context`, and v3.1.5 relocated `retry_after` inside
+  // `protocol/get-adcp-capabilities-response.json` — both invisible here
+  // until diffed by hand.
+  //
+  // Method: per-directory tree-SHA listing, NOT the compare API. GitHub's
+  // `/compare/a...b` caps `files[]` at 300 and `--paginate` does not extend
+  // it; a v3.1.0→v3.1.1 audit returned exactly 300 entries and silently
+  // omitted the rest. Listing each directory's blob SHAs and diffing the
+  // lists has no such ceiling.
+  //
+  // Emits a sorted filename array per directory (empty = identical), so the
+  // generic state walker reports "core/targeting.json changed" in the issue
+  // comment. Known-benign churn still shows up — the point is visibility,
+  // and judging benign-vs-material is a human call, not the watcher's.
+  newState.spec_schema_drift = {};
+  const driftTag = newState.spec_release?.latest_tag;
+  if (driftTag) {
+    newState.spec_schema_drift.baseline_tag = driftTag;
+    for (const dir of config.spec_schema_drift_dirs ?? []) {
+      try {
+        const listing = (ref) => {
+          const rows = ghJson(
+            `api "repos/${config.spec_repo}/contents/${dir}?ref=${ref}"`
+          );
+          if (!Array.isArray(rows)) return null;
+          return new Map(rows.map((r) => [r.name, r.sha]));
+        };
+        const atTag = listing(driftTag);
+        const atMain = listing("main");
+        if (!atTag || !atMain) {
+          newState.spec_schema_drift[dir] = { error: "listing unavailable" };
+          continue;
+        }
+        const changed = [];
+        for (const [name, sha] of atMain) {
+          if (!atTag.has(name)) changed.push(`${name} (added on main)`);
+          else if (atTag.get(name) !== sha) changed.push(name);
+        }
+        for (const name of atTag.keys()) {
+          if (!atMain.has(name)) changed.push(`${name} (removed on main)`);
+        }
+        newState.spec_schema_drift[dir] = changed.sort();
+      } catch (e) {
+        newState.spec_schema_drift[dir] = { error: String(e.message ?? e) };
+      }
+    }
+  }
+
   // 3c. Tracked upstream issues / PRs
   newState.tracked_issues = {};
   for (const item of config.tracked_issues) {

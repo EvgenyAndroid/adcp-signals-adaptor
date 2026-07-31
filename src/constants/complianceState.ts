@@ -36,7 +36,7 @@ export const COMPLIANCE_STATE = {
 
   /** The @adcp/sdk build that executed the suite, captured live by the
    *  runner so /capabilities never advertises a stale runner version. */
-  client_runner: "@adcp/sdk@7.11.0",
+  client_runner: "@adcp/sdk@12.1.1",
 
   /** Scenario IDs that ran (i.e. were applicable to this agent's tool surface). */
   scenarios_run: [

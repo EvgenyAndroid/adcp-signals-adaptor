@@ -45,7 +45,11 @@ export const AGENT_REGISTRY: RegisteredAgent[] = [
     capabilities_url: SELF_URL + "/capabilities",
     stage: "live",
     role: "signals",
-    protocols: ["adcp_3.0", "ucp_0.2", "dts_1.2", "mcp_streamable_http"],
+    // Self-entry tracks the version we actually serve on the wire
+    // (adcp_version "3.1" since the 3.1 GA bump). Peer entries keep their
+    // as-observed protocol tags from the directory seed — we don't assert
+    // upgrades for agents we haven't re-probed.
+    protocols: ["adcp_3.1", "ucp_0.2", "dts_1.2", "mcp_streamable_http"],
     specialties: [
       "cross_taxonomy_bridge_9_systems",
       "ucp_embedding_live",

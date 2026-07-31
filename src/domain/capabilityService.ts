@@ -85,7 +85,14 @@ import { SPEC_VERSION } from "../constants/specVersion";
  *  client_runner is part of the suffix because last_run alone collides on
  *  same-day re-runs: on 2026-07-31 a 7.11.0-stamped run and its 12.1.1
  *  correction shared last_run, so the second deploy served the first's
- *  blob for up to CACHE_TTL_SECONDS. */
+ *  blob for up to CACHE_TTL_SECONDS.
+ *
+ *  Do not simplify this key. ext.compliance is informational today — no
+ *  buyer agent validates it and the registry crawler doesn't index it —
+ *  so a stale blob is "only" a wrong audit trail. The moment the registry
+ *  starts reading last_run / client_runner for verified-badge issuance,
+ *  serving a stale compliance block becomes a badge-accuracy bug, and
+ *  this key derivation is what prevents it. */
 const CACHE_KEY = `${CACHE_KEY_PREFIX}_${SPEC_VERSION}_${COMPLIANCE_STATE.last_run}_${COMPLIANCE_STATE.client_runner}`;
 
 const VALID_PROTOCOLS = new Set([

@@ -80,9 +80,13 @@ import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration
 import { COMPLIANCE_STATE } from "../constants/complianceState";
 import { SPEC_VERSION } from "../constants/specVersion";
 
-/** Cache key folds in the spec version + compliance-state pointer so any
- *  value-only refresh auto-invalidates without a manual prefix bump. */
-const CACHE_KEY = `${CACHE_KEY_PREFIX}_${SPEC_VERSION}_${COMPLIANCE_STATE.last_run}`;
+/** Cache key folds in the spec version + compliance-state pointers so any
+ *  value-only refresh auto-invalidates without a manual prefix bump.
+ *  client_runner is part of the suffix because last_run alone collides on
+ *  same-day re-runs: on 2026-07-31 a 7.11.0-stamped run and its 12.1.1
+ *  correction shared last_run, so the second deploy served the first's
+ *  blob for up to CACHE_TTL_SECONDS. */
+const CACHE_KEY = `${CACHE_KEY_PREFIX}_${SPEC_VERSION}_${COMPLIANCE_STATE.last_run}_${COMPLIANCE_STATE.client_runner}`;
 
 const VALID_PROTOCOLS = new Set([
   "media_buy",

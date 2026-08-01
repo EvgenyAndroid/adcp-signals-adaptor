@@ -23,7 +23,14 @@ import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import pkg from "@adcp/sdk/testing";
+// Import shape: @adcp/sdk <=11 ships CJS only, where ESM interop exposes the
+// API as the namespace's `default`; >=12 ships a dual ESM build with named
+// exports and NO default. The namespace-import + `default ?? namespace`
+// fallback works on both. run-compliance.mjs got this in PR #292; this file
+// has the same dependency and was missed there, so the ^7.11.0 -> ^12.1.1 pin
+// bump (a16b4ad) would have crashed the daily watcher on its next cron run.
+import * as _testing from "@adcp/sdk/testing";
+const pkg = _testing.default ?? _testing;
 const { testAllScenarios, setAgentTesterLogger } = pkg;
 
 // Silence the runner's per-step `[INFO] Starting agent test {…}` chatter —

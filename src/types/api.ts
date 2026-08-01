@@ -199,6 +199,14 @@ export interface ActivateSignalRequest {
   signalId: string;
   destination: string;
   /**
+   * SHA-256 hex of the canonical (sorted-key) JSON of the caller's RAW tool
+   * arguments, computed at the MCP boundary before destination
+   * normalization. Drives AdCP 3.1 IDEMPOTENCY_CONFLICT detection:
+   * same idempotency_key + different fingerprint = typed conflict,
+   * never a silent replay.
+   */
+  requestFingerprint?: string;
+  /**
    * Destination kind. Defaults to "platform" (the legacy behaviour and the
    * shape every existing test exercises). When set to "agent", the
    * destination is a sales-agent URL — those aren't in the signal's
@@ -248,6 +256,8 @@ export interface OperationRecord {
   operationId: string;
   signalId: string;
   destination: string;
+  /** See ActivateSignalRequest.requestFingerprint. Null on pre-0008 rows. */
+  requestFingerprint?: string;
   accountId?: string;
   campaignId?: string;
   webhookUrl?: string;

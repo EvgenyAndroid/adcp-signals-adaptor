@@ -13,6 +13,7 @@ import { getCapabilities } from "../domain/capabilityService";
 import { searchSignalsService } from "../domain/signalService";
 import {
     activateSignalService,
+    IdempotencyConflictError,
     getOperationService,
     NotFoundError,
     ValidationError,
@@ -970,6 +971,31 @@ async function callGetSignals(
     return toolResultJson(response);
 }
 
+/** Canonical (recursively sorted-key) JSON — stable across property order. */
+function stableStringify(value: unknown): string {
+    if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+    if (value && typeof value === "object") {
+        const entries = Object.entries(value as Record<string, unknown>)
+            .filter(([, v]) => v !== undefined)
+            .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+            .map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`);
+        return `{${entries.join(",")}}`;
+    }
+    return JSON.stringify(value);
+}
+
+/** SHA-256 hex of the canonical JSON of the caller's RAW tool arguments.
+ *  Computed BEFORE destination normalization/fallbacks so the idempotency
+ *  conflict check (AdCP 3.1: same key + different body = typed
+ *  IDEMPOTENCY_CONFLICT) compares what the caller actually sent — the
+ *  2026-07-31 hard-gate pilot test caught two different bodies collapsing
+ *  to one normalized destination and silently replaying. */
+async function requestFingerprint(args: Record<string, unknown>): Promise<string> {
+    const bytes = new TextEncoder().encode(stableStringify(args));
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 async function callActivateSignal(
     args: Record<string, unknown>,
     env: Env,
@@ -1041,7 +1067,10 @@ async function callActivateSignal(
             // before the spec settled.
             idempotencyKey: (args["idempotency_key"] ?? args["idempotencyKey"]) as string | undefined,
         }),
-    };
+    } as Parameters<typeof activateSignalService>[2];
+    if (req.idempotencyKey) {
+        req.requestFingerprint = await requestFingerprint(args);
+    }
 
     const validation = validateActivateRequest(req);
     if (!validation.ok) {
@@ -1175,6 +1204,17 @@ async function callActivateSignal(
         //
         // Validation errors (malformed request) still throw as before
         // — that's a caller bug, not an unknown signal.
+        if (err instanceof IdempotencyConflictError) {
+            // AdCP 3.1 idempotency contract: reused key + different body is
+            // a typed conflict, never a silent replay and never a second
+            // mutation. Return the original task_id as the recovery handle.
+            throw new McpToolError(err.message, {
+                code: "IDEMPOTENCY_CONFLICT",
+                recovery: "correctable",
+                field: "/idempotency_key",
+                original_task_id: err.originalOperationId,
+            });
+        }
         if (err instanceof ValidationError) {
             throw new McpToolError(err.message);
         }

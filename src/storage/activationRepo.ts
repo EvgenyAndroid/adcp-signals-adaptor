@@ -20,6 +20,7 @@ interface JobRow {
   completed_at: string | null;
   error_message: string | null;
   idempotency_key: string | null;
+  request_fingerprint: string | null;
 }
 
 function rowToOperation(row: JobRow): OperationRecord {
@@ -27,6 +28,7 @@ function rowToOperation(row: JobRow): OperationRecord {
     operationId: row.operation_id,
     signalId: row.signal_id,
     destination: row.destination,
+    ...(row.request_fingerprint ? { requestFingerprint: row.request_fingerprint } : {}),
     ...(row.account_id ? { accountId: row.account_id } : {}),
     ...(row.campaign_id ? { campaignId: row.campaign_id } : {}),
     status: row.status as OperationStatus,
@@ -52,14 +54,15 @@ export async function createActivationJob(
     notes?: string;
     webhookUrl?: string;
     idempotencyKey?: string;
+    requestFingerprint?: string;
   }
 ): Promise<void> {
   const now = new Date().toISOString();
   await execute(
     db,
     `INSERT INTO activation_jobs
-      (operation_id, signal_id, destination, account_id, campaign_id, notes, webhook_url, status, submitted_at, updated_at, idempotency_key)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      (operation_id, signal_id, destination, account_id, campaign_id, notes, webhook_url, status, submitted_at, updated_at, idempotency_key, request_fingerprint)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       job.operationId,
       job.signalId,
@@ -72,34 +75,31 @@ export async function createActivationJob(
       now,
       now,
       job.idempotencyKey ?? null,
+      job.requestFingerprint ?? null,
     ]
   );
 
   await appendEvent(db, job.operationId, "submitted", "Activation job submitted");
 }
 
-/**
- * Idempotency lookup: find an existing activation job that matches the
- * (idempotency_key, signal_id, destination) triple. Used by
- * activateSignalService to short-circuit duplicate requests with the
- * original task_id instead of creating a new row.
- *
- * Triple-key match (not key-only) prevents accidental cross-activation
- * collisions: a buyer who reuses the same key against a different
- * signal-or-destination tuple legitimately gets a fresh activation.
- */
+// AdCP 3.1: the idempotency key is the sole replay handle — lookup is
+// key-ONLY, and whether the reuse is a legitimate replay or an
+// IDEMPOTENCY_CONFLICT is decided by comparing request fingerprints in
+// the service layer (see activationService). The old (key, signal,
+// destination) triple-match could not see body differences that
+// normalize to the same destination, which a live hard-gate test caught
+// on 2026-07-31 as a silent replay-on-conflict.
 export async function findActivationByIdempotencyKey(
   db: DB,
   idempotencyKey: string,
-  signalId: string,
-  destination: string,
 ): Promise<OperationRecord | null> {
   const row = await queryFirst<JobRow>(
     db,
     `SELECT * FROM activation_jobs
-     WHERE idempotency_key = ? AND signal_id = ? AND destination = ?
+     WHERE idempotency_key = ?
+     ORDER BY submitted_at ASC
      LIMIT 1`,
-    [idempotencyKey, signalId, destination],
+    [idempotencyKey],
   );
   return row ? rowToOperation(row) : null;
 }

@@ -21,6 +21,18 @@
   "tracking_issue_label": "adcp-watcher-tracker",
   "tracked_issues": [
     {
+      "repo": "adcontextprotocol/adcp",
+      "number": 6093,
+      "kind": "pr",
+      "context": "geo_places PR (bokelley). ITS MERGE IS OUR TRIGGER: #5969 (our geo_cells RFC) is formally Blocked-on #6093 per bokelley's 2026-08-02 marker, with all four wire conventions aligned (URI system identity, uniform supported_resolutions, required_geo_targeting cell filter, verbatim accepted-state echo). When this PR's `merged` flips true, the next deliverable is OUR #5969 revision written against the landed conventions — plus the #6013 §14 and #6014 body updates queued behind it. Drop after the #5969 revision ships."
+    },
+    {
+      "repo": "adcontextprotocol/adcp",
+      "number": 5748,
+      "kind": "pr",
+      "context": "Our wholesale cache-scope-isolation storyboard PR (implements #5739, milestone 3.2.0, 29/29 green since 2026-06-28, bokelley acked 'ready for WG review when the 3.2.0 queue opens' on 2026-07-08). Fires on merge, close, new review, or label change. Drop after merge."
+    },
+    {
       "repo": "adcontextprotocol/adcp-client",
       "number": 1062,
       "kind": "issue",

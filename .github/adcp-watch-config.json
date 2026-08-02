@@ -51,6 +51,11 @@
       "context": "Filed 2026-06-08 by us (EvgenyAndroid). RFC: Runtime scope-binding attestation for signal activation and governed actions. 2026-06-11: @bokelley RETRACTED the triage's plan_hash-preimage objection (the check_governance request envelope is never hashed; the preimage rule applies to ext on the plan object) and gave WG design constraints: signal-quality ONLY (delegation-continuity covered by delegations[] + expires_at), first-class optional runtime_attestations[] on the request, signed JWS claims from the accepted_verifiers[] allowlist (creative-provenance pattern verbatim, NO free-form provider_ref), confidence 0-1 convention, get_adcp_capabilities discovery hint, target 3.2 (3.1 feature-complete). We posted the formal written RFC same day (comment 4680056151): new enums/signal-attestation-type.json, JWS typ adcp-runtime-attestation+jws with exp-claim expiry, positioned as the runtime complement to #5017's definition-time layer answering #4616 Decision 3. Resurfaces on WG review of the RFC, a milestone move to 3.2.0, or a schema PR referencing it. Labels: rfc, spec/protocol, signals, governance, needs-wg-review. Drop if closed not-planned. (History note: #5429 — our P0 grader-regression report — was fixed by our own merged PR #5444 on 2026-06-11 and dropped from this tracker once the badge re-cleared to passing.)"
     }
   ],
+  "contribution_page": {
+    "url": "https://nofluffadvisory.com/standards/adcp/",
+    "author": "EvgenyAndroid",
+    "context": "Parity check: every OPEN upstream issue/PR authored by `author` on spec_repo must be cited (linked) on this page's implementer-seat section. One-directional — the page may cite extra numbers (references, maintainer work) freely; only missing authored items count as drift. The page lives in the nofluffadvisory repo at src/pages/standards/adcp.astro. Added after #5739/#5748 (a Conformance-labelled contribution with a live implementation PR) silently missed the manual file-then-update-page routine."
+  },
   "external_registries": [
     {
       "name": "agenticadvertising_org",

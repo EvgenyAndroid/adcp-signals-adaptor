@@ -354,6 +354,47 @@ async function buildNewState() {
     }
   }
 
+  // 3c-ter. Contribution-page parity. Every OPEN upstream issue/PR authored
+  // by config.contribution_page.author on spec_repo must be cited (linked) on
+  // the public contributions page. One-directional by design: the page may
+  // cite extra numbers freely (references, maintainer-authored work) — only
+  // MISSING authored items are drift. Found live: #5739/#5748 (filed,
+  // implemented, triaged into 3.2.0) never made it onto the page because the
+  // manual file-RFC → update-page step got skipped for a "Conformance" issue
+  // that didn't match the RFC mental filter. This check replaces that memory
+  // dependence. Fires once when a new authored item is missing, and once more
+  // when the gap closes (missing list empties).
+  if (config.contribution_page?.url && config.contribution_page?.author) {
+    const cp = config.contribution_page;
+    try {
+      // The search API returns issues AND PRs (PRs carry a `pull_request` key).
+      const found = ghJson(
+        `api "search/issues?q=repo:${config.spec_repo}+author:${cp.author}+state:open&per_page=100"`
+      );
+      const authored = Array.isArray(found?.items) ? found.items : [];
+      const r = await fetch(cp.url, { headers: { Accept: "text/html" } });
+      if (!r.ok) throw new Error(`HTTP ${r.status} fetching ${cp.url}`);
+      const html = await r.text();
+      const cited = new Set();
+      const linkRe = new RegExp(
+        `${config.spec_repo.replace("/", "\\/")}\\/(?:issues|pull)\\/(\\d+)`,
+        "g"
+      );
+      let m;
+      while ((m = linkRe.exec(html)) !== null) cited.add(m[1]);
+      const missing = authored
+        .filter((it) => !cited.has(String(it.number)))
+        .map((it) => `#${it.number} (${it.pull_request ? "pr" : "issue"}) ${String(it.title).slice(0, 60)}`)
+        .sort();
+      newState.contribution_page = {
+        authored_open: authored.length,
+        missing_from_page: missing,
+      };
+    } catch (e) {
+      newState.contribution_page = { error: String(e?.message ?? e) };
+    }
+  }
+
   // 3d. Live compliance run
   if (process.env.API_KEY) {
     try {

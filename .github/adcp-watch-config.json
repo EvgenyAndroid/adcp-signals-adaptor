@@ -27,12 +27,6 @@
       "context": "geo_places PR (bokelley). ITS MERGE IS OUR TRIGGER: #5969 (our geo_cells RFC) is formally Blocked-on #6093 per bokelley's 2026-08-02 marker, with all four wire conventions aligned (URI system identity, uniform supported_resolutions, required_geo_targeting cell filter, verbatim accepted-state echo). When this PR's `merged` flips true, the next deliverable is OUR #5969 revision written against the landed conventions — plus the #6013 §14 and #6014 body updates queued behind it. Drop after the #5969 revision ships."
     },
     {
-      "repo": "adcontextprotocol/adcp",
-      "number": 5748,
-      "kind": "pr",
-      "context": "Our wholesale cache-scope-isolation storyboard PR (implements #5739, milestone 3.2.0, 29/29 green since 2026-06-28, bokelley acked 'ready for WG review when the 3.2.0 queue opens' on 2026-07-08). Fires on merge, close, new review, or label change. Drop after merge."
-    },
-    {
       "repo": "adcontextprotocol/adcp-client",
       "number": 1062,
       "kind": "issue",
@@ -60,7 +54,19 @@
       "repo": "adcontextprotocol/adcp",
       "number": 5418,
       "kind": "issue",
-      "context": "Filed 2026-06-08 by us (EvgenyAndroid). RFC: Runtime scope-binding attestation for signal activation and governed actions. 2026-06-11: @bokelley RETRACTED the triage's plan_hash-preimage objection (the check_governance request envelope is never hashed; the preimage rule applies to ext on the plan object) and gave WG design constraints: signal-quality ONLY (delegation-continuity covered by delegations[] + expires_at), first-class optional runtime_attestations[] on the request, signed JWS claims from the accepted_verifiers[] allowlist (creative-provenance pattern verbatim, NO free-form provider_ref), confidence 0-1 convention, get_adcp_capabilities discovery hint, target 3.2 (3.1 feature-complete). We posted the formal written RFC same day (comment 4680056151): new enums/signal-attestation-type.json, JWS typ adcp-runtime-attestation+jws with exp-claim expiry, positioned as the runtime complement to #5017's definition-time layer answering #4616 Decision 3. Resurfaces on WG review of the RFC, a milestone move to 3.2.0, or a schema PR referencing it. Labels: rfc, spec/protocol, signals, governance, needs-wg-review. Drop if closed not-planned. (History note: #5429 — our P0 grader-regression report — was fixed by our own merged PR #5444 on 2026-06-11 and dropped from this tracker once the badge re-cleared to passing.)"
+      "context": "Ours (EvgenyAndroid, filed 2026-06-08). RESTRUCTURED by bokelley 2026-08-04T04:30Z as part of the #4616 Decision-3 'attestation-capable' burst: renamed to '3.2: Runtime signal-quality attestations for check_governance', milestoned 3.2.0 (due 2026-08-31), and the ISSUE BODY was edited by bokelley (GraphQL userContentEdits confirms) to declare it a domain consumer of #4529's shared AttestationReference — our formal RFC comment 4680056151 (2026-06-11) stays 'the implementation starting point', with exactly two elements superseded: inline-JWS-only transport (reference-first now, JWS survives as one embedded-proof format) and per-governance-agent audience binding. Domain still owns: claim semantics (signal-quality vocabulary as NAMESPACED claim_type values, not a closed enum file), subject binding, runtime_attestations[] placement on check_governance, evaluator confidence 0-1 output, capability-hint placement. Implementation is GATED on #4529's schema landing (tracked separately). Resurfaces on WG review comments or a schema PR referencing it. Drop if closed not-planned. (History note: #5429 — our P0 grader-regression report — was fixed by our own merged PR #5444 on 2026-06-11 and dropped from this tracker once the badge re-cleared to passing.)"
+    },
+    {
+      "repo": "adcontextprotocol/adcp",
+      "number": 4529,
+      "kind": "issue",
+      "context": "bokelley's 'RFC: portable attestation references for cross-agent claims' — since the 2026-08-04 Decision-3 burst it OWNS the generic attestation primitive (presentation / credential / evaluation layers, reference-first resolution, verifier-of-record trust from the #6031 creative-provenance posture) that OUR #5418 must consume. Milestone 3.2.0 due 2026-08-31; design-deliverable-first per bokelley. Field names and proof formats explicitly deferred to schema review — that review is OUR window to propose the JWS profile (typ adcp-runtime-attestation+jws, kid/JWKS, exp) as an embedded-proof format and to carry the signal-quality claim vocabulary over as namespaced claim_type values. Fires on any comment, label/milestone change, close, or referencing schema PR. Drop when the shared schema merges and our #5418 revision against it ships."
+    },
+    {
+      "repo": "adcontextprotocol/adcp",
+      "number": 6126,
+      "kind": "issue",
+      "context": "bokelley's wholesale audience-evidence RFC (milestone 3.2.0, labels media-buy + signals). Watch reason is narrow: DR-0010 Decision 2 recommends Option B — a NEW audience-evidence-methodology.json so 'projected' is NOT added to signal-definition.json's methodology enum, leaving our served #5017 epistemic surface byte-unchanged. If Option A wins instead, or Decision 1 refactors signal-definition.json to $ref a shared core evidence object, our vendored schemas + AJV validation need a re-vendor. Evidence attestation composes with #4529 (attestation_refs[]), same primitive our #5418 consumes. Fires on comments / label / milestone / close. Drop once DR-0010 Decisions 1-2 are ratified with Option B shapes merged."
     }
   ],
   "contribution_page": {

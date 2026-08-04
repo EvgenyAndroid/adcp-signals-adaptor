@@ -146,6 +146,7 @@ export async function activateSignalService(
     operationId: opId,
     signalId: req.signalId,
     destination: req.destination,
+    submittedAt: now,
     ...(req.accountId !== undefined ? { accountId: req.accountId } : {}),
     ...(req.campaignId !== undefined ? { campaignId: req.campaignId } : {}),
     ...(req.notes !== undefined ? { notes: req.notes } : {}),

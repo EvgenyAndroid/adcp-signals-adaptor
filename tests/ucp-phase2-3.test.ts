@@ -236,7 +236,7 @@ describe("POST /ucp/simulate-handshake", () => {
     const res = await simulate(
       makeRequest({ buyer_space_ids: ["openai-te3-small-d512-v1"], buyer_ucp_version: "ucp-v1" })
     );
-    const data = await res.json();
+    const data = await res2json(res);
     expect(data.outcome).toBe("direct_match");
     expect(data.matched_space).toBe("openai-te3-small-d512-v1");
     expect(data.projector_endpoint).toBeNull();
@@ -247,7 +247,7 @@ describe("POST /ucp/simulate-handshake", () => {
     const res = await simulate(
       makeRequest({ buyer_space_ids: ["bert-base-uncased-v1"], buyer_ucp_version: "ucp-v1" })
     );
-    const data = await res.json();
+    const data = await res2json(res);
     expect(data.outcome).toBe("projector_required");
     expect(data.projector_endpoint).toBe("/ucp/projector");
     expect(data.projector_status).toBe("simulated");
@@ -258,7 +258,7 @@ describe("POST /ucp/simulate-handshake", () => {
     const res = await simulate(
       makeRequest({ buyer_space_ids: ["openai-te3-small-d512-v1"], buyer_ucp_version: "ucp-v0" })
     );
-    const data = await res.json();
+    const data = await res2json(res);
     expect(data.outcome).toBe("legacy_fallback");
     expect(data.fallback_mechanism).toBe("x_ucp.legacy_fallback.segment_ids");
     expect(data.fallback_example).not.toBeNull();
@@ -268,7 +268,7 @@ describe("POST /ucp/simulate-handshake", () => {
     const res = await simulate(
       makeRequest({ buyer_space_ids: [], buyer_ucp_version: "ucp-v0" })
     );
-    const data = await res.json();
+    const data = await res2json(res);
     expect(data.outcome).toBe("legacy_fallback");
   });
 
@@ -276,7 +276,7 @@ describe("POST /ucp/simulate-handshake", () => {
     const res = await simulate(
       makeRequest({ buyer_space_ids: ["openai-te3-small-d512-v1"], buyer_ucp_version: "ucp-v1" })
     );
-    const data = await res.json();
+    const data = await res2json(res);
     expect(Array.isArray(data.negotiation_trace)).toBe(true);
     expect(data.negotiation_trace.length).toBeGreaterThan(0);
   });
@@ -285,7 +285,7 @@ describe("POST /ucp/simulate-handshake", () => {
     const res = await simulate(
       makeRequest({ buyer_space_ids: ["bert-base-uncased-v1"], buyer_ucp_version: "ucp-v1" })
     );
-    const data = await res.json();
+    const data = await res2json(res);
     expect(data.seller_space_id).toBe("openai-te3-small-d512-v1");
     expect(data.gts_endpoint).toBe("/ucp/gts");
     expect(data.embedding_endpoint_template).toContain("/signals/");
@@ -309,7 +309,7 @@ describe("POST /ucp/simulate-handshake", () => {
         buyer_ucp_version: "ucp-v1",
       })
     );
-    const data = await res.json();
+    const data = await res2json(res);
     expect(data.outcome).toBe("direct_match");
   });
 });

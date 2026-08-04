@@ -64,6 +64,11 @@ function inferDataSources(signal: CanonicalSignal): DtsDataSource[] {
       result.add("Web Usage");
       result.add("App Behavior");
     }
+    // Federated publisher synaptic audiences — first-party reading behavior
+    // only, so Web Usage without App Behavior.
+    if (s.includes("synaptic")) {
+      result.add("Web Usage");
+    }
     if (s.includes("acr") || s.includes("ctv") || s.includes("stb")) {
       result.add("TV OTT or STB Device");
     }
@@ -109,6 +114,10 @@ function inferRefreshCadence(signal: CanonicalSignal): DtsRefreshCadence {
   if (sources.some((s) => s.includes("acr") || s.includes("ctv"))) return "Weekly";
   if (refs.some((r) => r.startsWith("ACS_")) || sources.some((s) => s.includes("census"))) return "Annually";
   if (sources.some((s) => s.includes("dma") || s.includes("nielsen"))) return "Annually";
+  // Synaptic federation re-syncs on the daily cron; membership itself is
+  // session-scoped (below DTS v1.2's floor — see the publisher catalog's
+  // session-precision proposal), so Daily is the honest ceiling here.
+  if (sources.some((s) => s.includes("synaptic"))) return "Daily";
   return "Static";
 }
 

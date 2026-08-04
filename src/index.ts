@@ -148,6 +148,7 @@ import {
 } from "./routes/wellKnown";
 import { handleAdAgents, handleAdagentsProbe } from "./routes/adagents";
 import { handleAdminReseed } from "./routes/adminReseed";
+import { handleAdminSyncSynaptic, runSynapticSync } from "./routes/adminSyncSynaptic";
 import { handleAdminPurge } from "./routes/adminPurge";
 import { runScheduledPurge } from "./storage/scheduledPurge";
 import { runRegistrySyncDiff, getLastDiffReport } from "./domain/registrySync";
@@ -860,6 +861,14 @@ export default {
             } else if (method === "POST" && path === "/admin/reseed") {
                 response = await handleAdminReseed(request, env, logger);
 
+                // ── Synaptic publisher federation (auth-gated) ───────────────────────
+                // Pulls sell.nofluffadvisory.com/synaptic/catalog and upserts syn_*
+                // signals. Cron-scheduled daily alongside the registry sync; this
+                // is the on-demand trigger after a publisher catalog change. Note:
+                // /admin/reseed wipes syn_* rows until the next sync runs.
+            } else if (method === "POST" && path === "/admin/sync-synaptic") {
+                response = await handleAdminSyncSynaptic(request, env, logger);
+
                 // Sec-41 diagnostic: expose seed state publicly (counts only, no data).
                 // Useful to verify auto-incremental-seed is landing new signals
                 // after a deploy without needing DEMO_API_KEY.
@@ -972,6 +981,14 @@ export default {
                         only_in_local: r.only_in_local_count,
                     }))
                     .catch((err) => logger.error("cron_registry_sync_failed", { error: String(err) }))
+            );
+            // Synaptic publisher federation rides the same daily slot. Failure
+            // is logged, never thrown — a publisher outage must not affect the
+            // registry sync or subsequent cron firings.
+            ctx.waitUntil(
+                runSynapticSync(env, logger)
+                    .then((r) => logger.info("cron_synaptic_sync_done", { synced: r.synced }))
+                    .catch((err) => logger.error("cron_synaptic_sync_failed", { error: String(err) }))
             );
         } else {
             ctx.waitUntil(

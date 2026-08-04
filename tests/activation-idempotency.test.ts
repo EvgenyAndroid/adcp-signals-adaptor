@@ -41,7 +41,7 @@ const sampleSignal: CanonicalSignal = {
   activationSupported: true,
   estimatedAudienceSize: 1_000_000,
   accessPolicy: "public" as never,
-  generationMode: "deterministic",
+  generationMode: "seeded",
   status: "available" as never,
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",

@@ -135,11 +135,11 @@ describe('Pass 1 — exact rule match', () => {
     const { resolvedLeaves } = await resolver.resolveAST(ast);
 
     expect(resolvedLeaves).toHaveLength(1);
-    const match = resolvedLeaves[0].matches[0];
+    const match = resolvedLeaves[0]!.matches[0]!;
     expect(match.signal_agent_segment_id).toBe('sig_age_35_44');
     expect(match.match_method).toBe('exact_rule');
     expect(match.match_score).toBe(0.95);
-    expect(resolvedLeaves[0].unresolved).toBe(false);
+    expect(resolvedLeaves[0]!.unresolved).toBe(false);
   });
 
   it('should match sig_families_with_children via exact rule', async () => {
@@ -147,7 +147,7 @@ describe('Pass 1 — exact rule match', () => {
     const leaf = makeLeaf({ dimension: 'household_type', value: 'family_with_kids' });
     const { resolvedLeaves } = await resolver.resolveAST(leaf);
 
-    const match = resolvedLeaves[0].matches[0];
+    const match = resolvedLeaves[0]!.matches[0]!;
     expect(match.signal_agent_segment_id).toBe('sig_families_with_children');
     expect(match.match_method).toBe('exact_rule');
   });
@@ -189,7 +189,7 @@ describe('Pass 2 — embedding similarity', () => {
     });
 
     const { resolvedLeaves } = await resolver.resolveAST(leaf);
-    const top = resolvedLeaves[0].matches[0];
+    const top = resolvedLeaves[0]!.matches[0]!;
 
     expect(top.match_method).toBe('embedding_similarity');
     expect(top.signal_agent_segment_id).toBe('sig_drama_viewers');
@@ -231,7 +231,7 @@ describe('Pass 3 — lexical fallback', () => {
     });
     const { resolvedLeaves } = await resolver.resolveAST(leaf);
 
-    const match = resolvedLeaves[0].matches[0];
+    const match = resolvedLeaves[0]!.matches[0]!;
     expect(match.match_method).toBe('lexical_fallback');
     // Should match streaming enthusiasts via token overlap
     expect(match.signal_agent_segment_id).toBe('sig_streaming_enthusiasts');
@@ -242,7 +242,7 @@ describe('Pass 3 — lexical fallback', () => {
     const leaf = makeLeaf({ dimension: 'age_band', value: '35-44' });
     const { resolvedLeaves } = await resolver.resolveAST(leaf);
 
-    expect(resolvedLeaves[0].matches[0].match_method).toBe('exact_rule');
+    expect(resolvedLeaves[0]!.matches[0]!.match_method).toBe('exact_rule');
   });
 });
 
@@ -257,11 +257,11 @@ describe('Archetype expansion', () => {
       description: 'suburban mother with school-age children',
     });
     const { resolvedLeaves } = await resolver.resolveAST(leaf);
-    const ids = resolvedLeaves[0].matches.map(m => m.signal_agent_segment_id);
+    const ids = resolvedLeaves[0]!.matches.map(m => m.signal_agent_segment_id);
 
     expect(ids).toContain('sig_age_35_44');
     expect(ids).toContain('sig_families_with_children');
-    expect(resolvedLeaves[0].matches[0].match_method).toBe('archetype_expansion');
+    expect(resolvedLeaves[0]!.matches[0]!.match_method).toBe('archetype_expansion');
   });
 
   it('archetype expansion does NOT double-weight (weight applied once)', async () => {
@@ -272,7 +272,7 @@ describe('Archetype expansion', () => {
     // sig_age_35_44 constituent weight=0.35, exact_rule score=0.95 → weighted = 0.35*0.95 = 0.3325
     // sig_families_with_children constituent weight=0.40, exact_rule score=0.95 → 0.38
     // families_with_children should be highest
-    const top = resolvedLeaves[0].matches[0];
+    const top = resolvedLeaves[0]!.matches[0]!;
     expect(top.signal_agent_segment_id).toBe('sig_families_with_children');
     // Score should be ~0.38 — not 0.76 (which would indicate double-weight)
     expect(top.match_score).toBeLessThan(0.5);
@@ -293,7 +293,7 @@ describe('Archetype expansion', () => {
     const leaf = makeLeaf({ dimension: 'archetype', value: 'affluent_family' });
     const { resolvedLeaves } = await resolver.resolveAST(leaf);
 
-    const ids = resolvedLeaves[0].matches.map(m => m.signal_agent_segment_id);
+    const ids = resolvedLeaves[0]!.matches.map(m => m.signal_agent_segment_id);
     expect(ids).toContain('sig_high_income_households');
     expect(ids).toContain('sig_families_with_children');
   });
@@ -384,7 +384,7 @@ describe('Content title → genre inference', () => {
     });
     const { resolvedLeaves } = await resolver.resolveAST(leaf);
 
-    const top = resolvedLeaves[0].matches[0];
+    const top = resolvedLeaves[0]!.matches[0]!;
     expect(top.signal_agent_segment_id).toBe('sig_drama_viewers');
     expect(top.match_method).toBe('title_genre_inference');
   });
@@ -398,8 +398,8 @@ describe('Content title → genre inference', () => {
     const { resolvedLeaves: exact } = await resolver.resolveAST(exactLeaf);
     const { resolvedLeaves: title } = await resolver.resolveAST(titleLeaf);
 
-    const exactScore = exact[0].matches[0].match_score;
-    const titleScore = title[0].matches[0].match_score;
+    const exactScore = exact[0]!.matches[0]!.match_score;
+    const titleScore = title[0]!.matches[0]!.match_score;
 
     expect(titleScore).toBeLessThan(exactScore);
   });
@@ -425,7 +425,7 @@ describe('Content title → genre inference', () => {
       description: "viewers of Grey's Anatomy medical drama",
     });
     const { resolvedLeaves } = await resolver.resolveAST(leaf);
-    const top = resolvedLeaves[0].matches[0];
+    const top = resolvedLeaves[0]!.matches[0]!;
     expect(top?.match_method).toBe('title_genre_inference');
   });
 });
@@ -464,7 +464,7 @@ describe('Unresolved leaf handling', () => {
     };
     const { resolvedLeaves } = await resolver.resolveAST(ast);
     // No coffee signal in catalog → unresolved
-    const resolved = resolvedLeaves[0];
+    const resolved = resolvedLeaves[0]!;
     expect(resolved.leaf.is_exclusion).toBe(true);
     // matches may be empty (unresolved) or minimal (lexical) — never fabricated
     expect(resolved.matches.length).toBeLessThanOrEqual(3);
@@ -551,7 +551,7 @@ describe('SemanticResolver.resolve()', () => {
 
     expect(results.length).toBeLessThanOrEqual(2);
     if (results.length > 1) {
-      expect(results[0].score).toBeGreaterThanOrEqual(results[1].score);
+      expect(results[0]!.score).toBeGreaterThanOrEqual(results[1]!.score);
     }
   });
 

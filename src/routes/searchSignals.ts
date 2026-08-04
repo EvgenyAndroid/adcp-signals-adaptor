@@ -165,6 +165,12 @@ export function toCanonicalGetSignalsResponse(
   const pagination: Record<string, unknown> = { has_more: hasMore, total_count: total };
   if (hasMore) pagination["cursor"] = `offset:${baseOffset + (result.signals?.length ?? 0)}`;
   return {
+    // AdCP 3.1: `status` (protocol-envelope) and `cache_scope` are
+    // required on every get_signals response. Mirrors the MCP handler —
+    // sync reads are status "completed", and our catalog is the published
+    // rate card with no account overlays, so the scope is "public".
+    status: "completed",
+    cache_scope: "public",
     signals: result.signals ?? [],
     pagination,
     ...(Array.isArray(result.proposals) && result.proposals.length > 0 ? { proposals: result.proposals } : {}),

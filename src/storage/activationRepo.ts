@@ -55,9 +55,13 @@ export async function createActivationJob(
     webhookUrl?: string;
     idempotencyKey?: string;
     requestFingerprint?: string;
+    submittedAt?: string;
   }
 ): Promise<void> {
-  const now = new Date().toISOString();
+  // The stored submitted_at must equal the submittedAt the caller already
+  // returned (or will return) on the wire — a second clock read here can
+  // land 1ms later and make replays disagree with the original response.
+  const now = job.submittedAt ?? new Date().toISOString();
   await execute(
     db,
     `INSERT INTO activation_jobs

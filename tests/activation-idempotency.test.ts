@@ -272,7 +272,7 @@ describe("activate_signal idempotency enforcement", () => {
   });
 
   it("idempotent replay preserves the original submittedAt timestamp", async () => {
-    const { db } = makeDb([sampleSignal]);
+    const { db, getRows } = makeDb([sampleSignal]);
     const kv = makeKv();
     const key = "ik_timestamp_check_xyz123";
 
@@ -281,6 +281,12 @@ describe("activate_signal idempotency enforcement", () => {
       destination: "mock_dsp",
       idempotencyKey: key,
     }, fakeLogger);
+
+    // The replay reads submitted_at back from the row, so the stored value
+    // must equal what the first response put on the wire — one clock read,
+    // not one in the service and another in the repo (the old double-read
+    // flaked whenever the two calls straddled a millisecond boundary).
+    expect(getRows()[0]?.["submitted_at"]).toBe(r1.submittedAt);
 
     // Wait a beat to ensure new Date().toISOString() WOULD differ
     await new Promise((resolve) => setTimeout(resolve, 5));

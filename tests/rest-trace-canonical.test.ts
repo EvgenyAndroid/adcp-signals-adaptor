@@ -9,8 +9,9 @@
 // These tests run the adapter functions through the same
 // @cfworker/json-schema Validator the trace recorder uses, asserting
 // the canonical envelopes pass validation against the vendored
-// /schemas/3.0.8/signals/get-{signals-request,signals-response}.json
-// shapes.
+// /schemas/3.1.0/signals/get-{signals-request,signals-response}.json
+// shapes (3.1 additionally requires `status` + `cache_scope` on every
+// get_signals response).
 
 import { describe, it, expect } from "vitest";
 import { Validator } from "@cfworker/json-schema";

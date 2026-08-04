@@ -426,10 +426,15 @@ describe("buildDtsLabel", () => {
     expect(dts.onboarder_match_keys).not.toBe("N/A");
   });
 
-  it("toSignalSummary includes x_dts on every signal", () => {
-    const summary = toSignalSummary(baseSignal);
-    expect(summary.x_dts).toBeDefined();
-    expect(summary.x_dts?.dts_version).toBe("1.2");
+  it("toSignalSummary omits x_dts by default and includes it via the fields selector (adcp#5017)", () => {
+    // Default is the compact response — extension fields only appear when
+    // explicitly requested (fields: [...] or "all").
+    const compact = toSignalSummary(baseSignal);
+    expect(compact.x_dts).toBeUndefined();
+
+    const expanded = toSignalSummary(baseSignal, ["x_dts"]);
+    expect(expanded.x_dts).toBeDefined();
+    expect(expanded.x_dts?.dts_version).toBe("1.2");
   });
 });
 

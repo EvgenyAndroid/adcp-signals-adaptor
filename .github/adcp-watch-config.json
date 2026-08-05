@@ -24,7 +24,13 @@
       "repo": "adcontextprotocol/adcp",
       "number": 6093,
       "kind": "pr",
-      "context": "geo_places PR (bokelley). ITS MERGE IS OUR TRIGGER: #5969 (our geo_cells RFC) is formally Blocked-on #6093 per bokelley's 2026-08-02 marker, with all four wire conventions aligned (URI system identity, uniform supported_resolutions, required_geo_targeting cell filter, verbatim accepted-state echo). When this PR's `merged` flips true, the next deliverable is OUR #5969 revision written against the landed conventions — plus the #6013 §14 and #6014 body updates queued behind it. Drop after the #5969 revision ships."
+      "context": "geo_places PR (bokelley). ITS MERGE IS OUR TRIGGER: #5969 (our geo_cells RFC) is formally Blocked-on #6093 per bokelley's 2026-08-02 marker, with all four wire conventions aligned (URI system identity, uniform supported_resolutions, required_geo_targeting cell filter, verbatim accepted-state echo). When this PR's `merged` flips true, the next deliverable is OUR #5969 revision written against the landed conventions — plus the #6013 §14 and #6014 body updates queued behind it. RESTACKED 2026-08-05T06:52Z: force-push rebase + base changed main→verify-get-products-filters (= head of PR #6203, the AdCP 3.2 targeting-aware product-discovery contract) — #6093 is now serialized BEHIND #6203 and cannot merge first. Shape also moved: place targeting relocated from product filters to targeting_overlay; enums/geo-targeting-level.json DELETED. Do NOT draft the #5969 revision against any pre-2026-08-05 #6093 shape. Drop after the #5969 revision ships."
+    },
+    {
+      "repo": "adcontextprotocol/adcp",
+      "number": 6203,
+      "kind": "pr",
+      "context": "targeting-aware product discovery (bokelley) — the AdCP 3.2 discovery-contract PR that #6093 (our #5969 trigger) was RESTACKED ONTO 2026-08-05 (base verify-get-products-filters). This is now the REAL merge gate for the geo arc: #6093 cannot land until #6203 resolves its conflicts vs main, clears Ladon (ladon/merge-conflict-noted posted 2026-08-05T08:28Z), and gets human/CODEOWNERS approval. Its filters vs targeting_overlay vs required_overlay_support split is also normative context our #5969 revision must be written against. Fires on merge, close, review, label change, or new commits. Drop when #6093 merges (its own entry then drives)."
     },
     {
       "repo": "adcontextprotocol/adcp-client",

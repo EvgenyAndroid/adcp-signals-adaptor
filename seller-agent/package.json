@@ -1,0 +1,16 @@
+{
+  "name": "signal-ledger-media-seller-agent",
+  "version": "0.1.0",
+  "description": "Signal Ledger Media — AdCP 3.0 seller agent (B2B publisher) on Cloudflare Workers",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241022.0",
+    "typescript": "^5.5.0",
+    "wrangler": "^4.72.0"
+  }
+}

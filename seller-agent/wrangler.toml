@@ -1,0 +1,16 @@
+name = "signal-ledger-media-seller"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+[vars]
+ENVIRONMENT  = "development"
+PUBLISHER    = "Signal Ledger Media"
+AGENT_DOMAIN = "signal-ledger-media-seller.example.workers.dev"
+# ADCP_TEST_TOKEN is the bearer token gating mutating MCP calls.
+# Provision via `wrangler secret put ADCP_TEST_TOKEN` before deploy.
+# For local `wrangler dev`, set it in .dev.vars (see README) so it never
+# lands in the committed wrangler.toml or the public Worker bundle.
+
+[dev]
+port           = 8788
+local_protocol = "http"

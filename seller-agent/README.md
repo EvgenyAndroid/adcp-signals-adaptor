@@ -24,6 +24,28 @@ requires `Authorization: Bearer $ADCP_TEST_TOKEN`, except
 `get_adcp_capabilities`. Auth failures return HTTP 401 with an RFC 6750
 `WWW-Authenticate` header **and** a well-formed JSON-RPC error body.
 
+### Auth posture (fails closed)
+
+Posture is resolved per request from env, in `src/auth.ts`:
+
+| `ADCP_TEST_TOKEN` | `ALLOW_UNAUTHENTICATED` | `ENVIRONMENT` | Posture |
+|---|---|---|---|
+| set, ≥16 chars | any | any | `enforced` |
+| set, <16 chars | any | any | `misconfigured` |
+| unset | `"true"` | not production | `open` |
+| unset | `"true"` | `production` | `misconfigured` |
+| unset | unset / anything else | any | `misconfigured` |
+
+Under `misconfigured` the worker refuses **every** route with
+`503 AUTH_NOT_CONFIGURED`, including `/health`. That is intentional: a
+deploy that is visibly down gets fixed, while one that silently serves
+unauthenticated `create_media_buy` gets transacted against. Uptime checks
+fail loudly for the same reason.
+
+`ALLOW_UNAUTHENTICATED` only accepts the literal string `"true"`, and is
+refused outright in production, so flipping `ENVIRONMENT` to production
+cannot leave the escape hatch open behind you.
+
 ---
 
 ## Catalog
@@ -112,11 +134,24 @@ does not yo-yo between calls.
 
 ```bash
 npm install
-cp .dev.vars.example .dev.vars   # then edit the token
+cp .dev.vars.example .dev.vars   # then set a token of 16+ chars
 npm run dev                      # http://127.0.0.1:8788
 ```
 
-Health check: `GET /health`. MCP endpoint: `POST /mcp`.
+Health check: `GET /health`. MCP endpoint: `POST /mcp`. A 503 with
+`AUTH_NOT_CONFIGURED` means the token is missing or too short.
+
+```bash
+npm run type-check   # tsc --noEmit, strict
+npm test             # vitest — auth posture matrix
+npm run build:check  # wrangler deploy --dry-run, no credentials needed
+```
+
+CI (`.github/workflows/seller-agent-ci.yml`) runs all three on any PR
+touching `seller-agent/**`, plus a live fail-closed assertion against a real
+`wrangler dev` process with no token configured. The repo-root Deploy
+workflow and the Cloudflare Workers Build cover only the signals adaptor and
+tell you nothing about this subproject.
 
 ### Conformance
 
@@ -142,11 +177,18 @@ These are deliberate, not oversights:
    a required accepted-formats field breaks storyboard clients that do not
    send one.
 2. **State is per-isolate and in-memory.** Both the idempotency cache and the
-   media-buy store are `Map`s scoped to the Worker isolate. They do not
-   survive a redeploy, which means the advertised
-   `replay_ttl_seconds: 86400` is currently a promise the storage cannot keep.
-   KV or D1 before any real deploy.
+   media-buy store are `Map`s scoped to the Worker isolate. Requests land on
+   different isolates, so on a real deploy `get_media_buy_delivery` would
+   return `MEDIA_BUY_NOT_FOUND` for a buy created moments earlier, and a
+   retried `create_media_buy` would miss the replay cache and create a
+   **duplicate buy**. The advertised `replay_ttl_seconds: 86400` is a promise
+   this storage cannot keep. **This is the blocker on deploying at all** —
+   KV or D1 first.
 3. **`delivery_measurement` is absent on products.** `measurement_terms` ships;
    its sister field (provider + methodology notes) does not.
 4. **Single-tenant.** No account resolution — `account` is accepted and
    ignored rather than scoping the catalog or the stores.
+5. **Placeholder domains.** `publisher_properties[].publisher_domain`
+   (`signalledgermedia.example.com`) and `format_ids[].agent_url` point at
+   non-resolving hosts. Buyers fetch `adagents.json` from `publisher_domain`
+   to validate agent authorization, so these must be real before deploy.

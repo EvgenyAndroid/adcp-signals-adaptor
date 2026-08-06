@@ -1,0 +1,85 @@
+name: Seller Agent CI
+
+# The root Deploy workflow and the Cloudflare Workers Build both cover only
+# the signals adaptor at the repo root. Nothing gated seller-agent/, so a
+# green check on a PR touching it meant nothing. This closes that.
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'seller-agent/**'
+      - '.github/workflows/seller-agent-ci.yml'
+  pull_request:
+    paths:
+      - 'seller-agent/**'
+      - '.github/workflows/seller-agent-ci.yml'
+
+concurrency:
+  group: seller-agent-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: seller-agent
+
+jobs:
+  check:
+    name: Type-check, test, bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: seller-agent/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Unit tests
+        run: npm test
+
+      # Proves the worker actually bundles. --dry-run needs no Cloudflare
+      # credentials, so this runs on fork PRs too.
+      - name: Bundle check
+        run: npm run build:check
+
+      # A deploy with no ADCP_TEST_TOKEN must refuse to serve rather than
+      # expose unauthenticated media-buy endpoints. Asserted here against a
+      # real worker process, not just in unit tests, so a regression in the
+      # index.ts guard is caught even if auth.ts still looks correct.
+      - name: Fail-closed guard (no token configured)
+        run: |
+          set -euo pipefail
+          npx wrangler dev --port 8788 --ip 127.0.0.1 --var ENVIRONMENT:production &
+          WPID=$!
+          trap 'kill $WPID 2>/dev/null || true' EXIT
+          for i in $(seq 1 40); do
+            if curl -fsS -o /dev/null "http://127.0.0.1:8788/health" 2>/dev/null; then break; fi
+            if curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:8788/health" 2>/dev/null | grep -q '^5'; then break; fi
+            sleep 1
+          done
+
+          health=$(curl -sS -o /tmp/health.json -w '%{http_code}' "http://127.0.0.1:8788/health")
+          echo "GET /health -> $health"
+          cat /tmp/health.json; echo
+          if [ "$health" != "503" ]; then
+            echo "::error::Expected 503 from an unconfigured worker, got $health. The fail-closed guard has regressed."
+            exit 1
+          fi
+          node -e "const j=require('/tmp/health.json');if(j.error?.code!=='AUTH_NOT_CONFIGURED')throw new Error('expected AUTH_NOT_CONFIGURED, got '+JSON.stringify(j.error));console.log('fail-closed guard OK')"
+
+          mcp=$(curl -sS -o /tmp/mcp.json -w '%{http_code}' -X POST "http://127.0.0.1:8788/mcp" \
+            -H 'Content-Type: application/json' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_media_buy","arguments":{"packages":[{"product_id":"slm_executive_insight_display"}]}}}')
+          echo "POST /mcp create_media_buy -> $mcp"
+          if [ "$mcp" != "503" ]; then
+            echo "::error::Unconfigured worker served /mcp with status $mcp. Mutating endpoints must not be reachable."
+            exit 1
+          fi

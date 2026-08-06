@@ -1,0 +1,4 @@
+# Copy to `.dev.vars` for local `wrangler dev`. Never commit `.dev.vars`.
+# Any non-empty value works locally — it just has to match the Bearer token
+# you send. In production, provision with `wrangler secret put ADCP_TEST_TOKEN`.
+ADCP_TEST_TOKEN=replace-me

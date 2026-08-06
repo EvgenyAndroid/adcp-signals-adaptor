@@ -10,7 +10,7 @@
 // clients while keeping the JSON-RPC body well-formed for polyglot callers.
 
 import type { Env } from "../env";
-import { isAuthed } from "../auth";
+import { isAuthed, type AuthPosture } from "../auth";
 import { TOOLS, findToolDef } from "./tools";
 import {
     handleCreateMediaBuy,
@@ -53,7 +53,7 @@ const AUTHENTICATED_METHODS = new Set(["tools/call"]);
 // Discovery tool that conformance probes call before the handshake.
 const PUBLIC_TOOL_CALL_NAMES = new Set(["get_adcp_capabilities"]);
 
-export async function handleMcp(req: Request, env: Env): Promise<Response> {
+export async function handleMcp(req: Request, env: Env, posture: AuthPosture): Promise<Response> {
     if (req.method === "OPTIONS") return corsPreflight();
     if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
@@ -70,7 +70,7 @@ export async function handleMcp(req: Request, env: Env): Promise<Response> {
         return rpcHttp(rpcErr(null, RPC_PARSE_ERROR, "Parse error: invalid JSON"), 400);
     }
 
-    const authed = isAuthed(req, env.ADCP_TEST_TOKEN);
+    const authed = isAuthed(req, posture);
 
     if (Array.isArray(body)) {
         const responses = await Promise.all(body.map((m) => handleSingle(m, env, authed)));

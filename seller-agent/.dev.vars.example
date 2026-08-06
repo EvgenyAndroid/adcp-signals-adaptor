@@ -1,4 +1,14 @@
 # Copy to `.dev.vars` for local `wrangler dev`. Never commit `.dev.vars`.
-# Any non-empty value works locally — it just has to match the Bearer token
-# you send. In production, provision with `wrangler secret put ADCP_TEST_TOKEN`.
-ADCP_TEST_TOKEN=replace-me
+#
+# Minimum 16 characters — shorter values are rejected at startup and the
+# worker refuses to serve. Any non-secret placeholder works locally; it just
+# has to match the Bearer token you send.
+#
+# In production, provision with:
+#   openssl rand -base64 24 | npx wrangler secret put ADCP_TEST_TOKEN
+ADCP_TEST_TOKEN=replace-me-min-16-chars
+
+# Escape hatch for running with no token at all. Ignored (and treated as a
+# misconfiguration) when ENVIRONMENT=production. Leave unset unless you
+# specifically want an unauthenticated local agent.
+# ALLOW_UNAUTHENTICATED=true

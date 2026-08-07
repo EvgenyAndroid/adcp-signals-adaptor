@@ -323,11 +323,23 @@ export const CONCEPT_REGISTRY: ConceptEntry[] = [
   // publisher could map onto, not a mirror of one publisher's segment list.
   // No _US suffix — unlike the archetypes above, these are not geo-scoped.
   //
-  // member_nodes are EMPTY on purpose. The consumer entries carry IAB /
-  // LiveRamp / TradeDesk crosswalks; no verified equivalent exists for these,
-  // and inventing plausible vendor node ids would fabricate exactly the kind of
-  // claim a buyer acts on. Empty means unmapped, and unmapped is the truth
-  // until a real crosswalk is sourced.
+  // member_nodes: the consumer entries above carry IAB / LiveRamp / TradeDesk
+  // crosswalks. No such vendor taxonomy names an ad-tech role, so instead of
+  // inventing vendor node ids these point at THIS AGENT'S OWN catalog
+  // (vendor: "signals_catalog", node_id = signal_agent_segment_id). That makes
+  // a resolved concept actionable — the buyer gets a purchasable signal id, not
+  // just a matching noun.
+  //
+  // Only 4 of the 16 carry nodes, and that is the finding, not an omission: the
+  // 541-signal catalog is consumer, enterprise-IT and intent inventory. It has
+  // no audience of publisher monetization leads, agency strategists, clean-room
+  // practitioners or attention researchers, so those stay empty. A near-miss
+  // published as a mapping steers a real buy.
+  //
+  // similarity here is EDITORIAL, not a computed cosine — that is exactly what
+  // source: "manual_crosswalk" means. Values ~0.7 assert a strong population
+  // overlap; ~0.5 asserts the catalog signal is a legitimate superset the
+  // concept sits inside (adtech engineers are developer-tool evaluators).
   //
   // Dimensions reuse the vocabulary already in seed/b2b-firmographic.csv
   // (function / seniority / industry / company_size_band) rather than inventing
@@ -373,7 +385,10 @@ export const CONCEPT_REGISTRY: ConceptEntry[] = [
       { dimension: "company_size_band", value: "mid_enterprise", weight: 0.20, description: "mid-market and enterprise data estates" },
       { dimension: "topic_affinity", value: "customer_data_architecture", weight: 0.25, description: "CDP, warehouse native and composable data stacks" },
     ],
-    member_nodes: [],
+    member_nodes: [
+      { vendor: "signals_catalog", node_id: "sig_bi_data_platform_eval", label: "Data Platform Evaluation", similarity: 0.72, source: "manual_crosswalk" },
+      { vendor: "signals_catalog", node_id: "sig_b2b_techno_databricks_users", label: "Databricks Customer Companies", similarity: 0.58, source: "manual_crosswalk" },
+    ],
     similarity_threshold: 0.85,
     validated_at: "2026-08-07T00:00:00Z",
   },
@@ -388,7 +403,11 @@ export const CONCEPT_REGISTRY: ConceptEntry[] = [
       { dimension: "industry", value: "technology_software", weight: 0.20, description: "advertising technology" },
       { dimension: "topic_affinity", value: "ad_serving_infrastructure", weight: 0.15, description: "bidding, serving and delivery systems" },
     ],
-    member_nodes: [],
+    // Superset, not equivalent: the catalog has no ad-serving-engineer audience.
+    // Dev-tools evaluators contain them; buy it knowing it is wider.
+    member_nodes: [
+      { vendor: "signals_catalog", node_id: "sig_bi_dev_tools_in_window", label: "Developer Tools × Active Eval", similarity: 0.50, source: "manual_crosswalk" },
+    ],
     similarity_threshold: 0.85,
     validated_at: "2026-08-07T00:00:00Z",
   },
@@ -463,7 +482,10 @@ export const CONCEPT_REGISTRY: ConceptEntry[] = [
       { dimension: "industry", value: "technology_software", weight: 0.20, description: "technology and software" },
       { dimension: "topic_affinity", value: "ai_infrastructure", weight: 0.15, description: "embeddings, vector search and retrieval systems" },
     ],
-    member_nodes: [],
+    member_nodes: [
+      { vendor: "signals_catalog", node_id: "sig_b2b_techno_databricks_users", label: "Databricks Customer Companies", similarity: 0.62, source: "manual_crosswalk" },
+      { vendor: "signals_catalog", node_id: "sig_bi_dev_tools_in_window", label: "Developer Tools × Active Eval", similarity: 0.55, source: "manual_crosswalk" },
+    ],
     similarity_threshold: 0.85,
     validated_at: "2026-08-07T00:00:00Z",
   },
@@ -491,7 +513,9 @@ export const CONCEPT_REGISTRY: ConceptEntry[] = [
       { dimension: "seniority", value: "director_plus", weight: 0.25, description: "director and above" },
       { dimension: "topic_affinity", value: "first_party_data", weight: 0.45, description: "owned data collection, consent and activation" },
     ],
-    member_nodes: [],
+    member_nodes: [
+      { vendor: "signals_catalog", node_id: "sig_bi_data_platform_eval", label: "Data Platform Evaluation", similarity: 0.55, source: "manual_crosswalk" },
+    ],
     similarity_threshold: 0.85,
     validated_at: "2026-08-07T00:00:00Z",
   },

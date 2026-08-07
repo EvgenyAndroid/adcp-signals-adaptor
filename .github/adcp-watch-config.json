@@ -74,6 +74,12 @@
       "number": 6245,
       "kind": "pr",
       "context": "bokelley's '[codex] Add measurement gateway feedback contract' draft (2026-08-06, 24 files, CONFLICTING, zero reviews). WHY WE WATCH IT: it functionally SUPERSEDES our still-open RFC #4296 (Measurement Feedback Signal, milestone 3.3.0) — same four schema files, and it delivers the exact apply-confirmation gate bokelley's 2026-05-09 triage said must land before any WG vote on MeasurementFeedbackSignal scope — while citing #4296 as a bare 'Related:' link, naming us nowhere, and dropping 7 of our asks (nested feedback-signal object, signal_agent_segment_id/signal-grain gate, governance_check_id, FEEDBACK_SUPERSEDED, our single measurement.feedback capability key, the causal vocabulary). Zero signals-domain impact — this is a POSITIONAL watch, not a technical one. Fires on ready-for-review, reviews, comments, merge, or close. If we choose to engage, the surface is the spec's five open WG questions plus two technical hooks: core/performance-feedback.json deletes published properties (feedback_id/status/submitted_at/applied_at) under a `minor` changeset without the Compatibility section addressing it, and our 'confidence_interval implies sample_size required' conditional is dropped. Drop when it merges/closes and we've decided whether to respond on #4296."
+    },
+    {
+      "repo": "adcontextprotocol/adcp",
+      "number": 6269,
+      "kind": "issue",
+      "context": "OURS (filed 2026-08-07). $build_assets_from_format (v3.1.11, PR #6258 backporting #6244) makes the runner build the sync_creatives manifest from the seller's own declared required slots, but adcp-client's creative-assets.ts buildAsset only covers image/url/text — any required slot of type video/audio/html/javascript/vast_tag/vendor is unbuildable, the step fails PRE-TRANSPORT, and the agent is graded down for a harness limitation. storyboard-schema.yaml:2314-2316 says such halts are 'a conformance bug on the runner side, not a grading signal about the agent', and its own preflight-point-1 already prescribes not_applicable — which is the ask. Three more: the normative text at :651-652 names only image+URL as fillable though the runner also does text (implementers can't predict gradeability); buildImage requires EXACT dimension match against only 5 acme-outdoor fixtures (300x250, 728x90, 320x50, 160x600, 1200x628 — so 970x250, 300x600, 336x280, 1080x1920 all fail); and buildText picks content by substring-matching the slot id for headline/description/cta with a headlines fallback, so a required disclaimer/legal/alt_text slot silently receives a marketing headline — a FALSE PASS risk mirroring the false fail. Fires on triage/labels/comments/close. NOTE: found via the sales agent's 3.1.11 degrade, but that agent has its own separate defect (its list_creative_formats publishes slots primary/click_url/alt_text while its sync_creatives takes flat image_url/click_url/alt_text) — do not conflate. Drop when triaged and resolved."
     }
   ],
   "contribution_page": {
@@ -86,7 +92,10 @@
       "name": "agenticadvertising_org",
       "url": "https://agenticadvertising.org/api/registry/agents?capabilities=true",
       "agent_id_field": "url",
-      "agent_summary_fields": ["name", "type"],
+      "agent_summary_fields": [
+        "name",
+        "type"
+      ],
       "context": "AAO official agent registry (https://agenticadvertising.org/registry/). Fires when agents are added, removed, or rename. Identity = agent URL (stable across renames; surfaces show the new name in the diff). Primary value: catch new ecosystem entrants without manual checks. As of 2026-05-04 the registry has 21 entries; we federate with ~6 of them via /agents/registry — when new agents appear we may want to add them to our local directory."
     }
   ]

@@ -339,6 +339,9 @@ ${STYLES}
           <a class="nav-item" href="https://adcontextprotocol.org" target="_blank" rel="noopener">
             <svg class="ico"><use href="#icon-bolt"/></svg><span>AdCP spec</span>
           </a>
+          <a class="nav-item" href="https://nofluffadvisory.com/adcp-buyers-guide/" target="_blank" rel="noopener">
+            <svg class="ico"><use href="#icon-book"/></svg><span>Buyer's guide</span>
+          </a>
         </div>
       </div>
 

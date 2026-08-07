@@ -18,6 +18,7 @@
 import {
   getConceptById,
   searchConcepts,
+  searchConceptsScored,
   getConceptsByCategory,
   seedConceptsToKV,
   CONCEPT_REGISTRY,
@@ -203,16 +204,22 @@ export function handleConceptToolCall(
     const limit = Math.min(Number(args.limit ?? 10), 50);
     const category = args.category as ConceptEntry["category"] | undefined;
 
-    let results = searchConcepts(q, limit);
+    // Carry match_score through. Without it a caller cannot tell a strong
+    // hit from a token coincidence, and any quality gate built on this
+    // response is inert — see searchConceptsScored().
+    let scored = searchConceptsScored(q, limit);
     if (category) {
-      results = results.filter((c) => c.category === category);
+      scored = scored.filter((s) => s.entry.category === category);
     }
 
     return {
       query: q,
-      results,
-      count: results.length,
+      results: scored.map((s) => ({ ...s.entry, match_score: Number(s.score.toFixed(4)) })),
+      count: scored.length,
       total_in_registry: CONCEPT_REGISTRY.length,
+      scoring: "jaccard_token_overlap_v1",
+      scoring_note:
+        "Lexical token overlap, not cosine similarity. A low score is weak evidence — set a floor before publishing any mapping built on these.",
     };
   }
 

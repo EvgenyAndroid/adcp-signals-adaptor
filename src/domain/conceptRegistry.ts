@@ -310,6 +310,261 @@ export const CONCEPT_REGISTRY: ConceptEntry[] = [
     similarity_threshold: 0.90,
     validated_at: "2026-03-07T00:00:00Z",
   },
+
+  // ── B2B ad-tech & data professionals ────────────────────────────────────────
+  // Added 2026-08-07. WHY: the registry was consumer/CTV only, so a publisher
+  // selling B2B ad-tech inventory had no shared noun to map onto. A mapping run
+  // over 20 such audiences returned 0 usable concepts, and token overlap
+  // cheerfully matched "engineers working with embeddings and AI infrastructure"
+  // to PARENTS_WITH_YOUNG_CHILDREN_US. A registry that cannot name an audience
+  // should say so, not return the nearest consumer stereotype.
+  //
+  // Deliberately publisher-INDEPENDENT: roles and domains any B2B ad-tech
+  // publisher could map onto, not a mirror of one publisher's segment list.
+  // No _US suffix — unlike the archetypes above, these are not geo-scoped.
+  //
+  // member_nodes are EMPTY on purpose. The consumer entries carry IAB /
+  // LiveRamp / TradeDesk crosswalks; no verified equivalent exists for these,
+  // and inventing plausible vendor node ids would fabricate exactly the kind of
+  // claim a buyer acts on. Empty means unmapped, and unmapped is the truth
+  // until a real crosswalk is sourced.
+  //
+  // Dimensions reuse the vocabulary already in seed/b2b-firmographic.csv
+  // (function / seniority / industry / company_size_band) rather than inventing
+  // a parallel one.
+  {
+    concept_id: "AGENTIC_STANDARDS_EVALUATOR",
+    label: "Agentic Standards Evaluator",
+    concept_description: "Practitioners evaluating agentic advertising protocols and standards including AdCP, AAMP, UCP and MCP, covering protocol governance, interoperability and conformance. Typically technical strategy leads, standards working group participants and platform architects.",
+    category: "archetype",
+    constituent_dimensions: [
+      { dimension: "function", value: "cross_functional", weight: 0.30, description: "spans product, engineering and standards strategy" },
+      { dimension: "seniority", value: "director_plus", weight: 0.30, description: "director and above, decision-influencing" },
+      { dimension: "industry", value: "technology_software", weight: 0.25, description: "advertising technology and software" },
+      { dimension: "topic_affinity", value: "agentic_protocols", weight: 0.15, description: "tracks agentic advertising protocol development" },
+    ],
+    member_nodes: [],
+    similarity_threshold: 0.85,
+    validated_at: "2026-08-07T00:00:00Z",
+  },
+  {
+    concept_id: "CLEAN_ROOM_PRACTITIONER",
+    label: "Clean Room Practitioner",
+    concept_description: "Professionals operating or evaluating data clean rooms and privacy enhancing technologies for cross-party data collaboration, including matching, measurement and activation without raw data movement.",
+    category: "archetype",
+    constituent_dimensions: [
+      { dimension: "function", value: "it", weight: 0.30, description: "data engineering and platform functions" },
+      { dimension: "seniority", value: "director_plus", weight: 0.25, description: "director and above" },
+      { dimension: "industry", value: "all", weight: 0.20, description: "cross-industry, concentrated in retail, finance and media" },
+      { dimension: "topic_affinity", value: "data_collaboration", weight: 0.25, description: "clean rooms, PETs and privacy preserving measurement" },
+    ],
+    member_nodes: [],
+    similarity_threshold: 0.85,
+    validated_at: "2026-08-07T00:00:00Z",
+  },
+  {
+    concept_id: "CDP_ARCHITECT",
+    label: "CDP and Customer Data Architect",
+    concept_description: "Architects and decision makers for customer data platforms and the surrounding data stack, covering composable and packaged CDPs, warehouse native activation, reverse ETL, identity and schema design.",
+    category: "archetype",
+    constituent_dimensions: [
+      { dimension: "function", value: "it", weight: 0.30, description: "data architecture and engineering" },
+      { dimension: "seniority", value: "director_plus", weight: 0.25, description: "director and above, budget influencing" },
+      { dimension: "company_size_band", value: "mid_enterprise", weight: 0.20, description: "mid-market and enterprise data estates" },
+      { dimension: "topic_affinity", value: "customer_data_architecture", weight: 0.25, description: "CDP, warehouse native and composable data stacks" },
+    ],
+    member_nodes: [],
+    similarity_threshold: 0.85,
+    validated_at: "2026-08-07T00:00:00Z",
+  },
+  {
+    concept_id: "ADTECH_PLATFORM_ENGINEER",
+    label: "AdTech Platform Engineer",
+    concept_description: "Engineers building and operating advertising delivery infrastructure including bidders, exchanges, header bidding, ad servers, server side ad insertion and the latency bound serving path.",
+    category: "archetype",
+    constituent_dimensions: [
+      { dimension: "function", value: "it", weight: 0.35, description: "software and platform engineering" },
+      { dimension: "seniority", value: "ic_manager", weight: 0.30, description: "individual contributor through engineering manager" },
+      { dimension: "industry", value: "technology_software", weight: 0.20, description: "advertising technology" },
+      { dimension: "topic_affinity", value: "ad_serving_infrastructure", weight: 0.15, description: "bidding, serving and delivery systems" },
+    ],
+    member_nodes: [],
+    similarity_threshold: 0.85,
+    validated_at: "2026-08-07T00:00:00Z",
+  },
+  {
+    concept_id: "MEASUREMENT_ANALYST",
+    label: "Measurement and Attribution Analyst",
+    concept_description: "Analysts and marketing scientists working on attribution, incrementality, media mix modelling and experiment design, deciding what a reported advertising outcome actually proves.",
+    category: "archetype",
+    constituent_dimensions: [
+      { dimension: "function", value: "marketing", weight: 0.30, description: "marketing analytics and measurement science" },
+      { dimension: "seniority", value: "ic_manager", weight: 0.25, description: "analyst through measurement lead" },
+      { dimension: "industry", value: "all", weight: 0.20, description: "cross-industry advertiser and agency side" },
+      { dimension: "topic_affinity", value: "measurement_attribution", weight: 0.25, description: "incrementality, media mix modelling and experiment design" },
+    ],
+    member_nodes: [],
+    similarity_threshold: 0.85,
+    validated_at: "2026-08-07T00:00:00Z",
+  },
+  {
+    concept_id: "PUBLISHER_MONETIZATION_LEAD",
+    label: "Publisher Monetization Lead",
+    concept_description: "Supply side leaders responsible for yield, inventory strategy and demand partnerships, including direct sold, programmatic and agent mediated selling.",
+    category: "archetype",
+    constituent_dimensions: [
+      { dimension: "function", value: "sales", weight: 0.30, description: "revenue, yield and demand partnerships" },
+      { dimension: "seniority", value: "director_plus", weight: 0.30, description: "director and above" },
+      { dimension: "industry", value: "media_publishing", weight: 0.25, description: "publishers and media owners" },
+      { dimension: "topic_affinity", value: "yield_monetization", weight: 0.15, description: "inventory yield and monetization strategy" },
+    ],
+    member_nodes: [],
+    similarity_threshold: 0.85,
+    validated_at: "2026-08-07T00:00:00Z",
+  },
+  {
+    concept_id: "AGENCY_MEDIA_STRATEGIST",
+    label: "Agency Media Strategist",
+    concept_description: "Agency side planners and strategists responsible for channel mix, buying approach and client media recommendations across programmatic, retail media and emerging agentic channels.",
+    category: "archetype",
+    constituent_dimensions: [
+      { dimension: "function", value: "marketing", weight: 0.35, description: "media planning and strategy" },
+      { dimension: "seniority", value: "vp_director", weight: 0.25, description: "senior planner through vice president" },
+      { dimension: "industry", value: "advertising_agency", weight: 0.25, description: "media and creative agencies" },
+      { dimension: "topic_affinity", value: "media_strategy", weight: 0.15, description: "channel mix and buying strategy" },
+    ],
+    member_nodes: [],
+    similarity_threshold: 0.85,
+    validated_at: "2026-08-07T00:00:00Z",
+  },
+  {
+    concept_id: "REVENUE_OPERATIONS_LEADER",
+    label: "Revenue Operations Leader",
+    concept_description: "Commercial leaders responsible for go to market operations, covering pipeline architecture, packaging and pricing, sales productivity and the systems connecting marketing spend to booked revenue.",
+    category: "archetype",
+    constituent_dimensions: [
+      { dimension: "function", value: "sales", weight: 0.30, description: "revenue operations and commercial strategy" },
+      { dimension: "seniority", value: "vp_director", weight: 0.30, description: "vice president and director level" },
+      { dimension: "company_size_band", value: "mid_market_500_5000", weight: 0.20, description: "mid-market and scaling organisations" },
+      { dimension: "topic_affinity", value: "revenue_operations", weight: 0.20, description: "go to market operations, packaging and pipeline" },
+    ],
+    member_nodes: [],
+    similarity_threshold: 0.85,
+    validated_at: "2026-08-07T00:00:00Z",
+  },
+  {
+    concept_id: "AI_INFRASTRUCTURE_ENGINEER",
+    label: "AI and Embeddings Infrastructure",
+    concept_description: "Engineers and architects working with embeddings, vector databases, retrieval pipelines and model infrastructure underneath AI driven advertising and data products.",
+    category: "archetype",
+    constituent_dimensions: [
+      { dimension: "function", value: "it", weight: 0.35, description: "machine learning and data infrastructure engineering" },
+      { dimension: "seniority", value: "ic_manager", weight: 0.30, description: "engineer through architect" },
+      { dimension: "industry", value: "technology_software", weight: 0.20, description: "technology and software" },
+      { dimension: "topic_affinity", value: "ai_infrastructure", weight: 0.15, description: "embeddings, vector search and retrieval systems" },
+    ],
+    member_nodes: [],
+    similarity_threshold: 0.85,
+    validated_at: "2026-08-07T00:00:00Z",
+  },
+  {
+    concept_id: "IDENTITY_RESOLUTION_STRATEGIST",
+    label: "Identity and Addressability Strategist",
+    concept_description: "Strategists working on identity resolution and addressability after third party cookies, covering identity graphs, alternative identifiers, consent bound matching and cross device resolution.",
+    category: "interest",
+    constituent_dimensions: [
+      { dimension: "function", value: "cross_functional", weight: 0.30, description: "spans data, product and privacy" },
+      { dimension: "seniority", value: "director_plus", weight: 0.25, description: "director and above" },
+      { dimension: "topic_affinity", value: "identity_addressability", weight: 0.45, description: "identity graphs, alternative identifiers and addressability" },
+    ],
+    member_nodes: [],
+    similarity_threshold: 0.85,
+    validated_at: "2026-08-07T00:00:00Z",
+  },
+  {
+    concept_id: "FIRST_PARTY_DATA_STRATEGY",
+    label: "First Party Data Strategy",
+    concept_description: "Interest in first party and zero party data strategy, covering collection, consent, enrichment and activation of owned customer data as third party signal degrades.",
+    category: "interest",
+    constituent_dimensions: [
+      { dimension: "function", value: "marketing", weight: 0.30, description: "marketing and customer data ownership" },
+      { dimension: "seniority", value: "director_plus", weight: 0.25, description: "director and above" },
+      { dimension: "topic_affinity", value: "first_party_data", weight: 0.45, description: "owned data collection, consent and activation" },
+    ],
+    member_nodes: [],
+    similarity_threshold: 0.85,
+    validated_at: "2026-08-07T00:00:00Z",
+  },
+  {
+    concept_id: "RETAIL_MEDIA_OPERATOR",
+    label: "Retail and Commerce Media Operator",
+    concept_description: "Professionals building or buying retail and commerce media, covering onsite and offsite retail networks, closed loop measurement, in store digital and commerce data collaboration.",
+    category: "interest",
+    constituent_dimensions: [
+      { dimension: "function", value: "cross_functional", weight: 0.30, description: "spans commercial, media and data" },
+      { dimension: "industry", value: "retail_cpg", weight: 0.30, description: "retail, consumer packaged goods and commerce platforms" },
+      { dimension: "topic_affinity", value: "retail_commerce_media", weight: 0.40, description: "retail media networks and commerce measurement" },
+    ],
+    member_nodes: [],
+    similarity_threshold: 0.85,
+    validated_at: "2026-08-07T00:00:00Z",
+  },
+  {
+    concept_id: "CONTEXTUAL_TARGETING_PRACTITIONER",
+    label: "Contextual Targeting Practitioner",
+    concept_description: "Practitioners using contextual and content derived targeting, covering semantic page understanding, brand suitability and cookieless context signals as an alternative to audience identifiers.",
+    category: "interest",
+    constituent_dimensions: [
+      { dimension: "function", value: "marketing", weight: 0.30, description: "media and targeting strategy" },
+      { dimension: "seniority", value: "ic_manager", weight: 0.25, description: "practitioner through lead" },
+      { dimension: "topic_affinity", value: "contextual_intelligence", weight: 0.45, description: "semantic context and cookieless targeting" },
+    ],
+    member_nodes: [],
+    similarity_threshold: 0.85,
+    validated_at: "2026-08-07T00:00:00Z",
+  },
+  {
+    concept_id: "AD_FRAUD_QUALITY_DEFENDER",
+    label: "Ad Fraud and Media Quality Defender",
+    concept_description: "Professionals defending media quality, covering invalid traffic detection, verification, brand safety and supply chain transparency including AI native fraud patterns.",
+    category: "interest",
+    constituent_dimensions: [
+      { dimension: "function", value: "it", weight: 0.30, description: "verification, security and quality engineering" },
+      { dimension: "seniority", value: "director_plus", weight: 0.25, description: "director and above" },
+      { dimension: "topic_affinity", value: "fraud_media_quality", weight: 0.45, description: "invalid traffic, verification and supply chain integrity" },
+    ],
+    member_nodes: [],
+    similarity_threshold: 0.85,
+    validated_at: "2026-08-07T00:00:00Z",
+  },
+  {
+    concept_id: "AI_SEARCH_VISIBILITY_LEAD",
+    label: "AI Search and Answer Engine Visibility",
+    concept_description: "Marketers and strategists working on brand visibility inside AI answer engines and generative search, covering retrieval eligibility, citation and how brands get surfaced when an agent answers instead of a results page.",
+    category: "interest",
+    constituent_dimensions: [
+      { dimension: "function", value: "marketing", weight: 0.35, description: "search, content and demand generation" },
+      { dimension: "seniority", value: "director_plus", weight: 0.20, description: "director and above" },
+      { dimension: "topic_affinity", value: "ai_search_visibility", weight: 0.45, description: "answer engines, generative engine optimisation and retrieval eligibility" },
+    ],
+    member_nodes: [],
+    similarity_threshold: 0.85,
+    validated_at: "2026-08-07T00:00:00Z",
+  },
+  {
+    concept_id: "ATTENTION_MEASUREMENT_RESEARCHER",
+    label: "Attention and Relevance Measurement",
+    concept_description: "Researchers and strategists working on attention metrics and relevance science, covering attention adjusted currencies, eye tracking and panel methodologies, and what attention predicts about outcomes.",
+    category: "interest",
+    constituent_dimensions: [
+      { dimension: "function", value: "marketing", weight: 0.30, description: "insight, research and measurement" },
+      { dimension: "seniority", value: "ic_manager", weight: 0.25, description: "researcher through lead" },
+      { dimension: "topic_affinity", value: "attention_measurement", weight: 0.45, description: "attention metrics and relevance science" },
+    ],
+    member_nodes: [],
+    similarity_threshold: 0.85,
+    validated_at: "2026-08-07T00:00:00Z",
+  },
 ];
 
 // ─── KV cache helpers ─────────────────────────────────────────────────────────
@@ -347,8 +602,28 @@ export function getConceptById(concept_id: string): ConceptEntry | null {
 
 /** Semantic search — token overlap on label + description */
 export function searchConcepts(query: string, limit = 10): ConceptEntry[] {
-  const q = query.toLowerCase();
-  const qTokens = tokenise(q);
+  return searchConceptsScored(query, limit).map((s) => s.entry);
+}
+
+/**
+ * Same ranking, but keeps the score.
+ *
+ * searchConcepts() computed a relevance score and then threw it away on the
+ * way out, so every consumer saw an unranked list with no way to tell a
+ * strong match from a 0.06 token coincidence. A downstream publisher tried
+ * to quality-gate a concept mapping on this and found its gate inert:
+ * "engineers working with embeddings and AI infrastructure" came back
+ * beside PARENTS_WITH_YOUNG_CHILDREN_US with nothing to separate them.
+ *
+ * Exposing the score lets a caller set its own floor. Note it is Jaccard
+ * token overlap, NOT cosine similarity — treat it as a weak lexical signal
+ * and set floors accordingly until Phase 2b adds real embeddings.
+ */
+export function searchConceptsScored(
+  query: string,
+  limit = 10,
+): Array<{ entry: ConceptEntry; score: number }> {
+  const qTokens = tokenise(query.toLowerCase());
 
   const scored = CONCEPT_REGISTRY.map((c) => {
     const text = `${c.concept_id} ${c.label} ${c.concept_description} ${c.category}`.toLowerCase();
@@ -359,8 +634,7 @@ export function searchConcepts(query: string, limit = 10): ConceptEntry[] {
   return scored
     .filter((s) => s.score > 0.05)
     .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map((s) => s.entry);
+    .slice(0, limit);
 }
 
 /** Filter by category */

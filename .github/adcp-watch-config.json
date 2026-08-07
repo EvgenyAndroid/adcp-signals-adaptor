@@ -1,34 +1,43 @@
 {
   "client_sdk": {
-    "package_name": "@adcp/client",
+    "package_name": "@adcp/sdk",
     "package_json_path": "package.json"
   },
   "secondary_sdks": [
     {
-      "package_name": "@adcp/sdk",
-      "context": "Renamed from @adcp/client at 5.23.0 (parallel-shipped through 5.25.1). 6.x onward is sdk-only — @adcp/client EOL at 5.25.1. Migration target: switch import in scripts/run-compliance.mjs + repin package.json. Watcher pings on every new release so we can audit before bumping."
+      "package_name": "@adcp/client",
+      "context": "Historical name — renamed to @adcp/sdk at 5.23.0 (parallel-shipped through 5.25.1). EOL at 5.25.1 as a separate package. Migration to @adcp/sdk@^7 completed in PR #257 (zod 3→4 alongside, since SDK 7.x peer-deps zod^4.1.5). Watcher keeps this entry to catch any unexpected republish (e.g. a security patch backport to the EOL line)."
     }
   ],
   "spec_repo": "adcontextprotocol/adcp",
+  "spec_schema_drift_dirs_context": "Directories tree-SHA-diffed between the latest stable spec tag and main, so the watcher reports WHICH files moved rather than only that a version shipped. Scoped to what a signals-only agent can be graded on: the signals request/response schemas, the shared core + protocol schemas they $ref, the signals scenario storyboards, and the universal storyboards every agent runs. Deliberately excludes media-buy / creative / brand / governance dirs — churn there is constant and cannot affect us. Reported drift is NOT automatically a problem: core/targeting.json and the universal contract docs change often for media-buy reasons. The watcher surfaces; a human judges.",
+  "spec_schema_drift_dirs": [
+    "static/schemas/source/signals",
+    "static/schemas/source/core",
+    "static/schemas/source/protocol",
+    "static/schemas/source/enums",
+    "static/compliance/source/protocols/signals/scenarios",
+    "static/compliance/source/universal"
+  ],
   "tracking_issue_label": "adcp-watcher-tracker",
   "tracked_issues": [
     {
       "repo": "adcontextprotocol/adcp",
-      "number": 2916,
-      "kind": "issue",
-      "context": "Q3 systemic FAIL→SKIP applicability bug, half-shipped 2026-04-30. Phase 1 (runner gate): adcp-client#1063 merged into @adcp/sdk 5.25.0+; runner now honors Storyboard.required_tools and emits clean skip_reason:'missing_tool' when no required tool is advertised. We're on 5.25.1 — already have it. Phase 2 (storyboard annotations, the remaining maintainer task): past_start_enforcement + peer media-buy storyboards still need required_tools:[create_media_buy,update_media_buy] in their YAML. Doesn't affect us — we're applicability-gated out of those storyboards via supported_protocols:[signals] before the tool gate fires. Status downgraded from needs-wg-review (bokelley, 2026-05-01); milestone still 3.1.0. Drop after phase 2 lands."
+      "number": 6093,
+      "kind": "pr",
+      "context": "geo_places PR (bokelley). ITS MERGE IS OUR TRIGGER: #5969 (our geo_cells RFC) is formally Blocked-on #6093 per bokelley's 2026-08-02 marker, with all four wire conventions aligned (URI system identity, uniform supported_resolutions, required_geo_targeting cell filter, verbatim accepted-state echo). When this PR's `merged` flips true, the next deliverable is OUR #5969 revision written against the landed conventions — plus the #6013 §14 and #6014 body updates queued behind it. RESTACKED 2026-08-05T06:52Z: force-push rebase + base changed main→verify-get-products-filters (= head of PR #6203, the AdCP 3.2 targeting-aware product-discovery contract) — #6093 is now serialized BEHIND #6203 and cannot merge first. Shape also moved: place targeting relocated from product filters to targeting_overlay; enums/geo-targeting-level.json DELETED. Do NOT draft the #5969 revision against any pre-2026-08-05 #6093 shape. Drop after the #5969 revision ships."
+    },
+    {
+      "repo": "adcontextprotocol/adcp",
+      "number": 6203,
+      "kind": "pr",
+      "context": "targeting-aware product discovery (bokelley) — the AdCP 3.2 discovery-contract PR that #6093 (our #5969 trigger) was RESTACKED ONTO 2026-08-05 (base verify-get-products-filters). This is now the REAL merge gate for the geo arc: #6093 cannot land until #6203 resolves its conflicts vs main, clears Ladon (ladon/merge-conflict-noted posted 2026-08-05T08:28Z), and gets human/CODEOWNERS approval. Its filters vs targeting_overlay vs required_overlay_support split is also normative context our #5969 revision must be written against. Fires on merge, close, review, label change, or new commits. Drop when #6093 merges (its own entry then drives)."
     },
     {
       "repo": "adcontextprotocol/adcp-client",
       "number": 1062,
       "kind": "issue",
       "context": "Filed 2026-04-29, closed 2026-04-30. Fix shipped in @adcp/sdk 5.25.0; we're on 5.25.1. Tracking kept transiently because the adjacent spec-side normative note ('Storyboards MUST report SKIP, not FAIL, when supported_protocols excludes the scenario's required protocol') was filed as a small follow-up — closure event will fire when that lands. Drop after spec follow-up resolves."
-    },
-    {
-      "repo": "adcontextprotocol/adcp",
-      "number": 4009,
-      "kind": "issue",
-      "context": "Filed 2026-05-03. Runner bug: signal_owned/activate_on_agent storyboard step omits required `destinations` and `idempotency_key` per /schemas/3.0.1/signals/activate-signal-request.json. Schema-conformant agents have no signal of intent (agent vs platform). Workshop-insurance defensive heuristic shipped in this repo (correlation_id parsing in src/mcp/server.ts:callActivateSignal — search 'REMOVE WHEN adcp#4009 ships'). When the storyboard fix ships and Addie's evaluator confirms badge issuance, REVERT the heuristic — restore the simpler 2-stage destinationType precedence."
     },
     {
       "repo": "adcontextprotocol/adcp",
@@ -47,14 +56,46 @@
       "number": 4288,
       "kind": "issue",
       "context": "Filed 2026-05-09 by @bokelley as the 4.0-milestoned structural follow-up after #4271 closed #4270. Drops `required: [\"authentication\"]` from reporting-webhook.json AND from the artifact_webhook block in create-media-buy-request.json (an extra surface beyond our original inventory, surfaced by upstream protocol-expert review during #4271). Schema descriptions already advertise the 4.0 behavior. Labels: claude-triaged, schema, needs-wg-review. Milestone: 4.0. Tracks our 9421-default opt-in path for both push-notification AND reporting webhooks — folds into trip-wire 3 of local issue #248 (item-3 migration). Drop after the 4.0 release lands or this issue is closed."
+    },
+    {
+      "repo": "adcontextprotocol/adcp",
+      "number": 6241,
+      "kind": "pr",
+      "context": "static OOH channel contract draft PR (bokelley, 2026-08-06): ooh_metrics with panels[].id_type + estimation_basis closed enums (RESOLVED VIA US per bokelley's #6140 comment 5202382321: id_type [geopath, route_frame, plant_face, other]; estimation_basis [geopath_dec, route_frame_data, seller_modeled]), postings[] records with OAAA model-contract conventions (photo-evidence SLA; posted_at LOAD-BEARING for flight-end computation — display terms run from average posting date), ooh.mdx channel guide. #6140's Blocked-on marker names THIS PR: 'resurfaces on merge'. ON MERGE: verify our attributed enums + posted_at semantics + evidence-SLA note survived as stated, then the #6140 WG-ratification pass (w/ Chris Williams). Companion PR #6240 (reporting-frequency weekly/quarterly/post_campaign, from the #6138 convergence) rides alongside. Fires on merge/close/review/comments. Drop after the #6140 ratification review ships. (History: the attestation arc entries #4529/#5418/#6126 were dropped 2026-08-06 — all three closed-completed by PR #6218's merge; see memory for the landed shape.)"
+    },
+    {
+      "repo": "adcontextprotocol/adcp",
+      "number": 6254,
+      "kind": "issue",
+      "context": "OURS (filed 2026-08-06T21:19Z from the sales-agent session): runner UX — a schema-invalid get_adcp_capabilities response surfaces as N unrelated track failures instead of one root cause; two documented repros (#6242 account block, #6206 correlation_id). bokelley triaged ready-to-implement, P1, Spec Backlog, with a TWO-PART fix: Part A (this repo) = add canonical notice code `capabilities_response_schema_invalid` to static/compliance/source/universal/runner-output-contract.yaml canonical_codes (~line 1083), patch-eligible, no changeset; Part B (adcp-client) = pre-execution capabilities validation in the SDK runner emitting that notice, no suppression of downstream failures, no 'affects N storyboards' aggregation in v1. WE OFFERED TO TAKE PART A and asked one blocking design question (comment 5209623017, 2026-08-06T22:0xZ): the triage specifies an RFC 6901 `capability_path`, but the contract defines that field as a DOTTED path and all three canonical codes carrying it are dotted — options are (1) dotted, (2) new optional `capability_pointer` alongside it [our recommendation], (3) redefine to accept either. FIRES ON HIS ANSWER: that unblocks our PR. Do not conflate with #6206 under the same notice code (his explicit instruction). Drop after Part A merges."
+    },
+    {
+      "repo": "adcontextprotocol/adcp",
+      "number": 6245,
+      "kind": "pr",
+      "context": "bokelley's '[codex] Add measurement gateway feedback contract' draft (2026-08-06, 24 files, CONFLICTING, zero reviews). WHY WE WATCH IT: it functionally SUPERSEDES our still-open RFC #4296 (Measurement Feedback Signal, milestone 3.3.0) — same four schema files, and it delivers the exact apply-confirmation gate bokelley's 2026-05-09 triage said must land before any WG vote on MeasurementFeedbackSignal scope — while citing #4296 as a bare 'Related:' link, naming us nowhere, and dropping 7 of our asks (nested feedback-signal object, signal_agent_segment_id/signal-grain gate, governance_check_id, FEEDBACK_SUPERSEDED, our single measurement.feedback capability key, the causal vocabulary). Zero signals-domain impact — this is a POSITIONAL watch, not a technical one. Fires on ready-for-review, reviews, comments, merge, or close. If we choose to engage, the surface is the spec's five open WG questions plus two technical hooks: core/performance-feedback.json deletes published properties (feedback_id/status/submitted_at/applied_at) under a `minor` changeset without the Compatibility section addressing it, and our 'confidence_interval implies sample_size required' conditional is dropped. Drop when it merges/closes and we've decided whether to respond on #4296."
+    },
+    {
+      "repo": "adcontextprotocol/adcp",
+      "number": 6269,
+      "kind": "issue",
+      "context": "OURS (filed 2026-08-07). $build_assets_from_format (v3.1.11, PR #6258 backporting #6244) makes the runner build the sync_creatives manifest from the seller's own declared required slots, but adcp-client's creative-assets.ts buildAsset only covers image/url/text — any required slot of type video/audio/html/javascript/vast_tag/vendor is unbuildable, the step fails PRE-TRANSPORT, and the agent is graded down for a harness limitation. storyboard-schema.yaml:2314-2316 says such halts are 'a conformance bug on the runner side, not a grading signal about the agent', and its own preflight-point-1 already prescribes not_applicable — which is the ask. Three more: the normative text at :651-652 names only image+URL as fillable though the runner also does text (implementers can't predict gradeability); buildImage requires EXACT dimension match against only 5 acme-outdoor fixtures (300x250, 728x90, 320x50, 160x600, 1200x628 — so 970x250, 300x600, 336x280, 1080x1920 all fail); and buildText picks content by substring-matching the slot id for headline/description/cta with a headlines fallback, so a required disclaimer/legal/alt_text slot silently receives a marketing headline — a FALSE PASS risk mirroring the false fail. Fires on triage/labels/comments/close. NOTE: found via the sales agent's 3.1.11 degrade, but that agent has its own separate defect (its list_creative_formats publishes slots primary/click_url/alt_text while its sync_creatives takes flat image_url/click_url/alt_text) — do not conflate. Drop when triaged and resolved."
     }
   ],
+  "contribution_page": {
+    "url": "https://nofluffadvisory.com/standards/adcp/",
+    "author": "EvgenyAndroid",
+    "context": "Parity check: every OPEN upstream issue/PR authored by `author` on spec_repo must be cited (linked) on this page's implementer-seat section. One-directional — the page may cite extra numbers (references, maintainer work) freely; only missing authored items count as drift. The page lives in the nofluffadvisory repo at src/pages/standards/adcp.astro. Added after #5739/#5748 (a Conformance-labelled contribution with a live implementation PR) silently missed the manual file-then-update-page routine."
+  },
   "external_registries": [
     {
       "name": "agenticadvertising_org",
       "url": "https://agenticadvertising.org/api/registry/agents?capabilities=true",
       "agent_id_field": "url",
-      "agent_summary_fields": ["name", "type"],
+      "agent_summary_fields": [
+        "name",
+        "type"
+      ],
       "context": "AAO official agent registry (https://agenticadvertising.org/registry/). Fires when agents are added, removed, or rename. Identity = agent URL (stable across renames; surfaces show the new name in the diff). Primary value: catch new ecosystem entrants without manual checks. As of 2026-05-04 the registry has 21 entries; we federate with ~6 of them via /agents/registry — when new agents appear we may want to add them to our local directory."
     }
   ]

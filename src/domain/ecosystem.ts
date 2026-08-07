@@ -163,7 +163,7 @@ const SALES_AGENTS: EcosystemAgent[] = [
 
 const SIGNALS_AGENTS: EcosystemAgent[] = [
   { id: "evgeny_signals", name: "Evgeny Signals", vendor: "Evgeny", role: "signals", stage: "live",
-    mcp_url: "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp", layout: ringTheta(1, 0, 5),
+    mcp_url: "https://adcp.signal-stack.io/mcp", layout: ringTheta(1, 0, 5),
     specialties: ["cross_taxonomy_9_systems", "ucp_embedding", "dts_v12"] },
   { id: "dstillery", name: "Dstillery", vendor: "Dstillery", role: "signals", stage: "live",
     mcp_url: "https://adcp-signals-agent.dstillery.com/mcp", layout: ringTheta(1, 1, 5),

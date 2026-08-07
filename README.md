@@ -1,9 +1,11 @@
 # AdCP Signals Adaptor
 
-A production-structured, AdCP 3.0-rc-compliant Signals Provider built on Cloudflare Workers. Implements the full AdCP Signals Activation Protocol with IAB Data Transparency Standard v1.2 labeling, a UCP (User Context Protocol) embedding bridge, real OpenAI embedding vectors, a concept-level cross-taxonomy registry, natural language audience query, and a complete three-phase Vector Alignment Handshake — the first reference implementation combining the AdCP-UCP Bridge Profile with all UCP v0.2-draft extensions including GTS, Projector, and Handshake Simulator.
+[![AAO Verified Signals Agent 3.0 (Spec)](https://agenticadvertising.org/api/registry/agents/https%3A%2F%2Fadcp.signal-stack.io%2Fmcp/badge/signals/3.0.svg)](https://agenticadvertising.org/registry/agents/https%3A%2F%2Fadcp.signal-stack.io%2Fmcp)
 
-**Live:** `https://adcp-signals-adaptor.evgeny-193.workers.dev`  
-**MCP:** `https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp`  
+A production-structured, AdCP 3.1-compliant Signals Provider built on Cloudflare Workers. Implements the full AdCP Signals Activation Protocol with IAB Data Transparency Standard v1.2 labeling, a UCP (User Context Protocol) embedding bridge, real OpenAI embedding vectors, a concept-level cross-taxonomy registry, natural language audience query, and a complete three-phase Vector Alignment Handshake — the first reference implementation combining the AdCP-UCP Bridge Profile with all UCP v0.2-draft extensions including GTS, Projector, and Handshake Simulator.
+
+**Live:** `https://adcp.signal-stack.io`  
+**MCP:** `https://adcp.signal-stack.io/mcp`  
 **GitHub:** `https://github.com/EvgenyAndroid/adcp-signals-adaptor`  
 **Trust model:** this is a single-operator demo — see [SECURITY_MODEL.md](SECURITY_MODEL.md) for the shared-LinkedIn-token constraint and when to revisit it.
 
@@ -26,16 +28,17 @@ A production-structured, AdCP 3.0-rc-compliant Signals Provider built on Cloudfl
 | v3.0.4 | 2026-04-30 | **Campaign Canvas (DSP buy-side control loop)** — new tab parallel to brand-anchored Canvas. Mocks the 4 unspec'd buy-side primitives (`submit_bid_strategy` · `get_bid_opportunities` · `get_pacing_status` · `optimize_strategy`) PLUS LIVE-ORCHESTRATES every primitive any directory agent advertises: `/dsp/agents/coverage` (KV-cached probe of 11 buy-side tools across 8 buying agents) · `/dsp/media-buys/live` (fan-out `get_media_buys` aggregator) · `/dsp/media-buys/:id/delivery-live` · `/dsp/campaigns/:id/fire-live` (real `create_media_buy` from Campaign card) · `/dsp/media-buys/:id/update-live` (real `update_media_buy` from Lane 5 strategy diff) · `/dsp/campaigns/:id/signals-live` (real `get_signals` against campaign's audience brief) · `/dsp/campaigns/:id/products-live` (real `get_products` fan-out) · `/dsp/agents/:id/capabilities-live` (real `get_adcp_capabilities` deep-probe). Per-lane LIVE/MOCK/0-of-N provenance pills. **Coverage finding: 8/8 buying agents advertise lifecycle tools (create/update/delivery/buys); 0/8 advertise any of the 4 unspec'd primitives — workshop-cite-able as the largest spec surface gap remaining in 3.0 GA.** |
 | v3.0.5 | 2026-04-30 | **Agentic Canvas** — chat-driven brief expander + tool-selection planner + NDJSON-streamed reasoning trace. Two-mode: **live LLM** (Claude Sonnet 4 via Anthropic API when `ANTHROPIC_API_KEY` is set) or **rule-based templates** that produce structurally identical output deterministically. 8 endpoints: `/agentic/brief/expand` · `/agentic/plan` · `/agentic/execute` (stream) · `/agentic/explain` · `/agentic/chat` · `/agentic/recover` · `/agentic/remediate` · `/agentic/memory/recall`. Streaming UX: skeleton pulses on submit, sections cascade-fade-in as data lands, reasoning trace types char-by-char with blinking cursor, active stage gets accent-glow loop. Reusable "Explain this" overlay badges any decision surface. |
 | v3.0.6 | 2026-04-30 | **SDK bump `@adcp/client` 5.21.1 → 5.25.1** — picks up upstream fixes for two issues we filed (closed within 36h): adcp-client#1060 (`get_products` gate dropped on protocol-wide scenarios) + adcp-client#1062 (`past_start_enforcement` storyboard required-tools pre-flight). Compliance scenarios passed: **4 → 7** (`error_handling`, `validation`, `schema_compliance` now run on signals-only agents). Plus 5.25 version-negotiation hardening (#1073, #1075) — caller-supplied `adcp_major_version` no longer SDK-overridden; single-field `VERSION_UNSUPPORTED` server check. |
+| v3.1.0 GA | 2026-06-18 | **AdCP 3.1 GA promotion.** Re-vendored the schema corpus `3.0.15 → v3.1.0`; bumped `SPEC_VERSION → 3.1.0` and `ADCP_MAJOR_LINE → "3.1 GA"` (X-AdCP-Spec-Version now `3.1.0`); serve release-precision `adcp_version: "3.1"` + re-added `adcp.supported_versions: ["3.0","3.1"]`; reject cross-major `adcp_version` pins (e.g. `"4.0"`) with `VERSION_UNSUPPORTED`. Passes the v3.1.0 GA storyboard suite **7/7** (`@adcp/sdk@9.0.0`) — every schema-required signals constraint already satisfied (`cache_scope`, mutating-only idempotency, flat MCP envelope, required signal-item fields). `adagents.json` validated compliant against the 3.1 schema. (The `3.0.7 → 3.0.19` patches in between were storyboard-only / no-wire-change batch refreshes — folded in here, not given per-version rows.) Upstream this cycle: authored `last_updated` on `signal-definition` (adcp#5249, in 3.1), shipped the merged AAO grader fix (adcp#5429/#5444), and posted the `runtime_attestations` RFC (adcp#5418, 3.2 candidate). |
 
 ---
 
 ## Protocol Compliance
 
-Implements AdCP Signals Activation Protocol v3.0 GA — 8 MCP tools. Capabilities response conforms to the [v3 schema](https://adcontextprotocol.org/schemas/v3/protocol/get-adcp-capabilities-response.json):
+Implements AdCP Signals Activation Protocol 3.1 GA — 8 MCP tools. Capabilities response conforms to the [v3 schema](https://adcontextprotocol.org/schemas/v3/protocol/get-adcp-capabilities-response.json):
 
 | Tool | Status | Notes |
 |---|---|---|
-| `get_adcp_capabilities` | ✅ | `adcp.major_versions: [2, 3]` + `supported_protocols: ["signals"]` + UCP block under `ext.ucp` + `adcp.idempotency.{supported, replay_ttl_seconds}` + `governance.mode` (advisory/audit/enforce). Accepts `protocols` filter param. |
+| `get_adcp_capabilities` | ✅ | `adcp.major_versions: [3]` + `adcp.supported_versions: ["3.0", "3.1"]` + `supported_protocols: ["signals"]` + UCP block under `ext.ucp` + `adcp.idempotency.{supported, replay_ttl_seconds}` + `governance.mode` (advisory/audit/enforce). Accepts `protocols` filter param. |
 | `get_signals` | ✅ | `signal_spec` + `deliver_to` (required) + relevance ranking + `x_dts` (with v3.0.1 `policy_attestations[]`) + `x_ucp` on every signal |
 | `activate_signal` | ✅ | `deliver_to` required. Async — returns `task_id + pending` immediately |
 | `get_operation_status` | ✅ | Aliases: `get_task_status`, `get_signal_status`. `destinations` field. |
@@ -153,7 +156,7 @@ Detailed protocol-level changes are in [docs/PROTOCOL_CHANGELOG.md](docs/PROTOCO
 Before two agents exchange embeddings they independently encode a shared concept-pair set and verify their vectors land in the same semantic neighbourhoods. This endpoint exposes the provider's GTS so a buyer agent can validate geometric + semantic compatibility before the VAC handshake.
 
 ```bash
-curl https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/gts \
+curl https://adcp.signal-stack.io/ucp/gts \
   | jq '{overall_pass, pass_rate, summary}'
 ```
 
@@ -184,7 +187,7 @@ Returns a 512×512 orthogonal rotation matrix mapping `openai-te3-small-d512-v1`
 > **API key:** gated routes require `Authorization: Bearer $DEMO_API_KEY`. Export the value you provisioned via `wrangler secret put DEMO_API_KEY` into your shell before running the examples below — e.g. `export DEMO_API_KEY=...`. The key is a Worker secret, not a checked-in constant.
 
 ```bash
-curl https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/projector \
+curl https://adcp.signal-stack.io/ucp/projector \
   -H "Authorization: Bearer $DEMO_API_KEY" \
   | jq '{from_space, to_space, status, anchor_count, signature}'
 ```
@@ -203,19 +206,19 @@ Accepts a buyer agent capability payload. Returns the negotiated outcome across 
 
 ```bash
 # Direct match
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/simulate-handshake \
+curl -X POST https://adcp.signal-stack.io/ucp/simulate-handshake \
   -H "Content-Type: application/json" \
   -d '{"buyer_space_ids":["openai-te3-small-d512-v1"],"buyer_ucp_version":"ucp-v1"}' \
   | jq '{outcome, matched_space}'
 
 # Projector path (different space)
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/simulate-handshake \
+curl -X POST https://adcp.signal-stack.io/ucp/simulate-handshake \
   -H "Content-Type: application/json" \
   -d '{"buyer_space_ids":["bert-base-uncased-v1"],"buyer_ucp_version":"ucp-v1"}' \
   | jq '{outcome, projector_endpoint, projector_status}'
 
 # Legacy fallback (incompatible version)
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/simulate-handshake \
+curl -X POST https://adcp.signal-stack.io/ucp/simulate-handshake \
   -H "Content-Type: application/json" \
   -d '{"buyer_space_ids":[],"buyer_ucp_version":"ucp-v0"}' \
   | jq '{outcome, fallback_mechanism}'
@@ -246,7 +249,7 @@ Every signal carries an `x_dts` object — IAB DTS v1.2 ("Privacy Update", April
   "x_dts": {
     "dts_version": "1.2",
     "provider_name": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
-    "provider_domain": "adcp-signals-adaptor.evgeny-193.workers.dev",
+    "provider_domain": "adcp.signal-stack.io",
     "provider_email": "evgeny@evgeny.dev",
     "audience_id": "sig_acs_graduate_high_income",
     "taxonomy_id_list": "11",
@@ -338,7 +341,7 @@ Every signal carries an `x_ucp` object — UCP HybridPayload per the AdCP-UCP Br
 ### GET /signals/:id/embedding
 
 ```bash
-curl https://adcp-signals-adaptor.evgeny-193.workers.dev/signals/sig_drama_viewers/embedding \
+curl https://adcp.signal-stack.io/signals/sig_drama_viewers/embedding \
   -H "Authorization: Bearer $DEMO_API_KEY"
 ```
 
@@ -611,7 +614,7 @@ wrangler secret put TOKEN_ENCRYPTION_KEY
 # EMBEDDING_ENGINE = "llm"
 
 # Seed concept registry after deploy
-curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/ucp/concepts/seed \
+curl -X POST https://adcp.signal-stack.io/ucp/concepts/seed \
   -H "Authorization: Bearer $DEMO_API_KEY"
 ```
 

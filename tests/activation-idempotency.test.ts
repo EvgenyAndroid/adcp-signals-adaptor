@@ -1,8 +1,10 @@
 // tests/activation-idempotency.test.ts
 //
-// Pin the activate_signal idempotency contract:
-//   * Same idempotency_key + same (signal, destination) → original task_id
-//   * Same idempotency_key + DIFFERENT signal-or-destination → fresh activation
+// Pin the activate_signal idempotency contract (AdCP 3.1):
+//   * Same idempotency_key + same body → original task_id (replay)
+//   * Same idempotency_key + DIFFERENT body → typed IDEMPOTENCY_CONFLICT
+//     (fingerprint compare when both sides carry one; legacy
+//     (signal, destination) compare for pre-0008 rows without one)
 //   * Missing idempotency_key → fresh activation each call (back-compat)
 //
 // Closes the workshop deck audit gap: schema requires idempotency_key on
@@ -10,7 +12,7 @@
 // creating duplicate activation_jobs rows on retries.
 
 import { describe, it, expect, vi } from "vitest";
-import { activateSignalService } from "../src/domain/activationService";
+import { activateSignalService, IdempotencyConflictError } from "../src/domain/activationService";
 import type { CanonicalSignal } from "../src/types/signal";
 
 function makeKv(): KVNamespace {
@@ -39,7 +41,7 @@ const sampleSignal: CanonicalSignal = {
   activationSupported: true,
   estimatedAudienceSize: 1_000_000,
   accessPolicy: "public" as never,
-  generationMode: "deterministic",
+  generationMode: "seeded",
   status: "available" as never,
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",
@@ -85,10 +87,10 @@ function makeDb(seedSignals: CanonicalSignal[]) {
           }
           // Idempotency dedup lookup
           if (sql.includes("WHERE idempotency_key")) {
-            const [key, sigId, dest] = bound as string[];
-            const match = activationJobs.find(
-              (j) => j["idempotency_key"] === key && j["signal_id"] === sigId && j["destination"] === dest,
-            );
+            // AdCP 3.1: lookup is key-ONLY; body match is decided by the
+            // service via fingerprints (or the legacy column fallback).
+            const [key] = bound as string[];
+            const match = activationJobs.find((j) => j["idempotency_key"] === key);
             return (match ?? null) as unknown as T;
           }
           return null as unknown as T;
@@ -113,6 +115,7 @@ function makeDb(seedSignals: CanonicalSignal[]) {
               submitted_at: bound[8],
               updated_at: bound[9],
               idempotency_key: bound[10],
+              request_fingerprint: bound[11],
               webhook_fired: 0,
               webhook_attempts: 0,
               webhook_next_attempt_at: null,
@@ -157,48 +160,95 @@ describe("activate_signal idempotency enforcement", () => {
     expect(getRows()).toHaveLength(1);
   });
 
-  it("same idempotency_key + DIFFERENT signal mints a fresh activation", async () => {
+  it("same idempotency_key + DIFFERENT signal is a typed IDEMPOTENCY_CONFLICT (AdCP 3.1)", async () => {
     const sig2 = { ...sampleSignal, signalId: "sig_test_audience_2" };
     const { db, getRows } = makeDb([sampleSignal, sig2]);
     const kv = makeKv();
     const key = "ik_shared_key_across_signals";
 
-    const r1 = await activateSignalService(db, kv, {
+    await activateSignalService(db, kv, {
       signalId: "sig_test_audience",
       destination: "mock_dsp",
       idempotencyKey: key,
     }, fakeLogger);
 
-    const r2 = await activateSignalService(db, kv, {
+    await expect(activateSignalService(db, kv, {
       signalId: "sig_test_audience_2",
       destination: "mock_dsp",
       idempotencyKey: key,
-    }, fakeLogger);
+    }, fakeLogger)).rejects.toBeInstanceOf(IdempotencyConflictError);
 
-    expect(r2.task_id).not.toBe(r1.task_id);
-    expect(getRows()).toHaveLength(2);
+    // No second mutation was created.
+    expect(getRows()).toHaveLength(1);
   });
 
-  it("same idempotency_key + DIFFERENT destination mints a fresh activation", async () => {
+  it("same idempotency_key + DIFFERENT destination is a typed IDEMPOTENCY_CONFLICT (AdCP 3.1)", async () => {
     const sig = { ...sampleSignal, destinations: ["mock_dsp", "mock_dsp_alt"] };
     const { db, getRows } = makeDb([sig]);
     const kv = makeKv();
     const key = "ik_shared_key_across_destinations";
 
-    const r1 = await activateSignalService(db, kv, {
+    await activateSignalService(db, kv, {
       signalId: "sig_test_audience",
       destination: "mock_dsp",
       idempotencyKey: key,
     }, fakeLogger);
 
-    const r2 = await activateSignalService(db, kv, {
+    await expect(activateSignalService(db, kv, {
       signalId: "sig_test_audience",
       destination: "mock_dsp_alt",
       idempotencyKey: key,
+    }, fakeLogger)).rejects.toBeInstanceOf(IdempotencyConflictError);
+
+    expect(getRows()).toHaveLength(1);
+  });
+
+  it("fingerprint mismatch conflicts even when stored columns match (normalized-destination case)", async () => {
+    // The live gap this fix closes: two RAW caller bodies that both
+    // normalize to the same (signal, destination) — the columns agree,
+    // only the fingerprints differ.
+    const { db, getRows } = makeDb([sampleSignal]);
+    const kv = makeKv();
+    const key = "ik_fingerprint_beats_columns";
+
+    await activateSignalService(db, kv, {
+      signalId: "sig_test_audience",
+      destination: "mock_dsp",
+      idempotencyKey: key,
+      requestFingerprint: "fp_body_variant_a",
     }, fakeLogger);
 
-    expect(r2.task_id).not.toBe(r1.task_id);
-    expect(getRows()).toHaveLength(2);
+    await expect(activateSignalService(db, kv, {
+      signalId: "sig_test_audience",
+      destination: "mock_dsp",
+      idempotencyKey: key,
+      requestFingerprint: "fp_body_variant_b",
+    }, fakeLogger)).rejects.toBeInstanceOf(IdempotencyConflictError);
+
+    expect(getRows()).toHaveLength(1);
+  });
+
+  it("matching fingerprints replay the original task_id", async () => {
+    const { db, getRows } = makeDb([sampleSignal]);
+    const kv = makeKv();
+    const key = "ik_fingerprint_replay";
+
+    const r1 = await activateSignalService(db, kv, {
+      signalId: "sig_test_audience",
+      destination: "mock_dsp",
+      idempotencyKey: key,
+      requestFingerprint: "fp_same_body",
+    }, fakeLogger);
+
+    const r2 = await activateSignalService(db, kv, {
+      signalId: "sig_test_audience",
+      destination: "mock_dsp",
+      idempotencyKey: key,
+      requestFingerprint: "fp_same_body",
+    }, fakeLogger);
+
+    expect(r2.task_id).toBe(r1.task_id);
+    expect(getRows()).toHaveLength(1);
   });
 
   it("MISSING idempotency_key creates fresh activation each call (back-compat)", async () => {
@@ -222,7 +272,7 @@ describe("activate_signal idempotency enforcement", () => {
   });
 
   it("idempotent replay preserves the original submittedAt timestamp", async () => {
-    const { db } = makeDb([sampleSignal]);
+    const { db, getRows } = makeDb([sampleSignal]);
     const kv = makeKv();
     const key = "ik_timestamp_check_xyz123";
 
@@ -231,6 +281,12 @@ describe("activate_signal idempotency enforcement", () => {
       destination: "mock_dsp",
       idempotencyKey: key,
     }, fakeLogger);
+
+    // The replay reads submitted_at back from the row, so the stored value
+    // must equal what the first response put on the wire — one clock read,
+    // not one in the service and another in the repo (the old double-read
+    // flaked whenever the two calls straddled a millisecond boundary).
+    expect(getRows()[0]?.["submitted_at"]).toBe(r1.submittedAt);
 
     // Wait a beat to ensure new Date().toISOString() WOULD differ
     await new Promise((resolve) => setTimeout(resolve, 5));

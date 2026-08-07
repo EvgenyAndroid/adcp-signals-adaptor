@@ -45,7 +45,11 @@ export const AGENT_REGISTRY: RegisteredAgent[] = [
     capabilities_url: SELF_URL + "/capabilities",
     stage: "live",
     role: "signals",
-    protocols: ["adcp_3.0", "ucp_0.2", "dts_1.2", "mcp_streamable_http"],
+    // Self-entry tracks the version we actually serve on the wire
+    // (adcp_version "3.1" since the 3.1 GA bump). Peer entries keep their
+    // as-observed protocol tags from the directory seed — we don't assert
+    // upgrades for agents we haven't re-probed.
+    protocols: ["adcp_3.1", "ucp_0.2", "dts_1.2", "mcp_streamable_http"],
     specialties: [
       "cross_taxonomy_bridge_9_systems",
       "ucp_embedding_live",
@@ -283,7 +287,7 @@ export const AGENT_REGISTRY: RegisteredAgent[] = [
     stage: "known_issue",
     role: "buying",
     protocols: ["adcp_3.0"],
-    notes: "Directory: type=sales (added 2026-05-08). Probe-untested in our federation flow; promote to stage:live once handshake confirmed.",
+    notes: "Directory: type=sales (added 2026-05-08). Probe-untested in our federation flow. REMOVED from the AAO directory 2026-06-11 (per AdCP daily watcher) — do NOT promote; entry kept for historical reference, candidate for deletion if it doesn't re-register.",
   },
   {
     id: "rediads",

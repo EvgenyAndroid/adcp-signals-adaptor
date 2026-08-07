@@ -327,7 +327,7 @@ function buildExampleCurl(tool) {
   // TypeScript template literal, each literal backslash needs four here
   // (TS-literal → JS-source → in-JS string-literal).
   const BS = "\\\\";
-  return 'curl -X POST https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp ' + BS + '\\n' +
+  return 'curl -X POST https://adcp.signal-stack.io/mcp ' + BS + '\\n' +
     '  -H "Authorization: Bearer demo-key-adcp-signals-v1" ' + BS + '\\n' +
     '  -H "Content-Type: application/json" ' + BS + '\\n' +
     "  -d '" + JSON.stringify(payload) + "'";

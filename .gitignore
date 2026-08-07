@@ -378,3 +378,6 @@ tmp-mining/
 # by scripts/vendor-adcp-schemas.mjs (with sha256 verification). The
 # generated TS module at src/schemas/adcp/index.ts IS committed.
 vendor/adcp/
+
+# Local dev secrets (wrangler dev)
+.dev.vars

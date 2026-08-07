@@ -19,6 +19,10 @@ const API_KEY = process.env.ANTHROPIC_API_KEY;
 // Skip all integration tests if no API key present
 const describeIfKey = API_KEY ? describe : describe.skip;
 
+// CatalogSignal requires the canonical `id`; production D1 rows carry both
+// `id` and the wire-name alias `signal_agent_segment_id` with the same value
+// (see semanticResolver.ts), so mirror that instead of duplicating the
+// literal on every row.
 const MOCK_CATALOG: CatalogSignal[] = [
   { signal_agent_segment_id: "sig_family_with_kids", name: "Households with Children", category_type: "demographic", estimated_audience_size: 38_400_000, coverage_percentage: 0.16, rules: [{ dimension: "household_type", operator: "eq", value: "family_with_kids" }], description: "households with school-age children family kids parents" },
   { signal_agent_segment_id: "sig_35_44", name: "Adults 35-44", category_type: "demographic", estimated_audience_size: 43_200_000, coverage_percentage: 0.18, rules: [{ dimension: "age_band", operator: "eq", value: "35-44" }], description: "adults aged 35 to 44 mid-life" },
@@ -30,11 +34,11 @@ const MOCK_CATALOG: CatalogSignal[] = [
   { signal_agent_segment_id: "sig_urban_top10", name: "Top 10 Metro Residents", category_type: "geo", estimated_audience_size: 72_000_000, coverage_percentage: 0.30, rules: [{ dimension: "metro_tier", operator: "eq", value: "top_10" }], description: "residents of top 10 largest US metropolitan areas urban" },
   { signal_agent_segment_id: "sig_luxury_interest", name: "Luxury Goods Interest", category_type: "interest", estimated_audience_size: 24_000_000, coverage_percentage: 0.10, description: "interest in luxury goods fashion premium brands affluent shoppers" },
   { signal_agent_segment_id: "sig_sci_fi_viewers", name: "Sci-Fi Viewers", category_type: "interest", estimated_audience_size: 9_600_000, coverage_percentage: 0.04, rules: [{ dimension: "content_genre", operator: "eq", value: "sci_fi" }], description: "science fiction sci-fi television viewers streamers" },
-];
+].map((s) => ({ ...s, id: s.signal_agent_segment_id }));
 
 describeIfKey("parseNLQuery — real Claude API", () => {
   it("parses simple demographic query", async () => {
-    const ast = await parseNLQuery("women aged 35 to 50 with children", { apiKey: API_KEY });
+    const ast = await parseNLQuery("women aged 35 to 50 with children", { apiKey: API_KEY! });
     expect(ast.root).toBeDefined();
     expect(ast.confidence).toBeGreaterThan(0);
     const leafs = getAllLeafs(ast.root);
@@ -44,18 +48,18 @@ describeIfKey("parseNLQuery — real Claude API", () => {
   }, 10_000);
 
   it("parses negation correctly", async () => {
-    const ast = await parseNLQuery("adults who don't drink coffee", { apiKey: API_KEY });
+    const ast = await parseNLQuery("adults who don't drink coffee", { apiKey: API_KEY! });
     expect(hasNotNode(ast.root)).toBe(true);
   }, 10_000);
 
   it("parses archetype", async () => {
-    const ast = await parseNLQuery("soccer moms in the suburbs", { apiKey: API_KEY });
+    const ast = await parseNLQuery("soccer moms in the suburbs", { apiKey: API_KEY! });
     const leafs = getAllLeafs(ast.root);
     expect(leafs.some(l => l.dimension === "archetype")).toBe(true);
   }, 10_000);
 
   it("parses temporal scope", async () => {
-    const ast = await parseNLQuery("drama viewers in the afternoon", { apiKey: API_KEY });
+    const ast = await parseNLQuery("drama viewers in the afternoon", { apiKey: API_KEY! });
     const leafs = getAllLeafs(ast.root);
     const temporal = leafs.find(l => l.temporal !== undefined);
     expect(temporal).toBeDefined();
@@ -65,7 +69,7 @@ describeIfKey("parseNLQuery — real Claude API", () => {
   it("parses the full soccer mom query", async () => {
     const ast = await parseNLQuery(
       "soccer moms who are 35+ and live in Nashville, don't like coffee but watch desperate housewives in the afternoon",
-      { apiKey: API_KEY }
+      { apiKey: API_KEY! }
     );
 
     console.log("\n=== Full AST ===\n", JSON.stringify(ast, null, 2));
@@ -80,18 +84,41 @@ describeIfKey("parseNLQuery — real Claude API", () => {
   }, 15_000);
 });
 
+// handleNLQuery returns a JSON Response whose body carries the pipeline
+// result — the shape json()'d out in nlQueryHandler.ts.
+interface NLQueryResponseBody {
+  success: boolean;
+  error?: string;
+  duration_ms?: number;
+  result?: {
+    nl_query: string;
+    estimated_size: number;
+    confidence: number;
+    confidence_tier: string;
+    matched_signals: Array<{ name: string; match_score: number }>;
+    exclude_signals: Array<{ name: string }>;
+    warnings?: string[];
+  };
+}
+
 describeIfKey("handleNLQuery — full pipeline E2E", () => {
+  // handleNLQuery takes the worker env (NLQueryEnv), not a bare API key.
+  const NL_ENV = { ANTHROPIC_API_KEY: API_KEY! };
+
+  async function nlQuery(body: { query: string; limit?: number }): Promise<NLQueryResponseBody> {
+    const resp = await handleNLQuery(body, MOCK_CATALOG, NL_ENV);
+    return (await resp.json()) as NLQueryResponseBody;
+  }
+
   it("soccer mom query returns scored result", async () => {
-    const resp = await handleNLQuery(
+    const data = await nlQuery(
       { query: "soccer moms who are 35+ and live in Nashville, don't like coffee but watch desperate housewives in the afternoon", limit: 10 },
-      MOCK_CATALOG,
-      API_KEY
     );
 
-    expect(resp.success).toBe(true);
-    expect(resp.result).toBeDefined();
+    expect(data.success).toBe(true);
+    expect(data.result).toBeDefined();
 
-    const r = resp.result!;
+    const r = data.result!;
     console.log("\n=== Full Pipeline Result ===");
     console.log("Query:", r.nl_query);
     console.log("Estimated size:", r.estimated_size.toLocaleString());
@@ -99,7 +126,7 @@ describeIfKey("handleNLQuery — full pipeline E2E", () => {
     console.log("Matched:", r.matched_signals.map(s => `${s.name} [${s.match_score.toFixed(2)}]`).join(", "));
     console.log("Excluded:", r.exclude_signals.map(s => s.name).join(", "));
     console.log("Warnings:", r.warnings);
-    console.log("Duration:", resp.duration_ms, "ms");
+    console.log("Duration:", data.duration_ms, "ms");
 
     expect(r.matched_signals.length).toBeGreaterThan(0);
     expect(r.exclude_signals.some(s => s.name.toLowerCase().includes("coffee"))).toBe(true);
@@ -107,25 +134,21 @@ describeIfKey("handleNLQuery — full pipeline E2E", () => {
   }, 20_000);
 
   it("simple luxury query", async () => {
-    const resp = await handleNLQuery(
-      { query: "high-income households interested in luxury goods", limit: 5 },
-      MOCK_CATALOG,
-      API_KEY
-    );
-    expect(resp.success).toBe(true);
-    expect(resp.result!.matched_signals.length).toBeGreaterThan(0);
+    const data = await nlQuery({ query: "high-income households interested in luxury goods", limit: 5 });
+    expect(data.success).toBe(true);
+    expect(data.result!.matched_signals.length).toBeGreaterThan(0);
   }, 15_000);
 
   it("rejects empty query", async () => {
-    const resp = await handleNLQuery({ query: "" }, MOCK_CATALOG, API_KEY);
-    expect(resp.success).toBe(false);
-    expect(resp.error).toMatch(/required/i);
+    const data = await nlQuery({ query: "" });
+    expect(data.success).toBe(false);
+    expect(data.error).toMatch(/required/i);
   }, 5_000);
 
   it("rejects oversized query", async () => {
-    const resp = await handleNLQuery({ query: "x".repeat(2001) }, MOCK_CATALOG, API_KEY);
-    expect(resp.success).toBe(false);
-    expect(resp.error).toMatch(/2000/);
+    const data = await nlQuery({ query: "x".repeat(2001) });
+    expect(data.success).toBe(false);
+    expect(data.error).toMatch(/2000/);
   }, 5_000);
 });
 

@@ -1,0 +1,28 @@
+name = "signal-ledger-media-seller"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+[vars]
+ENVIRONMENT  = "development"
+PUBLISHER    = "Signal Ledger Media"
+AGENT_DOMAIN = "signal-ledger-media-seller.example.workers.dev"
+# ADCP_TEST_TOKEN is the bearer token gating mutating MCP calls. It is a
+# SECRET, not a var: provision with `wrangler secret put ADCP_TEST_TOKEN`.
+# Never add it here — [vars] are baked into the public Worker bundle, which
+# makes a plaintext token equivalent to no auth at all.
+#
+# The worker fails CLOSED. With no token and no explicit
+# ALLOW_UNAUTHENTICATED=true opt-in, every route returns 503
+# AUTH_NOT_CONFIGURED rather than serving media-buy endpoints openly. See
+# src/auth.ts. ALLOW_UNAUTHENTICATED is refused outright when
+# ENVIRONMENT="production", so flipping this file to production does not
+# also let the escape hatch through.
+#
+# Before any real deploy, also flip ENVIRONMENT to "production" and replace
+# the .example placeholder domains (AGENT_DOMAIN here, PUBLISHER_DOMAIN and
+# SELLER_AGENT_URL in src/catalog/products.ts) with domains that resolve —
+# buyers fetch adagents.json from publisher_domain to validate authorization.
+
+[dev]
+port           = 8788
+local_protocol = "http"

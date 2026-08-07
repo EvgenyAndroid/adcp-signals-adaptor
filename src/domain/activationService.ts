@@ -76,13 +76,26 @@ export async function activateSignalService(
   // flagged. Triple-match (not key-only) so reuse against a different
   // signal-or-destination legitimately mints a fresh activation.
   if (req.idempotencyKey) {
-    const existing = await findActivationByIdempotencyKey(
-      db,
-      req.idempotencyKey,
-      req.signalId,
-      req.destination,
-    );
+    const existing = await findActivationByIdempotencyKey(db, req.idempotencyKey);
     if (existing) {
+      // AdCP 3.1: same key + different request body MUST be a typed
+      // IDEMPOTENCY_CONFLICT, never a silent replay of the original
+      // result. Fingerprints are computed at the MCP boundary from the
+      // caller's RAW arguments (before destination normalization), so
+      // this sees differences the stored columns cannot. Pre-0008 rows
+      // have no fingerprint; for those we fall back to the legacy
+      // (signal, destination) comparison — the best evidence available.
+      const bodyMatches =
+        existing.requestFingerprint && req.requestFingerprint
+          ? existing.requestFingerprint === req.requestFingerprint
+          : existing.signalId === req.signalId && existing.destination === req.destination;
+      if (!bodyMatches) {
+        logger.info("activation_idempotency_conflict", {
+          idempotencyKey: req.idempotencyKey,
+          originalOperationId: existing.operationId,
+        });
+        throw new IdempotencyConflictError(req.idempotencyKey, existing.operationId);
+      }
       logger.info("activation_idempotent_replay", {
         idempotencyKey: req.idempotencyKey,
         operationId: existing.operationId,
@@ -133,11 +146,13 @@ export async function activateSignalService(
     operationId: opId,
     signalId: req.signalId,
     destination: req.destination,
+    submittedAt: now,
     ...(req.accountId !== undefined ? { accountId: req.accountId } : {}),
     ...(req.campaignId !== undefined ? { campaignId: req.campaignId } : {}),
     ...(req.notes !== undefined ? { notes: req.notes } : {}),
     ...(req.webhookUrl !== undefined ? { webhookUrl: req.webhookUrl } : {}),
     ...(req.idempotencyKey !== undefined ? { idempotencyKey: req.idempotencyKey } : {}),
+    ...(req.requestFingerprint !== undefined ? { requestFingerprint: req.requestFingerprint } : {}),
   });
 
   logger.info("activation_submitted", {
@@ -429,6 +444,22 @@ async function fireWebhook(
       attempt: attemptNumber,
       exhausted,
     });
+  }
+}
+
+/** AdCP 3.1 idempotency contract: reused key, different body. The MCP
+ *  layer maps this to a typed IDEMPOTENCY_CONFLICT tool error carrying
+ *  the original task_id so the caller has a recovery path. */
+export class IdempotencyConflictError extends Error {
+  readonly idempotencyKey: string;
+  readonly originalOperationId: string;
+  constructor(idempotencyKey: string, originalOperationId: string) {
+    super(
+      `idempotency_key '${idempotencyKey}' was already used with a different request body`,
+    );
+    this.name = "IdempotencyConflictError";
+    this.idempotencyKey = idempotencyKey;
+    this.originalOperationId = originalOperationId;
   }
 }
 

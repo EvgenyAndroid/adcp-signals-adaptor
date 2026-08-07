@@ -16,6 +16,11 @@ export interface Env {
   // Set EMBEDDING_ENGINE=llm to activate LLM mode
   EMBEDDING_ENGINE?: string;
 
+  // Optional override for the federated publisher synaptic-audience catalog
+  // (src/connectors/synapticLoader.ts). Defaults to
+  // https://sell.nofluffadvisory.com/synaptic/catalog when unset.
+  SYNAPTIC_CATALOG_URL?: string;
+
   // ── Secrets (npx wrangler secret put ...) ────────────────────────────────────
   OPENAI_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;

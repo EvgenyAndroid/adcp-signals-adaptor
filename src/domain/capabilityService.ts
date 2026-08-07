@@ -48,16 +48,52 @@
 // Bumps:
 //   v23 → previous baseline
 //   v24 → Sec-31v: added top-level `specialisms` for AAO badge issuance
-const CACHE_KEY_PREFIX = "adcp_capabilities_v24";
+//   v25 → added `adcp.supported_versions` (3.1 release-precision version
+//         negotiation, per the AAO `comply()` runner's
+//         `version_negotiation/capabilities_advertise_and_echo` storyboard).
+//         The cache-suffix derivation (SPEC_VERSION + last_run) wouldn't
+//         auto-invalidate a value-only field add, so we bump the prefix.
+//   v26 → REMOVED `adcp.supported_versions` (hotfix for badge loss on
+//         2026-05-29). The ["3.0"] value PR A added tripped AAO's
+//         3.1.0-beta.7 cache strict-incompatibility check and aborted
+//         the whole grading run, flipping verified:false. Without the
+//         field the runner falls back to major_versions: [3] and grades
+//         us with the latest 3.x cache (partial/silent on tracks, but
+//         GRADED → badge restored). Re-add `supported_versions:
+//         ["3.0", "3.1"]` only after conforming to 3.1 storyboards.
+//   v27 → RE-ADDED `adcp.supported_versions: ["3.0","3.1"]` for the 3.1 GA
+//         promotion (2026-06-18). The v26 re-add condition is now met — the
+//         live agent passes the v3.1.0 GA storyboard suite 7/7. Prefix bump
+//         so the new field isn't served from a stale v26 blob.
+//   v28 → added signals.discovery_modes ["brief","wholesale"] +
+//         signals.in_flight_max_seconds (3.1 wholesale-feed mirroring). Prefix
+//         bump so the new fields aren't served from a stale v27 blob.
+//   v29 → added top-level `wholesale_feed_versioning: { supported: true }` to
+//         claim conditional-fetch capability credit (the get_signals handler
+//         already implements if_wholesale_feed_version + now rejects standalone
+//         if_pricing_version). cache_scope_account omitted (public-only). Prefix
+//         bump so the new field isn't served from a stale v28 blob.
+const CACHE_KEY_PREFIX = "adcp_capabilities_v29";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
 import { COMPLIANCE_STATE } from "../constants/complianceState";
 import { SPEC_VERSION } from "../constants/specVersion";
 
-/** Cache key folds in the spec version + compliance-state pointer so any
- *  value-only refresh auto-invalidates without a manual prefix bump. */
-const CACHE_KEY = `${CACHE_KEY_PREFIX}_${SPEC_VERSION}_${COMPLIANCE_STATE.last_run}`;
+/** Cache key folds in the spec version + compliance-state pointers so any
+ *  value-only refresh auto-invalidates without a manual prefix bump.
+ *  client_runner is part of the suffix because last_run alone collides on
+ *  same-day re-runs: on 2026-07-31 a 7.11.0-stamped run and its 12.1.1
+ *  correction shared last_run, so the second deploy served the first's
+ *  blob for up to CACHE_TTL_SECONDS.
+ *
+ *  Do not simplify this key. ext.compliance is informational today — no
+ *  buyer agent validates it and the registry crawler doesn't index it —
+ *  so a stale blob is "only" a wrong audit trail. The moment the registry
+ *  starts reading last_run / client_runner for verified-badge issuance,
+ *  serving a stale compliance block becomes a badge-accuracy bug, and
+ *  this key derivation is what prevents it. */
+const CACHE_KEY = `${CACHE_KEY_PREFIX}_${SPEC_VERSION}_${COMPLIANCE_STATE.last_run}_${COMPLIANCE_STATE.client_runner}`;
 
 const VALID_PROTOCOLS = new Set([
   "media_buy",
@@ -71,6 +107,18 @@ const VALID_PROTOCOLS = new Set([
 type AdcpCapabilities = {
   adcp: {
     major_versions: number[];
+    /**
+     * Release-precision version negotiation (3.1). RE-ADDED 2026-06-18 for the
+     * 3.1 GA promotion. History: PR A (#262) first added this as `["3.0"]`,
+     * which AAO's 3.1.0-beta.7 grader strict-aborted (badge lost 2026-05-29);
+     * the #266 hotfix removed it with the documented re-add condition "only
+     * after conforming to the 3.1 storyboards." That condition is now met —
+     * the live agent passes the v3.1.0 GA storyboard suite 7/7 — and the value
+     * is `["3.0", "3.1"]` (declares 3.1 support, not 3.0-alone, which was the
+     * toxic shape). Optional/additive at 3.x (adcp.required is just
+     * [major_versions, idempotency]); becomes schema-load-bearing at 4.0.
+     */
+    supported_versions: string[];
     /**
      * Idempotency replay-window declaration. Required by the HEAD AdCP
      * capabilities schema (per upstream PR #2315 — the field landed without
@@ -91,6 +139,12 @@ type AdcpCapabilities = {
    */
   specialisms?: string[];
   signals?: unknown;
+  /**
+   * AdCP 3.1 conditional-fetch (if_wholesale_feed_version) capability. `supported`
+   * advertises ETag-style wholesale feed probes; `cache_scope_account` is omitted
+   * because we serve a single public layer (never emit cache_scope: 'account').
+   */
+  wholesale_feed_versioning?: unknown;
   media_buy?: unknown;
   governance?: unknown;
   sponsored_intelligence?: unknown;
@@ -127,6 +181,12 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       // after wiring real v2-shape handlers (currently no consumer
       // demand, since 3.0 GA shipped).
       major_versions: [3],
+      // Re-added 2026-06-18 for the 3.1 GA promotion (see type def above).
+      // Value ["3.0","3.1"] declares 3.1 support; the live agent passes the
+      // v3.1.0 GA storyboard suite 7/7 — the #266 hotfix's documented re-add
+      // condition. CACHE_KEY_PREFIX bumped v26→v27 so the new field isn't
+      // served from a stale cached blob.
+      supported_versions: ["3.0", "3.1"],
       // HEAD schema models idempotency as a discriminated union keyed on
       // `supported`. The IdempotencySupported variant requires both
       // `supported: true` and `replay_ttl_seconds` (3600..604800 per spec).
@@ -211,7 +271,25 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       "temporal.decay_half_life",
       "temporal.volatility_index",
     ],
+    // AdCP 3.1 — advertise conditional-fetch support. The get_signals handler
+    // implements ETag-style wholesale feed probes (bootstrap mints a
+    // wholesale_feed_version token; a matching if_wholesale_feed_version returns
+    // unchanged:true with signals omitted, and a standalone if_pricing_version is
+    // rejected with INVALID_REQUEST). We serve a single public rate-card layer, so
+    // cache_scope_account is omitted (we never emit cache_scope: 'account'). This
+    // makes the wholesale-feed-signals conformance storyboard (gated on
+    // wholesale_feed_versioning.supported) applicable — we pass all three steps.
+    wholesale_feed_versioning: { supported: true },
     signals: {
+      // AdCP 3.1 — declare the discovery enumeration modes we support:
+      // `brief` = NL/filter discovery via get_signals; `wholesale` = full
+      // catalog mirroring with a wholesale_feed_version token for ETag-style
+      // conditional fetch (if_wholesale_feed_version → unchanged:true).
+      discovery_modes: ["brief", "wholesale"],
+      // AdCP 3.1 — max wall-clock for an in-flight get_signals call. Our
+      // discovery is fully synchronous (one D1 query + map), so this is a
+      // conservative ceiling, not a typical latency.
+      in_flight_max_seconds: 30,
       // Sec-42: declare GA-required fields (additive; ext fields kept
       // for backward-compat + our own tooling).
       data_provider_domains: ["evgeny.dev"],
@@ -376,7 +454,7 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       // /capabilities (e.g. a HoldCo procurement check) sees the score
       // and the structural ceiling without needing to read SEC42_*.md.
       //
-      // `last_run` + counts + scenarios_run live in
+      // `last_run` + `client_runner` + counts + scenarios_run live in
       // src/constants/complianceState.ts and are auto-updated by
       // scripts/run-compliance.mjs on every passing run (PR #249). The
       // 5.25 runner restored error_handling / schema_compliance /
@@ -386,7 +464,7 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       // regression).
       compliance: {
         spec_version: "adcp_3.0",
-        client_runner: "@adcp/client@5.25.1",
+        client_runner: COMPLIANCE_STATE.client_runner,
         last_run: COMPLIANCE_STATE.last_run,
         results: {
           applicable: COMPLIANCE_STATE.results.applicable,
@@ -712,6 +790,12 @@ export async function getCapabilities(
     // requested-protocols filter (the AAO badge runner reads it
     // independently of which protocol blocks are projected).
     ...(full.specialisms ? { specialisms: full.specialisms } : {}),
+    // wholesale_feed_versioning is a top-level, cross-cutting capability (it
+    // applies to get_signals AND get_products), not a per-protocol block — so
+    // it's always returned, regardless of the requested-protocols filter.
+    // Otherwise a `protocols: ["signals"]`-filtered probe would strip it and
+    // the wholesale-feed conformance storyboard would never see supported:true.
+    ...(full.wholesale_feed_versioning ? { wholesale_feed_versioning: full.wholesale_feed_versioning } : {}),
     ...(full.ext ? { ext: full.ext } : {}),
   };
   for (const key of PROTOCOL_BLOCK_KEYS) {

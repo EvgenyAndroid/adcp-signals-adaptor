@@ -1,6 +1,6 @@
 // scripts/run-compliance.mjs
-// Drives @adcp/client's compliance suite programmatically so we can pass a
-// `test_kit` — something the CLI (`npx @adcp/client storyboard run`) has no
+// Drives @adcp/sdk's compliance suite programmatically so we can pass a
+// `test_kit` — something the CLI (`npx @adcp/sdk storyboard run`) has no
 // flag for. Without the test_kit, security_baseline/oauth_discovery fires and
 // needs RFC 9728 protected-resource metadata we don't serve. With
 // `auth.api_key` + `probe_task: get_signals`, the runner takes the api-key
@@ -26,11 +26,28 @@
 //   API_KEY=... AGENT_URL=https://... node scripts/run-compliance.mjs --json
 //   node scripts/run-compliance.mjs --no-write    # read-only probe
 
-import pkg from "@adcp/client/testing";
+// Migrated from @adcp/client@5.25.1 → @adcp/sdk@^7 in PR #257. API surface
+// (testAllScenarios + formatSuiteResults*) and result shape unchanged across
+// the rename; only the package name + peer-dep zod^4 differ.
+//
+// Import shape: @adcp/sdk <=11 ships CJS only, where ESM interop exposes the
+// API as the namespace's `default`; @adcp/sdk >=12 ships a dual ESM build with
+// named exports and NO default. The namespace-import + `default ?? namespace`
+// fallback works on both, so ad-hoc re-verifies against newer SDKs
+// (npm install @adcp/sdk@latest --no-save) keep running without edits.
+import * as _testing from "@adcp/sdk/testing";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+const pkg = _testing.default ?? _testing;
 const { testAllScenarios, formatSuiteResults, formatSuiteResultsJSON } = pkg;
+
+// The exact @adcp/sdk build that executes the suite. Captured here (not
+// hardcoded in capabilityService.ts) so /capabilities advertises the real
+// runner version and can never drift past a dependency bump.
+const require = createRequire(import.meta.url);
+const CLIENT_RUNNER = `@adcp/sdk@${require("@adcp/sdk/package.json").version}`;
 
 const AGENT_URL = process.env.AGENT_URL ?? "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp";
 const API_KEY = process.env.API_KEY ?? process.env.DEMO_API_KEY;
@@ -100,6 +117,10 @@ ${mergedHistory}
 export const COMPLIANCE_STATE = {
   /** ISO date (YYYY-MM-DD) of the last passing compliance run. */
   last_run: ${JSON.stringify(lastRun)},
+
+  /** The @adcp/sdk build that executed the suite, captured live by the
+   *  runner so /capabilities never advertises a stale runner version. */
+  client_runner: ${JSON.stringify(CLIENT_RUNNER)},
 
   /** Scenario IDs that ran (i.e. were applicable to this agent's tool surface). */
   scenarios_run: [

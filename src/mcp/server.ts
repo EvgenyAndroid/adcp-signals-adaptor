@@ -13,6 +13,7 @@ import { getCapabilities } from "../domain/capabilityService";
 import { searchSignalsService } from "../domain/signalService";
 import {
     activateSignalService,
+    IdempotencyConflictError,
     getOperationService,
     NotFoundError,
     ValidationError,
@@ -23,8 +24,9 @@ import { requestId } from "../utils/ids";
 import { findSignalById, searchSignals } from "../storage/signalRepo";
 import { createEmbeddingEngine } from "../ucp/embeddingEngine";
 import { cosineSimilarity } from "../domain/semanticResolver";
-import { toSignalSummary } from "../mappers/signalMapper";
-import { getAllSignalsForCatalog } from "../domain/signalService";
+import { toSignalSummary, toSignalSummaries } from "../mappers/signalMapper";
+import { getProposal } from "../storage/proposalCache";
+import { getAllSignalsForCatalog, getWholesaleFeedVersion } from "../domain/signalService";
 import { handleNLQuery } from "../domain/nlQueryHandler";
 import { handleConceptToolCall } from "../domain/conceptHandler";
 import { compactObj } from "../utils/objects";
@@ -279,6 +281,36 @@ async function handleSingleMessage(
                             caller,
                         });
                     }
+                    // AdCP 3.1 transport binding: tool-level errors return as
+                    // JSON-RPC SUCCESS with isError:true in the result body, not
+                    // as JSON-RPC `error`. Per error_compliance_signals storyboard
+                    // (validate_transport_binding + validate_error_shape steps):
+                    // adcp_error.code must be a recognized AdCP code string AND
+                    // /context must echo back on errors too.
+                    if (err instanceof McpToolError) {
+                        const details = (err.details ?? {}) as Record<string, unknown>;
+                        const rawCode = details["code"];
+                        const code = typeof rawCode === "string" ? rawCode : "INTERNAL_ERROR";
+                        const adcpError: { code: string; message: string; recovery?: string; field?: string; details?: unknown; supported_major_versions?: number[] } = {
+                            code,
+                            message: err.message,
+                        };
+                        if (typeof details["recovery"] === "string") adcpError.recovery = details["recovery"] as string;
+                        if (typeof details["field"] === "string") adcpError.field = details["field"] as string;
+                        if (Array.isArray(details["supported_major_versions"])) adcpError.supported_major_versions = details["supported_major_versions"] as number[];
+                        // Preserve any other details (e.g. validation errors)
+                        // by attaching the original detail payload sans the
+                        // fields we've already lifted onto adcp_error.
+                        const knownKeys = new Set(["code", "recovery", "field", "supported_major_versions"]);
+                        const remainder: Record<string, unknown> = {};
+                        for (const [k, v] of Object.entries(details)) {
+                            if (!knownKeys.has(k)) remainder[k] = v;
+                        }
+                        if (Object.keys(remainder).length > 0) adcpError.details = remainder;
+                        const argObj = toolCallParams.arguments as Record<string, unknown> | undefined;
+                        const context = argObj && typeof argObj === "object" ? argObj["context"] : undefined;
+                        return rpcSuccess(id, toolError(adcpError, context));
+                    }
                     throw err;
                 }
             }
@@ -288,8 +320,16 @@ async function handleSingleMessage(
         }
     } catch (err) {
         if (id === undefined || id === null) return null;
+        // Tool-level errors are handled in the tools/call inner catch (they
+        // return MCP-style isError:true results, not JSON-RPC errors). This
+        // outer catch is for transport-level failures (invalid request,
+        // unknown method, unhandled exceptions outside tool dispatch).
+        // McpToolError shouldn't reach here in practice but keeping the
+        // branch for defensiveness — convert to MCP shape if it does.
         if (err instanceof McpToolError) {
-            return rpcError(id, MCP_TOOL_ERROR, err.message, err.details);
+            const details = (err.details ?? {}) as Record<string, unknown>;
+            const code = typeof details["code"] === "string" ? details["code"] as string : "INTERNAL_ERROR";
+            return rpcSuccess(id, toolError({ code, message: err.message }, undefined));
         }
         logger.error("mcp_unhandled_error", { method, error: String(err) });
         return rpcError(id, RPC_INTERNAL_ERROR, "Internal error");
@@ -401,14 +441,33 @@ const SUPPORTED_MAJOR_VERSIONS: ReadonlyArray<number> = [3];
 function validateAdcpMajorVersion(toolName: string, args: Record<string, unknown>): void {
     // Recovery carve-out — see comment above.
     if (toolName === "get_adcp_capabilities") return;
+
+    // Deprecated integer pin (adcp_major_version). Honored through 3.x.
     const v = args["adcp_major_version"];
-    if (v === undefined || v === null) return; // omitted ⇒ seller's highest
-    const num = typeof v === "number" ? v : Number(v);
-    if (!Number.isInteger(num) || !SUPPORTED_MAJOR_VERSIONS.includes(num)) {
-        throw new McpToolError(
-            `adcp_major_version ${v} not supported. This seller supports: [${SUPPORTED_MAJOR_VERSIONS.join(", ")}]. Call get_adcp_capabilities without adcp_major_version to discover supported versions, then retry with a supported version.`,
-            { code: "VERSION_UNSUPPORTED", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS] },
-        );
+    if (v !== undefined && v !== null) {
+        const num = typeof v === "number" ? v : Number(v);
+        if (!Number.isInteger(num) || !SUPPORTED_MAJOR_VERSIONS.includes(num)) {
+            throw new McpToolError(
+                `adcp_major_version ${v} not supported. This seller supports: [${SUPPORTED_MAJOR_VERSIONS.join(", ")}]. Call get_adcp_capabilities without adcp_major_version to discover supported versions, then retry with a supported version.`,
+                { code: "VERSION_UNSUPPORTED", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS] },
+            );
+        }
+    }
+
+    // Release-precision pin (adcp_version, e.g. "3.1" / "4.0" — added in 3.1).
+    // Reject cross-MAJOR the same way the integer pin is rejected. Parses the
+    // leading major from "<major>.<minor>". Closes the live gap where
+    // adcp_version "4.0" returned `completed` while adcp_major_version:9 was
+    // correctly rejected. Omitted ⇒ seller serves its highest (SERVED_ADCP_VERSION).
+    const rel = args["adcp_version"];
+    if (rel !== undefined && rel !== null && rel !== "") {
+        const relMajor = parseInt(String(rel).split(".")[0] ?? "", 10);
+        if (!Number.isInteger(relMajor) || !SUPPORTED_MAJOR_VERSIONS.includes(relMajor)) {
+            throw new McpToolError(
+                `adcp_version ${rel} not supported. This seller supports releases 3.0 and 3.1 (major versions [${SUPPORTED_MAJOR_VERSIONS.join(", ")}]). Call get_adcp_capabilities to discover supported versions, then retry with a supported adcp_version.`,
+                { code: "VERSION_UNSUPPORTED", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS] },
+            );
+        }
     }
 }
 
@@ -461,7 +520,7 @@ async function handleToolCall(
                 { status: "completed" },
                 conceptResult as Record<string, unknown>
             );
-            return toolResult(JSON.stringify(conceptResponse, null, 2), conceptResponse);
+            return toolResultJson(conceptResponse);
         }
         default:
             throw new McpToolError(`Tool not implemented: ${name}`);
@@ -502,7 +561,50 @@ async function callGetCapabilities(
     // structuredContent. Capability discovery is fully synchronous → completed.
     const response = withMcpEnvelope({ status: "completed" }, payload as Record<string, unknown>);
 
-    return toolResult(JSON.stringify(response, null, 2), response);
+    return toolResultJson(response);
+}
+
+// AdCP 3.1 exact lookup — extract the requested signal-id strings from
+// `signal_refs` (current surface: scope-discriminated SignalRef objects, all
+// variants carrying a `signal_id` string) and `signal_ids` (deprecated:
+// SignalId objects with `id`; legacy callers also send plain strings).
+// Liberal-in-what-we-accept: the first STRING-typed candidate wins — checked
+// in order signal_id, signal_id.id (a caller round-tripping one of OUR
+// response rows sends signal_id as the {source, agent_url, id} object, so the
+// nested id must be unwrapped, not skipped), id, signal_agent_segment_id.
+// Malformed entries are skipped; the caller still gets lookup semantics
+// (empty set) because the branch below gates on FIELD PRESENCE, not on how
+// many entries parsed. Scope qualifiers (data_provider_domain etc.) are
+// intentionally NOT enforced: a ref resolved against THIS agent is answered
+// from THIS agent's catalog, and an id that doesn't exist here simply
+// doesn't match.
+function extractRequestedSignalIds(args: Record<string, unknown>): string[] {
+    const out: string[] = [];
+    for (const key of ["signal_refs", "signal_ids"] as const) {
+        const arr = args[key];
+        if (!Array.isArray(arr)) continue;
+        for (const item of arr) {
+            if (typeof item === "string") {
+                if (item.length > 0) out.push(item);
+                continue;
+            }
+            if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+            const o = item as Record<string, unknown>;
+            const sid = o["signal_id"];
+            const nestedId =
+                sid && typeof sid === "object" && !Array.isArray(sid)
+                    ? (sid as Record<string, unknown>)["id"]
+                    : undefined;
+            const candidates = [sid, nestedId, o["id"], o["signal_agent_segment_id"]];
+            for (const c of candidates) {
+                if (typeof c === "string" && c.length > 0) {
+                    out.push(c);
+                    break;
+                }
+            }
+        }
+    }
+    return out;
 }
 
 async function callGetSignals(
@@ -512,6 +614,8 @@ async function callGetSignals(
     const _t0_get_signals = Date.now();
     const filters = args["filters"] as Record<string, unknown> | undefined;
     const pagination = args["pagination"] as Record<string, unknown> | undefined;
+    // adcp#5017: progressive-disclosure field selector. Absent → compact.
+    const fields = Array.isArray(args["fields"]) ? (args["fields"] as string[]) : undefined;
 
     // Sec-31w: AAO `signal_owned` storyboard's `filter_by_criteria` step
     // sends three filter keys we didn't previously honour:
@@ -595,14 +699,132 @@ async function callGetSignals(
             }
             return numArg(pagination?.["offset"], numArg(args["offset"], 0));
         })(),
+        ...(fields !== undefined ? { fields } : {}),
     };
 
     const db = getDb(env);
+
+    // AdCP 3.1 wholesale feed mirroring (ETag-style conditional fetch). A
+    // catalog-fingerprint token is emitted on every response; when the caller
+    // echoes a matching `if_wholesale_feed_version`, the catalog is unchanged
+    // since their last pull — answer `unchanged: true` and skip the (possibly
+    // large) payload entirely. Purely additive: 3.0 callers omit the field and
+    // always get the full response.
+    const ifWholesaleFeedVersion =
+        typeof args["if_wholesale_feed_version"] === "string"
+            ? (args["if_wholesale_feed_version"] as string)
+            : null;
+    // `if_pricing_version` is only meaningful alongside `if_wholesale_feed_version`.
+    // We never emit a separate `pricing_version` (the catalog token covers both —
+    // the spec allows agents to "MAY use wholesale_feed_version for both"), so a
+    // standalone pricing probe is a malformed conditional fetch. Reject it per the
+    // wholesale-feed-signals/standalone_pricing_token_rejected conformance step.
+    const ifPricingVersion =
+        typeof args["if_pricing_version"] === "string"
+            ? (args["if_pricing_version"] as string)
+            : null;
+    if (ifPricingVersion && !ifWholesaleFeedVersion) {
+        throw new McpToolError(
+            "if_pricing_version is only valid alongside if_wholesale_feed_version",
+            { code: "INVALID_REQUEST", recovery: "correctable", field: "/if_pricing_version" },
+        );
+    }
+    const wholesaleFeedVersion = await getWholesaleFeedVersion(db);
+    if (ifWholesaleFeedVersion && ifWholesaleFeedVersion === wholesaleFeedVersion) {
+        // The `unchanged: true` arm MUST omit the `signals` key entirely — the
+        // get-signals-response schema gates it with `not: { required: [signals] }`,
+        // which fails on KEY PRESENCE, so even `signals: []` violates it. Emitting
+        // no signals key is what the wholesale-feed-signals/unchanged_probe
+        // response_schema check validates.
+        //
+        // It MUST still echo the request's `context` block — the unchanged_probe
+        // step asserts `context.correlation_id` round-trips, same as the full
+        // response path below. The early return here skips that path, so echo it
+        // inline (opaque copy-through per /schemas/core/context.json).
+        const ctxEcho = args["context"];
+        const unchanged = withMcpEnvelope({ status: "completed" }, {
+            pagination: { has_more: false },
+            cache_scope: "public" as const,
+            wholesale_feed_version: wholesaleFeedVersion,
+            unchanged: true,
+            ...(ctxEcho && typeof ctxEcho === "object" && !Array.isArray(ctxEcho)
+                ? { context: ctxEcho as Record<string, unknown> }
+                : {}),
+        });
+        const _trace_unchanged = safeRecordSignalTrace({
+            tool_name: "get_signals",
+            direction: "inbound",
+            source: "mcp_external",
+            request_payload: args,
+            response_payload: unchanged,
+            response_status: "ok",
+            duration_ms: Date.now() - _t0_get_signals,
+        });
+        await persistSignalTrace(env, _trace_unchanged);
+        return toolResultJson(unchanged);
+    }
+
+    // AdCP 3.1 exact lookup: `signal_refs` ("Returns exact matches for the
+    // requested SignalRef values") and deprecated `signal_ids`. Gated on FIELD
+    // PRESENCE (not extracted-id count) so a present-but-malformed lookup array
+    // still gets lookup semantics — signals: [] — instead of falling through to
+    // the browse page, which is precisely the unrelated-rows-mistaken-for-
+    // matches bug this branch exists to fix. Non-wholesale only: the spec's
+    // MUST-NOT binds the caller there, and the SDK's own wholesale storyboard
+    // sends a fallback signal_spec we must keep ignoring, so wholesale-mode
+    // arg handling stays untouched.
+    const lookupRequested =
+        args["discovery_mode"] !== "wholesale" &&
+        (Array.isArray(args["signal_refs"]) || Array.isArray(args["signal_ids"]));
+
     // The compactObj-stripped req widens enum-typed fields (categoryType,
     // generationMode) to plain string. The runtime values are still the
     // canonical AdCP enum members — cast to satisfy the stricter typed
     // signature on searchSignalsService.
-    const result = await searchSignalsService(db, env.SIGNALS_CACHE, req as SearchSignalsRequest);
+    const result = lookupRequested
+        ? await (async () => {
+            // Resolve each requested id DIRECTLY against D1 (findSignalById —
+            // the same resolution activate_signal uses), NOT via a catalog
+            // page: searchSignalsService clamps limit to MAX_LIMIT=100 and the
+            // deployed catalog is ~512 rows, so any paged fetch silently
+            // false-empties lookups for signals past the page. Per-id
+            // resolution has no ceiling and also finds brief-mode PROPOSAL
+            // signals that live only in KV until first activation (the
+            // getProposal fallback) — so discover-via-brief → confirm-via-ref
+            // → activate round-trips. Visibility rule preserved: D1 rows are
+            // returned only when status === "available", matching the search
+            // surface (signalRepo filters s.status = 'available'); ids that
+            // miss both stores simply don't match. Matches return in requested
+            // order, deduped; no-match → signals: [] (same empty-not-error
+            // contract as the Sec-31w filter pass). Combined with signal_spec,
+            // the ref matches are the anchored result set — the spec's
+            // "returned first" is trivially satisfied by returning exactly
+            // them.
+            const requestedIds = extractRequestedSignalIds(args);
+            const seen = new Set<string>();
+            const found: Awaited<ReturnType<typeof findSignalById>>[] = [];
+            for (const id of requestedIds) {
+                if (seen.has(id)) continue;
+                seen.add(id);
+                const sig = await findSignalById(db, id);
+                if (sig && sig.status === "available") {
+                    found.push(sig);
+                    continue;
+                }
+                const proposal = await getProposal(env.SIGNALS_CACHE, id);
+                if (proposal) found.push(proposal);
+            }
+            const matches = toSignalSummaries(
+                found.filter((s): s is NonNullable<typeof s> => s !== null),
+                fields
+            );
+            return {
+                signals: matches,
+                totalCount: matches.length,
+                hasMore: false,
+            } as Awaited<ReturnType<typeof searchSignalsService>>;
+        })()
+        : await searchSignalsService(db, env.SIGNALS_CACHE, req as SearchSignalsRequest);
 
     // Sec-31w: post-search filter pass for the storyboard filter keys
     // captured above. Each predicate is a no-op when its filter is null,
@@ -700,6 +922,28 @@ async function callGetSignals(
     const cleanResponse: Record<string, unknown> = {
         signals: result.signals,
         pagination: paginationBlock,
+        // AdCP 3.1 added `cache_scope` as required on every get_signals
+        // response. Spec: "When the request did NOT include `account`, the
+        // agent MUST return `cache_scope: 'public'`. When the request
+        // included `account`, the agent MUST return either 'public' (this
+        // account prices off the public rate card — caller dedupes) or
+        // 'account' (account-specific overrides exist)."
+        //
+        // We have no account-overlay pricing — every signal in our catalog
+        // is on the public rate card regardless of caller — so we always
+        // return 'public'. Forward-compat with 3.1 (the field is required
+        // when schema validates against 3.1), back-compat with 3.0 (3.0
+        // schemas don't validate `cache_scope` so the extra field is
+        // permissive).
+        //
+        // Discovered via AAO registry grader marking us 'partial' on the
+        // signals track despite our internal 7.x SDK runs showing pass —
+        // 8.x runner + 3.1-beta schemas enforce this requirement that
+        // 7.x didn't surface.
+        cache_scope: "public" as const,
+        // AdCP 3.1 wholesale feed mirroring — opaque catalog-version token the
+        // caller echoes as `if_wholesale_feed_version` for conditional fetch.
+        wholesale_feed_version: wholesaleFeedVersion,
     };
     const proposals = (result as { proposals?: unknown[] }).proposals;
     if (proposals && proposals.length > 0) cleanResponse["proposals"] = proposals;
@@ -724,7 +968,32 @@ async function callGetSignals(
     });
     await persistSignalTrace(env, _trace_get);
 
-    return toolResult(JSON.stringify(response, null, 2), response);
+    return toolResultJson(response);
+}
+
+/** Canonical (recursively sorted-key) JSON — stable across property order. */
+function stableStringify(value: unknown): string {
+    if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+    if (value && typeof value === "object") {
+        const entries = Object.entries(value as Record<string, unknown>)
+            .filter(([, v]) => v !== undefined)
+            .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+            .map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`);
+        return `{${entries.join(",")}}`;
+    }
+    return JSON.stringify(value);
+}
+
+/** SHA-256 hex of the canonical JSON of the caller's RAW tool arguments.
+ *  Computed BEFORE destination normalization/fallbacks so the idempotency
+ *  conflict check (AdCP 3.1: same key + different body = typed
+ *  IDEMPOTENCY_CONFLICT) compares what the caller actually sent — the
+ *  2026-07-31 hard-gate pilot test caught two different bodies collapsing
+ *  to one normalized destination and silently replaying. */
+async function requestFingerprint(args: Record<string, unknown>): Promise<string> {
+    const bytes = new TextEncoder().encode(stableStringify(args));
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 async function callActivateSignal(
@@ -756,36 +1025,22 @@ async function callActivateSignal(
     // Sec-31y: source-of-truth precedence is
     //   1. firstEntry.type (destinations[0].type)  — canonical shape
     //   2. args.destinationType                    — top-level alias
-    //   3. correlation_id heuristic                — REMOVE WHEN adcp#4009 ships
-    //   4. default "platform"                      — backward-compat
+    //   3. default "platform"                      — backward-compat
     //
     // (2) was added when AAO's signal_owned storyboard turned out to
     // sometimes send only the top-level field with no destinations
     // array — without it, those requests fell through to "platform"
     // even when the caller explicitly asked for agent.
     //
-    // (3) — REMOVE WHEN adcp#4009 ships — workshop-insurance heuristic.
-    // The signal_owned storyboard's `activate_on_agent` step sends a
-    // request with NO destinations field (and no idempotency_key — both
-    // required per /schemas/3.0.x/signals/activate-signal-request.json).
-    // Filed as runner bug at https://github.com/adcontextprotocol/adcp/issues/4009.
-    // Until that ships, we fall back to parsing the storyboard's
-    // correlation_id ("signal_owned--activate_on_agent") to recover the
-    // intended destination type. This is non-portable and applies ONLY
-    // when destinations is absent + the correlation_id signals intent.
-    // Watch the AdCP daily watcher for issue #4009 closure → revert this
-    // block + restore the simpler 2-stage precedence above.
+    // The correlation_id heuristic (formerly step 3) was removed when
+    // adcp#4009 shipped in the runner (verified closed 2026-06-01 —
+    // signal_owned/agent_activation passes cleanly with the fixed SDK
+    // sending destinations + idempotency_key). The heuristic was
+    // non-portable and applied only when destinations was absent and the
+    // correlation_id encoded the intent. No longer needed.
     const topLevelType = args["destinationType"] as string | undefined;
-    const correlationId = (args["context"] as Record<string, unknown> | undefined)?.["correlation_id"] as string | undefined;
-    const correlationHints = (() => {
-        if (raw !== undefined || topLevelType !== undefined) return undefined;
-        if (typeof correlationId !== "string") return undefined;
-        if (correlationId.includes("activate_on_agent")) return "agent" as const;
-        if (correlationId.includes("activate_on_platform")) return "platform" as const;
-        return undefined;
-    })();
     const destinationType: "platform" | "agent" =
-        firstType === "agent" || topLevelType === "agent" || correlationHints === "agent"
+        firstType === "agent" || topLevelType === "agent"
             ? "agent"
             : "platform";
 
@@ -812,7 +1067,10 @@ async function callActivateSignal(
             // before the spec settled.
             idempotencyKey: (args["idempotency_key"] ?? args["idempotencyKey"]) as string | undefined,
         }),
-    };
+    } as Parameters<typeof activateSignalService>[2];
+    if (req.idempotencyKey) {
+        req.requestFingerprint = await requestFingerprint(args);
+    }
 
     const validation = validateActivateRequest(req);
     if (!validation.ok) {
@@ -824,11 +1082,6 @@ async function callActivateSignal(
         const db = getDb(env);
         const result = await activateSignalService(db, env.SIGNALS_CACHE, req, logger);
 
-        // REMOVE WHEN adcp#4009 ships — when destinations is absent, the
-        // default mirrors destinationType (which the correlation_id heuristic
-        // above may have set to "agent"). Without this, real-signal requests
-        // with no destinations + agent intent would still emit a platform
-        // deployment.
         const inputDeployments = Array.isArray(raw)
             ? (raw as Array<Record<string, unknown>>)
             : destinationType === "agent"
@@ -909,7 +1162,7 @@ async function callActivateSignal(
         });
         await persistSignalTrace(env, _trace_act_ok);
 
-        return toolResult(JSON.stringify(specResponse, null, 2), specResponse);
+        return toolResultJson(specResponse);
     } catch (err) {
         // Sec-31x: Storyboard-safe unknown-signal handling.
         //
@@ -951,6 +1204,17 @@ async function callActivateSignal(
         //
         // Validation errors (malformed request) still throw as before
         // — that's a caller bug, not an unknown signal.
+        if (err instanceof IdempotencyConflictError) {
+            // AdCP 3.1 idempotency contract: reused key + different body is
+            // a typed conflict, never a silent replay and never a second
+            // mutation. Return the original task_id as the recovery handle.
+            throw new McpToolError(err.message, {
+                code: "IDEMPOTENCY_CONFLICT",
+                recovery: "correctable",
+                field: "/idempotency_key",
+                original_task_id: err.originalOperationId,
+            });
+        }
         if (err instanceof ValidationError) {
             throw new McpToolError(err.message);
         }
@@ -959,7 +1223,16 @@ async function callActivateSignal(
             (p) => signalId.startsWith(p)
         );
         if (err instanceof NotFoundError && !isStoryboardFixture) {
-            throw new McpToolError(`Signal not found: ${signalId}`, { code: -32000 });
+            // AdCP spec error code for unresolvable references (per
+            // error_compliance_signals/nonexistent_signal storyboard).
+            // Previous `-32000` was the JSON-RPC transport code, not an
+            // AdCP error code — the compliance grader checks
+            // adcp_error.code against the spec enum.
+            throw new McpToolError(`Signal not found: ${signalId}`, {
+                code: "REFERENCE_NOT_FOUND",
+                recovery: "correctable",
+                field: "/signal_agent_segment_id",
+            });
         }
         if (err instanceof NotFoundError) {
             // Sec-31y: synthetic response MUST honor destinationType as
@@ -1075,7 +1348,7 @@ async function callActivateSignal(
                 duration_ms: Date.now() - _t0_activate,
             });
             await persistSignalTrace(env, _trace_act_synth);
-            return toolResult(JSON.stringify(syntheticResponse, null, 2), syntheticResponse);
+            return toolResultJson(syntheticResponse);
         }
         // Record the failure trace too — observability matters when
         // activation throws as much as when it succeeds.
@@ -1130,7 +1403,7 @@ async function callGetOperation(
             duration_ms: Date.now() - _t0,
         });
         await persistSignalTrace(env, _trace);
-        return toolResult(JSON.stringify(response, null, 2), response);
+        return toolResultJson(response);
     } catch (err) {
         const _trace = safeRecordSignalTrace({
             tool_name: "get_operation_status",
@@ -1162,7 +1435,11 @@ async function callGetSimilarSignals(
     const db = getDb(env);
 
     const refSignal = await findSignalById(db, signalId);
-    if (!refSignal) throw new McpToolError(`Signal not found: ${signalId}`);
+    if (!refSignal) throw new McpToolError(`Signal not found: ${signalId}`, {
+        code: "REFERENCE_NOT_FOUND",
+        recovery: "correctable",
+        field: "/signal_agent_segment_id",
+    });
 
     const { signals: allSignals } = await searchSignals(db, { limit: 200, offset: 0 });
     const candidates = allSignals.filter((s) => s.signalId !== signalId);
@@ -1220,7 +1497,7 @@ async function callGetSimilarSignals(
         result as Record<string, unknown>
     );
 
-    return toolResult(JSON.stringify(response, null, 2), response);
+    return toolResultJson(response);
 }
 
 async function callQuerySignalsNl(
@@ -1268,7 +1545,7 @@ async function callQuerySignalsNl(
     });
     await persistSignalTrace(env, _trace);
     if (structured && typeof structured === "object" && !Array.isArray(structured)) {
-        return toolResult(JSON.stringify(response, null, 2), response);
+        return toolResultJson(response);
     }
     return toolResult(text, structured);
 }
@@ -1299,6 +1576,49 @@ export function toolResult(text: string, structured?: unknown): unknown {
 }
 
 /**
+ * Build the MCP-style error tool-result per AdCP 3.1 transport binding.
+ * Per the `error_compliance_signals` storyboard's `validate_transport_binding`
+ * expectation: error responses are JSON-RPC SUCCESS with the failure surfaced
+ * via MCP's `isError: true` flag + content carrying an `adcp_error` block.
+ *
+ * `context` is echoed when present so buyer agents can correlate the
+ * error to the originating request — `error_compliance_signals` also
+ * checks `field_present: /context` for context round-trip.
+ */
+export function toolError(
+    adcpError: { code: string; message: string; recovery?: string; field?: string; details?: unknown; supported_major_versions?: number[] },
+    context?: unknown,
+): unknown {
+    const structuredContent: Record<string, unknown> = {
+        status: "failed",
+        adcp_version: SERVED_ADCP_VERSION,
+        adcp_error: adcpError,
+    };
+    if (context !== undefined && context !== null && typeof context === "object" && !Array.isArray(context)) {
+        structuredContent["context"] = context;
+    }
+    return {
+        content: [{ type: "text", text: JSON.stringify(structuredContent) }],
+        isError: true,
+        structuredContent,
+    };
+}
+
+/**
+ * Build an MCP tool result from a structured JSON value, stringifying once
+ * compactly (no indent) for the content[].text mirror.
+ *
+ * Previously every call site did `toolResult(JSON.stringify(x, null, 2), x)`
+ * which (a) duplicated the stringify call, (b) inflated content[].text by
+ * ~30% via pretty-printing whitespace, and (c) pushed the get_signals
+ * response over the 64KB security_baseline/probe_api_key buffer in
+ * comply()'s grader (per the AAO regrade diagnostic, 2026-05-27).
+ */
+export function toolResultJson(structured: unknown): unknown {
+    return toolResult(JSON.stringify(structured), structured);
+}
+
+/**
  * Apply the AdCP MCP transport-binding envelope to a tool response payload.
  *
  * Per `mcp-response-extraction.mdx` (AdCP 3.0) and the maintainer ruling on
@@ -1323,18 +1643,36 @@ export function toolResult(text: string, structured?: unknown): unknown {
  *   submitted | working | input-required | completed | canceled |
  *   failed | rejected | auth-required | unknown
  */
+/**
+ * Release-precision version negotiation echo per AdCP 3.1 spec
+ * (`version_negotiation/capabilities_advertise_and_echo` storyboard):
+ * every response envelope carries `adcp_version` declaring the release the
+ * seller actually served. SHOULD at 3.1, MUST at 4.0. Paired with
+ * `adcp.supported_versions` on the capabilities response body (the buyer
+ * pins against the array; the envelope confirms which one was served).
+ *
+ * We serve "3.0" today; bump to "3.1" alongside `supported_versions` when
+ * we re-vendor 3.1 GA and pass conformance.
+ */
+const SERVED_ADCP_VERSION = "3.1";
+
 function withMcpEnvelope(
     envelope: { status: string; task_id?: string; context_id?: string; message?: string },
     payload: Record<string, unknown>
 ): Record<string, unknown> {
-    const out: Record<string, unknown> = { status: envelope.status };
+    const out: Record<string, unknown> = {
+        status: envelope.status,
+        adcp_version: SERVED_ADCP_VERSION,
+    };
     if (envelope.task_id !== undefined) out["task_id"] = envelope.task_id;
     if (envelope.context_id !== undefined) out["context_id"] = envelope.context_id;
     if (envelope.message !== undefined) out["message"] = envelope.message;
     for (const [k, v] of Object.entries(payload)) {
         // Spread payload over envelope fields — payload wins on collision so
         // tools that legitimately surface their own status (e.g. get_operation_status)
-        // override the default.
+        // override the default. `adcp_version` is reserved envelope territory;
+        // payloads SHOULD NOT override it (the spec says the envelope echo is
+        // authoritative for what the seller served).
         out[k] = v;
     }
     return out;

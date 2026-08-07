@@ -1,0 +1,16 @@
+-- 0008: request fingerprint for spec-correct idempotency conflict detection.
+--
+-- AdCP 3.1: reusing an idempotency_key with a DIFFERENT request body MUST
+-- return IDEMPOTENCY_CONFLICT — not silently replay the original result.
+-- The previous (key, signal, destination) triple-match couldn't see body
+-- differences that normalize to the same destination (e.g. two different
+-- caller shapes both falling back to the demo's default destination), which
+-- an external hard-gate pilot test caught live on 2026-07-31: same key +
+-- different body returned the original task_id as a silent replay.
+--
+-- The fingerprint is a SHA-256 hex of the canonical (sorted-key) JSON of the
+-- caller's raw tool arguments, computed at the MCP boundary BEFORE any
+-- destination normalization — so it sees what the caller actually sent.
+-- Nullable: rows created before this migration have no fingerprint and fall
+-- back to the legacy triple-match semantics on replay.
+ALTER TABLE activation_jobs ADD COLUMN request_fingerprint TEXT;

@@ -1,6 +1,6 @@
 # Architecture
 
-AdCP Signals Adaptor — Cloudflare Worker implementing AdCP 3.0-rc Signals Activation Protocol with UCP v0.1/v0.2-draft extensions including GTS, Projector, and Handshake Simulator (v3.0-rc). Capabilities response conforms to the v3 schema — UCP capability block lives under the schema-sanctioned `ext.ucp` extension slot.
+AdCP Signals Adaptor — Cloudflare Worker implementing AdCP 3.1 Signals Activation Protocol with UCP v0.1/v0.2-draft extensions including GTS, Projector, and Handshake Simulator (v3.0-rc). Capabilities response conforms to the v3 schema — UCP capability block lives under the schema-sanctioned `ext.ucp` extension slot.
 
 ---
 

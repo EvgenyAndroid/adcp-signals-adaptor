@@ -155,10 +155,49 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                         "Examples: 'high income households interested in luxury goods', " +
                         "'college-educated sci-fi fans aged 25-34', 'affluent cord cutters in top metros'.",
                 },
+                discovery_mode: {
+                    type: "string",
+                    enum: ["brief", "wholesale"],
+                    description:
+                        "Caller intent. 'brief' (default): semantic discovery via signal_spec / " +
+                        "signal_refs / signal_ids. 'wholesale': full priced-catalog mirroring with " +
+                        "wholesale_feed_version conditional fetch; lookup fields do not apply.",
+                },
+                signal_refs: {
+                    type: "array",
+                    minItems: 1,
+                    description:
+                        "AdCP 3.1 exact lookup: SignalRef objects (scope-discriminated — " +
+                        "product | data_provider | signal_source — each carrying signal_id). " +
+                        "Returns exact matches only; unknown refs yield an empty result, not an error. " +
+                        "Not valid in wholesale mode.",
+                    items: {
+                        type: "object",
+                        properties: {
+                            scope: { type: "string", enum: ["product", "data_provider", "signal_source"] },
+                            signal_id: { type: "string" },
+                        },
+                        required: ["signal_id"],
+                    },
+                },
                 signal_ids: {
                     type: "array",
-                    description: "Retrieve specific signals by ID instead of searching.",
-                    items: { type: "string" },
+                    minItems: 1,
+                    description:
+                        "DEPRECATED — use signal_refs. Legacy exact lookup: SignalId objects " +
+                        "({ id, ... }) per the spec; bare id strings also accepted for " +
+                        "backward compatibility. Exact matches only; unknown ids yield an " +
+                        "empty result.",
+                    items: {
+                        oneOf: [
+                            { type: "string" },
+                            {
+                                type: "object",
+                                properties: { id: { type: "string" } },
+                                required: ["id"],
+                            },
+                        ],
+                    },
                 },
                 deliver_to: {
                     type: "object",
@@ -214,7 +253,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 },
                 max_results: {
                     type: "number",
-                    description: "Maximum number of signals to return. Default 20, max 100.",
+                    description: "Maximum number of signals to return. Default 5, max 100.",
                 },
                 pagination: {
                     type: "object",
@@ -222,7 +261,36 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                     properties: {
                         offset: { type: "number", description: "Pagination offset. Default 0." },
                         cursor: { type: "string", description: "Pagination cursor." },
+                        max_results: { type: "number", description: "Max results (preferred over top-level max_results)." },
                     },
+                },
+                fields: {
+                    type: "array",
+                    description:
+                        "Extension fields to include inline. Omit for a compact discovery response " +
+                        "(core fields only). Use 'all' for everything, or name specific extensions: " +
+                        "'x_dts' (IAB DTS v1.2 label), 'x_ucp' (embedding/vector payload), " +
+                        "'x_cross_taxonomy' (cross-taxonomy bridge), 'x_analytics' (derived facets).",
+                    items: {
+                        type: "string",
+                        enum: ["x_dts", "x_ucp", "x_cross_taxonomy", "x_analytics", "all"],
+                    },
+                },
+                if_wholesale_feed_version: {
+                    type: "string",
+                    description:
+                        "AdCP 3.1 wholesale feed mirroring. Echo the wholesale_feed_version " +
+                        "token from a prior response for ETag-style conditional fetch: if the " +
+                        "catalog is unchanged the response is { unchanged: true, signals: [] } " +
+                        "instead of the full payload.",
+                },
+                if_pricing_version: {
+                    type: "string",
+                    description:
+                        "AdCP 3.1 wholesale pricing-layer probe. Only valid alongside " +
+                        "if_wholesale_feed_version. This agent does not separate a pricing " +
+                        "layer — the wholesale_feed_version token covers both — so a standalone " +
+                        "if_pricing_version is rejected with INVALID_REQUEST.",
                 },
             },
             required: ["signal_spec", "deliver_to"],
@@ -261,9 +329,43 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                         "The signal to activate. From get_signals catalog or proposals array. " +
                         "Example: 'sig_high_income_households'",
                 },
+                // AdCP spec canonical top-level destinations array.
+                // The compliance runner (and spec-conformant buyers) send
+                // destinations[] directly at the top level. We also accept
+                // the legacy deliver_to.deployments nesting for back-compat
+                // with earlier callers — both are read in callActivateSignal.
+                destinations: {
+                    type: "array",
+                    description:
+                        "Spec-canonical activation targets. Each item is either " +
+                        "{ type: 'platform', platform: '...', account?: '...' } or " +
+                        "{ type: 'agent', agent_url: '...' }.",
+                    items: {
+                        type: "object",
+                        properties: {
+                            type: { type: "string", enum: ["platform", "agent"] },
+                            platform: { type: "string" },
+                            agent_url: { type: "string" },
+                            account: { type: "string" },
+                        },
+                        required: ["type"],
+                    },
+                },
+                // idempotency_key: required by the spec on every mutating
+                // tool. Declared here so the runner's field isn't stripped.
+                idempotency_key: {
+                    type: "string",
+                    description: "UUID v4 idempotency key. Reuse the same key on retries.",
+                },
+                // account: spec-level buyer account reference.
+                account: {
+                    type: "object",
+                    description: "Buyer account context (spec field — accepted and ignored for demo).",
+                    additionalProperties: true,
+                },
                 deliver_to: {
                     type: "object",
-                    description: "Required. Specifies where to activate the signal.",
+                    description: "Legacy nested shape — use destinations[] for new integrations.",
                     properties: {
                         deployments: {
                             type: "array",
@@ -304,7 +406,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                     description: "Optional notes about this activation.",
                 },
             },
-            required: ["signal_agent_segment_id", "deliver_to"],
+            required: ["signal_agent_segment_id"],
         },
         outputSchema: {
             type: "object",

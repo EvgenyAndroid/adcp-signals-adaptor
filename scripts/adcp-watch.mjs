@@ -23,7 +23,14 @@ import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import pkg from "@adcp/client/testing";
+// Import shape: @adcp/sdk <=11 ships CJS only, where ESM interop exposes the
+// API as the namespace's `default`; >=12 ships a dual ESM build with named
+// exports and NO default. The namespace-import + `default ?? namespace`
+// fallback works on both. run-compliance.mjs got this in PR #292; this file
+// has the same dependency and was missed there, so the ^7.11.0 -> ^12.1.1 pin
+// bump (a16b4ad) would have crashed the daily watcher on its next cron run.
+import * as _testing from "@adcp/sdk/testing";
+const pkg = _testing.default ?? _testing;
 const { testAllScenarios, setAgentTesterLogger } = pkg;
 
 // Silence the runner's per-step `[INFO] Starting agent test {…}` chatter —
@@ -100,7 +107,7 @@ function findOrCreateTrackingIssue() {
   const seedBody = [
     "# AdCP Ecosystem Watcher",
     "",
-    "Automated daily monitor for the `@adcp/client` SDK, the AdCP spec, our tracked",
+    "Automated daily monitor for the `@adcp/sdk` SDK, the AdCP spec, our tracked",
     "upstream issues, and live compliance against the deployed adapter. Comments below",
     "are diff reports posted only when state changes — silence means nothing moved.",
     "",
@@ -153,19 +160,37 @@ function extractState(body) {
 async function buildNewState() {
   const newState = { last_check_utc: new Date().toISOString() };
 
-  // 3a. SDK pin vs latest published
+  // 3a. SDK pin vs the CONFORMANCE-CANONICAL dist-tags.
+  //     We deliberately do NOT track bare `latest`: it floats ahead on
+  //     dev-tooling point releases the deployed worker never imports (the
+  //     worker bundles vendored schemas — the SDK is only used by the
+  //     compliance runner), so `latest` churn (7.11.1→.2→.3 in three days)
+  //     was pure watcher noise. Track the `adcp-3.0` / `adcp-3.1` dist-tags
+  //     instead — the builds our storyboard suite actually grades against.
+  //     Fires only when a conformance build moves.
+  //     Post-GA (2026-06-26): upstream RETIRED the `adcp-3.1` parallel tag.
+  //     `latest` (9.x, GA) is now the canonical 3.1 conformance build, so
+  //     conformance_3_1 falls back to `latest` when `adcp-3.1` is absent —
+  //     otherwise it reads null forever and the 3.1 line goes untracked.
+  //     (Revisit if a future 4.0 line ever claims `latest`.)
   const pkgJson = JSON.parse(readFileSync(config.client_sdk.package_json_path, "utf8"));
   const pin =
     pkgJson.devDependencies?.[config.client_sdk.package_name] ??
     pkgJson.dependencies?.[config.client_sdk.package_name] ??
     null;
-  let latest = null;
+  let distTags = null;
   try {
-    latest = JSON.parse(execSync(`npm view ${config.client_sdk.package_name} version --json`, { encoding: "utf8" }));
+    distTags = JSON.parse(execSync(`npm view ${config.client_sdk.package_name} dist-tags --json`, { encoding: "utf8" }));
   } catch (e) {
-    latest = { error: String(e.message ?? e) };
+    distTags = { error: String(e.message ?? e) };
   }
-  newState.client_sdk = { current_pin: pin, latest_published: latest };
+  newState.client_sdk = distTags?.error
+    ? { current_pin: pin, error: distTags.error }
+    : {
+        current_pin: pin,
+        conformance_3_0: distTags?.["adcp-3.0"] ?? null,
+        conformance_3_1: distTags?.["adcp-3.1"] ?? distTags?.["latest"] ?? null,
+      };
 
   // 3a-bis. Secondary SDKs — packages we don't pin yet but want to watch
   // (e.g. @adcp/sdk while migrating off @adcp/client). Watcher pings on
@@ -184,15 +209,83 @@ async function buildNewState() {
     }
   }
 
-  // 3b. AdCP spec latest release
+  // 3b. AdCP spec latest release.
+  //     `/releases/latest` returns only the latest STABLE release — GitHub
+  //     excludes prereleases from that endpoint — so it sat at v3.0.15 and was
+  //     structurally blind to the entire 3.1.0-rc.* line (rc.10..rc.14 all
+  //     slipped past silently). Also track the latest PRERELEASE via `/releases`
+  //     (which DOES include prereleases, newest first) so each new RC fires a
+  //     state change. `latest_tag` keeps its stable-only meaning for callers.
   try {
-    const release = ghJson(`api repos/${config.spec_repo}/releases/latest`);
+    const stable = ghJson(`api repos/${config.spec_repo}/releases/latest`);
     newState.spec_release = {
-      latest_tag: release.tag_name,
-      published_at: release.published_at,
+      latest_tag: stable.tag_name,
+      published_at: stable.published_at,
     };
+    const all = ghJson(`api repos/${config.spec_repo}/releases?per_page=10`);
+    const newestPrerelease = Array.isArray(all)
+      ? all.find((r) => r.prerelease && !r.draft)
+      : null;
+    if (newestPrerelease && newestPrerelease.tag_name !== stable.tag_name) {
+      newState.spec_release.latest_prerelease_tag = newestPrerelease.tag_name;
+      newState.spec_release.latest_prerelease_published_at =
+        newestPrerelease.published_at;
+    }
   } catch (e) {
     newState.spec_release = { error: String(e.message ?? e) };
+  }
+
+  // 3b-bis. Signals-relevant SCHEMA DRIFT: latest stable tag vs. main.
+  //
+  // The release check above sees THAT a version shipped; it cannot see WHAT
+  // changed inside it. That gap was live: v3.1.2→v3.1.4 looked identical at
+  // the version level while `signals/activate-signal-request.json` gained
+  // `governance_context`, and v3.1.5 relocated `retry_after` inside
+  // `protocol/get-adcp-capabilities-response.json` — both invisible here
+  // until diffed by hand.
+  //
+  // Method: per-directory tree-SHA listing, NOT the compare API. GitHub's
+  // `/compare/a...b` caps `files[]` at 300 and `--paginate` does not extend
+  // it; a v3.1.0→v3.1.1 audit returned exactly 300 entries and silently
+  // omitted the rest. Listing each directory's blob SHAs and diffing the
+  // lists has no such ceiling.
+  //
+  // Emits a sorted filename array per directory (empty = identical), so the
+  // generic state walker reports "core/targeting.json changed" in the issue
+  // comment. Known-benign churn still shows up — the point is visibility,
+  // and judging benign-vs-material is a human call, not the watcher's.
+  newState.spec_schema_drift = {};
+  const driftTag = newState.spec_release?.latest_tag;
+  if (driftTag) {
+    newState.spec_schema_drift.baseline_tag = driftTag;
+    for (const dir of config.spec_schema_drift_dirs ?? []) {
+      try {
+        const listing = (ref) => {
+          const rows = ghJson(
+            `api "repos/${config.spec_repo}/contents/${dir}?ref=${ref}"`
+          );
+          if (!Array.isArray(rows)) return null;
+          return new Map(rows.map((r) => [r.name, r.sha]));
+        };
+        const atTag = listing(driftTag);
+        const atMain = listing("main");
+        if (!atTag || !atMain) {
+          newState.spec_schema_drift[dir] = { error: "listing unavailable" };
+          continue;
+        }
+        const changed = [];
+        for (const [name, sha] of atMain) {
+          if (!atTag.has(name)) changed.push(`${name} (added on main)`);
+          else if (atTag.get(name) !== sha) changed.push(name);
+        }
+        for (const name of atTag.keys()) {
+          if (!atMain.has(name)) changed.push(`${name} (removed on main)`);
+        }
+        newState.spec_schema_drift[dir] = changed.sort();
+      } catch (e) {
+        newState.spec_schema_drift[dir] = { error: String(e.message ?? e) };
+      }
+    }
   }
 
   // 3c. Tracked upstream issues / PRs
@@ -258,6 +351,47 @@ async function buildNewState() {
           error: String(e?.message ?? e),
         };
       }
+    }
+  }
+
+  // 3c-ter. Contribution-page parity. Every OPEN upstream issue/PR authored
+  // by config.contribution_page.author on spec_repo must be cited (linked) on
+  // the public contributions page. One-directional by design: the page may
+  // cite extra numbers freely (references, maintainer-authored work) — only
+  // MISSING authored items are drift. Found live: #5739/#5748 (filed,
+  // implemented, triaged into 3.2.0) never made it onto the page because the
+  // manual file-RFC → update-page step got skipped for a "Conformance" issue
+  // that didn't match the RFC mental filter. This check replaces that memory
+  // dependence. Fires once when a new authored item is missing, and once more
+  // when the gap closes (missing list empties).
+  if (config.contribution_page?.url && config.contribution_page?.author) {
+    const cp = config.contribution_page;
+    try {
+      // The search API returns issues AND PRs (PRs carry a `pull_request` key).
+      const found = ghJson(
+        `api "search/issues?q=repo:${config.spec_repo}+author:${cp.author}+state:open&per_page=100"`
+      );
+      const authored = Array.isArray(found?.items) ? found.items : [];
+      const r = await fetch(cp.url, { headers: { Accept: "text/html" } });
+      if (!r.ok) throw new Error(`HTTP ${r.status} fetching ${cp.url}`);
+      const html = await r.text();
+      const cited = new Set();
+      const linkRe = new RegExp(
+        `${config.spec_repo.replace("/", "\\/")}\\/(?:issues|pull)\\/(\\d+)`,
+        "g"
+      );
+      let m;
+      while ((m = linkRe.exec(html)) !== null) cited.add(m[1]);
+      const missing = authored
+        .filter((it) => !cited.has(String(it.number)))
+        .map((it) => `#${it.number} (${it.pull_request ? "pr" : "issue"}) ${String(it.title).slice(0, 60)}`)
+        .sort();
+      newState.contribution_page = {
+        authored_open: authored.length,
+        missing_from_page: missing,
+      };
+    } catch (e) {
+      newState.contribution_page = { error: String(e?.message ?? e) };
     }
   }
 

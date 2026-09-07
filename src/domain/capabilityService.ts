@@ -456,12 +456,13 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       //
       // `last_run` + `client_runner` + counts + scenarios_run live in
       // src/constants/complianceState.ts and are auto-updated by
-      // scripts/run-compliance.mjs on every passing run (PR #249). The
-      // 5.25 runner restored error_handling / schema_compliance /
-      // validation tracks for signals-only agents — adcp#2916 was
-      // effectively unblocked by capability-aware skip_if landing in
-      // the runner. Applicable count is now 7/7 (was 4/4 under the 5.21
-      // regression).
+      // scripts/run-compliance.mjs on every passing run (PR #249). Since
+      // 2026-09-07 that script drives the AdCP STORYBOARD suite — the one
+      // the AAO registry card is graded on — pinned to the same GA line
+      // as the card (see SDK_PIN/LINE in the script). The legacy
+      // testAllScenarios suite it replaced only ever covered 7 scenarios
+      // for a signals-only agent regardless of SDK version, so numbers
+      // here before that date are not comparable to the card.
       compliance: {
         spec_version: "adcp_3.0",
         client_runner: COMPLIANCE_STATE.client_runner,
@@ -473,15 +474,19 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
           skipped: COMPLIANCE_STATE.results.skipped,
           scenarios_run: COMPLIANCE_STATE.scenarios_run,
         },
-        // Non-applicable scenarios are now exclusively the media-buy /
-        // creative / governance / brand-rights tracks that require tools
-        // a signals-only agent does not (and should not) advertise.
+        // The storyboard runner marks whole storyboards not applicable when
+        // the agent does not advertise the tools they exercise (media-buy /
+        // creative / governance / brand-rights / SI tracks), and skips the
+        // steps that need comply_test_controller, which a signals-only
+        // production agent correctly does not expose. `results` above is
+        // scenario-level; src/constants/complianceState.ts carries the
+        // step- and storyboard-level breakdown of the same run.
         non_applicable_scenarios: [
           {
-            scenario: "media-buy / creative / governance / brand-rights tracks",
-            reason: "Require get_products, create_media_buy, sync_creatives, build_creative, si_*, check_governance, check_brand_rights tools that a signals-only agent does not expose. 32 scenarios skip cleanly per the runner's tool-gated applicability logic.",
+            scenario: "media-buy / creative / governance / brand-rights / SI storyboards",
+            reason: "Require get_products, create_media_buy, sync_creatives, build_creative, si_*, check_governance, check_brand_rights tools that a signals-only agent does not expose; the storyboard runner's required_tools gate skips them as not applicable. Controller-seeded steps (idempotency replay etc.) additionally skip for the absent comply_test_controller.",
             upstream_issue: "https://github.com/adcontextprotocol/adcp/issues/2916",
-            upstream_status: "resolved — 5.25 runner emits capability-aware skip_if; signals-only agents no longer lose the error/schema/validation tracks.",
+            upstream_status: "resolved — capability-aware skips; signals-only agents keep the core / signals / error-handling tracks.",
           },
         ],
         report: "docs/SEC42_ADCP_30_GA_COMPLIANCE.md",

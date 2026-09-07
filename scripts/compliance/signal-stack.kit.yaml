@@ -1,0 +1,29 @@
+# scripts/compliance/signal-stack.kit.yaml
+#
+# Storyboard test-kit TEMPLATE for adcp.signal-stack.io. Read by
+# scripts/run-compliance.mjs, which substitutes __API_KEY__ from the API_KEY
+# env var into a temporary copy at run time and deletes it afterwards.
+# Never put the real key in this file.
+#
+# Same shape as the SDK's shipped kits
+# (node_modules/@adcp/sdk/compliance/cache/<line>/test-kits/*.yaml).
+# The `auth` block drives the universal security_baseline storyboard: the
+# runner calls probe_task with no Authorization header, with a random
+# invalid key, and with api_key, and expects 401 / 401 / 200. get_signals is
+# auth-gated, read-only, and accepts an empty request body — it is the same
+# probe the legacy scenario suite used before this repo moved to the
+# storyboard runner (2026-09-07).
+#
+# Steps that declare `auth: {from_test_kit: true}` read THIS api_key, not the
+# CLI's --auth token. Without a kit those probes go out unauthenticated and a
+# conformant agent fails its own security_baseline.
+
+id: signal_stack_demo
+name: "Signal Stack Demo Provider"
+description: "Storyboard test kit for the signals adaptor (auth probe only)"
+sandbox: true
+supports_audio_formats: false
+
+auth:
+  api_key: "__API_KEY__"
+  probe_task: get_signals

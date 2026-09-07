@@ -15,7 +15,7 @@
 // `adcp-watcher-tracker` label. Pre-create one manually if you want a specific
 // number; the script finds it by label, not number.
 //
-// Local dry-run: `gh auth login` + `API_KEY=... node scripts/adcp-watch.mjs`.
+// Local run: `gh auth login` + `node scripts/adcp-watch.mjs` (no API key needed).
 // Local --dry: prints what would change without editing the issue or posting.
 
 import { execSync } from "node:child_process";
@@ -23,28 +23,12 @@ import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-// Import shape: @adcp/sdk <=11 ships CJS only, where ESM interop exposes the
-// API as the namespace's `default`; >=12 ships a dual ESM build with named
-// exports and NO default. The namespace-import + `default ?? namespace`
-// fallback works on both. run-compliance.mjs got this in PR #292; this file
-// has the same dependency and was missed there, so the ^7.11.0 -> ^12.1.1 pin
-// bump (a16b4ad) would have crashed the daily watcher on its next cron run.
-import * as _testing from "@adcp/sdk/testing";
-const pkg = _testing.default ?? _testing;
-const { testAllScenarios, setAgentTesterLogger } = pkg;
-
-// Silence the runner's per-step `[INFO] Starting agent test {…}` chatter —
-// it's useful when running compliance interactively but pure noise in the
-// watcher's daily log. Replace the logger with a no-op.
-const noopLogger = {
-  info: () => {},
-  warn: () => {},
-  error: (...args) => console.error(...args),
-  debug: () => {},
-};
-if (typeof setAgentTesterLogger === "function") {
-  setAgentTesterLogger(noopLogger);
-}
+// No @adcp/sdk import here any more (2026-09-07). The watcher used to run the
+// SDK's legacy `testAllScenarios()` suite itself. That suite is 7 scenarios
+// for a signals-only agent on ANY SDK version and never matched the AAO
+// registry card, which is graded by the storyboard runner — so the daily
+// snapshot reported a number nothing else agreed with. Section 3d now reads
+// the card's own public feeds instead; see the note there.
 
 const CONFIG_PATH = ".github/adcp-watch-config.json";
 const STATE_OPEN = "<!-- adcp-watcher:state:start -->";
@@ -55,11 +39,10 @@ const config = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
 const repo =
   process.env.GITHUB_REPOSITORY ??
   execSync("gh repo view --json nameWithOwner -q .nameWithOwner").toString().trim();
-// `||` not `??` because GHA passes unset workflow envs as empty strings,
-// not undefined — `??` would keep "" and discovery would silently fail
-// against an empty URL, producing scenarios_run: [] with no error to grep.
-const agentUrl =
-  process.env.AGENT_URL || "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp";
+// A card whose newest history run is older than this is treated as stalled.
+// The healthy cadence is a grader heartbeat every ~12h; 36h absorbs one
+// missed beat without crying wolf.
+const STALL_AFTER_MS = 36 * 60 * 60 * 1000;
 
 function gh(args) {
   return execSync(`gh ${args}`, { encoding: "utf8" });
@@ -108,7 +91,7 @@ function findOrCreateTrackingIssue() {
     "# AdCP Ecosystem Watcher",
     "",
     "Automated daily monitor for the `@adcp/sdk` SDK, the AdCP spec, our tracked",
-    "upstream issues, and live compliance against the deployed adapter. Comments below",
+    "upstream issues, and the registry's compliance card for the deployed adapter. Comments below",
     "are diff reports posted only when state changes — silence means nothing moved.",
     "",
     "**Watched:** see [`.github/adcp-watch-config.json`](../blob/HEAD/.github/adcp-watch-config.json).",
@@ -395,37 +378,108 @@ async function buildNewState() {
     }
   }
 
-  // 3d. Live compliance run
-  if (process.env.API_KEY) {
-    try {
-      const result = await testAllScenarios(agentUrl, {
-        protocol: "mcp",
-        auth: { type: "bearer", token: process.env.API_KEY },
-        test_kit: { auth: { probe_task: "get_signals", api_key: process.env.API_KEY } },
-      });
-      newState.compliance = {
-        applicable: result.scenarios_run.length,
-        passed: result.passed_count,
-        failed: result.failed_count,
-        scenarios_run: result.scenarios_run.slice().sort(),
-        skipped_count: result.scenarios_skipped.length,
-      };
-    } catch (e) {
-      newState.compliance = { error: String(e.message ?? e) };
+  // 3d. Compliance, as the registry grades it.
+  //
+  // Until 2026-09-07 this ran the SDK's `testAllScenarios()` locally. That is
+  // the legacy scenario suite — 7 scenarios for a signals-only agent, and
+  // byte-identical output on @adcp/sdk 5.25.1 and 13.0.0 — so it could never
+  // reproduce the AAO card (35 storyboards on the 3.1.x line), which is graded
+  // by the storyboard runner. A watcher should track the card, so this reads
+  // the two public feeds the card is built from: no API key, no 20-second
+  // suite in CI, and the number here is the number a buyer sees.
+  //
+  // Two feeds, both unauthenticated:
+  //   …/agents/<urlencoded agent_url>/compliance         — current verdict
+  //   …/agents/<urlencoded agent_url>/compliance/history — the runs behind it
+  //
+  // What goes in the state and why:
+  //   - line / status / headline / verified / storyboards_passing — the grade.
+  //   - non_passing — every storyboard not `passing`, with step counts for
+  //     partials, sorted so the array diff only fires on real movement.
+  //   - notices — e.g. the AdCP 4.0 future_required / deprecation notices.
+  //   - history_stalled — TRUE when the newest history run is older than
+  //     STALL_AFTER_MS. This is the failure mode the sales card exhibited from
+  //     2026-08-19 to 2026-09-07: `last_checked_at` kept ticking twice a day
+  //     (a health check) while zero comply runs executed and every storyboard
+  //     verdict silently froze. Neither field above reveals that; this does.
+  //   - latest_run_at / last_checked_at — kept for humans reading the
+  //     snapshot, EXCLUDED from the diff (see skipKeys): the first recurs
+  //     every ~12h and the second is a health-check stamp that has been
+  //     observed null and future-dated. Neither means anything changed.
+  //
+  // Requires config.registry_card.agent_url = the URL the registry keys the
+  // card on (the /mcp form on the custom domain), NOT the workers.dev origin.
+  {
+    const card = config.registry_card ?? {};
+    const apiBase = card.api_base ?? "https://agenticadvertising.org/api/registry/agents";
+    if (!card.agent_url) {
+      newState.compliance = { skipped: "no registry_card.agent_url in config" };
+    } else {
+      try {
+        const enc = encodeURIComponent(card.agent_url);
+        const getJson = async (url) => {
+          const r = await fetch(url, { headers: { Accept: "application/json" } });
+          if (!r.ok) throw new Error(`HTTP ${r.status} fetching ${url}`);
+          return r.json();
+        };
+        const [c, h] = await Promise.all([
+          getJson(`${apiBase}/${enc}/compliance`),
+          getJson(`${apiBase}/${enc}/compliance/history`),
+        ]);
+        const runs = Array.isArray(h?.runs)
+          ? [...h.runs].sort((a, b) => String(a.tested_at).localeCompare(String(b.tested_at)))
+          : [];
+        const latest = runs[runs.length - 1] ?? null;
+        const latestAt = latest?.tested_at ? Date.parse(latest.tested_at) : NaN;
+        const nonPassing = (c.storyboard_statuses ?? [])
+          .filter((s) => s.status !== "passing")
+          .map((s) =>
+            s.status === "partial"
+              ? `${s.storyboard_id}:partial(${s.steps_passed}/${s.steps_total})`
+              : `${s.storyboard_id}:${s.status}`
+          )
+          .sort();
+        newState.compliance = {
+          source: `${apiBase}/${enc}/compliance`,
+          adcp_version: c.adcp_version ?? null,
+          status: c.status ?? null,
+          headline: c.headline ?? null,
+          verified: c.verified ?? null,
+          storyboards_passing: c.storyboards_passing ?? null,
+          storyboards_total: c.storyboards_total ?? null,
+          non_passing: nonPassing,
+          notices: (c.notices ?? []).map((n) => `${n.severity}:${n.code}`).sort(),
+          history_stalled: !Number.isFinite(latestAt) || Date.now() - latestAt > STALL_AFTER_MS,
+          latest_run_line: latest?.adcp_version ?? null,
+          latest_run_headline: latest?.headline ?? null,
+          latest_run_at: latest?.tested_at ?? null,
+          last_checked_at: c.last_checked_at ?? null,
+        };
+      } catch (e) {
+        newState.compliance = { error: String(e?.message ?? e) };
+      }
     }
-  } else {
-    newState.compliance = { skipped: "no API_KEY in env" };
   }
 
   return newState;
 }
 
-// ─── 4. Substantive diff (ignore last_check_utc and absolute updated_at) ─────
+// ─── 4. Substantive diff (ignore timestamps that move without meaning) ──────
 // `updated_at` on tracked issues drifts every comment — diff on
 // state/labels/milestone/merged instead, the things that actually mean the
-// issue moved.
+// issue moved. Likewise the compliance card's `last_checked_at` (a health
+// check that ticks twice a day and has been observed null and future-dated)
+// and `latest_run_at` (the grader heartbeat, every ~12h): both stay in the
+// snapshot for humans and are excluded here, so a healthy cadence never
+// reads as a state change. A stall surfaces through `history_stalled`.
 function diffStates(prev, next) {
-  const skipKeys = new Set(["last_check_utc", "published_at", "updated_at"]);
+  const skipKeys = new Set([
+    "last_check_utc",
+    "published_at",
+    "updated_at",
+    "last_checked_at",
+    "latest_run_at",
+  ]);
   const changes = [];
 
   const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);

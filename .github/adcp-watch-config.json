@@ -10,6 +10,11 @@
     }
   ],
   "spec_repo": "adcontextprotocol/adcp",
+  "registry_card": {
+    "agent_url": "https://adcp.signal-stack.io/mcp",
+    "api_base": "https://agenticadvertising.org/api/registry/agents",
+    "context": "Section 3d of the watcher reads the AAO registry's public compliance feeds for this agent (…/<urlencoded agent_url>/compliance and …/compliance/history) instead of running the SDK's legacy scenario suite locally (replaced 2026-09-07 — that suite was 7 scenarios on any SDK version and never matched the storyboard-graded card). agent_url MUST be the URL the registry keys the card on: the /mcp form on the custom domain, not the workers.dev origin. Kept in the snapshot but excluded from the diff: last_checked_at (a health-check stamp that ticks twice daily and has been observed null and future-dated) and latest_run_at (the ~12h grader heartbeat). history_stalled flips true when the newest history run is older than 36h — the failure mode seen on the sales card from 2026-08-19 to 2026-09-07, where health checks kept ticking while zero comply runs executed and every storyboard verdict froze."
+  },
   "spec_schema_drift_dirs_context": "Directories tree-SHA-diffed between the latest stable spec tag and main, so the watcher reports WHICH files moved rather than only that a version shipped. Scoped to what a signals-only agent can be graded on: the signals request/response schemas, the shared core + protocol schemas they $ref, the signals scenario storyboards, and the universal storyboards every agent runs. Deliberately excludes media-buy / creative / brand / governance dirs — churn there is constant and cannot affect us. Reported drift is NOT automatically a problem: core/targeting.json and the universal contract docs change often for media-buy reasons. The watcher surfaces; a human judges.",
   "spec_schema_drift_dirs": [
     "static/schemas/source/signals",

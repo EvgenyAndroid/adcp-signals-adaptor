@@ -38,7 +38,8 @@ jobs:
 
       - name: Run watcher
         env:
+          # Only GH_TOKEN is needed now: the compliance check (section 3d)
+          # reads the registry's public card feeds, so the DEMO_API_KEY secret
+          # and AGENT_URL var it used to require are no longer consumed.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          API_KEY: ${{ secrets.DEMO_API_KEY }}
-          AGENT_URL: ${{ vars.AGENT_URL }}
         run: node scripts/adcp-watch.mjs

@@ -1,98 +1,260 @@
+#!/usr/bin/env node
 // scripts/run-compliance.mjs
-// Drives @adcp/sdk's compliance suite programmatically so we can pass a
-// `test_kit` — something the CLI (`npx @adcp/sdk storyboard run`) has no
-// flag for. Without the test_kit, security_baseline/oauth_discovery fires and
-// needs RFC 9728 protected-resource metadata we don't serve. With
-// `auth.api_key` + `probe_task: get_signals`, the runner takes the api-key
-// path and verifies our existing Bearer auth: valid key → 200 on get_signals;
-// invalid key → 401.
 //
-// API note: pre-5.13 used `comply()` + `formatComplianceResults*`; 5.13
-// renamed this to `testAllScenarios()` + `formatSuiteResults*` and split the
-// suite into 24 tool-gated scenarios. Default-export destructure is needed
-// because the published bundle is CJS without named ESM re-exports.
+// Runs the AdCP STORYBOARD conformance suite — the suite the AAO grader (the
+// registry card at agenticadvertising.org) actually runs — against the
+// deployed signals agent, and refreshes src/constants/complianceState.ts on
+// a passing run so /capabilities advertises real numbers.
 //
-// Side effect on success: writes src/constants/complianceState.ts so the
-// /capabilities response's `ext.compliance.last_run` + counts reflect the
-// passing run. The write fires ONLY when failed_count === 0 — a failed run
-// leaves the previous passing baseline untouched, so the deployed pointer
-// never advertises a regression. Pass `--no-write` to skip the side effect
-// (e.g. for ad-hoc probes against staging); --json mode skips it too.
-// PR #249 introduced the side effect; see src/constants/complianceState.ts
-// for the data shape.
+// WHY THIS CHANGED (2026-09-07). Until now this script drove
+// `testAllScenarios()` from @adcp/sdk/testing. That is the LEGACY scenario
+// suite: 7 scenarios for a signals-only agent, 32 skipped, and byte-identical
+// output on @adcp/sdk 5.25.1 and 13.0.0. It never reproduced the registry
+// card (57 scenarios / 35 storyboards on the 3.1.x line) at ANY SDK version,
+// because the card is graded by the storyboard runner (`adcp storyboard
+// run`), which this repo had never adopted. The sales agent
+// (nofluffadvisory/adcp-sales-agent/scripts/compliance.mjs) did; this mirrors
+// it. Every gotcha below was paid for over there first.
+//
+//   1. VERSION. package.json pins @adcp/sdk to the GA build the grader runs
+//      (13.0.0 = AdCP 3.1.15, verified against the card for the sales
+//      agent). npm `latest` and this repo's old ^12.1.1 range bundle far
+//      older cache lines (12.1.1 = AdCP 3.1.5); a run on those silently
+//      hides whole storyboards. This script asserts the pinned line's cache
+//      is present before running so a stray `npm install` can't quietly
+//      downgrade the suite.
+//   2. --test-kit. Steps declaring `auth: {from_test_kit: true}` read the
+//      KIT's api_key, not --auth. Without a kit those probes go out with no
+//      Authorization header and a conformant agent fails its own
+//      security_baseline. The template lives in
+//      scripts/compliance/signal-stack.kit.yaml with the key blanked; the
+//      key is injected from API_KEY into a temp file at run time and deleted
+//      afterwards, so it never lands in git.
+//   3. --compliance-version. The runner ignores the cache line the kit path
+//      points into; without the flag it runs its bundled default line.
+//   4. --timeout 300. The default 120s soft budget can clip a cold run and
+//      print a clean-looking partial total. Look for a timeout-budget
+//      advisory in the report before trusting any number.
+//   5. Target the REGISTERED endpoint (adcp.signal-stack.io/mcp) — that is
+//      what the card keys on — not the workers.dev origin. Override with
+//      --url or AGENT_URL for staging.
+//
+// Side effect on success (contract unchanged from the legacy script): writes
+// src/constants/complianceState.ts, which capabilityService.ts reads. The
+// write fires ONLY when the run has zero failed steps and zero failed
+// scenarios — a run with failures leaves the previous passing baseline
+// untouched, so /capabilities never advertises a regression. `--no-write`
+// skips it (ad-hoc probes); `--json` skips it and prints a compact summary
+// instead of the human report. The served /capabilities block keeps its
+// old field set (last_run, client_runner, results, scenarios_run); the
+// step- and storyboard-level breakdown is stored alongside for humans.
 //
 // Usage:
-//   API_KEY=demo-key-adcp-signals-v1 npm run compliance
-//   API_KEY=... AGENT_URL=https://... node scripts/run-compliance.mjs --json
-//   node scripts/run-compliance.mjs --no-write    # read-only probe
-
-// Migrated from @adcp/client@5.25.1 → @adcp/sdk@^7 in PR #257. API surface
-// (testAllScenarios + formatSuiteResults*) and result shape unchanged across
-// the rename; only the package name + peer-dep zod^4 differ.
+//   API_KEY=... npm run compliance
+//   API_KEY=... npm run compliance -- --no-write        # read-only probe
+//   API_KEY=... npm run compliance -- --json            # compact JSON, no write
+//   API_KEY=... npm run compliance -- --url https://…   # another endpoint
+//   AGENT_URL is honoured too (--url wins). DEMO_API_KEY is an accepted
+//   alias for API_KEY. The key is never printed.
 //
-// Import shape: @adcp/sdk <=11 ships CJS only, where ESM interop exposes the
-// API as the namespace's `default`; @adcp/sdk >=12 ships a dual ESM build with
-// named exports and NO default. The namespace-import + `default ?? namespace`
-// fallback works on both, so ad-hoc re-verifies against newer SDKs
-// (npm install @adcp/sdk@latest --no-save) keep running without edits.
-import * as _testing from "@adcp/sdk/testing";
-import { readFileSync, writeFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+// Exit codes: 0 pass · 3 failures · 2 missing key / setup · 1 runner error.
+
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
-const pkg = _testing.default ?? _testing;
-const { testAllScenarios, formatSuiteResults, formatSuiteResultsJSON } = pkg;
 
-// The exact @adcp/sdk build that executes the suite. Captured here (not
-// hardcoded in capabilityService.ts) so /capabilities advertises the real
-// runner version and can never drift past a dependency bump.
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
-const CLIENT_RUNNER = `@adcp/sdk@${require("@adcp/sdk/package.json").version}`;
 
-const AGENT_URL = process.env.AGENT_URL ?? "https://adcp-signals-adaptor.evgeny-193.workers.dev/mcp";
+// The GA line the grader runs. Bump BOTH together, and re-verify against the
+// card before trusting the new numbers (see the sales agent's history: a
+// line bump has changed pass/fail on individual steps more than once).
+const SDK_PIN = "13.0.0";
+const LINE = "3.1.15";
+
+const SDK_DIR = resolve(ROOT, "node_modules", "@adcp", "sdk");
+const CLI = join(SDK_DIR, "bin", "adcp.js");
+const CACHE = join(SDK_DIR, "compliance", "cache", LINE);
+const KIT_TEMPLATE = resolve(ROOT, "scripts", "compliance", "signal-stack.kit.yaml");
+const STATE_PATH = resolve(ROOT, "src", "constants", "complianceState.ts");
+
+// Captured live, not hardcoded, so /capabilities advertises the build that
+// really executed the suite and can never drift past a dependency bump.
+const INSTALLED = require("@adcp/sdk/package.json").version;
+const CLIENT_RUNNER = `@adcp/sdk@${INSTALLED}`;
+
+// ---- args ------------------------------------------------------------------
+const args = process.argv.slice(2);
+const jsonOutput = args.includes("--json");
+const skipWrite = args.includes("--no-write") || jsonOutput;
+const urlFlag = args.indexOf("--url");
+const AGENT_URL =
+  (urlFlag >= 0 && args[urlFlag + 1]) ||
+  process.env.AGENT_URL ||
+  "https://adcp.signal-stack.io/mcp";
 const API_KEY = process.env.API_KEY ?? process.env.DEMO_API_KEY;
-const jsonOutput = process.argv.includes("--json");
-const skipWrite = process.argv.includes("--no-write") || jsonOutput;
 
-if (!API_KEY) {
-  console.error("ERROR: API_KEY not set (or DEMO_API_KEY)");
-  process.exit(2);
+const log = (...a) => { if (!jsonOutput) console.log(...a); };
+const die = (code, msg) => { console.error(`ERROR: ${msg}`); process.exit(code); };
+
+if (!API_KEY) die(2, "API_KEY not set (or DEMO_API_KEY)");
+if (!existsSync(CLI)) die(2, `@adcp/sdk CLI not found at ${CLI} — run npm install`);
+if (!existsSync(CACHE)) {
+  die(2, `@adcp/sdk ${INSTALLED} does not bundle compliance line ${LINE} (expected ${SDK_PIN}). ` +
+         `Run \`npm install\` to restore the pinned build, or bump SDK_PIN/LINE together.`);
+}
+if (INSTALLED !== SDK_PIN) {
+  console.error(`WARN: installed @adcp/sdk ${INSTALLED} != pinned ${SDK_PIN}; line ${LINE} is present so continuing.`);
+}
+if (!existsSync(KIT_TEMPLATE)) die(2, `kit template missing: ${KIT_TEMPLATE}`);
+
+// ---- run ------------------------------------------------------------------
+let tmp;
+let raw;
+try {
+  // Render the kit with the real key into a private temp dir (0700), never
+  // into the repo. Deleted in `finally` even if the runner throws.
+  tmp = mkdtempSync(join(tmpdir(), "adcp-signals-kit-"));
+  const kitPath = join(tmp, "signal-stack.kit.yaml");
+  const template = readFileSync(KIT_TEMPLATE, "utf8");
+  if (!template.includes("__API_KEY__")) die(2, "kit template has no __API_KEY__ placeholder");
+  writeFileSync(kitPath, template.replace("__API_KEY__", API_KEY), { mode: 0o600 });
+
+  log(`\n──── storyboard suite · ${AGENT_URL} · AdCP ${LINE} via ${CLIENT_RUNNER} ────`);
+  const argv = [
+    CLI, "storyboard", "run", AGENT_URL,
+    "--auth", API_KEY,
+    "--test-kit", kitPath,
+    "--compliance-version", LINE,
+    "--timeout", "300",
+    "--json", // machine result on stdout; the human report goes to stderr
+  ];
+  const r = spawnSync(process.execPath, argv, {
+    cwd: ROOT,
+    encoding: "utf8",
+    // The JSON embeds every step's details (~1 MB for this agent). Node's
+    // 1 MiB default maxBuffer would truncate it and hand us invalid JSON.
+    maxBuffer: 256 * 1024 * 1024,
+    // Human mode: stream the runner's own report live. JSON mode: swallow it.
+    stdio: ["ignore", "pipe", jsonOutput ? "pipe" : "inherit"],
+  });
+  if (r.error) throw r.error;
+  if (!r.stdout || !r.stdout.trim()) {
+    throw new Error(`runner produced no JSON (exit ${r.status}, signal ${r.signal})` +
+      (jsonOutput && r.stderr ? `\n${r.stderr.slice(-2000)}` : ""));
+  }
+  raw = JSON.parse(r.stdout);
+} catch (err) {
+  console.error(`compliance run failed: ${err?.message ?? err}`);
+  if (process.env.DEBUG) console.error(err?.stack ?? err);
+  process.exit(1);
+} finally {
+  if (tmp) rmSync(tmp, { recursive: true, force: true });
 }
 
-const testOptions = {
-  protocol: "mcp",
-  auth: { type: "bearer", token: API_KEY },
-  test_kit: {
-    auth: {
-      // Drives security_baseline/api_key_path. `get_signals` is auth-gated,
-      // read-only, and accepts an empty request body (callGetSignals at
-      // src/mcp/server.ts defaults to limit=20, offset=0 when no args
-      // are supplied).
-      probe_task: "get_signals",
-      api_key: API_KEY,
-    },
+// ---- shape the result ------------------------------------------------------
+// Scenario-level numbers keep the legacy `results` semantics (the served
+// /capabilities field names say "scenarios"). A scenario counts as run if it
+// belongs to a tested track; scenarios listed under tracks the runner
+// skipped wholesale are counted as skipped.
+const tested = new Set((raw.tested_tracks ?? []).map((t) => t.track));
+const run = [];
+let scenariosSkipped = 0;
+for (const t of raw.tracks ?? []) {
+  const list = t.scenarios ?? [];
+  if (tested.has(t.track)) {
+    for (const s of list) run.push({ id: s.scenario, passed: s.overall_passed === true });
+  } else {
+    scenariosSkipped += list.length;
+  }
+  scenariosSkipped += t.skipped_scenarios?.length ?? 0;
+}
+const scenariosRun = run.map((s) => s.id).sort();
+const scenarioPassed = run.filter((s) => s.passed).length;
+const scenarioFailed = run.length - scenarioPassed;
+const S = raw.summary ?? {};
+
+const result = {
+  agent_url: raw.agent_url,
+  adcp_version: raw.adcp_version ?? LINE,
+  client_runner: CLIENT_RUNNER,
+  overall_status: raw.overall_status,
+  headline: S.headline ?? "",
+  tested_at: raw.tested_at ?? new Date().toISOString(),
+  duration_ms: raw.total_duration_ms ?? 0,
+  scenarios: {
+    applicable: run.length,
+    passed: scenarioPassed,
+    failed: scenarioFailed,
+    skipped: scenariosSkipped,
+    run: scenariosRun,
   },
+  steps: {
+    passed: S.steps_passed ?? 0,
+    failed: S.steps_failed ?? 0,
+    skipped: S.steps_skipped ?? 0,
+    total: S.total_steps ?? 0,
+  },
+  storyboards: {
+    executed: [...(raw.storyboards_executed ?? [])].sort(),
+    missing_tools: [...(raw.storyboards_missing_tools ?? [])].sort(),
+  },
+  skipped_by_reason: S.skipped_by_reason ?? {},
+  notices: (raw.notices ?? []).map(({ severity, code, message }) => ({ severity, code, message })),
 };
 
-/**
- * Render the canonical src/constants/complianceState.ts content from a
- * passing result. The runner overwrites the whole file (not just fields)
- * so the format stays stable and a stale comment can't drift from the
- * data. The History block from the prior file is preserved by prepending
- * today's entry to it.
- */
-function renderComplianceState(result, prevSource) {
-  const lastRun = (result.tested_at ?? new Date().toISOString()).slice(0, 10);
-  const scenariosRun = [...result.scenarios_run].sort();
-  const applicable = result.scenarios_run.length;
-  const skipped = result.scenarios_skipped?.length ?? 0;
-  const passed = result.passed_count;
-  const failed = result.failed_count;
+const passing = result.steps.failed === 0 && result.scenarios.failed === 0 && result.steps.passed > 0;
 
+// ---- output ---------------------------------------------------------------
+if (jsonOutput) {
+  process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+} else {
+  log(`\n${passing ? "✅" : "❌"} ${result.headline || result.overall_status} · ` +
+      `${result.scenarios.passed}/${result.scenarios.applicable} scenarios · ` +
+      `${result.steps.passed}/${result.steps.total} steps passed, ${result.steps.failed} failed, ${result.steps.skipped} skipped · ` +
+      `${result.storyboards.executed.length} storyboards run, ${result.storyboards.missing_tools.length} not applicable`);
+  for (const n of result.notices) log(`   ${n.severity.toUpperCase()} ${n.code}`);
+}
+
+// ---- side effect: refresh complianceState.ts on a clean run -----------------
+if (!skipWrite && passing) {
+  let prev = "";
+  try { prev = readFileSync(STATE_PATH, "utf8"); } catch { /* fresh checkout */ }
+  const next = renderComplianceState(result, prev);
+  if (next !== prev) {
+    writeFileSync(STATE_PATH, next, "utf8");
+    log(`\n→ wrote ${STATE_PATH} (last_run=${result.tested_at.slice(0, 10)}, ` +
+        `${result.scenarios.passed}/${result.scenarios.applicable} scenarios, ${result.steps.passed}/${result.steps.total} steps). Commit + push to deploy.`);
+  } else {
+    log(`\n→ ${STATE_PATH} already up to date.`);
+  }
+} else if (!skipWrite && !passing) {
+  log(`\n→ skipped writing complianceState.ts (${result.steps.failed} failed step(s), ` +
+      `${result.scenarios.failed} failed scenario(s)) — previous passing baseline preserved.`);
+}
+
+process.exit(passing ? 0 : 3);
+
+// ---- complianceState.ts renderer ------------------------------------------
+/**
+ * Render the canonical src/constants/complianceState.ts from a passing
+ * result. The whole file is overwritten (not just fields) so the format stays
+ * stable and a stale comment can't drift from the data. The History block
+ * from the prior file is preserved by prepending today's entry to it.
+ */
+function renderComplianceState(res, prevSource) {
+  const lastRun = res.tested_at.slice(0, 10);
   const prevHistory = extractHistoryLines(prevSource);
-  const todayEntry = `//   ${lastRun} — auto-written by scripts/run-compliance.mjs (${passed}/${applicable} applicable, ${skipped} skipped).`;
+  const todayEntry =
+    `//   ${lastRun} — auto-written by scripts/run-compliance.mjs ` +
+    `(${res.scenarios.passed}/${res.scenarios.applicable} scenarios, ` +
+    `${res.steps.passed}/${res.steps.total} steps passed, ${res.steps.skipped} skipped, ` +
+    `${res.storyboards.executed.length} storyboards; AdCP ${res.adcp_version} via ${res.client_runner}).`;
   const mergedHistory = dedupePreservingOrder([todayEntry, ...prevHistory]).join("\n");
-  const scenarioBlock = scenariosRun.map((s) => `    ${JSON.stringify(s)},`).join("\n");
+  const list = (arr, indent) => arr.map((s) => `${indent}${JSON.stringify(s)},`).join("\n");
 
   return `// src/constants/complianceState.ts
 //
@@ -106,10 +268,12 @@ function renderComplianceState(result, prevSource) {
 // To refresh:
 //   API_KEY=$DEMO_API_KEY npm run compliance
 //
-// The runner (scripts/run-compliance.mjs) overwrites this file when (and
-// ONLY when) the suite passes with failed_count === 0 — so \`last_run\`
-// always points at the last passing run, never a regression. Commit + push
-// the updated file to deploy the new state to /capabilities.
+// The runner (scripts/run-compliance.mjs) drives the AdCP STORYBOARD suite —
+// the same suite the AAO registry card is graded on — and overwrites this
+// file when (and ONLY when) the run has zero failed steps and zero failed
+// scenarios, so \`last_run\` always points at the last passing run, never a
+// regression. Commit + push the updated file to deploy the new state to
+// /capabilities.
 //
 // History (auto-prepended; manual entries also preserved across rewrites):
 ${mergedHistory}
@@ -120,19 +284,45 @@ export const COMPLIANCE_STATE = {
 
   /** The @adcp/sdk build that executed the suite, captured live by the
    *  runner so /capabilities never advertises a stale runner version. */
-  client_runner: ${JSON.stringify(CLIENT_RUNNER)},
+  client_runner: ${JSON.stringify(res.client_runner)},
+
+  /** AdCP compliance line the storyboards were resolved from. */
+  compliance_line: ${JSON.stringify(res.adcp_version)},
+
+  /** Runner headline for the run (track-level status, e.g. "1 partial, 2 silent"). */
+  headline: ${JSON.stringify(res.headline)},
 
   /** Scenario IDs that ran (i.e. were applicable to this agent's tool surface). */
   scenarios_run: [
-${scenarioBlock}
+${list(res.scenarios.run, "    ")}
   ],
 
-  /** Pass / fail / skip counts from the last passing run. */
+  /** Scenario-level pass / fail / skip counts from the last passing run.
+   *  Served on /capabilities as \`results\`. */
   results: {
-    applicable: ${applicable},
-    passed: ${passed},
-    failed: ${failed},
-    skipped: ${skipped},
+    applicable: ${res.scenarios.applicable},
+    passed: ${res.scenarios.passed},
+    failed: ${res.scenarios.failed},
+    skipped: ${res.scenarios.skipped},
+  },
+
+  /** Step-level counts for the same run (the runner's primary accounting). */
+  steps: {
+    passed: ${res.steps.passed},
+    failed: ${res.steps.failed},
+    skipped: ${res.steps.skipped},
+    total: ${res.steps.total},
+  },
+
+  /** Storyboards the runner executed vs. skipped for tools this agent
+   *  does not advertise (the badge gate is storyboard-level). */
+  storyboards: {
+    executed: [
+${list(res.storyboards.executed, "      ")}
+    ],
+    missing_tools: [
+${list(res.storyboards.missing_tools, "      ")}
+    ],
   },
 } as const;
 `;
@@ -146,7 +336,7 @@ function extractHistoryLines(prevSource) {
   const out = [];
   for (let i = startIdx + 1; i < lines.length; i++) {
     const l = lines[i];
-    // History block ends at the first non-comment line (e.g. blank line
+    // History block ends at the first non-comment line (the blank line
     // before `export const`).
     if (!l.startsWith("//")) break;
     out.push(l);
@@ -163,41 +353,4 @@ function dedupePreservingOrder(arr) {
     out.push(item);
   }
   return out;
-}
-
-try {
-  const result = await testAllScenarios(AGENT_URL, testOptions);
-  if (jsonOutput) {
-    process.stdout.write(JSON.stringify(formatSuiteResultsJSON(result), null, 2) + "\n");
-  } else {
-    console.log(formatSuiteResults(result));
-  }
-
-  // Side effect: bump complianceState.ts on a clean pass. Suppressed in
-  // --json mode (CI) and --no-write mode (ad-hoc probes).
-  if (!skipWrite && result.failed_count === 0 && result.passed_count > 0) {
-    const __filename = fileURLToPath(import.meta.url);
-    const statePath = resolve(dirname(__filename), "..", "src", "constants", "complianceState.ts");
-    let prev = "";
-    try {
-      prev = readFileSync(statePath, "utf8");
-    } catch {
-      // First run on a fresh checkout: no previous file, history starts fresh.
-    }
-    const next = renderComplianceState(result, prev);
-    if (next !== prev) {
-      writeFileSync(statePath, next, "utf8");
-      console.log(`\n→ wrote ${statePath} (last_run=${(result.tested_at ?? "").slice(0, 10)}, ${result.passed_count}/${result.scenarios_run.length} applicable). Commit + push to deploy.`);
-    } else {
-      console.log(`\n→ ${statePath} already up to date.`);
-    }
-  } else if (!skipWrite && result.failed_count > 0) {
-    console.log(`\n→ skipped writing complianceState.ts (${result.failed_count} failed) — previous passing baseline preserved.`);
-  }
-
-  process.exit(result.failed_count > 0 ? 3 : 0);
-} catch (err) {
-  console.error(`compliance run failed: ${err?.message ?? err}`);
-  if (process.env.DEBUG) console.error(err?.stack ?? err);
-  process.exit(1);
 }

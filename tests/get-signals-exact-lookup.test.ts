@@ -87,8 +87,24 @@ vi.mock("../src/domain/signalService", async (importOriginal) => {
 import { handleMcpRequest } from "../src/mcp/server";
 import { createLogger } from "../src/utils/logger";
 
+// comply_test_controller's force_get_signals_arm hook runs on every
+// get_signals call (see src/mcp/server.ts), reading env.SIGNALS_CACHE
+// before this test's actual concern (exact-lookup matching) even starts.
+// A no-op KV stub keeps that hook a pass-through — no arm is ever set, so
+// it always reports "nothing forced" and falls through to normal search,
+// same as it would with no test controller involved.
+function noopKv(): KVNamespace {
+  return {
+    async get() { return null; },
+    async put() {},
+    async delete() {},
+    async list() { return { keys: [], list_complete: true } as never; },
+    async getWithMetadata() { return { value: null, metadata: null } as never; },
+  } as unknown as KVNamespace;
+}
+
 const KEY = "demo-key-mcp-test";
-const env = { DEMO_API_KEY: KEY } as unknown as import("../src/types/env").Env;
+const env = { DEMO_API_KEY: KEY, SIGNALS_CACHE: noopKv() } as unknown as import("../src/types/env").Env;
 const logger = createLogger("test-req");
 
 async function callGetSignals(args: Record<string, unknown>) {

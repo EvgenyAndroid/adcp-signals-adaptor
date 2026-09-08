@@ -10,17 +10,20 @@
     "test:watch": "vitest",
     "test:live": "bash scripts/test-live.sh",
     "compliance": "node scripts/run-compliance.mjs",
+    "compliance:webhooks": "node scripts/run-compliance.mjs -- --with-webhooks",
     "type-check": "tsc --noEmit",
     "db:migrate": "wrangler d1 migrations apply adcp-signals-db",
     "db:migrate:remote": "wrangler d1 migrations apply adcp-signals-db --remote",
     "db:seed": "wrangler d1 execute adcp-signals-db --file=./migrations/seed.sql",
     "db:seed:remote": "wrangler d1 execute adcp-signals-db --file=./migrations/seed.sql --remote",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241022.0",
     "@vitest/coverage-v8": "^2.0.0",
+    "eslint": "^10.10.0",
     "typescript": "^5.5.0",
+    "typescript-eslint": "^8.70.0",
     "vitest": "^2.0.0",
     "wrangler": "^4.72.0"
   },

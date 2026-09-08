@@ -1,5 +1,11 @@
 // src/mcp/tools.ts
-// MCP tool definitions — 8 tools matching the AdCP Signals protocol.
+// MCP tool definitions — 11 tools matching the AdCP Signals protocol
+// (8 signals-core + comply_test_controller + list_tasks, added 2026-09-08 —
+// see src/domain/complianceController.ts for scope and rationale — plus
+// get_task_status, added the same day once production compliance runs
+// showed get_signals_async.yaml's required_tools gate needs a canonically-
+// shaped get_task_status tool, distinct from the legacy get_operation_status
+// alias it previously pointed at).
 // Parameter names match the canonical AdCP spec:
 //   get_signals:    signal_spec (brief), deliver_to (required), max_results, filters, pagination
 //   activate_signal: signal_agent_segment_id, deliver_to (required), webhook_url
@@ -162,6 +168,13 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                         "Caller intent. 'brief' (default): semantic discovery via signal_spec / " +
                         "signal_refs / signal_ids. 'wholesale': full priced-catalog mirroring with " +
                         "wholesale_feed_version conditional fetch; lookup fields do not apply.",
+                },
+                account: {
+                    type: "object",
+                    description: "Optional account scope. When a comply_test_controller-forced task is created " +
+                        "under this call, it's stamped with this account and only visible to a later " +
+                        "get_task_status/list_tasks call that declares the same account.",
+                    additionalProperties: true,
                 },
                 signal_refs: {
                     type: "array",
@@ -614,6 +627,182 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 count: { type: "integer", minimum: 0 },
                 total_in_registry: { type: "integer", minimum: 0 },
                 error: { type: "string" },
+            },
+            additionalProperties: true,
+        },
+    },
+
+    {
+        name: "comply_test_controller",
+        description:
+            "Sandbox-only deterministic-testing surface (AdCP compliance protocol, universal — " +
+            "not gated to any one AdCP protocol). Implements list_scenarios, force_get_signals_arm, " +
+            "and force_task_completion for the async-discovery conformance path; any other scenario " +
+            "returns UNKNOWN_SCENARIO, which the spec accepts as a valid response for an unimplemented " +
+            "force_*/simulate_*/seed_* scenario. Every request MUST carry account.sandbox: true.",
+        inputSchema: {
+            type: "object",
+            properties: {
+                scenario: {
+                    type: "string",
+                    description: "Scenario to dispatch. 'list_scenarios' reports what is implemented.",
+                },
+                account: {
+                    type: "object",
+                    description: "Must carry sandbox: true.",
+                    additionalProperties: true,
+                },
+                // Typeless on purpose, same reasoning as elsewhere in this file:
+                // the runner sends scenario-specific fields the schema doesn't
+                // enumerate per-scenario, and a strict nested schema would
+                // strip them before the handler ever sees them.
+                params: {
+                    type: "object",
+                    description: "Scenario arguments, e.g. { arm, task_id, message } or { task_id, result }.",
+                    additionalProperties: true,
+                },
+                context: {
+                    type: "object",
+                    description: "Opaque correlation data echoed unchanged in the response.",
+                    additionalProperties: true,
+                },
+                adcp_version: { type: "string" },
+                adcp_major_version: { type: "number" },
+            },
+            required: ["scenario", "account"],
+        },
+        outputSchema: {
+            type: "object",
+            required: ["success"],
+            properties: {
+                success: { type: "boolean" },
+                scenarios: { type: "array", items: { type: "string" } },
+                forced: { type: "object", additionalProperties: true },
+                previous_state: { type: "string" },
+                current_state: { type: "string" },
+                error: { type: "string" },
+                error_detail: { type: "string" },
+            },
+            additionalProperties: true,
+        },
+    },
+
+    {
+        name: "get_task_status",
+        description:
+            "Canonical AdCP 3.x get_task_status: retrieve a specific async task by ID, with an " +
+            "optional terminal result payload. Distinct from the legacy get_operation_status shape — " +
+            "this returns the spec's task_type/protocol/created_at/updated_at envelope. Sellers MUST " +
+            "return REFERENCE_NOT_FOUND for a task_id that exists only under a different account/caller.",
+        inputSchema: {
+            type: "object",
+            properties: {
+                task_id: {
+                    type: "string",
+                    description: "Unique identifier of the task to retrieve.",
+                },
+                account: {
+                    type: "object",
+                    description: "Account scope for the task lookup. Optional — this deployment has a single credential-bound account.",
+                    additionalProperties: true,
+                },
+                include_history: {
+                    type: "boolean",
+                    description: "Include full conversation history. Not implemented — no history is ever returned.",
+                },
+                include_result: {
+                    type: "boolean",
+                    description: "Include the task's result payload when status is completed. Defaults to false.",
+                },
+                context: { type: "object", additionalProperties: true },
+                ext: { type: "object", additionalProperties: true },
+            },
+            required: ["task_id"],
+        },
+        outputSchema: {
+            type: "object",
+            required: ["task_id", "task_type", "protocol", "status", "created_at", "updated_at"],
+            properties: {
+                task_id: { type: "string" },
+                task_type: { type: "string" },
+                protocol: { type: "string", enum: [...PROTOCOL_ENUM] },
+                status: { type: "string" },
+                created_at: { type: "string" },
+                updated_at: { type: "string" },
+                completed_at: { type: "string" },
+                has_webhook: { type: "boolean" },
+                result: { type: "object", additionalProperties: true },
+                error: { type: "object", additionalProperties: true },
+            },
+            additionalProperties: true,
+        },
+    },
+
+    {
+        name: "list_tasks",
+        description:
+            "List async AdCP tasks for the calling operator (3.x protocol-namespace alias for the " +
+            "legacy tasks/list surface). Today this deployment is single-operator, and this lists " +
+            "compliance-test discovery tasks created via comply_test_controller's " +
+            "force_get_signals_arm/force_task_completion scenarios — see " +
+            "src/domain/complianceController.ts for why real activation_jobs rows aren't merged in yet.",
+        inputSchema: {
+            type: "object",
+            properties: {
+                account: {
+                    type: "object",
+                    description: "Account scope for task reconciliation. Optional — this deployment has a single credential-bound account.",
+                    additionalProperties: true,
+                },
+                filters: {
+                    type: "object",
+                    description: "Optional filter criteria: task_ids, task_type/task_types, status/statuses, has_webhook.",
+                    additionalProperties: true,
+                },
+                pagination: {
+                    type: "object",
+                    description: "Optional. max_results caps the page size.",
+                    properties: {
+                        max_results: { type: "number" },
+                    },
+                    additionalProperties: true,
+                },
+                context: { type: "object", additionalProperties: true },
+            },
+        },
+        outputSchema: {
+            type: "object",
+            required: ["tasks", "pagination"],
+            properties: {
+                tasks: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        required: ["task_id", "task_type", "domain", "status", "created_at", "updated_at"],
+                        properties: {
+                            task_id: { type: "string" },
+                            task_type: { type: "string" },
+                            domain: { type: "string" },
+                            status: { type: "string" },
+                            created_at: { type: "string" },
+                            updated_at: { type: "string" },
+                            completed_at: { type: "string" },
+                            has_webhook: { type: "boolean" },
+                        },
+                        additionalProperties: true,
+                    },
+                },
+                query_summary: { type: "object", additionalProperties: true },
+                pagination: {
+                    type: "object",
+                    required: ["has_more"],
+                    properties: {
+                        has_more: { type: "boolean" },
+                        cursor: { type: "string" },
+                        total_count: { type: "number" },
+                    },
+                    additionalProperties: false,
+                },
             },
             additionalProperties: true,
         },

@@ -1,8 +1,23 @@
 // src/mcp/server.ts
 // MCP server — Streamable HTTP transport (JSON-RPC 2.0).
-// 8 tools: get_adcp_capabilities, get_signals, activate_signal, get_operation_status,
-//          get_similar_signals, query_signals_nl, get_concept, search_concepts.
+// 11 tools: get_adcp_capabilities, get_signals, activate_signal, get_operation_status,
+//           get_similar_signals, query_signals_nl, get_concept, search_concepts,
+//           comply_test_controller, list_tasks, get_task_status.
 // v3.0 GA: handleInitialize now advertises GTS, projector, and handshake simulator.
+// 2026-09-08: comply_test_controller + list_tasks added — see
+// src/domain/complianceController.ts for scope/rationale. Both hook into
+// existing tools: get_signals (arm consumption) and get_operation_status
+// (forced-completion lookup) via the operatorId threaded through
+// handleMcpRequest → handleSingleMessage → handleToolCall.
+// 2026-09-08 (same day): get_task_status added as its OWN advertised tool,
+// not an alias to get_operation_status — the first production compliance
+// run after the above showed get_signals_async.yaml's required_tools gate
+// checks for an advertised tool literally named get_task_status, and its
+// steps assert the canonical task_type/protocol/created_at/updated_at
+// envelope, which get_operation_status's legacy custom shape doesn't carry.
+// list_tasks also gained real filters[] handling (task_ids/task_type/
+// status/has_webhook) and a has_webhook field — the same storyboard's
+// list_signals_task step filters on both and asserts an exact count.
 
 import type { Env } from "../types/env";
 import type { Logger } from "../utils/logger";
@@ -33,6 +48,13 @@ import { compactObj } from "../utils/objects";
 import { safeRecordSignalTrace, persistSignalTrace } from "../domain/signalTrace";
 import { record as recordToolLog, argKeysOf } from "./toolLog";
 import { logCall as d1LogCall, cleanup as d1Cleanup, shouldRunCleanup } from "../storage/toolLogRepo";
+import { operatorIdFromRequest } from "../utils/operatorId";
+import {
+    handleComplyTestController,
+    checkAndConsumeGetSignalsArm,
+    getComplianceTask,
+    listComplianceTasks,
+} from "../domain/complianceController";
 
 // ── JSON-RPC 2.0 types ────────────────────────────────────────────────────────
 
@@ -141,6 +163,12 @@ export async function handleMcpRequest(
     // MCP clients typically bootstrap a connection and gives the evaluator
     // the unauthenticated discovery handshake it expects.
     const isAuthed = requireAuth(request, env.DEMO_API_KEY);
+    // Derived once per HTTP request — every message in a (possibly batched)
+    // JSON-RPC body shares the same Authorization header, so one derivation
+    // is correct for all of them. Null for unauthenticated requests; tool
+    // handlers that need it are all behind AUTHENTICATED_MCP_METHODS, so a
+    // null here only ever reaches code paths that don't consult it.
+    const operatorId = await operatorIdFromRequest(request);
 
     if (Array.isArray(body)) {
         // Batched requests — mixed auth per message stays as JSON-RPC 200 OK
@@ -148,12 +176,12 @@ export async function handleMcpRequest(
         // discovery messages that legitimately succeed alongside unauth'd
         // tools/call attempts in the same batch.
         const responses = await Promise.all(
-            body.map((msg) => handleSingleMessage(msg, env, logger, isAuthed, ctx))
+            body.map((msg) => handleSingleMessage(msg, env, logger, isAuthed, operatorId, ctx))
         );
         return jsonResponse(responses.filter(Boolean));
     }
 
-    const response = await handleSingleMessage(body, env, logger, isAuthed, ctx);
+    const response = await handleSingleMessage(body, env, logger, isAuthed, operatorId, ctx);
     if (response === null) {
         return new Response(null, { status: 202 });
     }
@@ -187,6 +215,7 @@ async function handleSingleMessage(
     env: Env,
     logger: Logger,
     isAuthed: boolean,
+    operatorId: string | null,
     ctx?: ExecutionContext,
 ): Promise<JsonRpcResponse | null> {
     if (!isValidRpcRequest(msg)) {
@@ -239,7 +268,7 @@ async function handleSingleMessage(
                 const toolStart = performance.now();
                 const caller: "authed" | "unauth" = isAuthed ? "authed" : "unauth";
                 try {
-                    const result = await handleToolCall(toolCallParams, env, logger);
+                    const result = await handleToolCall(toolCallParams, env, logger, operatorId);
                     const responseBytes = tryLen(result) ?? 0;
                     const durationMs = Math.round(performance.now() - toolStart);
                     recordToolLog({
@@ -474,13 +503,19 @@ function validateAdcpMajorVersion(toolName: string, args: Record<string, unknown
 async function handleToolCall(
     params: McpCallToolParams,
     env: Env,
-    logger: Logger
+    logger: Logger,
+    operatorId: string | null
 ): Promise<unknown> {
     const { name, arguments: args = {} } = params;
 
-    // Aliases not in ADCP_TOOLS schema are still valid
+    // Aliases not in ADCP_TOOLS schema are still valid. get_task_status is
+    // now its own advertised tool with the canonical response shape (see
+    // tools.ts) — NOT aliased here — because the get_signals_async
+    // storyboard's required_tools gate checks for an advertised tool named
+    // get_task_status, and its steps assert canonical fields
+    // (task_type/protocol/created_at/updated_at) the legacy
+    // get_operation_status shape doesn't carry.
     const TOOL_ALIASES: Record<string, string> = {
-        "get_task_status": "get_operation_status",
         "get_signal_status": "get_operation_status",
     };
     const resolvedName = TOOL_ALIASES[name] ?? name;
@@ -498,13 +533,93 @@ async function handleToolCall(
         case "get_adcp_capabilities":
             return callGetCapabilities(args, env);
         case "get_signals":
-            return callGetSignals(args, env);
+            return callGetSignals(args, env, operatorId);
         case "activate_signal":
             return callActivateSignal(args, env, logger);
         case "get_operation_status":
-        case "get_task_status":
         case "get_signal_status":
-            return callGetOperation(args, env, logger);
+            return callGetOperation(args, env, logger, operatorId);
+        case "get_task_status": {
+            if (!operatorId) throw new McpToolError("get_task_status requires an authenticated caller");
+            return callGetTaskStatus(args, env, logger, operatorId);
+        }
+        case "comply_test_controller": {
+            if (!operatorId) throw new McpToolError("comply_test_controller requires an authenticated caller");
+            const controllerResult = await handleComplyTestController(env, args, operatorId);
+            // The vendored schema's response is a bespoke discriminated union
+            // (success:true|false + scenario-specific fields), NOT the generic
+            // adcp_error envelope — see complianceController.ts's module header.
+            // withMcpEnvelope's status field is the envelope's own "did this
+            // synchronous call complete" status, distinct from the controller's
+            // own success:true/false payload field, so it's always "completed"
+            // here regardless of which branch the controller returned.
+            const envelope = withMcpEnvelope(
+                { status: "completed" },
+                controllerResult as unknown as Record<string, unknown>
+            );
+            return toolResultJson(envelope);
+        }
+        case "list_tasks": {
+            if (!operatorId) throw new McpToolError("list_tasks requires an authenticated caller");
+            const allTasks = await listComplianceTasks(env, operatorId, args["account"]);
+
+            // get_signals_async.yaml's list_signals_task step filters by
+            // task_ids + task_type + has_webhook and asserts an EXACT
+            // total_matching/returned count — this needs to actually filter,
+            // not just echo tasks.length regardless of the request.
+            const filters = (args["filters"] as Record<string, unknown> | undefined) ?? {};
+            const taskIds = Array.isArray(filters["task_ids"])
+                ? new Set((filters["task_ids"] as unknown[]).filter((v): v is string => typeof v === "string"))
+                : null;
+            const taskTypes = new Set(
+                [filters["task_type"], ...(Array.isArray(filters["task_types"]) ? filters["task_types"] : [])]
+                    .filter((v): v is string => typeof v === "string")
+            );
+            const statuses = new Set(
+                [filters["status"], ...(Array.isArray(filters["statuses"]) ? filters["statuses"] : [])]
+                    .filter((v): v is string => typeof v === "string")
+            );
+            const hasWebhookFilter = typeof filters["has_webhook"] === "boolean" ? filters["has_webhook"] : null;
+
+            const matching = allTasks.filter((t) => {
+                if (taskIds && !taskIds.has(t.task_id)) return false;
+                if (taskTypes.size > 0 && !taskTypes.has(t.task_type)) return false;
+                if (statuses.size > 0 && !statuses.has(t.status)) return false;
+                const hasWebhook = !!t.push_notification_config?.url;
+                if (hasWebhookFilter !== null && hasWebhook !== hasWebhookFilter) return false;
+                return true;
+            });
+
+            const reqPagination = args["pagination"] as Record<string, unknown> | undefined;
+            const maxResults = numArg(reqPagination?.["max_results"], matching.length);
+            const page = matching.slice(0, maxResults);
+
+            // Canonical list-tasks-response.json requires task_id/task_type/
+            // domain/status/created_at/updated_at per task (updated_at was
+            // missing — a real gap the first live --with-webhooks run
+            // surfaced) and a top-level pagination block (also missing).
+            const response = withMcpEnvelope(
+                { status: "completed" },
+                {
+                    tasks: page.map((t) => ({
+                        task_id: t.task_id,
+                        task_type: t.task_type,
+                        domain: "signals",
+                        status: t.status,
+                        created_at: t.created_at,
+                        updated_at: t.completed_at ?? t.created_at,
+                        ...(t.completed_at ? { completed_at: t.completed_at } : {}),
+                        has_webhook: !!t.push_notification_config?.url,
+                    })),
+                    query_summary: { total_matching: matching.length, returned: page.length },
+                    pagination: {
+                        has_more: page.length < matching.length,
+                        total_count: matching.length,
+                    },
+                }
+            );
+            return toolResultJson(response);
+        }
         case "get_similar_signals":
             return callGetSimilarSignals(args, env, logger);
         case "query_signals_nl":
@@ -609,7 +724,8 @@ function extractRequestedSignalIds(args: Record<string, unknown>): string[] {
 
 async function callGetSignals(
     args: Record<string, unknown>,
-    env: Env
+    env: Env,
+    operatorId: string | null
 ): Promise<unknown> {
     const _t0_get_signals = Date.now();
     const filters = args["filters"] as Record<string, unknown> | undefined;
@@ -762,6 +878,36 @@ async function callGetSignals(
         });
         await persistSignalTrace(env, _trace_unchanged);
         return toolResultJson(unchanged);
+    }
+
+    // comply_test_controller's force_get_signals_arm hook. Wholesale reads
+    // are a synchronous feed pull per spec ("MUST NOT use the Submitted
+    // arm"), so this only ever consumes an arm for discovery-mode calls —
+    // matching the same discovery_mode !== "wholesale" gate the exact-lookup
+    // branch below uses. One-shot: checkAndConsumeGetSignalsArm deletes the
+    // arm as it reads it, so a second call in the same run falls through to
+    // normal discovery.
+    if (operatorId && args["discovery_mode"] !== "wholesale") {
+        const armed = await checkAndConsumeGetSignalsArm(env, operatorId, args["push_notification_config"], args["account"]);
+        if (armed) {
+            const ctxEcho = args["context"];
+            const submitted = withMcpEnvelope({ status: "submitted", task_id: armed.task_id }, {
+                ...(ctxEcho && typeof ctxEcho === "object" && !Array.isArray(ctxEcho)
+                    ? { context: ctxEcho as Record<string, unknown> }
+                    : {}),
+            });
+            const _trace_armed = safeRecordSignalTrace({
+                tool_name: "get_signals",
+                direction: "inbound",
+                source: "mcp_external",
+                request_payload: args,
+                response_payload: submitted,
+                response_status: "ok",
+                duration_ms: Date.now() - _t0_get_signals,
+            });
+            await persistSignalTrace(env, _trace_armed);
+            return toolResultJson(submitted);
+        }
     }
 
     // AdCP 3.1 exact lookup: `signal_refs` ("Returns exact matches for the
@@ -1370,10 +1516,36 @@ async function callActivateSignal(
 async function callGetOperation(
     args: Record<string, unknown>,
     env: Env,
-    logger: Logger
+    logger: Logger,
+    operatorId: string | null
 ): Promise<unknown> {
     const taskId = (args["task_id"] ?? args["operationId"]) as string;
     if (!taskId) throw new McpToolError("task_id is required");
+
+    // comply_test_controller's force_task_completion hook. Compliance tasks
+    // live in KV under the operator's own namespace, not D1, so they're
+    // checked first and — when found — short-circuit the D1 lookup below
+    // entirely. A task_id owned by a *different* operator (KV key exists,
+    // owner mismatch) reports not-found to this caller rather than leaking
+    // that the task exists at all.
+    if (operatorId) {
+        const lookup = await getComplianceTask(env, operatorId, taskId, args["account"]);
+        if (lookup.found && lookup.owned) {
+            const task = lookup.task;
+            const response = withMcpEnvelope(
+                { status: task.status === "completed" ? "completed" : "submitted", task_id: taskId },
+                (task.result as Record<string, unknown> | undefined) ?? {}
+            );
+            return toolResultJson(response);
+        }
+        if (lookup.found && !lookup.owned) {
+            throw new McpToolError(`Task not found: ${taskId}`, {
+                code: "REFERENCE_NOT_FOUND",
+                recovery: "correctable",
+                field: "/task_id",
+            });
+        }
+    }
 
     const _t0 = Date.now();
     try {
@@ -1417,6 +1589,87 @@ async function callGetOperation(
         });
         await persistSignalTrace(env, _trace);
         if (err instanceof NotFoundError) throw new McpToolError(err.message);
+        throw err;
+    }
+}
+
+/**
+ * Canonical AdCP 3.x get_task_status — distinct from callGetOperation's
+ * legacy shape (task_id/status/signal_agent_segment_id/deployments). This
+ * returns the spec's task_type/protocol/created_at/updated_at envelope,
+ * which get_signals_async.yaml's steps assert field-by-field.
+ *
+ * Checks the compliance-controller KV task store first (getComplianceTask,
+ * same owner-check as callGetOperation's hook — a task_id that belongs to a
+ * different operator resolves to REFERENCE_NOT_FOUND, never a silent
+ * fall-through), then the real D1 activation lookup, mapped into the same
+ * canonical shape.
+ */
+async function callGetTaskStatus(
+    args: Record<string, unknown>,
+    env: Env,
+    logger: Logger,
+    operatorId: string
+): Promise<unknown> {
+    const taskId = args["task_id"] as string;
+    if (!taskId) throw new McpToolError("task_id is required");
+    const includeResult = args["include_result"] === true;
+
+    const lookup = await getComplianceTask(env, operatorId, taskId, args["account"]);
+    if (lookup.found && !lookup.owned) {
+        throw new McpToolError(`Task not found: ${taskId}`, {
+            code: "REFERENCE_NOT_FOUND",
+            recovery: "correctable",
+            field: "/task_id",
+        });
+    }
+    if (lookup.found && lookup.owned) {
+        const task = lookup.task;
+        const payload: Record<string, unknown> = {
+            task_id: task.task_id,
+            task_type: task.task_type,
+            protocol: "signals",
+            created_at: task.created_at,
+            updated_at: task.completed_at ?? task.created_at,
+            has_webhook: !!task.push_notification_config?.url,
+            ...(task.completed_at ? { completed_at: task.completed_at } : {}),
+            ...(includeResult && task.status === "completed" && task.result !== undefined
+                ? { result: task.result }
+                : {}),
+        };
+        const response = withMcpEnvelope({ status: task.status, task_id: taskId }, payload);
+        return toolResultJson(response);
+    }
+
+    // Not a compliance-controller task — fall through to the real D1
+    // activation lookup, mapped into the same canonical shape. has_webhook
+    // is omitted (not false) here: GetOperationResponse doesn't currently
+    // expose whether a webhook was registered, and asserting false would be
+    // a guess, not a fact — the field is optional in the canonical schema.
+    try {
+        const db = getDb(env);
+        const result = await getOperationService(db, taskId, logger, env.WEBHOOK_SIGNING_SECRET);
+        const payload: Record<string, unknown> = {
+            task_id: result.task_id,
+            task_type: "activate_signal",
+            protocol: "signals",
+            created_at: result.submittedAt,
+            updated_at: result.updatedAt,
+            ...(result.completedAt ? { completed_at: result.completedAt } : {}),
+            ...(includeResult && result.status === "completed"
+                ? { result: { signal_agent_segment_id: result.signal_agent_segment_id, deployments: result.deployments } }
+                : {}),
+        };
+        const response = withMcpEnvelope({ status: result.status, task_id: taskId }, payload);
+        return toolResultJson(response);
+    } catch (err) {
+        if (err instanceof NotFoundError) {
+            throw new McpToolError(`Task not found: ${taskId}`, {
+                code: "REFERENCE_NOT_FOUND",
+                recovery: "correctable",
+                field: "/task_id",
+            });
+        }
         throw err;
     }
 }

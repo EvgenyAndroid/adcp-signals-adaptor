@@ -18,6 +18,7 @@
 // /capabilities.
 //
 // History (auto-prepended; manual entries also preserved across rewrites):
+//   2026-09-08 — auto-written by scripts/run-compliance.mjs (57/57 scenarios, 32/108 steps passed, 76 skipped, 18 storyboards; AdCP 3.1.20 via @adcp/sdk@13.0.2).
 //   2026-09-07 — auto-written by scripts/run-compliance.mjs (49/49 scenarios, 32/77 steps passed, 45 skipped, 15 storyboards; AdCP 3.1.15 via @adcp/sdk@13.0.0).
 //   2026-08-04 — auto-written by scripts/run-compliance.mjs (7/7 applicable, 32 skipped).
 //   2026-07-31 — auto-written by scripts/run-compliance.mjs (7/7 applicable, 32 skipped).
@@ -36,23 +37,31 @@
 
 export const COMPLIANCE_STATE = {
   /** ISO date (YYYY-MM-DD) of the last passing compliance run. */
-  last_run: "2026-09-07",
+  last_run: "2026-09-08",
 
   /** The @adcp/sdk build that executed the suite, captured live by the
    *  runner so /capabilities never advertises a stale runner version. */
-  client_runner: "@adcp/sdk@13.0.0",
+  client_runner: "@adcp/sdk@13.0.2",
 
   /** AdCP compliance line the storyboards were resolved from. */
-  compliance_line: "3.1.15",
+  compliance_line: "3.1.20",
 
   /** Runner headline for the run (track-level status, e.g. "1 partial, 2 silent"). */
-  headline: "1 partial, 2 silent",
+  headline: "3 silent",
 
   /** Scenario IDs that ran (i.e. were applicable to this agent's tool surface). */
   scenarios_run: [
     "billing_gate_dispatch/not_applicable",
     "capability_discovery/protocol_discovery",
-    "deterministic_testing/not_applicable",
+    "deterministic_testing/__controller_seeding__",
+    "deterministic_testing/capability_discovery",
+    "deterministic_testing/controller_validation",
+    "deterministic_testing/deterministic_account",
+    "deterministic_testing/deterministic_budget",
+    "deterministic_testing/deterministic_creative",
+    "deterministic_testing/deterministic_delivery",
+    "deterministic_testing/deterministic_media_buy",
+    "deterministic_testing/deterministic_session",
     "error_compliance/not_applicable",
     "error_compliance_signals/capability_discovery",
     "error_compliance_signals/error_responses",
@@ -90,7 +99,7 @@ export const COMPLIANCE_STATE = {
     "signal_owned/discovery",
     "signals_baseline/capability_discovery",
     "signals_baseline/discovery",
-    "signals_baseline/get_signals_async/not_applicable",
+    "signals_baseline/get_signals_async/requirement_unmet",
     "stale_response_advisory/not_applicable",
     "v3_envelope_integrity/envelope_integrity_check",
     "version_negotiation/capabilities_advertise_and_echo",
@@ -104,8 +113,8 @@ export const COMPLIANCE_STATE = {
   /** Scenario-level pass / fail / skip counts from the last passing run.
    *  Served on /capabilities as `results`. */
   results: {
-    applicable: 49,
-    passed: 49,
+    applicable: 57,
+    passed: 57,
     failed: 0,
     skipped: 5,
   },
@@ -114,8 +123,8 @@ export const COMPLIANCE_STATE = {
   steps: {
     passed: 32,
     failed: 0,
-    skipped: 45,
-    total: 77,
+    skipped: 76,
+    total: 108,
   },
 
   /** Storyboards the runner executed vs. skipped for tools this agent
@@ -123,6 +132,8 @@ export const COMPLIANCE_STATE = {
   storyboards: {
     executed: [
       "capability_discovery",
+      "comply_controller_mode_gate",
+      "deterministic_testing",
       "error_compliance_signals",
       "get_signals_pagination_integrity",
       "idempotency",
@@ -131,6 +142,7 @@ export const COMPLIANCE_STATE = {
       "security_baseline",
       "signal_owned",
       "signals_baseline",
+      "signals_baseline/get_signals_async",
       "signed_requests",
       "v3_envelope_integrity",
       "version_negotiation",
@@ -141,8 +153,6 @@ export const COMPLIANCE_STATE = {
     missing_tools: [
       "billing_gate_dispatch",
       "canonical_format_validate_input",
-      "comply_controller_mode_gate",
-      "deterministic_testing",
       "error_compliance",
       "get_media_buys_pagination_integrity",
       "get_products_pagination_integrity",
@@ -156,7 +166,6 @@ export const COMPLIANCE_STATE = {
       "pagination_integrity_list_accounts",
       "pagination_integrity_property_lists",
       "schema_validation",
-      "signals_baseline/get_signals_async",
       "stale_response_advisory",
       "wholesale_feed_bulk_webhooks",
       "wholesale_feed_product_webhooks",

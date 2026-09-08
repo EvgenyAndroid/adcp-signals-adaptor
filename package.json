@@ -28,7 +28,7 @@
     "wrangler": "^4.72.0"
   },
   "dependencies": {
-    "@adcp/sdk": "13.0.0",
+    "@adcp/sdk": "13.0.2",
     "@cfworker/json-schema": "^4.1.1",
     "zod": "^4.4.3"
   }

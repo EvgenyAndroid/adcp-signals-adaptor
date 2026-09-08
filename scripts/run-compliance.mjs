@@ -17,12 +17,13 @@
 // it. Every gotcha below was paid for over there first.
 //
 //   1. VERSION. package.json pins @adcp/sdk to the GA build the grader runs
-//      (13.0.0 = AdCP 3.1.15, verified against the card for the sales
-//      agent). npm `latest` and this repo's old ^12.1.1 range bundle far
-//      older cache lines (12.1.1 = AdCP 3.1.5); a run on those silently
-//      hides whole storyboards. This script asserts the pinned line's cache
-//      is present before running so a stray `npm install` can't quietly
-//      downgrade the suite.
+//      (13.0.2 = AdCP 3.1.20 — the line the registry card grades on;
+//      13.0.0 = 3.1.15 before that, and this agent's results were
+//      byte-identical across the two on 2026-09-07). npm `latest` and this
+//      repo's old ^12.1.1 range bundle far older cache lines (12.1.1 =
+//      AdCP 3.1.5); a run on those silently hides whole storyboards. This
+//      script asserts the pinned line's cache is present before running so
+//      a stray `npm install` can't quietly downgrade the suite.
 //   2. --test-kit. Steps declaring `auth: {from_test_kit: true}` read the
 //      KIT's api_key, not --auth. Without a kit those probes go out with no
 //      Authorization header and a conformant agent fails its own
@@ -122,8 +123,8 @@ const require = createRequire(import.meta.url);
 // The GA line the grader runs. Bump BOTH together, and re-verify against the
 // card before trusting the new numbers (see the sales agent's history: a
 // line bump has changed pass/fail on individual steps more than once).
-const SDK_PIN = "13.0.0";
-const LINE = "3.1.15";
+const SDK_PIN = "13.0.2";
+const LINE = "3.1.20";
 
 const SDK_DIR = resolve(ROOT, "node_modules", "@adcp", "sdk");
 const CLI = join(SDK_DIR, "bin", "adcp.js");

@@ -158,7 +158,7 @@ export function mapDimensionsToLinkedIn(dimensions: SignalDimension[]): MapResul
           addFacet(facetMap, FACET.AGE, m.urn);
           const proxied = !!m.note;
           dimensionResults.push({ dimension, value, status: proxied ? 'proxied' : 'mapped', platform_facet: 'ageRanges', platform_values: [m.urn], ...(m.note !== undefined ? { note: m.note } : {}) });
-          proxied ? proxiedCount++ : supportedCount++;
+          if (proxied) proxiedCount++; else supportedCount++;
         } else {
           dimensionResults.push({ dimension, value, status: 'not_supported', note: `Unknown age band: ${value}` });
           unsupportedCount++;

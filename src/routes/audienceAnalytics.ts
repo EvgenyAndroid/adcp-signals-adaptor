@@ -236,7 +236,7 @@ export async function handleAudienceSaturation(request: Request, env: Env, logge
   }
 
   // Hydrate from catalog if signal_ids supplied.
-  let resolved: SignalSummary[] = [];
+  const resolved: SignalSummary[] = [];
   if (ids.length > 0) {
     if (ids.length > 15) return errorResponse("TOO_MANY_SIGNALS", `Max 15 signal_ids; got ${ids.length}`, 400);
     const catalog = await loadCatalog(env, logger);

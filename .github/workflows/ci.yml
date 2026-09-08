@@ -1,0 +1,41 @@
+name: CI
+
+# The only pre-merge gate on the root package was deploy.yml, which runs
+# AFTER a push to main/master and never runs type-check, test, or lint — it
+# just installs, migrates, and deploys. A PR could merge with a broken build
+# and nothing would fail until (or unless) someone happened to look.
+# seller-agent/ already closed this same gap for itself (seller-agent-ci.yml);
+# this closes it for the root package.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Type-check, lint, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test

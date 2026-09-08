@@ -350,8 +350,27 @@ import { createLogger } from "../src/utils/logger";
 const KEY = "demo-key-comply-test";
 const logger = createLogger("comply-test-req");
 
-function makeMcpEnv(kv: KVNamespace) {
-  return { DEMO_API_KEY: KEY, SIGNALS_CACHE: kv } as unknown as import("../src/types/env").Env;
+// get_task_status's D1 fallback (a task_id absent from compliance-KV) calls
+// getOperationService -> findOperationById -> db.prepare(...).bind(...).first(),
+// which throws TypeError on an undefined DB binding rather than resolving to
+// null. A conformant "not found" fake keeps that path exercising the REAL
+// NotFoundError -> REFERENCE_NOT_FOUND mapping instead of crashing on a
+// missing test fixture.
+function makeEmptyDb() {
+  return {
+    prepare(_sql: string) {
+      return {
+        bind(..._args: unknown[]) { return this; },
+        async first() { return null; },
+        async all() { return { results: [] }; },
+        async run() { return { success: true, meta: {} }; },
+      };
+    },
+  } as unknown as import("../src/types/env").Env["DB"];
+}
+
+function makeMcpEnv(kv: KVNamespace, apiKey: string = KEY) {
+  return { DEMO_API_KEY: apiKey, SIGNALS_CACHE: kv, DB: makeEmptyDb() } as unknown as import("../src/types/env").Env;
 }
 
 async function callTool(env: import("../src/types/env").Env, name: string, args: Record<string, unknown>) {
@@ -465,5 +484,182 @@ describe("MCP dispatch — comply_test_controller / list_tasks", () => {
     const body = await callTool(env, "get_signals", { signal_spec: "anything" });
     expect(body.error).toBeUndefined();
     expect(body.result?.isError).not.toBe(true);
+  });
+});
+
+// ── get_task_status — the canonical AdCP 3.x tool, distinct from the ────────
+// legacy get_operation_status shape. Added after the first production
+// compliance run showed get_signals_async.yaml's required_tools gate checks
+// for an advertised tool literally named get_task_status, and its steps
+// assert task_type/protocol/created_at/updated_at fields get_operation_status
+// never carried.
+
+const OTHER_KEY = "demo-key-comply-test-OTHER-OPERATOR";
+
+async function callToolAs(
+  env: import("../src/types/env").Env,
+  authKey: string,
+  name: string,
+  args: Record<string, unknown>,
+) {
+  const req = new Request("https://example.com/mcp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${authKey}` },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }),
+  });
+  const res = await handleMcpRequest(req, env, logger);
+  return JSON.parse(await res.text());
+}
+
+async function armAndConsume(
+  env: import("../src/types/env").Env,
+  taskId: string,
+  pushNotificationConfig?: Record<string, unknown>,
+) {
+  await callTool(env, "comply_test_controller", {
+    scenario: "force_get_signals_arm",
+    account: { sandbox: true },
+    params: { arm: "submitted", task_id: taskId },
+  });
+  await callTool(env, "get_signals", {
+    signal_spec: "anything",
+    ...(pushNotificationConfig ? { push_notification_config: pushNotificationConfig } : {}),
+  });
+}
+
+describe("MCP dispatch — get_task_status", () => {
+  it("returns the canonical envelope for a submitted task", async () => {
+    const env = makeMcpEnv(makeKv());
+    await armAndConsume(env, "task_canonical_submitted");
+
+    const body = await callTool(env, "get_task_status", { task_id: "task_canonical_submitted" });
+    const sc = body.result?.structuredContent;
+    expect(sc).toMatchObject({
+      task_id: "task_canonical_submitted",
+      task_type: "get_signals",
+      protocol: "signals",
+      status: "submitted",
+      has_webhook: false,
+    });
+    expect(sc.created_at).toBeTruthy();
+    expect(sc.updated_at).toBeTruthy();
+  });
+
+  it("has_webhook is true when the get_signals call registered a push_notification_config", async () => {
+    const env = makeMcpEnv(makeKv());
+    await armAndConsume(env, "task_with_webhook", { url: "https://buyer.example/webhook" });
+
+    const body = await callTool(env, "get_task_status", { task_id: "task_with_webhook" });
+    expect(body.result?.structuredContent.has_webhook).toBe(true);
+  });
+
+  it("omits result by default, includes it only when include_result: true and completed", async () => {
+    const env = makeMcpEnv(makeKv());
+    await armAndConsume(env, "task_result_gate");
+    await callTool(env, "comply_test_controller", {
+      scenario: "force_task_completion",
+      account: { sandbox: true },
+      params: { task_id: "task_result_gate", result: { signals: [{ signal_agent_segment_id: "seg_1" }] } },
+    });
+
+    const withoutFlag = await callTool(env, "get_task_status", { task_id: "task_result_gate" });
+    expect(withoutFlag.result?.structuredContent.status).toBe("completed");
+    expect(withoutFlag.result?.structuredContent.result).toBeUndefined();
+
+    const withFlag = await callTool(env, "get_task_status", { task_id: "task_result_gate", include_result: true });
+    expect(withFlag.result?.structuredContent.result).toEqual({ signals: [{ signal_agent_segment_id: "seg_1" }] });
+  });
+
+  it("include_result: true on a still-submitted task returns no result (nothing to include yet)", async () => {
+    const env = makeMcpEnv(makeKv());
+    await armAndConsume(env, "task_not_yet_completed");
+
+    const body = await callTool(env, "get_task_status", { task_id: "task_not_yet_completed", include_result: true });
+    expect(body.result?.structuredContent.status).toBe("submitted");
+    expect(body.result?.structuredContent.result).toBeUndefined();
+  });
+
+  it("a task_id owned by a different caller resolves to REFERENCE_NOT_FOUND, not the task", async () => {
+    // Two envs sharing one KV store but with DIFFERENT DEMO_API_KEY values —
+    // the same "provision a second secret" multi-operator model
+    // complianceController.ts's own header describes. A single shared env
+    // with two different bearer tokens can't simulate this: requireAuth
+    // checks the token against ONE env.DEMO_API_KEY, so a token that isn't
+    // that env's own key just fails auth (401) rather than resolving to a
+    // second operator.
+    const kv = makeKv();
+    const envA = makeMcpEnv(kv);
+    await armAndConsume(envA, "task_cross_caller");
+
+    const envB = makeMcpEnv(kv, OTHER_KEY);
+    const body = await callToolAs(envB, OTHER_KEY, "get_task_status", { task_id: "task_cross_caller" });
+    expect(body.result?.isError).toBe(true);
+    expect(body.result?.structuredContent?.adcp_error?.code).toBe("REFERENCE_NOT_FOUND");
+  });
+
+  it("a task_id that never existed resolves to REFERENCE_NOT_FOUND (no D1 binding, falls through cleanly)", async () => {
+    const env = makeMcpEnv(makeKv());
+    const body = await callTool(env, "get_task_status", { task_id: "task_never_existed" });
+    expect(body.result?.isError).toBe(true);
+    expect(body.result?.structuredContent?.adcp_error?.code).toBe("REFERENCE_NOT_FOUND");
+  });
+
+  it("get_task_status requires an authenticated caller", async () => {
+    const env = makeMcpEnv(makeKv());
+    const req = new Request("https://example.com/mcp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0", id: 1, method: "tools/call",
+        params: { name: "get_task_status", arguments: { task_id: "whatever" } },
+      }),
+    });
+    const res = await handleMcpRequest(req, env, logger);
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("MCP dispatch — list_tasks filters[]", () => {
+  it("filters by task_ids and reports an exact total_matching/returned count", async () => {
+    const env = makeMcpEnv(makeKv());
+    await armAndConsume(env, "task_filter_a");
+    await armAndConsume(env, "task_filter_b");
+
+    const body = await callTool(env, "list_tasks", { filters: { task_ids: ["task_filter_a"] } });
+    const sc = body.result?.structuredContent;
+    expect(sc.query_summary).toEqual({ total_matching: 1, returned: 1 });
+    expect(sc.tasks).toHaveLength(1);
+    expect(sc.tasks[0].task_id).toBe("task_filter_a");
+  });
+
+  it("filters by has_webhook", async () => {
+    const env = makeMcpEnv(makeKv());
+    await armAndConsume(env, "task_no_hook");
+    await armAndConsume(env, "task_has_hook", { url: "https://buyer.example/webhook" });
+
+    const body = await callTool(env, "list_tasks", { filters: { has_webhook: true } });
+    const sc = body.result?.structuredContent;
+    expect(sc.tasks.map((t: { task_id: string }) => t.task_id)).toEqual(["task_has_hook"]);
+    expect(sc.tasks[0].has_webhook).toBe(true);
+  });
+
+  it("filters by task_type and returns has_webhook: false when no webhook was registered", async () => {
+    const env = makeMcpEnv(makeKv());
+    await armAndConsume(env, "task_typed");
+
+    const body = await callTool(env, "list_tasks", { filters: { task_type: "get_signals" } });
+    const sc = body.result?.structuredContent;
+    expect(sc.tasks).toHaveLength(1);
+    expect(sc.tasks[0]).toMatchObject({ task_type: "get_signals", has_webhook: false });
+  });
+
+  it("an unmatched filter returns an empty page with a zero query_summary, not every task", async () => {
+    const env = makeMcpEnv(makeKv());
+    await armAndConsume(env, "task_unfiltered");
+
+    const body = await callTool(env, "list_tasks", { filters: { task_ids: ["nope_missing"] } });
+    const sc = body.result?.structuredContent;
+    expect(sc.tasks).toEqual([]);
+    expect(sc.query_summary).toEqual({ total_matching: 0, returned: 0 });
   });
 });

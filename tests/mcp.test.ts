@@ -1,8 +1,9 @@
 // tests/mcp.test.ts
 // MCP server unit tests
 //
-// Tool count is 10: 4 AdCP signals core + get_similar_signals + query_signals_nl
-// + get_concept + search_concepts + comply_test_controller + list_tasks.
+// Tool count is 11: 4 AdCP signals core + get_similar_signals + query_signals_nl
+// + get_concept + search_concepts + comply_test_controller + list_tasks +
+// get_task_status.
 // The Sec-22 create_media_buy stub was removed in Sec-28 — adcp-client v5.6.0
 // client-side-gates on supported_protocols, so the universal
 // schema_validation storyboard correctly skips create_media_buy probes for
@@ -12,8 +13,8 @@ import { describe, it, expect } from "vitest";
 import { ADCP_TOOLS, getToolByName } from "../src/mcp/tools";
 
 describe("MCP tool definitions", () => {
-  it("exposes exactly 10 tools (signals core + UCP + compliance testing)", () => {
-    expect(ADCP_TOOLS).toHaveLength(10);
+  it("exposes exactly 11 tools (signals core + UCP + compliance testing)", () => {
+    expect(ADCP_TOOLS).toHaveLength(11);
   });
 
   it("all tools have required fields", () => {
@@ -24,7 +25,7 @@ describe("MCP tool definitions", () => {
     }
   });
 
-  it("getToolByName finds all 10 tools", () => {
+  it("getToolByName finds all 11 tools", () => {
     expect(getToolByName("get_signals")).toBeDefined();
     expect(getToolByName("activate_signal")).toBeDefined();
     expect(getToolByName("get_adcp_capabilities")).toBeDefined();
@@ -35,6 +36,15 @@ describe("MCP tool definitions", () => {
     expect(getToolByName("search_concepts")).toBeDefined();
     expect(getToolByName("comply_test_controller")).toBeDefined();
     expect(getToolByName("list_tasks")).toBeDefined();
+    expect(getToolByName("get_task_status")).toBeDefined();
+  });
+
+  it("get_task_status requires task_id and returns the canonical envelope", () => {
+    const tool = getToolByName("get_task_status")!;
+    expect(tool.inputSchema.required).toContain("task_id");
+    expect(tool.outputSchema?.required).toEqual(
+      expect.arrayContaining(["task_id", "task_type", "protocol", "status", "created_at", "updated_at"])
+    );
   });
 
   it("comply_test_controller requires scenario and account", () => {
@@ -109,6 +119,7 @@ describe("MCP tool definitions", () => {
     expect(names).toContain("search_concepts");
     expect(names).toContain("comply_test_controller");
     expect(names).toContain("list_tasks");
+    expect(names).toContain("get_task_status");
     expect(names).not.toContain("generate_custom_signal");
   });
 

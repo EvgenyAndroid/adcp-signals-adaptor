@@ -61,9 +61,47 @@
 // KV + deriveOperatorId(bearer) namespacing already used for LinkedIn OAuth
 // state and workflow annotations (src/domain/runAnnotations.ts) rather than
 // adding a D1 migration for state that exists only to be consumed once.
+//
+// ACCOUNT SCOPING (added 2026-09-08, after a live --with-webhooks run).
+// get_signals_async.yaml's list_signals_task_wrong_account /
+// get_signals_task_status_wrong_account steps use a SINGLE shared
+// credential (this repo's compliance kit has one api_key, no per-account
+// secret) and simulate "different account" purely via a different
+// `account: {brand, operator}` object on the request body — per the
+// spec's own text, "Sellers MUST scope task reconciliation to the
+// authenticated account + principal pair," not the principal alone.
+// operatorId (token-derived) was the only scoping dimension; two requests
+// with the SAME token but DIFFERENT account objects were indistinguishable,
+// so the "wrong account" case incorrectly found the task.
+// deriveAccountKey folds the account object into a second scoping key,
+// applied ADDITIVELY: a task created (or queried) with no account object
+// at all keeps today's operatorId-only behavior exactly — this deployment
+// is still "single credential, single account" by default, and the vast
+// majority of real callers (including our own tests) never send one. The
+// mismatch check only fires when BOTH sides declared an account and they
+// differ, which is exactly the storyboard's own test shape.
 
 import type { Env } from "../types/env";
 import { signWebhookBody } from "./webhookSigning";
+
+/**
+ * Canonical key for an AdCP `account` object ({ brand: { domain }, operator }).
+ * Returns undefined for anything that isn't a well-formed account object
+ * (missing, malformed, or carrying neither field) — callers treat undefined
+ * as "no account declared," never as a key that could collide with a real one.
+ */
+function deriveAccountKey(account: unknown): string | undefined {
+  if (!account || typeof account !== "object" || Array.isArray(account)) return undefined;
+  const a = account as Record<string, unknown>;
+  const operator = typeof a["operator"] === "string" ? a["operator"] : "";
+  const brand = a["brand"];
+  const domain = brand && typeof brand === "object" && !Array.isArray(brand)
+    ? (brand as Record<string, unknown>)["domain"]
+    : undefined;
+  const domainStr = typeof domain === "string" ? domain : "";
+  if (!operator && !domainStr) return undefined;
+  return `${domainStr}|${operator}`;
+}
 
 export const SUPPORTED_SCENARIOS = ["force_get_signals_arm", "force_task_completion"] as const;
 
@@ -91,6 +129,10 @@ interface ComplianceTask {
   push_notification_config?: { url?: string } & Record<string, unknown>;
   created_at: string;
   completed_at?: string;
+  /** Set from deriveAccountKey(account) at task-creation time (the
+   *  get_signals call that consumed the arm). Undefined when that request
+   *  carried no account object — see the ACCOUNT SCOPING module note. */
+  account_key?: string;
 }
 
 export interface ControllerSuccess {
@@ -205,11 +247,15 @@ async function forceGetSignalsArm(
  * normally. Callers pass the request's push_notification_config so
  * force_task_completion can deliver to it later; storing it here at
  * consumption time is the only point the two are naturally correlated.
+ * `account` is the same request's account object — stamped onto the task
+ * so a later get_task_status/list_tasks call under a DIFFERENT account
+ * (same token) can be told apart. See the ACCOUNT SCOPING module note.
  */
 export async function checkAndConsumeGetSignalsArm(
   env: Env,
   operatorId: string,
   pushNotificationConfig: unknown,
+  account?: unknown,
 ): Promise<{ status: "submitted"; task_id: string } | null> {
   const raw = await env.SIGNALS_CACHE.get(armKey(operatorId), "json");
   if (!raw || typeof raw !== "object") return null;
@@ -222,6 +268,7 @@ export async function checkAndConsumeGetSignalsArm(
   // Idempotent by construction, no lost-update window that matters here.
   await env.SIGNALS_CACHE.delete(armKey(operatorId));
 
+  const accountKey = deriveAccountKey(account);
   const task: ComplianceTask = {
     task_id,
     task_type: "get_signals",
@@ -230,6 +277,7 @@ export async function checkAndConsumeGetSignalsArm(
     ...(pushNotificationConfig && typeof pushNotificationConfig === "object"
       ? { push_notification_config: pushNotificationConfig as { url?: string } & Record<string, unknown> }
       : {}),
+    ...(accountKey ? { account_key: accountKey } : {}),
     created_at: new Date().toISOString(),
   };
   await Promise.all([
@@ -345,11 +393,18 @@ export type ComplianceTaskLookup =
  * (found:true, owned:false — the caller MUST get REFERENCE_NOT_FOUND, not
  * silently fall through to a D1 lookup that would also 404 but for the
  * wrong reason).
+ *
+ * `callerAccount` is the current request's account object. When the task
+ * was stamped with an account_key AND the caller also declared one AND
+ * they differ, this reports owned:false — same as a genuinely different
+ * operator — even though the token/operatorId matches. See the ACCOUNT
+ * SCOPING module note for why this only fires when BOTH sides declared one.
  */
 export async function getComplianceTask(
   env: Env,
   operatorId: string,
   taskId: string,
+  callerAccount?: unknown,
 ): Promise<ComplianceTaskLookup> {
   const owner = await env.SIGNALS_CACHE.get(taskOwnerKey(taskId));
   if (!owner) return { found: false };
@@ -358,6 +413,10 @@ export async function getComplianceTask(
     | ComplianceTask
     | null;
   if (!task) return { found: false }; // owner index outlived the task record (TTL edge) — treat as absent
+  const callerAccountKey = deriveAccountKey(callerAccount);
+  if (task.account_key && callerAccountKey && task.account_key !== callerAccountKey) {
+    return { found: true, owned: false };
+  }
   return { found: true, owned: true, task };
 }
 
@@ -375,15 +434,25 @@ export async function getComplianceTask(
  * elsewhere (capabilities.js's specialism decisions) explicitly avoid.
  * Wiring in real activation-job listing is a separate, larger feature:
  * it needs operator_id threaded onto activation_jobs first.
+ *
+ * `callerAccount` mirrors getComplianceTask's account check: a task with a
+ * stamped account_key is excluded when the caller declared a DIFFERENT
+ * one. A task with no account_key (created without an account object), or
+ * a caller that declares none, is never excluded on this basis — see the
+ * ACCOUNT SCOPING module note.
  */
 export async function listComplianceTasks(
   env: Env,
   operatorId: string,
+  callerAccount?: unknown,
 ): Promise<ComplianceTask[]> {
   const raw = (await env.SIGNALS_CACHE.get(taskIndexKey(operatorId), "json")) as string[] | null;
   const ids = Array.isArray(raw) ? raw : [];
   const tasks = await Promise.all(
     ids.map((id) => env.SIGNALS_CACHE.get(taskKey(operatorId, id), "json")),
   );
-  return tasks.filter((t): t is ComplianceTask => !!t && typeof t === "object");
+  const found = tasks.filter((t): t is ComplianceTask => !!t && typeof t === "object");
+  const callerAccountKey = deriveAccountKey(callerAccount);
+  if (!callerAccountKey) return found;
+  return found.filter((t) => !t.account_key || t.account_key === callerAccountKey);
 }

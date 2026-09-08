@@ -561,7 +561,7 @@ async function handleToolCall(
         }
         case "list_tasks": {
             if (!operatorId) throw new McpToolError("list_tasks requires an authenticated caller");
-            const allTasks = await listComplianceTasks(env, operatorId);
+            const allTasks = await listComplianceTasks(env, operatorId, args["account"]);
 
             // get_signals_async.yaml's list_signals_task step filters by
             // task_ids + task_type + has_webhook and asserts an EXACT
@@ -888,7 +888,7 @@ async function callGetSignals(
     // arm as it reads it, so a second call in the same run falls through to
     // normal discovery.
     if (operatorId && args["discovery_mode"] !== "wholesale") {
-        const armed = await checkAndConsumeGetSignalsArm(env, operatorId, args["push_notification_config"]);
+        const armed = await checkAndConsumeGetSignalsArm(env, operatorId, args["push_notification_config"], args["account"]);
         if (armed) {
             const ctxEcho = args["context"];
             const submitted = withMcpEnvelope({ status: "submitted", task_id: armed.task_id }, {
@@ -1529,7 +1529,7 @@ async function callGetOperation(
     // owner mismatch) reports not-found to this caller rather than leaking
     // that the task exists at all.
     if (operatorId) {
-        const lookup = await getComplianceTask(env, operatorId, taskId);
+        const lookup = await getComplianceTask(env, operatorId, taskId, args["account"]);
         if (lookup.found && lookup.owned) {
             const task = lookup.task;
             const response = withMcpEnvelope(
@@ -1615,7 +1615,7 @@ async function callGetTaskStatus(
     if (!taskId) throw new McpToolError("task_id is required");
     const includeResult = args["include_result"] === true;
 
-    const lookup = await getComplianceTask(env, operatorId, taskId);
+    const lookup = await getComplianceTask(env, operatorId, taskId, args["account"]);
     if (lookup.found && !lookup.owned) {
         throw new McpToolError(`Task not found: ${taskId}`, {
             code: "REFERENCE_NOT_FOUND",

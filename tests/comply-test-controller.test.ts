@@ -339,6 +339,73 @@ describe("getComplianceTask / listComplianceTasks", () => {
   });
 });
 
+// ── Account scoping — get_signals_async.yaml's list_signals_task_wrong_account /
+// get_signals_task_status_wrong_account steps use ONE shared credential and
+// simulate "different account" purely via a different `account` object on the
+// request body. operatorId (token-derived) alone can't tell those apart; these
+// tests exercise the account_key dimension added on top of it.
+
+const ACCOUNT_NOVA = { brand: { domain: "novamotors.example" }, operator: "pinnacle-agency.example", sandbox: true };
+const ACCOUNT_OTHER = { brand: { domain: "otherbrand.example" }, operator: "other-operator.example", sandbox: true };
+
+async function armConsumeAs(env: import("../src/types/env").Env, taskId: string, account?: unknown) {
+  await handleComplyTestController(
+    env,
+    { scenario: "force_get_signals_arm", account: { sandbox: true }, params: { arm: "submitted", task_id: taskId } },
+    OP_A,
+  );
+  return checkAndConsumeGetSignalsArm(env, OP_A, undefined, account);
+}
+
+describe("account scoping — same operatorId, different account object", () => {
+  it("a task created under one account is owned:false when queried under a different account (same operatorId)", async () => {
+    const kv = makeKv();
+    const env = makeEnv(kv);
+    await armConsumeAs(env, "task_acct_1", ACCOUNT_NOVA);
+
+    const sameAccount = await getComplianceTask(env, OP_A, "task_acct_1", ACCOUNT_NOVA);
+    expect(sameAccount).toMatchObject({ found: true, owned: true });
+
+    const differentAccount = await getComplianceTask(env, OP_A, "task_acct_1", ACCOUNT_OTHER);
+    expect(differentAccount).toEqual({ found: true, owned: false });
+  });
+
+  it("a task created WITHOUT an account object is unaffected by account scoping (backward compat)", async () => {
+    const kv = makeKv();
+    const env = makeEnv(kv);
+    await armConsumeAs(env, "task_no_acct", undefined);
+
+    // Neither side declares an account — today's operatorId-only behavior.
+    const noAccountEither = await getComplianceTask(env, OP_A, "task_no_acct");
+    expect(noAccountEither).toMatchObject({ found: true, owned: true });
+
+    // Caller declares one, task doesn't — still owned:true. The mismatch
+    // check only fires when BOTH sides declared an account (see the
+    // ACCOUNT SCOPING module note in complianceController.ts).
+    const callerOnly = await getComplianceTask(env, OP_A, "task_no_acct", ACCOUNT_NOVA);
+    expect(callerOnly).toMatchObject({ found: true, owned: true });
+  });
+
+  it("listComplianceTasks excludes a different-account task but includes matching/unscoped ones", async () => {
+    const kv = makeKv();
+    const env = makeEnv(kv);
+    await armConsumeAs(env, "task_nova", ACCOUNT_NOVA);
+    await armConsumeAs(env, "task_other", ACCOUNT_OTHER);
+    await armConsumeAs(env, "task_unscoped", undefined);
+
+    const asNova = await listComplianceTasks(env, OP_A, ACCOUNT_NOVA);
+    expect(asNova.map((t) => t.task_id).sort()).toEqual(["task_nova", "task_unscoped"]);
+
+    const asOther = await listComplianceTasks(env, OP_A, ACCOUNT_OTHER);
+    expect(asOther.map((t) => t.task_id).sort()).toEqual(["task_other", "task_unscoped"]);
+
+    // No account declared by the caller at all — every task visible, matching
+    // today's behavior for the common single-account-per-token case.
+    const noAccountDeclared = await listComplianceTasks(env, OP_A);
+    expect(noAccountDeclared.map((t) => t.task_id).sort()).toEqual(["task_nova", "task_other", "task_unscoped"]);
+  });
+});
+
 // ── MCP-level wiring ──────────────────────────────────────────────────────────
 // handleMcpRequest end-to-end: tool dispatch for comply_test_controller/
 // list_tasks, plus the two interception hooks spliced into get_signals and
@@ -661,5 +728,58 @@ describe("MCP dispatch — list_tasks filters[]", () => {
     const sc = body.result?.structuredContent;
     expect(sc.tasks).toEqual([]);
     expect(sc.query_summary).toEqual({ total_matching: 0, returned: 0 });
+  });
+});
+
+// ── MCP-level — the exact get_signals_async.yaml shape: ONE shared bearer
+// token throughout (this repo's compliance kit has no per-account
+// credential), "different account" simulated purely via a different
+// `account` object on the request body.
+
+describe("MCP dispatch — account-scoped task isolation (shared credential)", () => {
+  it("list_tasks under a different account (same token) does not see the task", async () => {
+    const env = makeMcpEnv(makeKv());
+    await callTool(env, "comply_test_controller", {
+      scenario: "force_get_signals_arm",
+      account: { sandbox: true },
+      params: { arm: "submitted", task_id: "mcp_task_nova" },
+    });
+    await callTool(env, "get_signals", { signal_spec: "anything", account: ACCOUNT_NOVA });
+
+    const ownAccount = await callTool(env, "list_tasks", {
+      account: ACCOUNT_NOVA,
+      filters: { task_ids: ["mcp_task_nova"] },
+    });
+    expect(ownAccount.result?.structuredContent.query_summary).toEqual({ total_matching: 1, returned: 1 });
+
+    const wrongAccount = await callTool(env, "list_tasks", {
+      account: ACCOUNT_OTHER,
+      filters: { task_ids: ["mcp_task_nova"] },
+    });
+    expect(wrongAccount.result?.structuredContent.query_summary).toEqual({ total_matching: 0, returned: 0 });
+  });
+
+  it("get_task_status under a different account (same token) resolves to REFERENCE_NOT_FOUND", async () => {
+    const env = makeMcpEnv(makeKv());
+    await callTool(env, "comply_test_controller", {
+      scenario: "force_get_signals_arm",
+      account: { sandbox: true },
+      params: { arm: "submitted", task_id: "mcp_task_status_nova" },
+    });
+    await callTool(env, "get_signals", { signal_spec: "anything", account: ACCOUNT_NOVA });
+
+    const wrongAccount = await callTool(env, "get_task_status", {
+      task_id: "mcp_task_status_nova",
+      account: ACCOUNT_OTHER,
+    });
+    expect(wrongAccount.result?.isError).toBe(true);
+    expect(wrongAccount.result?.structuredContent?.adcp_error?.code).toBe("REFERENCE_NOT_FOUND");
+
+    const ownAccount = await callTool(env, "get_task_status", {
+      task_id: "mcp_task_status_nova",
+      account: ACCOUNT_NOVA,
+    });
+    expect(ownAccount.result?.isError).not.toBe(true);
+    expect(ownAccount.result?.structuredContent?.task_id).toBe("mcp_task_status_nova");
   });
 });

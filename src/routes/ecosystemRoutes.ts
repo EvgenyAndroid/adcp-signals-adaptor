@@ -115,7 +115,6 @@ export function handleEcosystemStream(): Response {
         // Loop forever — one cycle, brief pause, next cycle. Clients
         // see a continuous orchestration. The pause is what gives the
         // visualization breathing room between waves of beams.
-        // eslint-disable-next-line no-constant-condition
         while (true) {
           for await (const ev of runOneCycle()) {
             send(ev);

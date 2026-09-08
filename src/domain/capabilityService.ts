@@ -73,12 +73,18 @@
 //         already implements if_wholesale_feed_version + now rejects standalone
 //         if_pricing_version). cache_scope_account omitted (public-only). Prefix
 //         bump so the new field isn't served from a stale v28 blob.
-const CACHE_KEY_PREFIX = "adcp_capabilities_v29";
+//   v30 → populated top-level `compliance_testing.scenarios` with the
+//         comply_test_controller scenario ids (force_get_signals_arm,
+//         force_task_completion) now that the tool actually exists — see
+//         src/domain/complianceController.ts. Prefix bump so the field
+//         isn't served empty from a stale v29 blob.
+const CACHE_KEY_PREFIX = "adcp_capabilities_v30";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
 import { COMPLIANCE_STATE } from "../constants/complianceState";
 import { SPEC_VERSION } from "../constants/specVersion";
+import { SUPPORTED_SCENARIOS } from "./complianceController";
 
 /** Cache key folds in the spec version + compliance-state pointers so any
  *  value-only refresh auto-invalidates without a manual prefix bump.
@@ -231,14 +237,15 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       // per-principal isolation, no compromise-notification webhook.
       per_principal_key_isolation: false,
     },
-    // compliance_testing declarations are for deterministic-testing
-    // CONTROL levers (force_creative_status, force_account_status,
-    // simulate_delivery, etc.) — things an agent exposes so a test
-    // harness can drive lifecycle transitions. As a Signals-only agent
-    // we don't offer any of those, so we omit the block. The
-    // scenarios we PASS (signals_baseline, error_compliance, etc.)
-    // are reported by @adcp/client's storyboard runner, not via this
-    // capability field.
+    // compliance_testing declarations are the CONTROL levers a test
+    // harness can drive via comply_test_controller (see
+    // src/domain/complianceController.ts for scope). We only implement the
+    // two scenarios that unblock signals-domain storyboards
+    // (deterministic-testing.yaml's controller_validation phase and
+    // get_signals_async.yaml's forced-async path) — no media-buy or
+    // creative levers (force_creative_status, force_account_status,
+    // simulate_delivery, etc.), since this is a signals-only agent.
+    compliance_testing: { scenarios: [...SUPPORTED_SCENARIOS] },
     // Experimental features this agent surfaces beyond the core spec.
     // Dot-separated ids per the GA schema pattern.
     experimental_features: [
@@ -801,6 +808,10 @@ export async function getCapabilities(
     // Otherwise a `protocols: ["signals"]`-filtered probe would strip it and
     // the wholesale-feed conformance storyboard would never see supported:true.
     ...(full.wholesale_feed_versioning ? { wholesale_feed_versioning: full.wholesale_feed_versioning } : {}),
+    // compliance_testing is likewise cross-cutting — comply_test_controller
+    // and list_tasks aren't gated behind any single protocol block, so a
+    // `protocols: [...]`-filtered probe must still see the scenario list.
+    ...(full.compliance_testing ? { compliance_testing: full.compliance_testing } : {}),
     ...(full.ext ? { ext: full.ext } : {}),
   };
   for (const key of PROTOCOL_BLOCK_KEYS) {

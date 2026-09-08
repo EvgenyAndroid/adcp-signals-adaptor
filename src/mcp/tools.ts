@@ -1,5 +1,7 @@
 // src/mcp/tools.ts
-// MCP tool definitions — 8 tools matching the AdCP Signals protocol.
+// MCP tool definitions — 10 tools matching the AdCP Signals protocol
+// (8 signals-core + comply_test_controller + list_tasks, added 2026-09-08 —
+// see src/domain/complianceController.ts for scope and rationale).
 // Parameter names match the canonical AdCP spec:
 //   get_signals:    signal_spec (brief), deliver_to (required), max_results, filters, pagination
 //   activate_signal: signal_agent_segment_id, deliver_to (required), webhook_url
@@ -614,6 +616,110 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 count: { type: "integer", minimum: 0 },
                 total_in_registry: { type: "integer", minimum: 0 },
                 error: { type: "string" },
+            },
+            additionalProperties: true,
+        },
+    },
+
+    {
+        name: "comply_test_controller",
+        description:
+            "Sandbox-only deterministic-testing surface (AdCP compliance protocol, universal — " +
+            "not gated to any one AdCP protocol). Implements list_scenarios, force_get_signals_arm, " +
+            "and force_task_completion for the async-discovery conformance path; any other scenario " +
+            "returns UNKNOWN_SCENARIO, which the spec accepts as a valid response for an unimplemented " +
+            "force_*/simulate_*/seed_* scenario. Every request MUST carry account.sandbox: true.",
+        inputSchema: {
+            type: "object",
+            properties: {
+                scenario: {
+                    type: "string",
+                    description: "Scenario to dispatch. 'list_scenarios' reports what is implemented.",
+                },
+                account: {
+                    type: "object",
+                    description: "Must carry sandbox: true.",
+                    additionalProperties: true,
+                },
+                // Typeless on purpose, same reasoning as elsewhere in this file:
+                // the runner sends scenario-specific fields the schema doesn't
+                // enumerate per-scenario, and a strict nested schema would
+                // strip them before the handler ever sees them.
+                params: {
+                    type: "object",
+                    description: "Scenario arguments, e.g. { arm, task_id, message } or { task_id, result }.",
+                    additionalProperties: true,
+                },
+                context: {
+                    type: "object",
+                    description: "Opaque correlation data echoed unchanged in the response.",
+                    additionalProperties: true,
+                },
+                adcp_version: { type: "string" },
+                adcp_major_version: { type: "number" },
+            },
+            required: ["scenario", "account"],
+        },
+        outputSchema: {
+            type: "object",
+            required: ["success"],
+            properties: {
+                success: { type: "boolean" },
+                scenarios: { type: "array", items: { type: "string" } },
+                forced: { type: "object", additionalProperties: true },
+                previous_state: { type: "string" },
+                current_state: { type: "string" },
+                error: { type: "string" },
+                error_detail: { type: "string" },
+            },
+            additionalProperties: true,
+        },
+    },
+
+    {
+        name: "list_tasks",
+        description:
+            "List async AdCP tasks for the calling operator (3.x protocol-namespace alias for the " +
+            "legacy tasks/list surface). Today this deployment is single-operator, and this lists " +
+            "compliance-test discovery tasks created via comply_test_controller's " +
+            "force_get_signals_arm/force_task_completion scenarios — see " +
+            "src/domain/complianceController.ts for why real activation_jobs rows aren't merged in yet.",
+        inputSchema: {
+            type: "object",
+            properties: {
+                account: {
+                    type: "object",
+                    description: "Account scope for task reconciliation. Optional — this deployment has a single credential-bound account.",
+                    additionalProperties: true,
+                },
+                filters: {
+                    type: "object",
+                    description: "Optional filter criteria (protocol, protocols, status, statuses, task_type, task_types).",
+                    additionalProperties: true,
+                },
+                context: { type: "object", additionalProperties: true },
+            },
+        },
+        outputSchema: {
+            type: "object",
+            required: ["tasks"],
+            properties: {
+                tasks: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            task_id: { type: "string" },
+                            task_type: { type: "string" },
+                            domain: { type: "string" },
+                            status: { type: "string" },
+                            created_at: { type: "string" },
+                            completed_at: { type: "string" },
+                        },
+                        additionalProperties: true,
+                    },
+                },
+                query_summary: { type: "object", additionalProperties: true },
             },
             additionalProperties: true,
         },

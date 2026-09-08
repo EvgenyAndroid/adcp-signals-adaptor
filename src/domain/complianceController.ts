@@ -327,11 +327,23 @@ async function forceTaskCompletion(
   // share that pipeline's 5-attempt backoff/D1-receipt machinery.
   const url = existing.push_notification_config?.url;
   if (typeof url === "string" && url.length > 0) {
+    // mcp-webhook-payload.json requires idempotency_key, operation_id,
+    // task_id, task_type, status, timestamp — the first two were missing
+    // entirely (found by a live --with-webhooks run against
+    // expect_signals_terminal_webhook). idempotency_key is a fresh
+    // per-delivery value (this path is single-shot, not retried, so
+    // "stable across retries" is trivially satisfied by construction);
+    // operation_id is echoed verbatim from what the caller registered at
+    // push_notification_config.operation_id, per the schema's own MUST.
+    const operationId = existing.push_notification_config?.["operation_id"];
     await deliverCompletionWebhook(env, url, {
+      idempotency_key: crypto.randomUUID(),
+      ...(typeof operationId === "string" ? { operation_id: operationId } : {}),
       task_id: taskId,
       task_type: "get_signals",
       protocol: "signals",
       status: "completed",
+      timestamp: new Date().toISOString(),
       result,
     });
   }

@@ -249,7 +249,10 @@ describe("force_task_completion", () => {
         { scenario: "force_get_signals_arm", account: { sandbox: true }, params: { arm: "submitted", task_id: "task_webhook" } },
         OP_A,
       );
-      await checkAndConsumeGetSignalsArm(env, OP_A, { url: "https://buyer.example/webhook" });
+      await checkAndConsumeGetSignalsArm(env, OP_A, {
+        url: "https://buyer.example/webhook",
+        operation_id: "op_test_terminal",
+      });
 
       await handleComplyTestController(
         env,
@@ -264,7 +267,41 @@ describe("force_task_completion", () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
       const [url, init] = fetchMock.mock.calls[0]!;
       expect(url).toBe("https://buyer.example/webhook");
-      expect(JSON.parse(init.body)).toMatchObject({ task_id: "task_webhook", status: "completed" });
+      const body = JSON.parse(init.body);
+      // mcp-webhook-payload.json requires idempotency_key, operation_id,
+      // task_id, task_type, status, timestamp — found missing by a live
+      // --with-webhooks run against expect_signals_terminal_webhook.
+      expect(body).toMatchObject({ task_id: "task_webhook", status: "completed", operation_id: "op_test_terminal" });
+      expect(body.idempotency_key).toMatch(/^[A-Za-z0-9_.:-]{16,255}$/);
+      expect(() => new Date(body.timestamp).toISOString()).not.toThrow();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("omits operation_id from the webhook payload when the caller never registered one", async () => {
+    const kv = makeKv();
+    const env = makeEnv(kv);
+    const fetchMock = vi.fn().mockResolvedValue(new Response("ok"));
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      await handleComplyTestController(
+        env,
+        { scenario: "force_get_signals_arm", account: { sandbox: true }, params: { arm: "submitted", task_id: "task_no_opid" } },
+        OP_A,
+      );
+      await checkAndConsumeGetSignalsArm(env, OP_A, { url: "https://buyer.example/webhook" });
+
+      await handleComplyTestController(
+        env,
+        { scenario: "force_task_completion", account: { sandbox: true }, params: { task_id: "task_no_opid", result: { ok: true } } },
+        OP_A,
+      );
+
+      const [, init] = fetchMock.mock.calls[0]!;
+      const body = JSON.parse(init.body);
+      expect(body).not.toHaveProperty("operation_id");
+      expect(body.idempotency_key).toBeTruthy();
     } finally {
       vi.unstubAllGlobals();
     }

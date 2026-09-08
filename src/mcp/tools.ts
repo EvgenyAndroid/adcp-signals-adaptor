@@ -1,7 +1,11 @@
 // src/mcp/tools.ts
-// MCP tool definitions — 10 tools matching the AdCP Signals protocol
+// MCP tool definitions — 11 tools matching the AdCP Signals protocol
 // (8 signals-core + comply_test_controller + list_tasks, added 2026-09-08 —
-// see src/domain/complianceController.ts for scope and rationale).
+// see src/domain/complianceController.ts for scope and rationale — plus
+// get_task_status, added the same day once production compliance runs
+// showed get_signals_async.yaml's required_tools gate needs a canonically-
+// shaped get_task_status tool, distinct from the legacy get_operation_status
+// alias it previously pointed at).
 // Parameter names match the canonical AdCP spec:
 //   get_signals:    signal_spec (brief), deliver_to (required), max_results, filters, pagination
 //   activate_signal: signal_agent_segment_id, deliver_to (required), webhook_url
@@ -677,6 +681,57 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
     },
 
     {
+        name: "get_task_status",
+        description:
+            "Canonical AdCP 3.x get_task_status: retrieve a specific async task by ID, with an " +
+            "optional terminal result payload. Distinct from the legacy get_operation_status shape — " +
+            "this returns the spec's task_type/protocol/created_at/updated_at envelope. Sellers MUST " +
+            "return REFERENCE_NOT_FOUND for a task_id that exists only under a different account/caller.",
+        inputSchema: {
+            type: "object",
+            properties: {
+                task_id: {
+                    type: "string",
+                    description: "Unique identifier of the task to retrieve.",
+                },
+                account: {
+                    type: "object",
+                    description: "Account scope for the task lookup. Optional — this deployment has a single credential-bound account.",
+                    additionalProperties: true,
+                },
+                include_history: {
+                    type: "boolean",
+                    description: "Include full conversation history. Not implemented — no history is ever returned.",
+                },
+                include_result: {
+                    type: "boolean",
+                    description: "Include the task's result payload when status is completed. Defaults to false.",
+                },
+                context: { type: "object", additionalProperties: true },
+                ext: { type: "object", additionalProperties: true },
+            },
+            required: ["task_id"],
+        },
+        outputSchema: {
+            type: "object",
+            required: ["task_id", "task_type", "protocol", "status", "created_at", "updated_at"],
+            properties: {
+                task_id: { type: "string" },
+                task_type: { type: "string" },
+                protocol: { type: "string", enum: [...PROTOCOL_ENUM] },
+                status: { type: "string" },
+                created_at: { type: "string" },
+                updated_at: { type: "string" },
+                completed_at: { type: "string" },
+                has_webhook: { type: "boolean" },
+                result: { type: "object", additionalProperties: true },
+                error: { type: "object", additionalProperties: true },
+            },
+            additionalProperties: true,
+        },
+    },
+
+    {
         name: "list_tasks",
         description:
             "List async AdCP tasks for the calling operator (3.x protocol-namespace alias for the " +
@@ -694,7 +749,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 },
                 filters: {
                     type: "object",
-                    description: "Optional filter criteria (protocol, protocols, status, statuses, task_type, task_types).",
+                    description: "Optional filter criteria: task_ids, task_type/task_types, status/statuses, has_webhook.",
                     additionalProperties: true,
                 },
                 context: { type: "object", additionalProperties: true },
@@ -715,6 +770,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                             status: { type: "string" },
                             created_at: { type: "string" },
                             completed_at: { type: "string" },
+                            has_webhook: { type: "boolean" },
                         },
                         additionalProperties: true,
                     },

@@ -152,39 +152,47 @@ jobs:
           DEMO_API_KEY: ${{ secrets.DEMO_API_KEY }}
         run: |
           set -euo pipefail
-          for i in 1 2 3 4 5 6; do
+          # The secret lands as its own Worker version a few seconds after the
+          # deploy; edge propagation of that version is not instantaneous and
+          # not atomic across endpoints. Run 34285444731 read a pre-secret
+          # /capabilities (supported:false) and a post-secret jwks.json (kid
+          # present) in the same pass and failed on the mismatch. So: walk the
+          # WHOLE chain per attempt, from capabilities down, and only judge a
+          # single consistent snapshot; retry until it is consistent or we
+          # run out of patience (~2 min).
+          check() {
             code=$(curl -sS -o /tmp/caps.json -w "%{http_code}" -H "Authorization: Bearer $DEMO_API_KEY" https://adcp.signal-stack.io/capabilities || echo "000")
-            echo "capabilities attempt $i: HTTP $code"
-            [ "$code" = "200" ] && break
+            [ "$code" = "200" ] || { echo "  /capabilities HTTP $code"; return 1; }
+            brand_url=$(node -e "const c=require('/tmp/caps.json');const u=c.identity&&c.identity.brand_json_url;if(typeof u!=='string'){console.error('identity.brand_json_url missing');process.exit(1)}console.log(u)") || return 1
+            code=$(curl -sS -o /tmp/brand.json -w "%{http_code}" "$brand_url" || echo "000")
+            [ "$code" = "200" ] || { echo "  brand.json HTTP $code"; return 1; }
+            jwks_uri=$(node -e "const b=require('/tmp/brand.json');const a=(b.agents||[]).find(x=>typeof x.jwks_uri==='string');if(!a){console.error('brand.json agents[] has no jwks_uri');process.exit(1)}console.log(a.jwks_uri)") || return 1
+            code=$(curl -sS -o /tmp/jwks.json -w "%{http_code}" "$jwks_uri" || echo "000")
+            [ "$code" = "200" ] || { echo "  jwks.json HTTP $code"; return 1; }
+            node -e "
+              const j = require('/tmp/jwks.json');
+              const c = require('/tmp/caps.json');
+              const keys = Array.isArray(j.keys) ? j.keys : [];
+              if (keys.some(k => 'd' in k)) { console.error('FATAL: jwks.json leaks a private key component'); process.exit(2); }
+              const valid = keys.filter(k => ['request-signing','webhook-signing'].includes(k.adcp_use) && (k.key_ops || []).includes('verify'));
+              const expected = process.env.EXPECTED_KID || '';
+              const supported = !!(c.webhook_signing && c.webhook_signing.supported === true);
+              console.log('  snapshot: kids=[' + valid.map(k => k.kid).join(', ') + '] supported=' + supported + ' expected=' + (expected || '(none)'));
+              if (expected) {
+                if (!valid.some(k => k.kid === expected) || !supported) process.exit(1);
+                console.log('provisioned kid ' + expected + ' is live and advertised');
+              } else {
+                if (valid.length !== 0 || supported) process.exit(1);
+                console.log('no signing key provisioned this run — unsigned posture confirmed');
+              }
+            "
+          }
+          for i in $(seq 1 24); do
+            echo "attempt $i"
+            rc=0; check || rc=$?
+            [ "$rc" = "0" ] && exit 0
+            [ "$rc" = "2" ] && { echo "::error::jwks.json publishes a private key component — stop"; exit 1; }
             sleep 5
-            [ "$i" = "6" ] && { echo "::error::/capabilities did not return 200 after 6 attempts"; exit 1; }
           done
-          brand_url=$(node -e "const c=require('/tmp/caps.json');const u=c.identity&&c.identity.brand_json_url;if(typeof u!=='string')throw new Error('identity.brand_json_url missing from capabilities');console.log(u)")
-          echo "identity.brand_json_url: $brand_url"
-          code=$(curl -sS -o /tmp/brand.json -w "%{http_code}" "$brand_url" || echo "000")
-          [ "$code" = "200" ] || { echo "::error::brand.json returned HTTP $code"; exit 1; }
-          jwks_uri=$(node -e "const b=require('/tmp/brand.json');const a=(b.agents||[]).find(x=>typeof x.jwks_uri==='string');if(!a)throw new Error('brand.json agents[] has no jwks_uri');console.log(a.jwks_uri)")
-          echo "agents[].jwks_uri: $jwks_uri"
-          code=$(curl -sS -o /tmp/jwks.json -w "%{http_code}" "$jwks_uri" || echo "000")
-          [ "$code" = "200" ] || { echo "::error::jwks.json returned HTTP $code"; exit 1; }
-          node -e "
-            const j = require('/tmp/jwks.json');
-            const c = require('/tmp/caps.json');
-            const keys = Array.isArray(j.keys) ? j.keys : [];
-            if (keys.some(k => 'd' in k)) throw new Error('jwks.json leaks a private key component');
-            const valid = keys.filter(k => ['request-signing','webhook-signing'].includes(k.adcp_use) && (k.key_ops || []).includes('verify'));
-            console.log('webhook-valid signing keys:', valid.map(k => k.kid).join(', ') || '(none)');
-            const expected = process.env.EXPECTED_KID || '';
-            if (expected) {
-              if (!valid.some(k => k.kid === expected)) {
-                throw new Error('provisioned kid ' + expected + ' is not published at jwks.json — the Worker rejected the key (x/d pair does not prove?)');
-              }
-              if (!(c.webhook_signing && c.webhook_signing.supported === true)) {
-                throw new Error('key is published but capabilities still advertise webhook_signing.supported !== true');
-              }
-              console.log('provisioned kid ' + expected + ' is live and advertised');
-            } else {
-              console.log('no signing key provisioned this run — unsigned posture (expected keys: [] and supported: false)');
-              if (valid.length !== 0) throw new Error('no key provisioned but jwks.json publishes one');
-            }
-          "
+          echo "::error::signing-key discovery chain never reached a consistent, expected state (see snapshots above); kid=${EXPECTED_KID:-<none>}"
+          exit 1

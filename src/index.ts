@@ -147,6 +147,7 @@ import {
     handleOAuthTokenStub,
 } from "./routes/wellKnown";
 import { handleAdAgents, handleAdagentsProbe } from "./routes/adagents";
+import { handleBrandJson, handleJwks } from "./routes/brandJson";
 import { handleAdminReseed } from "./routes/adminReseed";
 import { handleAdminSyncSynaptic, runSynapticSync } from "./routes/adminSyncSynaptic";
 import { handleAdminPurge } from "./routes/adminPurge";
@@ -401,6 +402,12 @@ export default {
             // doing /.well-known/adagents.json discovery wouldn't have a
             // bearer token yet; that's the whole point of the file).
             "/.well-known/adagents.json",
+            // Signing-key discovery chain (RFC 9421 webhooks, #248):
+            // get_adcp_capabilities.identity.brand_json_url → brand.json
+            // agents[].jwks_uri → jwks.json. A verifier resolving our key
+            // has no bearer token; both MUST be public.
+            "/.well-known/brand.json",
+            "/.well-known/jwks.json",
             // Peer-probe endpoint — read-only summary of peer adagents
             // discovery state. Same demo posture as /api/signal-traces.
             "/api/adagents-probe",
@@ -515,6 +522,19 @@ export default {
                 // vendored 3.0.8 adagents.json schema (see
                 // tests/adagents-self-publish.test.ts).
                 response = handleAdAgents(request, env);
+
+            } else if (method === "GET" && path === "/.well-known/brand.json") {
+                // Brand identity + signing-key trust root. Its agents[] entry
+                // for /mcp carries jwks_uri, which is how a verifier gets from
+                // get_adcp_capabilities.identity.brand_json_url to our public
+                // key (see src/routes/brandJson.ts). Schema-validated against
+                // the vendored 3.1.0 brand.json schema in tests.
+                response = handleBrandJson(request, env);
+
+            } else if (method === "GET" && path === "/.well-known/jwks.json") {
+                // Public half of WEBHOOK_SIGNING_PRIVATE_JWK, derived at
+                // request time — never stored. `keys: []` when unset.
+                response = await handleJwks(request, env);
 
             } else if (method === "GET" && path === "/api/adagents-probe") {
                 // Probe every peer in the agent registry for their own

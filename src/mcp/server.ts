@@ -25,6 +25,7 @@ import type { SearchSignalsRequest } from "../types/api";
 import { requireAuth } from "../routes/shared";
 import { ADCP_TOOLS, getToolByName } from "./tools";
 import { getCapabilities } from "../domain/capabilityService";
+import { resolveWebhookSigning } from "../domain/webhookSigning";
 import { searchSignalsService } from "../domain/signalService";
 import {
     activateSignalService,
@@ -661,6 +662,11 @@ async function callGetCapabilities(
     const caps = await getCapabilities(env.SIGNALS_CACHE, protocols, {
         ...(env.EMBEDDING_ENGINE !== undefined ? { EMBEDDING_ENGINE: env.EMBEDDING_ENGINE } : {}),
         ...(env.OPENAI_API_KEY    !== undefined ? { OPENAI_API_KEY:    env.OPENAI_API_KEY    } : {}),
+        // webhook_signing / identity are derived from this — omit it and the
+        // agent advertises supported:false regardless of the real posture.
+        ...(env.WEBHOOK_SIGNING_PRIVATE_JWK !== undefined
+            ? { WEBHOOK_SIGNING_PRIVATE_JWK: env.WEBHOOK_SIGNING_PRIVATE_JWK }
+            : {}),
     });
 
     // Echo back the request's context block. Capability-discovery storyboards
@@ -1550,7 +1556,7 @@ async function callGetOperation(
     const _t0 = Date.now();
     try {
         const db = getDb(env);
-        const result = await getOperationService(db, taskId, logger, env.WEBHOOK_SIGNING_SECRET);
+        const result = await getOperationService(db, taskId, logger, await resolveWebhookSigning(env, logger));
         // get_operation_status itself is synchronous (it READS another task's
         // current state). Envelope status="completed" reflects the operation
         // status query — the underlying task's status is in the payload via
@@ -1648,7 +1654,7 @@ async function callGetTaskStatus(
     // a guess, not a fact — the field is optional in the canonical schema.
     try {
         const db = getDb(env);
-        const result = await getOperationService(db, taskId, logger, env.WEBHOOK_SIGNING_SECRET);
+        const result = await getOperationService(db, taskId, logger, await resolveWebhookSigning(env, logger));
         const payload: Record<string, unknown> = {
             task_id: result.task_id,
             task_type: "activate_signal",

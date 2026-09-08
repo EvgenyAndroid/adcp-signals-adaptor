@@ -26,6 +26,51 @@ jobs:
       # reference a column that doesn't exist yet. Wrangler's native migration
       # system tracks state in d1_migrations on the remote DB — no bootstrap
       # required.
+      # RFC 9421 webhook-signing key (#248). Provisioned from the repo secret
+      # of the same name because wrangler isn't authenticated anywhere but
+      # here. Runs FIRST — before migrations and the deploy — so a bad
+      # secret fails the run before anything has changed, and the new code
+      # never serves a request without its key. Re-putting an unchanged
+      # value is harmless. Absent repo secret ⇒ warning, and the Worker
+      # deploys in the unsigned posture (jwks.json `keys: []`,
+      # webhook_signing.supported: false). A secret that parses but whose
+      # x is not the public key of its d passes this step; the Worker's own
+      # pair-proof rejects it at runtime (empty JWKS), and the smoke test at
+      # the end turns that into a red run — visible, though not a rollback.
+      - name: Provision webhook signing key
+        id: provision
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          WEBHOOK_SIGNING_PRIVATE_JWK: ${{ secrets.WEBHOOK_SIGNING_PRIVATE_JWK }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WEBHOOK_SIGNING_PRIVATE_JWK:-}" ]; then
+            echo "::warning::WEBHOOK_SIGNING_PRIVATE_JWK repo secret is not set — deploying in the unsigned posture"
+            exit 0
+          fi
+          # Validate the shape BEFORE putting it, and never echo any part of
+          # the input: a JSON.parse error message would quote a fragment of
+          # the private scalar into this public log. Fail closed instead.
+          if ! kid=$(printf '%s' "$WEBHOOK_SIGNING_PRIVATE_JWK" | node -e "
+            let s = '';
+            process.stdin.on('data', d => s += d).on('end', () => {
+              let j; try { j = JSON.parse(s); } catch { process.exit(1); }
+              const b64u = /^[A-Za-z0-9_-]{43}$/;
+              const ok = j && typeof j === 'object' && j.kty === 'OKP' && j.crv === 'Ed25519'
+                && typeof j.kid === 'string' && /^[A-Za-z0-9_.:-]{1,200}$/.test(j.kid)
+                && b64u.test(j.x || '') && b64u.test(j.d || '')
+                && ['request-signing', 'webhook-signing'].includes(j.adcp_use);
+              if (!ok) process.exit(1);
+              process.stdout.write(j.kid);
+            });
+          "); then
+            echo "::error::WEBHOOK_SIGNING_PRIVATE_JWK is not a well-formed Ed25519 private JWK (details deliberately withheld from this log)"
+            exit 1
+          fi
+          printf '%s' "$WEBHOOK_SIGNING_PRIVATE_JWK" | npx wrangler secret put WEBHOOK_SIGNING_PRIVATE_JWK
+          echo "kid=$kid" >> "$GITHUB_OUTPUT"
+          echo "webhook signing key provisioned (kid=$kid)"
+
       - name: Apply D1 migrations
         run: npx wrangler d1 migrations apply adcp-signals-db --remote
         env:
@@ -78,3 +123,53 @@ jobs:
           done
           echo "::error::Spec version drift after 10 attempts — header is $actual, source says $expected. Deploy may not have propagated, or constant wasn't bumped at the emit site (src/routes/adagents.ts)."
           exit 1
+
+      # Walks the discovery chain the AAO grader walks for RFC 9421 webhooks,
+      # from its real first hop: get_adcp_capabilities.identity.brand_json_url
+      # → brand.json agents[].jwks_uri → jwks.json → the kid provisioned
+      # above. The deploy is already live by now, so this cannot roll
+      # anything back — it makes a misconfiguration a red run instead of a
+      # silent one: a provisioned key the Worker refused to publish (pair
+      # doesn't prove) shows up here as a missing kid.
+      - name: Smoke test — capabilities → brand.json → jwks.json → provisioned kid
+        env:
+          EXPECTED_KID: ${{ steps.provision.outputs.kid }}
+          DEMO_API_KEY: ${{ secrets.DEMO_API_KEY }}
+        run: |
+          set -euo pipefail
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -sS -o /tmp/caps.json -w "%{http_code}" -H "Authorization: Bearer $DEMO_API_KEY" https://adcp.signal-stack.io/capabilities || echo "000")
+            echo "capabilities attempt $i: HTTP $code"
+            [ "$code" = "200" ] && break
+            sleep 5
+            [ "$i" = "6" ] && { echo "::error::/capabilities did not return 200 after 6 attempts"; exit 1; }
+          done
+          brand_url=$(node -e "const c=require('/tmp/caps.json');const u=c.identity&&c.identity.brand_json_url;if(typeof u!=='string')throw new Error('identity.brand_json_url missing from capabilities');console.log(u)")
+          echo "identity.brand_json_url: $brand_url"
+          code=$(curl -sS -o /tmp/brand.json -w "%{http_code}" "$brand_url" || echo "000")
+          [ "$code" = "200" ] || { echo "::error::brand.json returned HTTP $code"; exit 1; }
+          jwks_uri=$(node -e "const b=require('/tmp/brand.json');const a=(b.agents||[]).find(x=>typeof x.jwks_uri==='string');if(!a)throw new Error('brand.json agents[] has no jwks_uri');console.log(a.jwks_uri)")
+          echo "agents[].jwks_uri: $jwks_uri"
+          code=$(curl -sS -o /tmp/jwks.json -w "%{http_code}" "$jwks_uri" || echo "000")
+          [ "$code" = "200" ] || { echo "::error::jwks.json returned HTTP $code"; exit 1; }
+          node -e "
+            const j = require('/tmp/jwks.json');
+            const c = require('/tmp/caps.json');
+            const keys = Array.isArray(j.keys) ? j.keys : [];
+            if (keys.some(k => 'd' in k)) throw new Error('jwks.json leaks a private key component');
+            const valid = keys.filter(k => ['request-signing','webhook-signing'].includes(k.adcp_use) && (k.key_ops || []).includes('verify'));
+            console.log('webhook-valid signing keys:', valid.map(k => k.kid).join(', ') || '(none)');
+            const expected = process.env.EXPECTED_KID || '';
+            if (expected) {
+              if (!valid.some(k => k.kid === expected)) {
+                throw new Error('provisioned kid ' + expected + ' is not published at jwks.json — the Worker rejected the key (x/d pair does not prove?)');
+              }
+              if (!(c.webhook_signing && c.webhook_signing.supported === true)) {
+                throw new Error('key is published but capabilities still advertise webhook_signing.supported !== true');
+              }
+              console.log('provisioned kid ' + expected + ' is live and advertised');
+            } else {
+              console.log('no signing key provisioned this run — unsigned posture (expected keys: [] and supported: false)');
+              if (valid.length !== 0) throw new Error('no key provisioned but jwks.json publishes one');
+            }
+          "

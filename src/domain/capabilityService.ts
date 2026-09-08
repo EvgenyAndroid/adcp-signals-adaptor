@@ -85,6 +85,18 @@ import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration
 import { COMPLIANCE_STATE } from "../constants/complianceState";
 import { SPEC_VERSION } from "../constants/specVersion";
 import { SUPPORTED_SCENARIOS } from "./complianceController";
+import { resolveWebhookSigning, type WebhookSigningKey } from "./webhookSigning";
+import { CANONICAL_ORIGIN } from "../constants/origin";
+
+/**
+ * Env slice the capability builder reads. Extends the UCP engine env with
+ * the webhook-signing secret: `webhook_signing` and `identity` are derived
+ * from whether a usable key is configured, so the advertised posture can
+ * never drift from what the delivery path actually does.
+ */
+export interface CapabilityEnv extends UcpCapabilityEnv {
+  WEBHOOK_SIGNING_PRIVATE_JWK?: string;
+}
 
 /** Cache key folds in the spec version + compliance-state pointers so any
  *  value-only refresh auto-invalidates without a manual prefix bump.
@@ -100,6 +112,14 @@ import { SUPPORTED_SCENARIOS } from "./complianceController";
  *  serving a stale compliance block becomes a badge-accuracy bug, and
  *  this key derivation is what prevents it. */
 const CACHE_KEY = `${CACHE_KEY_PREFIX}_${SPEC_VERSION}_${COMPLIANCE_STATE.last_run}_${COMPLIANCE_STATE.client_runner}`;
+
+/** The signing posture is part of the blob, so it is part of the key: a
+ *  key rotation (new kid) or provisioning the secret after the cache is
+ *  warm must not serve the previous posture for up to CACHE_TTL_SECONDS.
+ *  kid is public (it's on every Signature-Input) — safe in a KV key. */
+function cacheKeyFor(signing: WebhookSigningKey | null): string {
+  return `${CACHE_KEY}_ws-${signing ? signing.kid : "off"}`;
+}
 
 const VALID_PROTOCOLS = new Set([
   "media_buy",
@@ -176,7 +196,7 @@ type AdcpCapabilities = {
 // Protocol + provider metadata is static; only the ext.ucp block varies
 // by engine env. Build the full capability object per-request (cheap — it's
 // all constant-time), and cache it in KV so we don't rebuild on every call.
-function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
+function buildStaticCapabilities(env: CapabilityEnv, signing: WebhookSigningKey | null): AdcpCapabilities {
   return {
     adcp: {
       // Narrowed [2, 3] -> [3] in PR #247: a live audit found we have
@@ -222,20 +242,36 @@ function buildStaticCapabilities(env: UcpCapabilityEnv): AdcpCapabilities {
       warn_for: [],
       supported_for: [],
     },
-    webhook_signing: {
-      // Emission of signed outbound webhooks with the adcp/webhook-
-      // signing/v1 profile (ed25519 + ecdsa-p256-sha256 only per GA).
-      // We do have webhook-signing via HMAC-SHA256 (see webhookSigning.ts)
-      // which the GA profile DOESN'T permit — so we declare
-      // `legacy_hmac_fallback: true` and `supported: false` honestly.
-      // Upgrading to ed25519 signing is Sec-43 roadmap.
-      supported: false,
-      legacy_hmac_fallback: true,
-    },
+    // Emission of signed outbound webhooks under the adcp/webhook-signing/v1
+    // profile — RFC 9421, Ed25519 (src/domain/webhookSigning.ts, closes
+    // #248). Derived from the secret, not hardcoded: `supported` is true
+    // exactly when a usable WEBHOOK_SIGNING_PRIVATE_JWK is configured, so
+    // the declaration can't outrun the delivery path. HMAC is gone, hence
+    // legacy_hmac_fallback is false in both branches (4.0 removes it).
+    webhook_signing: signing
+      ? {
+          supported: true,
+          profile: "adcp/webhook-signing/v1",
+          algorithms: ["ed25519"],
+          legacy_hmac_fallback: false,
+        }
+      : {
+          supported: false,
+          legacy_hmac_fallback: false,
+        },
     identity: {
-      // Key-management signals. This is a single-principal demo — no
-      // per-principal isolation, no compromise-notification webhook.
+      // Trust-root pointer. Load-bearing per the schema: whenever any
+      // signing posture is declared, verifiers bootstrap from this URL to
+      // brand.json → agents[].jwks_uri → the JWKS. Always present — the
+      // document is served regardless — and canonical (CANONICAL_ORIGIN)
+      // because this response is KV-cached across requests.
+      brand_json_url: `${CANONICAL_ORIGIN}/.well-known/brand.json`,
+      // Single-principal demo — no per-principal isolation, no
+      // compromise-notification webhook.
       per_principal_key_isolation: false,
+      // key_origins entries must each match a declared posture; only
+      // webhook_signing qualifies (request_signing stays unsupported).
+      ...(signing ? { key_origins: { webhook_signing: CANONICAL_ORIGIN } } : {}),
     },
     // compliance_testing declarations are the CONTROL levers a test
     // harness can drive via comply_test_controller (see
@@ -768,11 +804,16 @@ const PROTOCOL_BLOCK_KEYS = [
 export async function getCapabilities(
   kv: KVNamespace,
   protocols?: string[],
-  env?: UcpCapabilityEnv,
+  env?: CapabilityEnv,
 ): Promise<AdcpCapabilities> {
+  // Resolved (and PROVEN — see resolveWebhookSigning) up front because it
+  // is part of the cache key: see cacheKeyFor.
+  const signing = await resolveWebhookSigning(env ?? {});
+  const cacheKey = cacheKeyFor(signing);
+
   let full: AdcpCapabilities | null = null;
   try {
-    const cached = await kv.get(CACHE_KEY);
+    const cached = await kv.get(cacheKey);
     if (cached) full = JSON.parse(cached) as AdcpCapabilities;
   } catch { /* cache miss */ }
 
@@ -780,9 +821,9 @@ export async function getCapabilities(
     // env is optional for backwards compat with test shims; default to an
     // empty object which makes buildUcpCapability fall through to the
     // pseudo declaration (correct for tests that don't set EMBEDDING_ENGINE).
-    full = buildStaticCapabilities(env ?? {});
+    full = buildStaticCapabilities(env ?? {}, signing);
     try {
-      await kv.put(CACHE_KEY, JSON.stringify(full), {
+      await kv.put(cacheKey, JSON.stringify(full), {
         expirationTtl: CACHE_TTL_SECONDS,
       });
     } catch { /* non-fatal */ }
@@ -812,6 +853,16 @@ export async function getCapabilities(
     // and list_tasks aren't gated behind any single protocol block, so a
     // `protocols: [...]`-filtered probe must still see the scenario list.
     ...(full.compliance_testing ? { compliance_testing: full.compliance_testing } : {}),
+    // The signing posture is protocol-agnostic and load-bearing: a verifier
+    // bootstraps trust from identity.brand_json_url and reads
+    // webhook_signing.supported to learn deliveries are signed. The SDK's
+    // resolveAgent throws request_signature_brand_json_url_missing when a
+    // filtered response drops identity — so these travel with every
+    // projection, exactly like wholesale_feed_versioning above (#248).
+    ...(full.request_signing ? { request_signing: full.request_signing } : {}),
+    ...(full.webhook_signing ? { webhook_signing: full.webhook_signing } : {}),
+    ...(full.identity ? { identity: full.identity } : {}),
+    ...(full.experimental_features ? { experimental_features: full.experimental_features } : {}),
     ...(full.ext ? { ext: full.ext } : {}),
   };
   for (const key of PROTOCOL_BLOCK_KEYS) {

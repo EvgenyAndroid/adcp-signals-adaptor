@@ -24,6 +24,11 @@ export async function handleGetCapabilities(
     const caps = await getCapabilities(env.SIGNALS_CACHE, protocols, {
       ...(env.EMBEDDING_ENGINE !== undefined ? { EMBEDDING_ENGINE: env.EMBEDDING_ENGINE } : {}),
       ...(env.OPENAI_API_KEY    !== undefined ? { OPENAI_API_KEY:    env.OPENAI_API_KEY    } : {}),
+      // webhook_signing / identity are derived from this — omit it and the
+      // agent advertises supported:false regardless of the real posture.
+      ...(env.WEBHOOK_SIGNING_PRIVATE_JWK !== undefined
+        ? { WEBHOOK_SIGNING_PRIVATE_JWK: env.WEBHOOK_SIGNING_PRIVATE_JWK }
+        : {}),
     });
 
     // Echo back any context the caller passed. REST /capabilities is a GET,

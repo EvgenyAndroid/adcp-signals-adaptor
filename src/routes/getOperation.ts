@@ -2,6 +2,7 @@
 
 import type { Env } from "../types/env";
 import { getOperationService, NotFoundError } from "../domain/activationService";
+import { resolveWebhookSigning } from "../domain/webhookSigning";
 import { jsonResponse, errorResponse } from "./shared";
 import { getDb } from "../storage/db";
 import type { Logger } from "../utils/logger";
@@ -17,7 +18,7 @@ export async function handleGetOperation(
 
   try {
     const db = getDb(env);
-    const result = await getOperationService(db, operationId, logger, env.WEBHOOK_SIGNING_SECRET);
+    const result = await getOperationService(db, operationId, logger, await resolveWebhookSigning(env, logger));
     return jsonResponse(result);
   } catch (err) {
     if (err instanceof NotFoundError) {

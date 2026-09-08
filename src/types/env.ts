@@ -30,12 +30,19 @@ export interface Env {
   LINKEDIN_CLIENT_SECRET: string;
   LINKEDIN_AD_ACCOUNT_ID: string;
 
-  // Optional — when set, outbound activation webhooks carry an
-  // X-AdCP-Signature: t=<unix-secs>,v1=<hex-hmac-sha256> header so
-  // receivers can verify origin and detect tampering. Unset ⇒ unsigned
-  // deliveries (backwards-compatible). Provision via:
-  //   wrangler secret put WEBHOOK_SIGNING_SECRET
-  WEBHOOK_SIGNING_SECRET?: string;
+  // Optional — RFC 9421 webhook signing key (AdCP `adcp/webhook-signing/v1`
+  // profile). A JSON private Ed25519 JWK:
+  //   {"kid":"…","kty":"OKP","crv":"Ed25519","alg":"EdDSA","use":"sig",
+  //    "key_ops":["sign"],"adcp_use":"request-signing","x":"…","d":"…"}
+  // When set, outbound webhooks carry Content-Digest / Signature-Input /
+  // Signature headers, /.well-known/jwks.json publishes the public half,
+  // and get_adcp_capabilities declares webhook_signing.supported: true.
+  // Unset ⇒ unsigned deliveries, empty JWKS, supported: false (honest).
+  // Provisioned by .github/workflows/deploy.yml from the repo secret of
+  // the same name (wrangler isn't authenticated locally); to set by hand:
+  //   printf '%s' "$JWK_JSON" | wrangler secret put WEBHOOK_SIGNING_PRIVATE_JWK
+  // See src/domain/webhookSigning.ts for the format and validation rules.
+  WEBHOOK_SIGNING_PRIVATE_JWK?: string;
 
   // Optional — when set, LinkedIn access/refresh tokens stored in KV are
   // AES-GCM encrypted at rest. Unset ⇒ tokens stored plaintext (legacy,

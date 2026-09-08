@@ -109,7 +109,7 @@
 // differ, which is exactly the storyboard's own test shape.
 
 import type { Env } from "../types/env";
-import { signWebhookBody } from "./webhookSigning";
+import { signWebhookRequest, resolveWebhookSigning } from "./webhookSigning";
 
 /**
  * Canonical key for an AdCP `account` object ({ brand: { domain }, operator }).
@@ -392,15 +392,23 @@ async function deliverCompletionWebhook(
   if (parsed.protocol !== "https:") return; // same https-only rule as the real activation webhook path
 
   const bodyString = JSON.stringify(payload);
-  const headers: Record<string, string> = {
+  let headers: Record<string, string> = {
     "Content-Type": "application/json",
     "User-Agent": "adcp-signals-adaptor/1.0",
   };
-  if (env.WEBHOOK_SIGNING_SECRET && env.WEBHOOK_SIGNING_SECRET.length > 0) {
-    const sig = await signWebhookBody(env.WEBHOOK_SIGNING_SECRET, bodyString);
-    headers["X-AdCP-Signature"] = sig.headerValue;
-  }
   try {
+    // Same RFC 9421 profile as the real activation webhook path. This is
+    // the delivery webhook-emission.yaml's signature_validity phase
+    // specifies; note the bundled CLI (13.0.2) wires no JWKS resolver for
+    // that phase and grades it not_applicable, so today it is checked by
+    // the signing_keys_published precheck and by our own tests (which
+    // verify captured deliveries with the SDK verifier), not by the runner.
+    // Inside the try so a signing failure is best-effort like the fetch.
+    const signingKey = await resolveWebhookSigning(env);
+    if (signingKey) {
+      const sig = await signWebhookRequest(signingKey, { method: "POST", url, headers, body: bodyString });
+      headers = sig.headers;
+    }
     await fetch(url, { method: "POST", headers, body: bodyString });
   } catch {
     // Best-effort — the storyboard's assertion is on the delivered payload

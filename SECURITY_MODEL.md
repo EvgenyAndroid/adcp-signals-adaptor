@@ -97,9 +97,13 @@ migration script needed.
 - **Code-level auth gates**: see inline comments around `publicPaths` in
   [src/index.ts](src/index.ts) and `AUTHENTICATED_MCP_METHODS` in
   [src/mcp/server.ts](src/mcp/server.ts).
-- **Webhook signing format**: see
-  [src/domain/webhookSigning.ts](src/domain/webhookSigning.ts) and the
-  "Webhook signatures" section of README.md.
+- **Webhook signing format**: RFC 9421 `adcp/webhook-signing/v1`
+  (Ed25519). See [src/domain/webhookSigning.ts](src/domain/webhookSigning.ts)
+  and the "Webhook signatures" section of README.md. The public key is
+  published at `/.well-known/jwks.json` and discovered through
+  `/.well-known/brand.json` ([src/routes/brandJson.ts](src/routes/brandJson.ts));
+  the private key is the `WEBHOOK_SIGNING_PRIVATE_JWK` Worker secret and
+  is never stored, logged, or committed.
 - **Webhook retry policy**: bounded at 5 attempts with exponential backoff
   (30s → 2m → 8m → 32m). See `MAX_WEBHOOK_ATTEMPTS` and `backoffSeconds`
   in [src/domain/activationService.ts](src/domain/activationService.ts).

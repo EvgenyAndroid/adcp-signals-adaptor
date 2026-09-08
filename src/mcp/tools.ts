@@ -752,23 +752,33 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                     description: "Optional filter criteria: task_ids, task_type/task_types, status/statuses, has_webhook.",
                     additionalProperties: true,
                 },
+                pagination: {
+                    type: "object",
+                    description: "Optional. max_results caps the page size.",
+                    properties: {
+                        max_results: { type: "number" },
+                    },
+                    additionalProperties: true,
+                },
                 context: { type: "object", additionalProperties: true },
             },
         },
         outputSchema: {
             type: "object",
-            required: ["tasks"],
+            required: ["tasks", "pagination"],
             properties: {
                 tasks: {
                     type: "array",
                     items: {
                         type: "object",
+                        required: ["task_id", "task_type", "domain", "status", "created_at", "updated_at"],
                         properties: {
                             task_id: { type: "string" },
                             task_type: { type: "string" },
                             domain: { type: "string" },
                             status: { type: "string" },
                             created_at: { type: "string" },
+                            updated_at: { type: "string" },
                             completed_at: { type: "string" },
                             has_webhook: { type: "boolean" },
                         },
@@ -776,6 +786,16 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                     },
                 },
                 query_summary: { type: "object", additionalProperties: true },
+                pagination: {
+                    type: "object",
+                    required: ["has_more"],
+                    properties: {
+                        has_more: { type: "boolean" },
+                        cursor: { type: "string" },
+                        total_count: { type: "number" },
+                    },
+                    additionalProperties: false,
+                },
             },
             additionalProperties: true,
         },

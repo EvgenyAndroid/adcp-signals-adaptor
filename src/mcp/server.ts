@@ -590,10 +590,14 @@ async function handleToolCall(
                 return true;
             });
 
-            const pagination = args["pagination"] as Record<string, unknown> | undefined;
-            const maxResults = numArg(pagination?.["max_results"], matching.length);
+            const reqPagination = args["pagination"] as Record<string, unknown> | undefined;
+            const maxResults = numArg(reqPagination?.["max_results"], matching.length);
             const page = matching.slice(0, maxResults);
 
+            // Canonical list-tasks-response.json requires task_id/task_type/
+            // domain/status/created_at/updated_at per task (updated_at was
+            // missing — a real gap the first live --with-webhooks run
+            // surfaced) and a top-level pagination block (also missing).
             const response = withMcpEnvelope(
                 { status: "completed" },
                 {
@@ -603,10 +607,15 @@ async function handleToolCall(
                         domain: "signals",
                         status: t.status,
                         created_at: t.created_at,
+                        updated_at: t.completed_at ?? t.created_at,
                         ...(t.completed_at ? { completed_at: t.completed_at } : {}),
                         has_webhook: !!t.push_notification_config?.url,
                     })),
                     query_summary: { total_matching: matching.length, returned: page.length },
+                    pagination: {
+                        has_more: page.length < matching.length,
+                        total_count: matching.length,
+                    },
                 }
             );
             return toolResultJson(response);

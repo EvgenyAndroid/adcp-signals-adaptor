@@ -45,16 +45,46 @@
 //      already works (unit-tested), this is purely a runner-side gap.
 //      LOOPBACK mode (the CLI's default) binds 127.0.0.1, which the
 //      deployed Worker can't reach — this script always targets a REMOTE
-//      URL (gotcha #5), so loopback is a no-op here. --webhook-receiver-
-//      auto-tunnel is the one that works against a remote agent: it
-//      autodetects ngrok or cloudflared on PATH, spawns a tunnel, and wires
-//      the public URL into proxy mode itself. Requires one of those two
-//      binaries installed (cloudflared's "quick tunnel" needs no account —
-//      `winget install Cloudflare.cloudflared` or https://ngrok.com).
+//      URL (gotcha #5), so loopback is a no-op here.
+//
+//      This script PRE-WARMS its own cloudflared quick tunnel instead of
+//      handing that job to the CLI's --webhook-receiver-auto-tunnel.
+//      Reason (found the hard way, 2026-09-08): a freshly-created
+//      trycloudflare.com hostname can take well over a minute to become
+//      DNS-resolvable — confirmed via direct `nslookup <host> 1.1.1.1`
+//      returning NXDOMAIN minutes after the tunnel process reported it as
+//      live. auto-tunnel spawns the tunnel and starts probing in the same
+//      breath, so on a cold hostname the terminal-webhook step fails at
+//      /idempotency_key even though the agent's delivery is correct —
+//      manually verified end-to-end against production with a warm tunnel
+//      (exact payload captured, all required fields present).
+//
+//      So this script spawns the tunnel first, polls DNS until the
+//      hostname resolves (retrying once with a fresh hostname), and only
+//      then invokes the CLI in `--webhook-receiver proxy` mode. This
+//      IMPROVES the odds; it does not guarantee them. Measured 2026-09-08:
+//      four consecutive quick-tunnel hostnames were still NXDOMAIN after
+//      60s each, and the webhook step failed anyway. When propagation is
+//      that broken there is nothing this script can do — it logs the cold
+//      hostname and proceeds best-effort rather than aborting, since the
+//      webhook step runs late and the rest of the suite still grades. A
+//      red terminal-webhook step on a "DNS cold" run says nothing about
+//      the agent; re-run when the tunnel comes up warm, or verify by hand
+//      against a known-good receiver.
+//
+//      Needs cloudflared on PATH (`winget install Cloudflare.cloudflared`
+//      or https://developers.cloudflare.com/cloudflared/); on Windows,
+//      winget's install location often isn't on PATH for non-interactive
+//      shells, so this script also checks the common install dirs
+//      directly — the CLI's own auto-tunnel does a bare PATH lookup and
+//      hard-fails (exit 2, no results at all) in exactly that case, which
+//      is the other half of why we drive the tunnel ourselves. The
+//      auto-tunnel fallback below is kept only for ngrok users and for a
+//      cloudflared that won't spawn.
 //      Opt-in, not the default: it adds a real external dependency, spawns
-//      a subprocess, and takes noticeably longer (tunnel handshake + an
-//      actual webhook round trip), so a bare `npm run compliance` stays
-//      fast and dependency-free for the common case.
+//      a subprocess, and takes noticeably longer (tunnel handshake + DNS
+//      wait + an actual webhook round trip), so a bare `npm run compliance`
+//      stays fast and dependency-free for the common case.
 //
 // Side effect on success (contract unchanged from the legacy script): writes
 // src/constants/complianceState.ts, which capabilityService.ts reads. The
@@ -78,7 +108,9 @@
 // Exit codes: 0 pass · 3 failures · 2 missing key / setup · 1 runner error.
 
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { spawnSync, spawn } from "node:child_process";
+import { createServer } from "node:net";
+import { resolve4 } from "node:dns/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -130,9 +162,129 @@ if (INSTALLED !== SDK_PIN) {
 }
 if (!existsSync(KIT_TEMPLATE)) die(2, `kit template missing: ${KIT_TEMPLATE}`);
 
+// ---- webhook tunnel pre-warming (see gotcha #6) ----------------------------
+// Finds a free local port by binding to :0 and reading back what the OS
+// assigned — a small TOCTOU race (another process could grab it before the
+// CLI binds) but acceptable for a short-lived local script.
+async function findFreePort() {
+  return await new Promise((resolvePort, reject) => {
+    const srv = createServer();
+    srv.on("error", reject);
+    srv.listen(0, "127.0.0.1", () => {
+      const { port } = srv.address();
+      srv.close(() => resolvePort(port));
+    });
+  });
+}
+
+// Bare `cloudflared` resolves on PATH on most platforms; on Windows a
+// winget install frequently isn't on PATH for non-interactive shells (App
+// Paths registration doesn't help a plain CreateProcess call), so check the
+// common install dirs directly before giving up.
+function resolveCloudflared() {
+  if (process.env.CLOUDFLARED_PATH && existsSync(process.env.CLOUDFLARED_PATH)) {
+    return process.env.CLOUDFLARED_PATH;
+  }
+  const bare = spawnSync("cloudflared", ["--version"], { encoding: "utf8" });
+  if (!bare.error) return "cloudflared";
+  if (process.platform === "win32") {
+    const candidates = [
+      join(process.env["ProgramFiles(x86)"] ?? "", "cloudflared", "cloudflared.exe"),
+      join(process.env["ProgramFiles"] ?? "", "cloudflared", "cloudflared.exe"),
+      join(process.env["LOCALAPPDATA"] ?? "", "Microsoft", "WinGet", "Links", "cloudflared.exe"),
+    ];
+    for (const c of candidates) {
+      if (c && existsSync(c)) return c;
+    }
+  }
+  return null;
+}
+
+// Spawns `cloudflared tunnel --url http://localhost:PORT` and resolves once
+// it prints the assigned trycloudflare.com URL (it logs to stderr, not
+// stdout). The child is left running — caller owns killing it.
+async function spawnTunnel(cloudflaredPath, port) {
+  return await new Promise((resolveTunnel, reject) => {
+    const child = spawn(cloudflaredPath, ["tunnel", "--url", `http://localhost:${port}`], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let buf = "";
+    const timer = setTimeout(() => {
+      cleanup();
+      child.kill();
+      reject(new Error("cloudflared did not print a tunnel URL within 20s"));
+    }, 20_000);
+    const onData = (chunk) => {
+      buf += chunk.toString();
+      const m = buf.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);
+      if (m) {
+        cleanup();
+        resolveTunnel({ child, url: m[0] });
+      }
+    };
+    const onError = (err) => { cleanup(); reject(err); };
+    const cleanup = () => {
+      clearTimeout(timer);
+      child.stdout.off("data", onData);
+      child.stderr.off("data", onData);
+      child.off("error", onError);
+    };
+    child.stdout.on("data", onData);
+    child.stderr.on("data", onData);
+    child.on("error", onError);
+  });
+}
+
+async function waitForDns(hostname, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  let lastErr;
+  while (Date.now() < deadline) {
+    try {
+      await resolve4(hostname);
+      return;
+    } catch (err) {
+      lastErr = err;
+      await new Promise((r) => setTimeout(r, 3_000));
+    }
+  }
+  throw new Error(`DNS never resolved for ${hostname} within ${timeoutMs}ms (last: ${lastErr?.code ?? lastErr?.message})`);
+}
+
+// Spawns a fresh quick tunnel and waits for it to become DNS-resolvable,
+// retrying once with a brand-new hostname if the first never comes up —
+// observed live: a first trycloudflare.com hostname can simply never
+// propagate while a second, freshly generated one resolves within seconds.
+//
+// Returns `warm: false` rather than throwing when neither hostname resolves
+// in time: the tunnel process itself is up and the CLI's webhook step runs
+// LATE in the suite, so DNS often propagates during the earlier steps. A
+// best-effort proxy against a live-but-cold tunnel strictly beats the
+// alternative (see the auto-tunnel fallback below, which can't even find
+// cloudflared when it isn't on PATH). Only a failure to spawn throws.
+async function prewarmTunnel(cloudflaredPath, port) {
+  let last = null;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    log(`   spawning tunnel (attempt ${attempt}/2)...`);
+    const spawned = await spawnTunnel(cloudflaredPath, port);
+    const hostname = new URL(spawned.url).hostname;
+    log(`   tunnel: ${spawned.url} — waiting for DNS...`);
+    try {
+      await waitForDns(hostname, 60_000);
+      log(`   DNS resolved.`);
+      return { ...spawned, warm: true };
+    } catch (err) {
+      log(`   attempt ${attempt}: ${err.message}`);
+      if (attempt < 2) spawned.child.kill();
+      else last = spawned;
+    }
+  }
+  return { ...last, warm: false };
+}
+
 // ---- run ------------------------------------------------------------------
 let tmp;
 let raw;
+let tunnelChild;
 try {
   // Render the kit with the real key into a private temp dir (0700), never
   // into the repo. Deleted in `finally` even if the runner throws.
@@ -142,8 +294,40 @@ try {
   if (!template.includes("__API_KEY__")) die(2, "kit template has no __API_KEY__ placeholder");
   writeFileSync(kitPath, template.replace("__API_KEY__", API_KEY), { mode: 0o600 });
 
+  let webhookArgs = [];
+  let webhookReceiverLabel = "";
+  if (withWebhooks) {
+    const cloudflaredPath = resolveCloudflared();
+    if (cloudflaredPath) {
+      const port = await findFreePort();
+      try {
+        const { child, url, warm } = await prewarmTunnel(cloudflaredPath, port);
+        tunnelChild = child;
+        if (!warm) {
+          log(`   WARN: tunnel hostname still not DNS-resolvable — proceeding best-effort ` +
+              `(the webhook step runs late in the suite, so DNS may propagate before it fires).`);
+        }
+        webhookArgs = ["--webhook-receiver-port", String(port), "--webhook-receiver", "proxy", "--webhook-receiver-public-url", url];
+        webhookReceiverLabel = `proxy (${warm ? "pre-warmed" : "best-effort, DNS cold"}: ${new URL(url).hostname})`;
+      } catch (err) {
+        // Couldn't even spawn cloudflared — let the CLI try its own
+        // autodetect (it also supports ngrok, which we don't look for).
+        log(`   WARN: could not spawn cloudflared (${err.message}) — falling back to --webhook-receiver-auto-tunnel.`);
+        webhookArgs = ["--webhook-receiver-auto-tunnel"];
+        webhookReceiverLabel = "auto-tunnel (fallback, unwarmed)";
+      }
+    } else {
+      // Our resolver is a superset of a bare PATH lookup, so the CLI won't
+      // find cloudflared either — but it also autodetects ngrok, which is
+      // the case this fallback actually serves.
+      log(`   WARN: cloudflared not found on PATH or common install dirs — falling back to --webhook-receiver-auto-tunnel (ngrok, or set CLOUDFLARED_PATH).`);
+      webhookArgs = ["--webhook-receiver-auto-tunnel"];
+      webhookReceiverLabel = "auto-tunnel (fallback, unwarmed)";
+    }
+  }
+
   log(`\n──── storyboard suite · ${AGENT_URL} · AdCP ${LINE} via ${CLIENT_RUNNER}` +
-      `${withWebhooks ? " · webhook receiver: auto-tunnel" : ""} ────`);
+      `${withWebhooks ? ` · webhook receiver: ${webhookReceiverLabel}` : ""} ────`);
   const argv = [
     CLI, "storyboard", "run", AGENT_URL,
     "--auth", API_KEY,
@@ -152,7 +336,7 @@ try {
     // Gotcha #6 — a tunnel handshake plus an actual webhook round trip runs
     // noticeably longer than the plain suite; 300s already had no margin.
     "--timeout", withWebhooks ? "480" : "300",
-    ...(withWebhooks ? ["--webhook-receiver-auto-tunnel"] : []),
+    ...webhookArgs,
     "--json", // machine result on stdout; the human report goes to stderr
   ];
   const r = spawnSync(process.execPath, argv, {
@@ -176,6 +360,7 @@ try {
   process.exit(1);
 } finally {
   if (tmp) rmSync(tmp, { recursive: true, force: true });
+  if (tunnelChild && !tunnelChild.killed) tunnelChild.kill();
 }
 
 // ---- shape the result ------------------------------------------------------

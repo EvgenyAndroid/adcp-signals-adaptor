@@ -41,7 +41,7 @@ This document:
 - **MCP tool coverage**: all 8 tools are callable from the dashboard and logged to D1 via `/mcp/recent`. No tool is "documented but untested."
 - **UCP extension**: embedding space declared (openai-te3-small, 512-d, float32, cosine, similarity_search=true), concept registry (~19 concepts), handshake simulator, projector, GTS endpoint, NL query endpoint — all wired.
 - **DTS v1.2**: every signal carries a structurally valid label. ext.dts advertises support at handshake. Privacy page served at /privacy.
-- **Operational hygiene**: CSP locked, RFC 9728/8414 OAuth metadata, WWW-Authenticate on unauth tools/call, atomic OAuth state consume, webhook HMAC signing, operator-namespaced LinkedIn tokens, 311 unit tests, pre-demo audit script.
+- **Operational hygiene**: CSP locked, RFC 9728/8414 OAuth metadata, WWW-Authenticate on unauth tools/call, atomic OAuth state consume, webhook signing (HMAC at the time; RFC 9421 since #248), operator-namespaced LinkedIn tokens, 311 unit tests, pre-demo audit script.
 
 ### 2.2 What's partial
 - **Activation destinations** are 4 mocks (`mock_dsp`, `mock_cleanroom`, `mock_cdp`, `mock_measurement`). Realistic for a demo but a HoldCo will immediately ask "what about TTD / DV360 / Meta / Amazon / Xandr / Yahoo DSP / StackAdapt / Viant / Adform / MediaMath / Criteo / The Trade Desk custom segments / Amazon AMC / Snowflake clean rooms / Habu / LiveRamp Safe Haven?" We have a LinkedIn OAuth scaffold; nothing else production-wired.

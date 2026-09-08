@@ -512,7 +512,7 @@ Storage (Cloudflare D1 + KV)
 |---|---|---|
 | `signal_agent_segment_id` | Yes | Also accepts `signal_id`. |
 | `deliver_to` | Yes | `{ deployments, countries }` |
-| `webhook_url` | No | POST callback on completion. Signed with HMAC-SHA256 when `WEBHOOK_SIGNING_SECRET` is provisioned — see [Webhook signatures](#webhook-signatures). |
+| `webhook_url` | No | POST callback on completion. Signed under the AdCP RFC 9421 webhook profile when `WEBHOOK_SIGNING_PRIVATE_JWK` is provisioned — see [Webhook signatures](#webhook-signatures). |
 
 ### `get_concept` / `search_concepts`
 
@@ -535,37 +535,39 @@ Storage (Cloudflare D1 + KV)
 
 ## Webhook signatures
 
-When `WEBHOOK_SIGNING_SECRET` is set as a Worker secret, outbound activation webhooks carry an `X-AdCP-Signature` header the receiver can verify.
+Outbound webhooks are signed under the AdCP `adcp/webhook-signing/v1` profile — [RFC 9421 HTTP Message Signatures](https://www.rfc-editor.org/rfc/rfc9421) with Ed25519 — whenever `WEBHOOK_SIGNING_PRIVATE_JWK` is provisioned. This replaced the earlier HMAC-SHA256 `X-AdCP-Signature` scheme (#248): HMAC was never part of the GA profile and is removed in AdCP 4.0.
 
-**Header format**
+**What a receiver sees**
 
-    X-AdCP-Signature: t=<unix-seconds>,v1=<hex-sha256>
+    Content-Digest:  sha-256=:<base64 SHA-256 of the exact body>:
+    Signature-Input: sig1=("@method" "@target-uri" "@authority" "content-type" "content-digest");created=<unix>;expires=<unix+300>;nonce="…";keyid="<kid>";alg="ed25519";tag="adcp/webhook-signing/v1"
+    Signature:       sig1=:<base64url Ed25519 signature>:
 
-**Signed string**
+**Key discovery** — the verifying key is resolved the way the spec prescribes, not shared out-of-band:
 
-    "<t>.<exact-request-body>"
+1. `get_adcp_capabilities` → `identity.brand_json_url` → `https://adcp.signal-stack.io/.well-known/brand.json`
+2. `brand.json` → `agents[].jwks_uri` → `https://adcp.signal-stack.io/.well-known/jwks.json`
+3. `jwks.json` → the key whose `kid` matches `Signature-Input`, carrying `adcp_use: "request-signing"` and `key_ops: ["verify"]`
 
-**Algorithm** — HMAC-SHA256 over UTF-8 bytes, hex-encoded.
-
-**Receiver pseudocode** (Node):
+**Verifying** (Node, with the official verifier):
 
 ```js
-import crypto from "crypto";
+import { createWebhookVerifier, StaticJwksResolver } from "@adcp/sdk/signing/server";
 
-function verify(secret, body, header) {
-  const parts = Object.fromEntries(header.split(",").map(p => p.split("=")));
-  const t = Number(parts.t);
-  if (Math.abs(Date.now() / 1000 - t) > 300) return false; // 5 min window
-  const expected = crypto.createHmac("sha256", secret)
-    .update(`${t}.${body}`)
-    .digest("hex");
-  return crypto.timingSafeEqual(Buffer.from(parts.v1), Buffer.from(expected));
-}
+const jwks = await fetch("https://adcp.signal-stack.io/.well-known/jwks.json").then(r => r.json());
+const verify = createWebhookVerifier({ jwks: new StaticJwksResolver(jwks.keys) });
+
+// req = { method, url, headers, body } — body MUST be the raw bytes you received
+const { keyid } = await verify(req); // throws WebhookSignatureError with a machine-readable `code` (e.g. webhook_signature_invalid, webhook_signature_digest_mismatch, webhook_signature_replayed)
 ```
 
-Receivers should re-sign the **raw request body** (not a re-serialized JSON object) and reject if the timestamp is more than 5 minutes off wall-clock. The `v1=` prefix is intentional — future versions (e.g. `v2=<ed25519...>`) can be added without breaking receivers pinned to v1.
+The verifier runs the spec's 14-step checklist — tag, algorithm, the 300-second window, mandatory components, key purpose, content digest, the signature itself, and nonce replay. Always hash the **raw request body** you received, never a re-serialized object.
 
-Unset secret ⇒ deliveries go out unsigned. Enabling it is a one-way decision in the sense that receivers who verify will start rejecting unsigned replays against a compromised URL.
+Unset key ⇒ deliveries go out unsigned, `jwks.json` serves `keys: []`, and capabilities declare `webhook_signing.supported: false`. A key that is set but unusable — malformed, or an `x` that is not the public key of its `d` — is treated the same way and logged as `webhook_signing_key_invalid`: the Worker proves the pair (sign a probe, verify with `x`) before it will publish or advertise it.
+
+Rotation is a secret update with a new `kid`. The JWKS publishes a single key, so once the new one is live, signatures made with the previous key stop verifying at receivers that re-fetch (the 5-minute cache only delays this on receivers holding a stale copy). Rotate in a quiet window and expect in-flight deliveries from the last ~300 seconds to need a retry; carrying the previous public key through the overlap is not implemented.
+
+The signer's canonicalization is the SDK's own (`@adcp/sdk/signing/client`), and `tests/webhookSigning.test.ts` reproduces every Ed25519 vector in the spec's conformance suite byte-for-byte — signature base, digest, `Signature-Input`, and `Signature`.
 
 ## Running Locally
 
@@ -594,9 +596,11 @@ wrangler secret put OPENAI_API_KEY
 # Worker bundle and retrievable by anyone with the Worker URL.
 wrangler secret put DEMO_API_KEY
 
-# Optional: enable HMAC-SHA256 signatures on outbound activation webhooks.
-# Without it, deliveries go out unsigned. See "Webhook signatures" above.
-wrangler secret put WEBHOOK_SIGNING_SECRET
+# Optional: RFC 9421 (Ed25519) signatures on outbound webhooks. The value is a
+# JSON private JWK — see "Webhook signatures" above and src/domain/webhookSigning.ts.
+# In CI this is provisioned from the GitHub repo secret of the same name
+# (.github/workflows/deploy.yml), so a local put is only for ad-hoc environments.
+printf '%s' "$JWK_JSON" | wrangler secret put WEBHOOK_SIGNING_PRIVATE_JWK
 
 # Optional: AES-GCM encrypt LinkedIn OAuth tokens at rest in KV.
 # IMPORTANT: must be a HIGH-ENTROPY RANDOM SECRET, at least 32 chars.

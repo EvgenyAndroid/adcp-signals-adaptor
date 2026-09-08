@@ -58,10 +58,14 @@ Per `/schemas/3.0.0/protocol/get-adcp-capabilities-response.json`:
     "required_for": [], "warn_for": [], "supported_for": []
   },
   "webhook_signing": {
-    "supported": false,              // our HMAC-SHA256 signer isn't in GA enum
-    "legacy_hmac_fallback": true     // ed25519 upgrade = Sec-43 roadmap
+    "supported": true,               // RFC 9421 adcp/webhook-signing/v1, Ed25519 (#248, 2026-09-08)
+    "profile": "adcp/webhook-signing/v1",
+    "algorithms": ["ed25519"],
+    "legacy_hmac_fallback": false    // HMAC removed; derived from the configured secret
   },
   "identity": {
+    "brand_json_url": "https://adcp.signal-stack.io/.well-known/brand.json",  // → agents[].jwks_uri → jwks.json
+    "key_origins": { "webhook_signing": "https://adcp.signal-stack.io" },
     "per_principal_key_isolation": false  // single-principal demo
   },
   "experimental_features": [
@@ -151,7 +155,7 @@ The one failure:
 
 ## Known gaps (deliberate, roadmap)
 
-1. **`webhook_signing.supported: false`.** Our webhook signer uses HMAC-SHA256 (`src/domain/webhookSigning.ts`). GA's `adcp/webhook-signing/v1` profile permits only ed25519 + ecdsa-p256-sha256. Declared `legacy_hmac_fallback: true` honestly. Ed25519 upgrade is Sec-43 scope.
+1. ~~**`webhook_signing.supported: false`.**~~ **Closed 2026-09-08 (#248).** Outbound webhooks are signed under `adcp/webhook-signing/v1` (RFC 9421, Ed25519) via `src/domain/webhookSigning.ts`; the public key is published at `/.well-known/jwks.json` and discovered through `identity.brand_json_url` → `/.well-known/brand.json` `agents[].jwks_uri`. HMAC is gone. `supported` is derived from whether `WEBHOOK_SIGNING_PRIVATE_JWK` is configured, so the declaration cannot outrun the delivery path.
 
 2. **`request_signing.supported: false`.** We gate inbound mutating requests on bearer auth + HTTPS. RFC 9421 inbound-signature verification is Sec-43 scope.
 

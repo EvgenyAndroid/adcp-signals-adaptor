@@ -228,7 +228,7 @@ The reason-code-scoped check is the centerpiece — the *first* place AdCP enfor
 }
 ```
 
-Buyer polls `tasks/get` with `task_id = op_1778079111234_a7d9c1e3b5f0a2c4` or receives the existing HMAC-signed completion webhook.
+Buyer polls `tasks/get` with `task_id = op_1778079111234_a7d9c1e3b5f0a2c4` or receives the existing RFC 9421-signed completion webhook (`adcp/webhook-signing/v1`; HMAC until #248).
 
 ---
 

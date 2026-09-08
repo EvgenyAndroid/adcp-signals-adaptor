@@ -236,7 +236,7 @@ revoke_activation ─────▶ │ submitted │
 ## 7 · Async semantics
 
 - **Polling**: same `tasks/get` surface as `activate_signal` (per `vendor/adcp/adcp-3.0.6/schemas/bundled/core/tasks-get-response.json`). The new revocation `task_id` is queryable identically — buyer calls `tasks/get` with the revocation `task_id` to get terminal state.
-- **Webhook**: optional `webhook_url` can be passed via `context.webhook_url` in the request. Same HMAC-SHA256 signing contract as `activate_signal` webhooks.
+- **Webhook**: optional `webhook_url` can be passed via `context.webhook_url` in the request. Same RFC 9421 (`adcp/webhook-signing/v1`) signing contract as `activate_signal` webhooks.
 - **Synchronous variant**: agents MAY choose to return `status: completed` immediately if all destinations support sync revocation. Buyers MUST handle either case.
 
 ---

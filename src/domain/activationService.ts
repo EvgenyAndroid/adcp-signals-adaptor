@@ -27,7 +27,7 @@ import { getProposal, deleteProposal } from "../storage/proposalCache";
 import { operationId } from "../utils/ids";
 import type { Logger } from "../utils/logger";
 import type { CanonicalSignal } from "../types/signal";
-import { signWebhookBody } from "./webhookSigning";
+import { signWebhookRequest, type WebhookSigningKey } from "./webhookSigning";
 import { fetchWithTimeout } from "../utils/fetchWithLimits";
 
 export async function activateSignalService(
@@ -178,16 +178,17 @@ export async function activateSignalService(
  * Implements lazy state machine: on first poll, advance submitted → processing → completed.
  * Fires webhook on completion if configured and not already fired.
  *
- * @param signingSecret Optional HMAC secret (env.WEBHOOK_SIGNING_SECRET). When
- * provided and non-empty, outbound webhook deliveries carry an
- * `X-AdCP-Signature` header the receiver can verify. Unset ⇒ unsigned
- * (backwards-compatible).
+ * @param signingKey Optional RFC 9421 signing key (see
+ * `webhookSigningFromEnv` in src/domain/webhookSigning.ts). When present,
+ * outbound webhook deliveries carry Content-Digest / Signature-Input /
+ * Signature headers under the `adcp/webhook-signing/v1` profile. Null or
+ * undefined ⇒ unsigned deliveries.
  */
 export async function getOperationService(
   db: DB,
   opId: string,
   logger: Logger,
-  signingSecret?: string,
+  signingKey?: WebhookSigningKey | null,
 ): Promise<GetOperationResponse> {
   const operation = await findOperationById(db, opId);
   if (!operation) {
@@ -225,7 +226,7 @@ export async function getOperationService(
       operation.webhookUrl,
       operation.webhookAttempts,
       logger,
-      signingSecret,
+      signingKey ?? null,
     );
   } else if (
     currentStatus === "completed" &&
@@ -326,14 +327,12 @@ function isValidWebhookUrl(raw: string): boolean {
  * Invalid URLs (non-https, unparseable) are still marked fired — retrying
  * them just re-fails synchronously every poll with no possible recovery.
  *
- * When `signingSecret` is a non-empty string, the outbound request carries:
- *
- *     X-AdCP-Signature: t=<unix-seconds>,v1=<hex-sha256>
- *
- * computed over `"<t>.<exact-request-body>"`. Receivers SHOULD reject if
- * `|now - t| > 300s`. See src/domain/webhookSigning.ts for the verification
- * helper (and the documented format). An empty secret means deliveries go
- * out unsigned (backwards-compatible with callers that don't verify yet).
+ * When `signingKey` is present, the outbound request is signed under the
+ * AdCP `adcp/webhook-signing/v1` RFC 9421 profile — `Content-Digest`,
+ * `Signature-Input`, and `Signature` headers covering @method, @target-uri,
+ * @authority, content-type, and content-digest, with a 300s window. The
+ * verifying public key is published at /.well-known/jwks.json. See
+ * src/domain/webhookSigning.ts. Null ⇒ deliveries go out unsigned.
  */
 async function fireWebhook(
   db: DB,
@@ -343,7 +342,7 @@ async function fireWebhook(
   webhookUrl: string,
   attemptsBefore: number,
   logger: Logger,
-  signingSecret?: string,
+  signingKey: WebhookSigningKey | null,
 ): Promise<void> {
   if (!isValidWebhookUrl(webhookUrl)) {
     logger.warn("webhook_rejected", {
@@ -372,26 +371,37 @@ async function fireWebhook(
     completed_at: new Date().toISOString(),
   };
 
-  // IMPORTANT: stringify once. We sign the exact byte sequence that goes
-  // on the wire — if we re-serialize inside signWebhookBody and the two
-  // JSON encodings differ (object key ordering, whitespace, Number
-  // precision), receivers will fail to verify.
+  // IMPORTANT: stringify once. Content-Digest covers the exact byte
+  // sequence that goes on the wire — if we re-serialized inside the signer
+  // and the two JSON encodings differed (object key ordering, whitespace,
+  // Number precision), receivers would fail the digest check at step 11.
   const bodyString = JSON.stringify(payload);
 
-  const headers: Record<string, string> = {
+  let headers: Record<string, string> = {
     "Content-Type": "application/json",
     "User-Agent": "adcp-signals-adaptor/1.0",
   };
   let signed = false;
-  if (signingSecret && signingSecret.length > 0) {
-    const sig = await signWebhookBody(signingSecret, bodyString);
-    headers["X-AdCP-Signature"] = sig.headerValue;
-    signed = true;
-  }
 
   const attemptNumber = attemptsBefore + 1;
 
   try {
+    // Signing lives inside the try on purpose: a key that fails to sign
+    // (mismatched pair, runtime without Ed25519) is a delivery failure like
+    // any other — logged as webhook_failed with the error, attempt recorded,
+    // backoff scheduled — never an exception out of a status poll, and
+    // never a silent downgrade to an unsigned delivery.
+    if (signingKey) {
+      const sig = await signWebhookRequest(signingKey, {
+        method: "POST",
+        url: webhookUrl,
+        headers,
+        body: bodyString,
+      });
+      headers = sig.headers;
+      signed = true;
+    }
+
     const res = await fetchWithTimeout(webhookUrl, {
       method: "POST",
       headers,

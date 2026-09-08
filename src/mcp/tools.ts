@@ -169,6 +169,13 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                         "signal_refs / signal_ids. 'wholesale': full priced-catalog mirroring with " +
                         "wholesale_feed_version conditional fetch; lookup fields do not apply.",
                 },
+                account: {
+                    type: "object",
+                    description: "Optional account scope. When a comply_test_controller-forced task is created " +
+                        "under this call, it's stamped with this account and only visible to a later " +
+                        "get_task_status/list_tasks call that declares the same account.",
+                    additionalProperties: true,
+                },
                 signal_refs: {
                     type: "array",
                     minItems: 1,

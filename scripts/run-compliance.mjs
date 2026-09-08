@@ -38,6 +38,23 @@
 //   5. Target the REGISTERED endpoint (adcp.signal-stack.io/mcp) — that is
 //      what the card keys on — not the workers.dev origin. Override with
 //      --url or AGENT_URL for staging.
+//   6. --with-webhooks (opt-in, added 2026-09-08). Without a webhook
+//      receiver, webhook_emission, webhook_receiver_envelope, and
+//      get_signals_async's terminal-webhook step all skip as
+//      requirement_unmet — confirmed live: the agent's own webhook delivery
+//      already works (unit-tested), this is purely a runner-side gap.
+//      LOOPBACK mode (the CLI's default) binds 127.0.0.1, which the
+//      deployed Worker can't reach — this script always targets a REMOTE
+//      URL (gotcha #5), so loopback is a no-op here. --webhook-receiver-
+//      auto-tunnel is the one that works against a remote agent: it
+//      autodetects ngrok or cloudflared on PATH, spawns a tunnel, and wires
+//      the public URL into proxy mode itself. Requires one of those two
+//      binaries installed (cloudflared's "quick tunnel" needs no account —
+//      `winget install Cloudflare.cloudflared` or https://ngrok.com).
+//      Opt-in, not the default: it adds a real external dependency, spawns
+//      a subprocess, and takes noticeably longer (tunnel handshake + an
+//      actual webhook round trip), so a bare `npm run compliance` stays
+//      fast and dependency-free for the common case.
 //
 // Side effect on success (contract unchanged from the legacy script): writes
 // src/constants/complianceState.ts, which capabilityService.ts reads. The
@@ -51,9 +68,10 @@
 //
 // Usage:
 //   API_KEY=... npm run compliance
-//   API_KEY=... npm run compliance -- --no-write        # read-only probe
-//   API_KEY=... npm run compliance -- --json            # compact JSON, no write
-//   API_KEY=... npm run compliance -- --url https://…   # another endpoint
+//   API_KEY=... npm run compliance -- --no-write         # read-only probe
+//   API_KEY=... npm run compliance -- --json             # compact JSON, no write
+//   API_KEY=... npm run compliance -- --url https://…    # another endpoint
+//   API_KEY=... npm run compliance -- --with-webhooks    # grade webhook-gated storyboards too (needs ngrok/cloudflared)
 //   AGENT_URL is honoured too (--url wins). DEMO_API_KEY is an accepted
 //   alias for API_KEY. The key is never printed.
 //
@@ -90,6 +108,7 @@ const CLIENT_RUNNER = `@adcp/sdk@${INSTALLED}`;
 const args = process.argv.slice(2);
 const jsonOutput = args.includes("--json");
 const skipWrite = args.includes("--no-write") || jsonOutput;
+const withWebhooks = args.includes("--with-webhooks");
 const urlFlag = args.indexOf("--url");
 const AGENT_URL =
   (urlFlag >= 0 && args[urlFlag + 1]) ||
@@ -123,13 +142,17 @@ try {
   if (!template.includes("__API_KEY__")) die(2, "kit template has no __API_KEY__ placeholder");
   writeFileSync(kitPath, template.replace("__API_KEY__", API_KEY), { mode: 0o600 });
 
-  log(`\n──── storyboard suite · ${AGENT_URL} · AdCP ${LINE} via ${CLIENT_RUNNER} ────`);
+  log(`\n──── storyboard suite · ${AGENT_URL} · AdCP ${LINE} via ${CLIENT_RUNNER}` +
+      `${withWebhooks ? " · webhook receiver: auto-tunnel" : ""} ────`);
   const argv = [
     CLI, "storyboard", "run", AGENT_URL,
     "--auth", API_KEY,
     "--test-kit", kitPath,
     "--compliance-version", LINE,
-    "--timeout", "300",
+    // Gotcha #6 — a tunnel handshake plus an actual webhook round trip runs
+    // noticeably longer than the plain suite; 300s already had no margin.
+    "--timeout", withWebhooks ? "480" : "300",
+    ...(withWebhooks ? ["--webhook-receiver-auto-tunnel"] : []),
     "--json", // machine result on stdout; the human report goes to stderr
   ];
   const r = spawnSync(process.execPath, argv, {

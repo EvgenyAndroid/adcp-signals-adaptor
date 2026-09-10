@@ -93,8 +93,28 @@ jobs:
           WEBHOOK_SIGNING_PRIVATE_JWK: ${{ secrets.WEBHOOK_SIGNING_PRIVATE_JWK }}
         run: |
           set -euo pipefail
-          printf '%s' "$WEBHOOK_SIGNING_PRIVATE_JWK" | npx wrangler secret put WEBHOOK_SIGNING_PRIVATE_JWK
-          echo "webhook signing key provisioned (kid=${{ steps.signing_key.outputs.kid }})"
+          expected="${{ steps.signing_key.outputs.kid }}"
+          # Idempotent: if the deployed Worker already publishes this kid, the
+          # secret is in place and re-putting it only buys a race. Run
+          # 34473229107 (2026-09-10) lost that race: Workers Builds had
+          # uploaded a newer, undeployed version between our deploy and the
+          # put, and wrangler refused the edit even though the key was live.
+          live=$(curl -sS --max-time 15 https://adcp.signal-stack.io/.well-known/jwks.json             | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const j=JSON.parse(s);process.stdout.write((j.keys||[]).map(k=>k.kid).join(','))}catch{process.stdout.write('')}})" || echo "")
+          case ",${live}," in
+            *",${expected},"*)
+              echo "webhook signing key already provisioned (kid=${expected} is live) — nothing to put"
+              exit 0 ;;
+          esac
+          put() { printf '%s' "$WEBHOOK_SIGNING_PRIVATE_JWK" | npx wrangler secret put WEBHOOK_SIGNING_PRIVATE_JWK; }
+          if ! put; then
+            # A newer undeployed version appeared between deploy and put (a
+            # Workers Builds upload). Re-deploy so the latest version is the
+            # deployed one again, then put once more.
+            echo "::warning::secret put refused; re-deploying to make the latest version the deployed one, then retrying once"
+            npx wrangler deploy
+            put
+          fi
+          echo "webhook signing key provisioned (kid=${expected})"
 
       - name: Smoke test — adagents.json reachable
         run: |

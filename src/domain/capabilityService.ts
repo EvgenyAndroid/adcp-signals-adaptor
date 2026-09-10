@@ -12,7 +12,7 @@
 
 // Cache key bumped to v17 — Sec-42 AdCP 3.0 GA compliance pass.
 // Adds six new top-level fields per the GA capabilities schema
-// (/schemas/3.0.0/protocol/get-adcp-capabilities-response.json):
+// (/schemas/<ADCP_SPEC_VERSION>/protocol/get-adcp-capabilities-response.json):
 //   request_signing, webhook_signing, identity, compliance_testing,
 //   specialisms, experimental_features — plus signals.data_provider_domains
 //   and signals.features. Bumps protocol version string "adcp_3.0_rc" ->
@@ -177,7 +177,7 @@ type AdcpCapabilities = {
   creative?: unknown;
   brand?: unknown;
   // Sec-42 (AdCP 3.0 GA): new top-level capability declarations.
-  // Schema: /schemas/3.0.0/protocol/get-adcp-capabilities-response.json
+  // Schema: /schemas/<ADCP_SPEC_VERSION>/protocol/get-adcp-capabilities-response.json
   request_signing?: unknown;
   webhook_signing?: unknown;
   identity?: unknown;
@@ -209,8 +209,8 @@ function buildStaticCapabilities(env: CapabilityEnv, signing: WebhookSigningKey 
       major_versions: [3],
       // Re-added 2026-06-18 for the 3.1 GA promotion (see type def above).
       // Value ["3.0","3.1"] declares 3.1 support; the live agent passes the
-      // v3.1.0 GA storyboard suite 7/7 — the #266 hotfix's documented re-add
-      // condition. CACHE_KEY_PREFIX bumped v26→v27 so the new field isn't
+      // 3.1.20 storyboard line 57/57 (complianceState.ts) — the #266
+      // hotfix's documented re-add condition. CACHE_KEY_PREFIX bumped v26→v27 so the new field isn't
       // served from a stale cached blob.
       supported_versions: ["3.0", "3.1"],
       // HEAD schema models idempotency as a discriminated union keyed on
@@ -229,7 +229,7 @@ function buildStaticCapabilities(env: CapabilityEnv, signing: WebhookSigningKey 
     // `request_signing` block below.
     specialisms: ["signal-owned"],
     // Sec-42 (AdCP 3.0 GA): top-level protocol-level capability blocks.
-    // See /schemas/3.0.0/protocol/get-adcp-capabilities-response.json.
+    // See /schemas/<ADCP_SPEC_VERSION>/protocol/get-adcp-capabilities-response.json.
     // Declared honestly — we only claim what we actually implement.
     request_signing: {
       // RFC 9421 signature VERIFICATION on inbound requests.
@@ -524,15 +524,16 @@ function buildStaticCapabilities(env: CapabilityEnv, signing: WebhookSigningKey 
         },
         // The storyboard runner marks whole storyboards not applicable when
         // the agent does not advertise the tools they exercise (media-buy /
-        // creative / governance / brand-rights / SI tracks), and skips the
-        // steps that need comply_test_controller, which a signals-only
-        // production agent correctly does not expose. `results` above is
+        // creative / governance / brand-rights / SI tracks) — 21 of the 35
+        // storyboards on the 3.1.20 line. comply_test_controller IS exposed
+        // (sandbox-only, since #318), so the controller-seeded steps run.
+        // `results` above is
         // scenario-level; src/constants/complianceState.ts carries the
         // step- and storyboard-level breakdown of the same run.
         non_applicable_scenarios: [
           {
             scenario: "media-buy / creative / governance / brand-rights / SI storyboards",
-            reason: "Require get_products, create_media_buy, sync_creatives, build_creative, si_*, check_governance, check_brand_rights tools that a signals-only agent does not expose; the storyboard runner's required_tools gate skips them as not applicable. Controller-seeded steps (idempotency replay etc.) additionally skip for the absent comply_test_controller.",
+            reason: "Require get_products, create_media_buy, sync_creatives, build_creative, si_*, check_governance, check_brand_rights tools that a signals-only agent does not expose; the storyboard runner's required_tools gate skips them as not applicable.",
             upstream_issue: "https://github.com/adcontextprotocol/adcp/issues/2916",
             upstream_status: "resolved — capability-aware skips; signals-only agents keep the core / signals / error-handling tracks.",
           },
@@ -657,7 +658,8 @@ function buildStaticCapabilities(env: CapabilityEnv, signing: WebhookSigningKey 
           "https://adcp-signals-adaptor.evgeny-193.workers.dev/privacy#opt-out",
         audience_bias_governance_schema: {
           supported: true,
-          version: "adcp_3.0",
+          // Protocol-version label (see the file header: rc → 3.0 → now 3.1).
+          version: "adcp_3.1",
         },
         // Sec-40: data hygiene moved inside governance block. Declares the
         // weekly purge schedule + retention windows + manual trigger.

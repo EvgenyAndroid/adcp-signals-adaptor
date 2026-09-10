@@ -9,8 +9,7 @@
 //
 // Each trace records the full request + response payloads, validates
 // them against the canonical AdCP schemas (vendored at the spec
-// version pinned in scripts/vendor-adcp-schemas.mjs — currently
-// 3.0.8), and keeps the result in an in-memory ring buffer
+// version pinned in scripts/vendor-adcp-schemas.mjs), and keeps the result in an in-memory ring buffer
 // (last 500 traces).
 //
 // Demo surfaces (Recent Activations, Orchestrator, Race Canvas,

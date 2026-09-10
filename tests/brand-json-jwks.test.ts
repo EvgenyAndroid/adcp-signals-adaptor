@@ -174,7 +174,7 @@ function makeEmptyDb(): Env["DB"] {
 function workerEnv(jwk?: string): Env {
   return {
     ENVIRONMENT: "test",
-    API_VERSION: "3.0",
+    API_VERSION: "3.1",
     DEMO_API_KEY: "worker-test-key",
     LINKEDIN_CLIENT_ID: "c",
     LINKEDIN_CLIENT_SECRET: "s",

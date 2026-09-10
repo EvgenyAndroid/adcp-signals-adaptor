@@ -1,6 +1,6 @@
 # AdCP conformance evidence
 
-> **Historical (2026-05/06).** These captures were taken with `@adcp/client`
+> **Historical (2026-04).** These captures were taken with `@adcp/client`
 > against the pre-GA worker URL. The current evidence is
 > `src/constants/complianceState.ts` (auto-written by `npm run compliance`
 > only on a run with zero failed steps; `@adcp/sdk@13.0.2`, line 3.1.20) and

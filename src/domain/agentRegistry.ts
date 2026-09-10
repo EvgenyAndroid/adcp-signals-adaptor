@@ -60,10 +60,11 @@ export const AGENT_REGISTRY: RegisteredAgent[] = [
     ],
     tools_exposed: [
       "get_adcp_capabilities", "get_signals", "activate_signal",
-      "get_operation_status", "get_similar_signals", "query_signals_nl",
-      "get_concept", "search_concepts",
+      "get_operation_status", "get_task_status", "list_tasks",
+      "get_similar_signals", "query_signals_nl",
+      "get_concept", "search_concepts", "comply_test_controller",
     ],
-    directory_tool_count: 8,
+    directory_tool_count: 11,
   },
   {
     id: "dstillery",

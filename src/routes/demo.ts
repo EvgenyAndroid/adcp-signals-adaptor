@@ -30,7 +30,8 @@
 // — security-through-obscurity to keep randos off the demo URL, while
 // the workshop audience can be told the password verbally.
 
-import { SPEC_LABEL } from "../constants/specVersion";
+import { SPEC_LABEL, SPEC_VERSION, ADCP_MAJOR_LINE } from "../constants/specVersion";
+import { COMPLIANCE_STATE } from "../constants/complianceState";
 import { BRAND_LOGO_DATA_URI } from "../constants/brandLogo";
 import { STYLES } from "../demo/styles";
 import { SCRIPT_TAG } from "../demo/script";
@@ -349,9 +350,9 @@ ${STYLES}
 
     <div class="sidebar-footer">
       <div class="kv"><span class="k">Version</span><span class="v mono">${SPEC_LABEL}</span></div>
-      <div class="kv"><span class="k">Client</span><span class="v mono">@adcp/5.25.1</span></div>
+      <div class="kv"><span class="k">Client</span><span class="v mono">${COMPLIANCE_STATE.client_runner}</span></div>
       <div class="kv"><span class="k">Status</span><span class="v"><span class="status-dot ok"></span>live</span></div>
-      <div class="kv"><span class="k">Conformance</span><span class="v"><span class="pill pill-success" id="footer-conformance-pill" title="Loading from /capabilities ext.compliance.results…">7 / 7</span></span></div>
+      <div class="kv"><span class="k">Conformance</span><span class="v"><span class="pill pill-success" id="footer-conformance-pill" title="Loading from /capabilities ext.compliance.results…">${COMPLIANCE_STATE.results.passed} / ${COMPLIANCE_STATE.results.applicable}</span></span></div>
       <div class="kv"><span class="k">Discovery</span><span class="v"><a href="/.well-known/adagents.json" target="_blank" rel="noopener" class="mono" style="color:var(--accent);text-decoration:none" title="Our published AdCP discovery anchor — declares this worker as the authorized signals agent. The trust anchor a buyer agent reads to discover us.">📡 adagents.json ↗</a></span></div>
       <div class="theme-picker" role="group" aria-label="Theme">
         <span class="theme-picker-label">Theme</span>
@@ -476,7 +477,7 @@ ${STYLES}
             </p>
           </div>
           <div>
-            <button class="btn-secondary" id="catalog-signal-traces" title="View raw get_signals request/response JSON for the cursor-paged catalog walk. Each page-fetch is its own trace; the chained pagination.cursor values demonstrate AdCP 3.0.x cursor pagination end-to-end.">
+            <button class="btn-secondary" id="catalog-signal-traces" title="View raw get_signals request/response JSON for the cursor-paged catalog walk. Each page-fetch is its own trace; the chained pagination.cursor values demonstrate AdCP 3.x cursor pagination end-to-end.">
               <svg class="ico"><use href="#icon-braces"/></svg>{ } Signal traces
             </button>
           </div>
@@ -1511,11 +1512,11 @@ ${STYLES}
             <span class="discovery-panel-title">AdCP discovery anchor · /.well-known/adagents.json</span>
             <span id="discovery-peer-counts" class="discovery-panel-counts"></span>
           </summary>
-          <p class="orch-small discovery-panel-intro">A buyer agent doing "find authorized signals agents for this domain" lands on this file. We publish a 3.0.8-conformant declaration; most peers don't yet — that gap is exactly what the AdCP standardization closes.</p>
+          <p class="orch-small discovery-panel-intro">A buyer agent doing "find authorized signals agents for this domain" lands on this file. We publish a ${SPEC_VERSION}-conformant declaration; most peers don't yet — that gap is exactly what the AdCP standardization closes.</p>
           <details class="discovery-our-details">
             <summary class="discovery-our-summary">
               <span class="discovery-our-label">Our declaration</span>
-              <span class="discovery-our-meta">3.0.8 conformant · click to view JSON</span>
+              <span class="discovery-our-meta">${SPEC_VERSION} conformant · click to view JSON</span>
             </summary>
             <pre id="discovery-our-doc" class="signal-trace-json discovery-our-json">loading…</pre>
           </details>
@@ -2227,8 +2228,8 @@ ${STYLES}
           <div class="devkit-panel devkit-panel-wide">
             <div class="devkit-panel-title">Endpoints</div>
             <div class="devkit-endpoints">
-              <div class="ep-row"><span class="ep-method">POST</span><code>/mcp</code><span class="ep-note">JSON-RPC 2.0 · 8 tools · bearer auth</span></div>
-              <div class="ep-row"><span class="ep-method">GET</span><code>/capabilities</code><span class="ep-note">AdCP 3.0 GA capabilities handshake · public</span></div>
+              <div class="ep-row"><span class="ep-method">POST</span><code>/mcp</code><span class="ep-note">JSON-RPC 2.0 · 11 tools · bearer auth</span></div>
+              <div class="ep-row"><span class="ep-method">GET</span><code>/capabilities</code><span class="ep-note">AdCP ${ADCP_MAJOR_LINE} capabilities handshake · public</span></div>
               <div class="ep-row"><span class="ep-method">GET</span><code>/signals/search</code><span class="ep-note">Catalog search with filters · bearer</span></div>
               <div class="ep-row"><span class="ep-method">POST</span><code>/signals/estimate</code><span class="ep-note">Rule-based audience sizing · public</span></div>
               <div class="ep-row"><span class="ep-method">POST</span><code>/signals/overlap</code><span class="ep-note">Multi-signal Jaccard overlap · public</span></div>

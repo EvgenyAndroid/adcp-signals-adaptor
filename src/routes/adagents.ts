@@ -3,8 +3,8 @@
 // AdCP discovery anchor — /.well-known/adagents.json
 //
 // As a signals data provider, we publish this file to declare which
-// agents are authorized to resell our catalog. Per the AdCP 3.0.8
-// spec ($id: /schemas/3.0.8/adagents.json):
+// agents are authorized to resell our catalog. Per the AdCP spec at the
+// vendored corpus version ($id: /schemas/<ADCP_SPEC_VERSION>/adagents.json):
 //
 //   "Hosted at /.well-known/adagents.json on publisher domains (for
 //    properties) or data provider domains (for signals)."
@@ -15,8 +15,8 @@
 // a published file we're invisible to that discovery flow.
 //
 // Validation: the served document is schema-validated at build via
-// tests/adagents-self-publish.test.ts against the vendored 3.0.8
-// schema. If we ever drift (new required field, etc.), the test
+// tests/adagents-self-publish.test.ts against the vendored schema
+// (ADCP_SPEC_VERSION). If we ever drift (new required field, etc.), the test
 // fails before deploy.
 //
 // Visibility: the demo footer (src/routes/demo.ts) carries a
@@ -49,7 +49,7 @@ export interface AdagentsDocument {
 }
 
 /**
- * Build a 3.0.8-conformant adagents.json declaring our worker as the
+ * Build an adagents.json, conformant to the vendored corpus version, declaring our worker as the
  * authorized signals agent for our own catalog. The agent URL is
  * derived from the request origin so the document works on any deploy
  * (production, preview, local) without rebuild.
@@ -109,10 +109,10 @@ export function handleAdAgents(request: Request, _env: Env): Response {
       "Cache-Control": "public, max-age=3600",
       "Access-Control-Allow-Origin": "*",
       // Conformance-claim version, not the vendored-schema corpus version.
-      // The two can diverge for storyboard/harness-only spec patches (3.0.9
-      // -> 3.0.10 -> 3.0.11 made no schema changes); the corpus stays pinned
-      // at 3.0.8 until a spec release actually touches schemas. SPEC_VERSION
-      // is the single source of truth for what we claim to conform to.
+      // The two can diverge for storyboard/harness-only spec patches (the
+      // 3.0.9–3.0.11 patches made no schema changes); since 2026-09-10 they
+      // are in lockstep at 3.1.20. SPEC_VERSION is the single source of
+      // truth for what we claim to conform to.
       "X-AdCP-Spec-Version": SPEC_VERSION,
     },
   });

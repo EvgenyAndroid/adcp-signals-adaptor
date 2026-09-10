@@ -520,7 +520,7 @@ export default {
                 // AdCP discovery anchor — declares this worker as the
                 // authorized signals agent for the Demo Provider catalog.
                 // Public, cacheable, schema-validated against the
-                // vendored 3.0.8 adagents.json schema (see
+                // vendored adagents.json schema at ADCP_SPEC_VERSION (see
                 // tests/adagents-self-publish.test.ts).
                 response = handleAdAgents(request, env);
 
@@ -529,7 +529,7 @@ export default {
                 // for /mcp carries jwks_uri, which is how a verifier gets from
                 // get_adcp_capabilities.identity.brand_json_url to our public
                 // key (see src/routes/brandJson.ts). Schema-validated against
-                // the vendored 3.1.0 brand.json schema in tests.
+                // the vendored brand.json schema (ADCP_SPEC_VERSION) in tests.
                 response = handleBrandJson(request, env);
 
             } else if (method === "GET" && path === "/.well-known/jwks.json") {

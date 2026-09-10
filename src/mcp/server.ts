@@ -50,6 +50,7 @@ import { safeRecordSignalTrace, persistSignalTrace } from "../domain/signalTrace
 import { record as recordToolLog, argKeysOf } from "./toolLog";
 import { logCall as d1LogCall, cleanup as d1Cleanup, shouldRunCleanup } from "../storage/toolLogRepo";
 import { operatorIdFromRequest } from "../utils/operatorId";
+import { ADCP_WIRE_PIN } from "../constants/specVersion";
 import {
     handleComplyTestController,
     checkAndConsumeGetSignalsArm,
@@ -377,7 +378,7 @@ async function handleInitialize(
         capabilities: { tools: { listChanged: false } },
         serverInfo: {
             name: "adcp-signals-adaptor",
-            version: env.API_VERSION ?? "3.0",
+            version: env.API_VERSION ?? ADCP_WIRE_PIN,
             description:
                 "AdCP Signals Provider — IAB Audience Taxonomy 1.1 aligned signal discovery, " +
                 "brief-driven custom segment proposals, and async activation with webhook support.",
@@ -1898,7 +1899,7 @@ export function toolResultJson(structured: unknown): unknown {
  * fields can override (e.g. `get_operation_status` returns the underlying
  * task's `status`, which must win over a default).
  *
- * Accepted statuses (from /schemas/3.0.x/enums/task-status.json):
+ * Accepted statuses (from /schemas/<ADCP_SPEC_VERSION>/enums/task-status.json):
  *   submitted | working | input-required | completed | canceled |
  *   failed | rejected | auth-required | unknown
  */
@@ -1910,10 +1911,10 @@ export function toolResultJson(structured: unknown): unknown {
  * `adcp.supported_versions` on the capabilities response body (the buyer
  * pins against the array; the envelope confirms which one was served).
  *
- * We serve "3.0" today; bump to "3.1" alongside `supported_versions` when
- * we re-vendor 3.1 GA and pass conformance.
+ * Served from ADCP_WIRE_PIN so the envelope, the X-AdCP-Version header
+ * and /health cannot drift from each other.
  */
-const SERVED_ADCP_VERSION = "3.1";
+const SERVED_ADCP_VERSION = ADCP_WIRE_PIN;
 
 function withMcpEnvelope(
     envelope: { status: string; task_id?: string; context_id?: string; message?: string },

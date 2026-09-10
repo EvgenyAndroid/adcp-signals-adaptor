@@ -2,6 +2,7 @@
 // Shared HTTP helpers for route handlers.
 
 import type { ApiError } from "../types/api";
+import { ADCP_WIRE_PIN } from "../constants/specVersion";
 
 export function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -9,7 +10,7 @@ export function jsonResponse(data: unknown, status = 200): Response {
     headers: {
       "Content-Type": "application/json",
       "X-AdCP-Provider": "adcp-signals-adaptor-demo",
-      "X-AdCP-Version": "3.0",
+      "X-AdCP-Version": ADCP_WIRE_PIN,
     },
   });
 }

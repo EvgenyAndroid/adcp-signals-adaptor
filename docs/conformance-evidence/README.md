@@ -1,5 +1,12 @@
 # AdCP conformance evidence
 
+> **Historical (2026-05/06).** These captures were taken with `@adcp/client`
+> against the pre-GA worker URL. The current evidence is
+> `src/constants/complianceState.ts` (auto-written by `npm run compliance`
+> only on a run with zero failed steps; `@adcp/sdk@13.0.2`, line 3.1.20) and
+> the AAO registry card, which grades this agent independently twice daily:
+> `https://agenticadvertising.org/api/registry/agents/https%3A%2F%2Fadcp.signal-stack.io%2Fmcp/compliance`.
+
 Captured runs of the official `@adcp/client storyboard run` against the live
 worker. Kept in-tree as a checkable artifact for code review and demo
 walk-throughs.

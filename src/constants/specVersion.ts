@@ -11,8 +11,37 @@
 /** Major-version line we conform to. Stable string for a long time. */
 export const ADCP_MAJOR_LINE = "3.1 GA";
 
+/** The major.minor pin we actually negotiate on the wire (envelope
+ *  adcp_version echo, X-AdCP-Version header, /health). Distinct from
+ *  SPEC_VERSION (the patch we last conformed to) and from
+ *  adcp.supported_versions (everything we accept). */
+export const ADCP_WIRE_PIN = "3.1";
+
 /** Specific spec patch version we're tested against. Bump on each
  *  successful conformance pass against a new patch.
+ *
+ *  3.1.20 (2026-09-10): batch refresh, 3.1.0 → 3.1.20, per the POLICY
+ *  below (the 3.1.x line shipped twenty patches in twelve weeks; we did
+ *  not bump per patch). Re-vendored the corpus in lockstep
+ *  (scripts/vendor-adcp-schemas.mjs ADCP_SPEC_VERSION 3.1.20; 651
+ *  schemas; the only test that moved was one pinning the literal
+ *  "/schemas/3.1.0/" id, now derived). Evidence for "tested against":
+ *  scripts/run-compliance.mjs on @adcp/sdk@13.0.2 / storyboard line
+ *  3.1.20 wrote complianceState.ts on 2026-09-08 (57/57 scenarios,
+ *  0 failed steps), and the AAO hosted grader has run this agent on
+ *  3.1.20 twice daily since 2026-08-22 with verified: true (66/68
+ *  scenarios; 9/35 storyboards because 21 are not applicable to a
+ *  signals-only agent). Receiver-mode local runs read 42 passed / 2
+ *  failed, both upstream: adcp-client#2862 (assert_contribution fails
+ *  instead of skipping) and the loopback-delivery artifact. Not 3.1.21
+ *  (2026-09-09): no SDK bundles its storyboards yet, and its only
+ *  compliance-cache change is a read-tool-idempotency relaxation we
+ *  already satisfy. What ELSE this bump changed on the wire: the
+ *  X-AdCP-Version header and /health major-line fields now say "3.1"
+ *  (ADCP_WIRE_PIN) instead of a hard-coded "3.0", and ext.compliance
+ *  labels the run adcp_3.1 with the storyboard line alongside; it had
+ *  said adcp_3.0 and pointed at the 3.0 GA report while describing a
+ *  3.1.20 run.
  *
  *  3.1.0 GA (2026-06-18): MINOR — promoted off the 3.0 line. AdCP 3.1
  *  reached GA (stable tag v3.1.0; wire pin adcp_version "3.1"). Re-vendored
@@ -139,7 +168,7 @@ export const ADCP_MAJOR_LINE = "3.1 GA";
  *  scripts/vendor-adcp-schemas.mjs; the trace inspector validates
  *  every payload against /schemas/<this-version>/ identifiers.
  */
-export const SPEC_VERSION = "3.1.0";
+export const SPEC_VERSION = "3.1.20";
 
 /** Composite label for UI display: "3.0 GA · 3.0.4". */
 export const SPEC_LABEL = ADCP_MAJOR_LINE + " · " + SPEC_VERSION;

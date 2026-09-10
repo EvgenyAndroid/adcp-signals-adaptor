@@ -495,7 +495,7 @@ function buildStaticCapabilities(env: CapabilityEnv, signing: WebhookSigningKey 
       // ext.compliance — last-known compliance results + non-applicable
       // scenario explanations. Surfaced in-band so any reviewer hitting
       // /capabilities (e.g. a HoldCo procurement check) sees the score
-      // and the structural ceiling without needing to read SEC42_*.md.
+      // and the structural ceiling without needing to read the state file.
       //
       // `last_run` + `client_runner` + counts + scenarios_run live in
       // src/constants/complianceState.ts and are auto-updated by
@@ -507,7 +507,12 @@ function buildStaticCapabilities(env: CapabilityEnv, signing: WebhookSigningKey 
       // for a signals-only agent regardless of SDK version, so numbers
       // here before that date are not comparable to the card.
       compliance: {
-        spec_version: "adcp_3.0",
+        // Labels the run this block describes: the 3.1 line, at the
+        // storyboard patch the runner resolved. (Said adcp_3.0 until
+        // 2026-09-10 while describing a 3.1.20 run.)
+        spec_version: "adcp_3.1",
+        compliance_line: COMPLIANCE_STATE.compliance_line,
+        headline: COMPLIANCE_STATE.headline,
         client_runner: COMPLIANCE_STATE.client_runner,
         last_run: COMPLIANCE_STATE.last_run,
         results: {
@@ -532,7 +537,10 @@ function buildStaticCapabilities(env: CapabilityEnv, signing: WebhookSigningKey 
             upstream_status: "resolved — capability-aware skips; signals-only agents keep the core / signals / error-handling tracks.",
           },
         ],
-        report: "docs/SEC42_ADCP_30_GA_COMPLIANCE.md",
+        // The state file IS the report (auto-written only on a run with
+        // zero failed steps); the registry card is the independent grade.
+        report: "src/constants/complianceState.ts",
+        registry_card: "https://agenticadvertising.org/api/registry/agents/https%3A%2F%2Fadcp.signal-stack.io%2Fmcp/compliance",
         reproduce: "API_KEY=$DEMO_API_KEY AGENT_URL=https://adcp.signal-stack.io/mcp npm run compliance",
       },
       // ext.ucp now mirrors the real engine. Previously this was a static

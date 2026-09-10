@@ -68,7 +68,7 @@ export async function handleSearchSignals(
   const _t0 = Date.now();
   // Build the CANONICAL AdCP get_signals request envelope from our
   // legacy REST shape so the trace recorder validates against
-  // /schemas/3.0.x/signals/get-signals-request.json without surfacing
+  // /schemas/<ADCP_SPEC_VERSION>/signals/get-signals-request.json without surfacing
   // false-positive errors. The REST surface (brief / limit / offset)
   // is a thin wrapper kept for legacy callers; canonicalizing the
   // traced payload means the workshop trace inspector shows

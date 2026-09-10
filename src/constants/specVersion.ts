@@ -11,8 +11,51 @@
 /** Major-version line we conform to. Stable string for a long time. */
 export const ADCP_MAJOR_LINE = "3.1 GA";
 
+/** The major.minor pin we actually negotiate on the wire (envelope
+ *  adcp_version echo, X-AdCP-Version header, /health). Distinct from
+ *  SPEC_VERSION (the patch we last conformed to) and from
+ *  adcp.supported_versions (everything we accept). */
+export const ADCP_WIRE_PIN = "3.1";
+
 /** Specific spec patch version we're tested against. Bump on each
  *  successful conformance pass against a new patch.
+ *
+ *  3.1.20 (2026-09-10): batch refresh, 3.1.0 → 3.1.20, per the POLICY
+ *  below (the 3.1.x line shipped twenty patches in eleven weeks; we did
+ *  not bump per patch). Re-vendored the corpus in lockstep
+ *  (scripts/vendor-adcp-schemas.mjs ADCP_SPEC_VERSION 3.1.20, from the
+ *  release tarball — sha256 matches the published .sha256 and GitHub's
+ *  asset digest; the script does not check the cosign signature the
+ *  release also ships). Corpus delta vs 3.1.0: 651 schemas, 15
+ *  core/protocol/enums/signals schemas changed content (additive
+ *  `governance_context` on activate-signal-request, `governance_aware`
+ *  on the capabilities response), tmp/ renamed trusted-match/; the only
+ *  test that moved was one pinning the literal "/schemas/3.1.0/" id, now
+ *  derived. Evidence for "tested against": scripts/run-compliance.mjs on
+ *  @adcp/sdk@13.0.2 / storyboard line 3.1.20 wrote complianceState.ts on
+ *  2026-09-08 (57/57 scenarios, 0 failed steps), and the AAO hosted
+ *  grader has graded this agent on 3.1.20 twice daily since 2026-09-03
+ *  (3.1.18 before that; the history feed exposes 30 heartbeats back to
+ *  2026-08-25) with verified: true — 66/68 scenarios; storyboards 9
+ *  passing / 5 failing-or-partial (37 steps, none of which reproduce
+ *  locally on the same line: hosted-runner gating, tracked in the
+ *  operator note) / 21 not applicable to a signals-only agent; card
+ *  status "degraded" since 2026-08-12, the verified badge dates from
+ *  2026-06-20. Receiver-mode local runs (operator run notes of
+ *  2026-09-08; not captured in-repo) read 42 passed / 2 failed, both
+ *  upstream: adcp-client#2862 (assert_contribution fails instead of
+ *  skipping) and the loopback-delivery artifact. Not 3.1.21
+ *  (2026-09-09): no SDK bundles its storyboards yet, and its only
+ *  compliance-cache change is a read-tool-idempotency relaxation we
+ *  already satisfy. What ELSE this bump changed on the wire: every
+ *  self-description that still said 3.0 or 8 tools now derives from the
+ *  constants — X-AdCP-Version (jsonResponse), /health major-line fields,
+ *  MCP initialize serverInfo.version (API_VERSION var), /openapi.json
+ *  info.version, /privacy, the governance schema version label,
+ *  ext.compliance (adcp_3.1 + compliance_line, pointing at the state
+ *  file and the registry card instead of the 3.0 GA report), the
+ *  /agents/registry self entry (adcp_3.1, 11 tools), and the demo page's
+ *  footer, endpoints and discovery strings.
  *
  *  3.1.0 GA (2026-06-18): MINOR — promoted off the 3.0 line. AdCP 3.1
  *  reached GA (stable tag v3.1.0; wire pin adcp_version "3.1"). Re-vendored
@@ -139,7 +182,7 @@ export const ADCP_MAJOR_LINE = "3.1 GA";
  *  scripts/vendor-adcp-schemas.mjs; the trace inspector validates
  *  every payload against /schemas/<this-version>/ identifiers.
  */
-export const SPEC_VERSION = "3.1.0";
+export const SPEC_VERSION = "3.1.20";
 
-/** Composite label for UI display: "3.0 GA · 3.0.4". */
+/** Composite label for UI display, e.g. "3.1 GA · 3.1.20". */
 export const SPEC_LABEL = ADCP_MAJOR_LINE + " · " + SPEC_VERSION;

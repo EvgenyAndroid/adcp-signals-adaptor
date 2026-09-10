@@ -3,8 +3,9 @@
 // The signing-key discovery chain (#248):
 //   identity.brand_json_url → brand.json agents[].jwks_uri → jwks.json
 //
-// Pins: the served brand.json validates against the vendored 3.1.0
-// brand.json schema (self-published brand variant), its agents[] entry
+// Pins: the served brand.json validates against the vendored brand.json
+// schema (self-published brand variant, at whatever corpus version
+// src/schemas/adcp pins), its agents[] entry
 // points a verifier at OUR /mcp and OUR jwks.json on the same origin, and
 // jwks.json publishes exactly the public half of the configured key —
 // never the private scalar — or `keys: []` when unconfigured.
@@ -19,6 +20,7 @@ import {
   JWKS_PATH,
 } from "../src/routes/brandJson";
 import type { Env } from "../src/types/env";
+import { ADCP_SPEC_VERSION } from "../src/schemas/adcp";
 
 const ORIGIN = "https://adcp-signals-adaptor.evgeny-193.workers.dev";
 const req = (path: string) => new Request(`${ORIGIN}${path}`, { method: "GET" });
@@ -34,14 +36,14 @@ async function mintSecret(kid = "brand-test-key"): Promise<{ secret: string; x: 
 }
 
 describe("/.well-known/brand.json", () => {
-  it("validates against the vendored 3.1.0 brand.json schema", () => {
+  it("validates against the vendored brand.json schema", () => {
     const doc = buildBrandDocument(req("/.well-known/brand.json"));
     const r = validateBrandDocument(doc);
     if (!r.valid) {
       // eslint-disable-next-line no-console
       console.log("brand.json validation errors:", JSON.stringify(r.errors, null, 2));
     }
-    expect(r.schema_id).toBe("/schemas/3.1.0/brand.json");
+    expect(r.schema_id).toBe(`/schemas/${ADCP_SPEC_VERSION}/brand.json`);
     expect(r.valid).toBe(true);
     expect(r.errors).toEqual([]);
   });
@@ -172,7 +174,7 @@ function makeEmptyDb(): Env["DB"] {
 function workerEnv(jwk?: string): Env {
   return {
     ENVIRONMENT: "test",
-    API_VERSION: "3.0",
+    API_VERSION: "3.1",
     DEMO_API_KEY: "worker-test-key",
     LINKEDIN_CLIENT_ID: "c",
     LINKEDIN_CLIENT_SECRET: "s",

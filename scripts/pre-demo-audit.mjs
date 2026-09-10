@@ -209,7 +209,7 @@ async function checkMcp() {
     method: 'POST', headers: json,
     body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} }),
   });
-  log('mcp — tools/list 8 tools', tools.body.result?.tools?.length === 8);
+  log('mcp — tools/list 11 tools', tools.body.result?.tools?.length === 11);
   log('mcp — every tool has outputSchema', tools.body.result?.tools?.every(t => !!t.outputSchema));
 
   // Sec-31v: get_adcp_capabilities is the ONE public tools/call carve-out

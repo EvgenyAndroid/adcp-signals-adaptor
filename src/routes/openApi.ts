@@ -3,6 +3,8 @@
 // REST surface on this agent. Auto-regenerated from the static route
 // list here; the dashboard and CI can both consume it.
 
+import { SPEC_VERSION } from "../constants/specVersion";
+
 export function handleOpenApi(request: Request): Response {
   const url = new URL(request.url);
   const origin = `${url.protocol}//${url.host}`;
@@ -11,7 +13,8 @@ export function handleOpenApi(request: Request): Response {
     openapi: "3.1.0",
     info: {
       title: "AdCP Signals Adaptor",
-      version: "3.0",
+      // The corpus patch we validate against (SPEC_VERSION), not the wire pin.
+      version: SPEC_VERSION,
       description:
         "Reference implementation of the Ad Context Protocol Signals Activation Protocol. " +
         "Exposes an MCP endpoint at /mcp plus REST equivalents for every tool. " +

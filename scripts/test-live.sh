@@ -148,7 +148,7 @@ echo "=== MCP ==="
 # handshake. tools/call is gated per the AUTHENTICATED_MCP_METHODS set in
 # src/mcp/server.ts.
 run "mcp: initialize (public)"                         200 'b.result && b.result.serverInfo && b.result.serverInfo.name'           -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"1.0"}}}'
-run "mcp: tools/list (8 tools w/ outputSchema, public)" 200 'b.result.tools.length===8 && b.result.tools.every(t=>!!t.outputSchema)' -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+run "mcp: tools/list (11 tools w/ outputSchema, public)" 200 'b.result.tools.length===11 && b.result.tools.every(t=>!!t.outputSchema)' -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
 # tools/call now requires auth — Sec-1 Finding #1. Verify the unauth path
 # returns -32001 (server-error band; JSON-RPC has no canonical auth code).
 run "mcp: tools/call unauth returns -32001" 200 'b.error && b.error.code===-32001' -X POST "$BASE/mcp" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":99,"method":"tools/call","params":{"name":"get_adcp_capabilities","arguments":{}}}'

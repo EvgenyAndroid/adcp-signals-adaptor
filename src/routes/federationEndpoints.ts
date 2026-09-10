@@ -29,7 +29,7 @@ export function handleAgentsRegistry(): Response {
         mcp_url: SELF_URL + "/mcp",
         capabilities_url: SELF_URL + "/capabilities",
         stage: "live",
-        protocols: ["adcp_3.0", "ucp_0.2", "dts_1.2", "mcp_streamable_http"],
+        protocols: ["adcp_3.1", "ucp_0.2", "dts_1.2", "mcp_streamable_http"],
         specialties: [
           "cross_taxonomy_bridge_9_systems",
           "ucp_embedding_live",
@@ -39,8 +39,9 @@ export function handleAgentsRegistry(): Response {
         ],
         tools_exposed: [
           "get_adcp_capabilities", "get_signals", "activate_signal",
-          "get_operation_status", "get_similar_signals", "query_signals_nl",
-          "get_concept", "search_concepts",
+          "get_operation_status", "get_task_status", "list_tasks",
+          "get_similar_signals", "query_signals_nl",
+          "get_concept", "search_concepts", "comply_test_controller",
         ],
       },
       {

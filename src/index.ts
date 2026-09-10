@@ -30,6 +30,7 @@ import { handleGetProjector } from "./routes/getProjector";
 import { handleUcpProjection, handleUcpSimilarity } from "./routes/ucpProjection";
 import { handleEmbedText } from "./routes/embedText";
 import { ADCP_SPEC_VERSION } from "./schemas/adcp";
+import { ADCP_WIRE_PIN } from "./constants/specVersion";
 import {
   handleQueryVector,
   handleArithmetic,
@@ -500,17 +501,17 @@ export default {
                 response = await handleSignalTraceById(traceId, env);
 
             } else if (method === "GET" && path === "/health") {
-                // Version fields derive from ADCP_SPEC_VERSION (vendored
-                // schema corpus pin). The bare "3.0" major-line stays
-                // alongside the patch-versioned `adcp_spec_version` for
-                // back-compat with consumers that key on either string.
-                // Bumping the corpus auto-bumps these without an
-                // index.ts edit.
+                // Version fields derive from the two constants: the wire pin
+                // (major.minor we negotiate) and the vendored corpus pin
+                // (patch we validate against). `version`/`adcp_version` had
+                // been hard-coded "3.0" as back-compat long after the agent
+                // moved to the 3.1 line — a consumer keying on them was
+                // being told the wrong major line.
                 response = jsonResponse({
                     status: "ok",
-                    version: "3.0",                            // major-line, back-compat
-                    adcp_version: "3.0",                       // major-line, back-compat
-                    adcp_spec_version: ADCP_SPEC_VERSION,      // patch (e.g. 3.0.8)
+                    version: ADCP_WIRE_PIN,                    // major.minor on the wire
+                    adcp_version: ADCP_WIRE_PIN,               // major.minor on the wire
+                    adcp_spec_version: ADCP_SPEC_VERSION,      // patch (e.g. 3.1.20)
                     worker_version: WORKER_VERSION,
                     built_at: builtAt(),
                 });
@@ -519,7 +520,7 @@ export default {
                 // AdCP discovery anchor — declares this worker as the
                 // authorized signals agent for the Demo Provider catalog.
                 // Public, cacheable, schema-validated against the
-                // vendored 3.0.8 adagents.json schema (see
+                // vendored adagents.json schema at ADCP_SPEC_VERSION (see
                 // tests/adagents-self-publish.test.ts).
                 response = handleAdAgents(request, env);
 
@@ -528,7 +529,7 @@ export default {
                 // for /mcp carries jwks_uri, which is how a verifier gets from
                 // get_adcp_capabilities.identity.brand_json_url to our public
                 // key (see src/routes/brandJson.ts). Schema-validated against
-                // the vendored 3.1.0 brand.json schema in tests.
+                // the vendored brand.json schema (ADCP_SPEC_VERSION) in tests.
                 response = handleBrandJson(request, env);
 
             } else if (method === "GET" && path === "/.well-known/jwks.json") {

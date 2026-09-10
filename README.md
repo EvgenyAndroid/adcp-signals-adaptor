@@ -1,6 +1,6 @@
 # AdCP Signals Adaptor
 
-[![AAO Verified Signals Agent 3.0 (Spec)](https://agenticadvertising.org/api/registry/agents/https%3A%2F%2Fadcp.signal-stack.io%2Fmcp/badge/signals/3.0.svg)](https://agenticadvertising.org/registry/agents/https%3A%2F%2Fadcp.signal-stack.io%2Fmcp)
+[![AAO Verified Signals Agent 3.1 (Spec)](https://agenticadvertising.org/api/registry/agents/https%3A%2F%2Fadcp.signal-stack.io%2Fmcp/badge/signals/3.1.svg)](https://agenticadvertising.org/registry/agents/https%3A%2F%2Fadcp.signal-stack.io%2Fmcp)
 
 A production-structured, AdCP 3.1-compliant Signals Provider built on Cloudflare Workers. Implements the full AdCP Signals Activation Protocol with IAB Data Transparency Standard v1.2 labeling, a UCP (User Context Protocol) embedding bridge, real OpenAI embedding vectors, a concept-level cross-taxonomy registry, natural language audience query, and a complete three-phase Vector Alignment Handshake — the first reference implementation combining the AdCP-UCP Bridge Profile with all UCP v0.2-draft extensions including GTS, Projector, and Handshake Simulator.
 
@@ -28,30 +28,34 @@ A production-structured, AdCP 3.1-compliant Signals Provider built on Cloudflare
 | v3.0.4 | 2026-04-30 | **Campaign Canvas (DSP buy-side control loop)** — new tab parallel to brand-anchored Canvas. Mocks the 4 unspec'd buy-side primitives (`submit_bid_strategy` · `get_bid_opportunities` · `get_pacing_status` · `optimize_strategy`) PLUS LIVE-ORCHESTRATES every primitive any directory agent advertises: `/dsp/agents/coverage` (KV-cached probe of 11 buy-side tools across 8 buying agents) · `/dsp/media-buys/live` (fan-out `get_media_buys` aggregator) · `/dsp/media-buys/:id/delivery-live` · `/dsp/campaigns/:id/fire-live` (real `create_media_buy` from Campaign card) · `/dsp/media-buys/:id/update-live` (real `update_media_buy` from Lane 5 strategy diff) · `/dsp/campaigns/:id/signals-live` (real `get_signals` against campaign's audience brief) · `/dsp/campaigns/:id/products-live` (real `get_products` fan-out) · `/dsp/agents/:id/capabilities-live` (real `get_adcp_capabilities` deep-probe). Per-lane LIVE/MOCK/0-of-N provenance pills. **Coverage finding: 8/8 buying agents advertise lifecycle tools (create/update/delivery/buys); 0/8 advertise any of the 4 unspec'd primitives — workshop-cite-able as the largest spec surface gap remaining in 3.0 GA.** |
 | v3.0.5 | 2026-04-30 | **Agentic Canvas** — chat-driven brief expander + tool-selection planner + NDJSON-streamed reasoning trace. Two-mode: **live LLM** (Claude Sonnet 4 via Anthropic API when `ANTHROPIC_API_KEY` is set) or **rule-based templates** that produce structurally identical output deterministically. 8 endpoints: `/agentic/brief/expand` · `/agentic/plan` · `/agentic/execute` (stream) · `/agentic/explain` · `/agentic/chat` · `/agentic/recover` · `/agentic/remediate` · `/agentic/memory/recall`. Streaming UX: skeleton pulses on submit, sections cascade-fade-in as data lands, reasoning trace types char-by-char with blinking cursor, active stage gets accent-glow loop. Reusable "Explain this" overlay badges any decision surface. |
 | v3.0.6 | 2026-04-30 | **SDK bump `@adcp/client` 5.21.1 → 5.25.1** — picks up upstream fixes for two issues we filed (closed within 36h): adcp-client#1060 (`get_products` gate dropped on protocol-wide scenarios) + adcp-client#1062 (`past_start_enforcement` storyboard required-tools pre-flight). Compliance scenarios passed: **4 → 7** (`error_handling`, `validation`, `schema_compliance` now run on signals-only agents). Plus 5.25 version-negotiation hardening (#1073, #1075) — caller-supplied `adcp_major_version` no longer SDK-overridden; single-field `VERSION_UNSUPPORTED` server check. |
+| v3.1.20 corpus | 2026-09-10 | **Spec line batch-refreshed 3.1.0 → 3.1.20** in lockstep with a re-vendored schema corpus (651 schemas; one literal-pinned test derived). Evidence: 57/57 scenarios on the 3.1.20 storyboard line via `@adcp/sdk@13.0.2` (2026-09-08, `complianceState.ts`) and the AAO card verified on 3.1.20. Retired every remaining self-description that said 3.0 or 8 tools: `X-AdCP-Version`, `/health`, MCP `serverInfo.version`, `/openapi.json`, `/privacy`, the governance schema version label, the `/agents/registry` self entry (adcp_3.1, 11 tools) and the demo page strings now derive from `ADCP_WIRE_PIN` / `SPEC_VERSION` / `COMPLIANCE_STATE`; `ext.compliance` labels the run `adcp_3.1` with `compliance_line`/`headline` and points at the state file + registry card instead of the 3.0 GA report. Tool table below caught up with the 2026-09-08 surface (11 tools). |
 | v3.1.0 GA | 2026-06-18 | **AdCP 3.1 GA promotion.** Re-vendored the schema corpus `3.0.15 → v3.1.0`; bumped `SPEC_VERSION → 3.1.0` and `ADCP_MAJOR_LINE → "3.1 GA"` (X-AdCP-Spec-Version now `3.1.0`); serve release-precision `adcp_version: "3.1"` + re-added `adcp.supported_versions: ["3.0","3.1"]`; reject cross-major `adcp_version` pins (e.g. `"4.0"`) with `VERSION_UNSUPPORTED`. Passes the v3.1.0 GA storyboard suite **7/7** (`@adcp/sdk@9.0.0`) — every schema-required signals constraint already satisfied (`cache_scope`, mutating-only idempotency, flat MCP envelope, required signal-item fields). `adagents.json` validated compliant against the 3.1 schema. (The `3.0.7 → 3.0.19` patches in between were storyboard-only / no-wire-change batch refreshes — folded in here, not given per-version rows.) Upstream this cycle: authored `last_updated` on `signal-definition` (adcp#5249, in 3.1), shipped the merged AAO grader fix (adcp#5429/#5444), and posted the `runtime_attestations` RFC (adcp#5418, 3.2 candidate). |
 
 ---
 
 ## Protocol Compliance
 
-Implements AdCP Signals Activation Protocol 3.1 GA — 8 MCP tools. Capabilities response conforms to the [v3 schema](https://adcontextprotocol.org/schemas/v3/protocol/get-adcp-capabilities-response.json):
+Implements AdCP Signals Activation Protocol 3.1 GA — 11 MCP tools. Capabilities response conforms to the [v3 schema](https://adcontextprotocol.org/schemas/v3/protocol/get-adcp-capabilities-response.json):
 
 | Tool | Status | Notes |
 |---|---|---|
 | `get_adcp_capabilities` | ✅ | `adcp.major_versions: [3]` + `adcp.supported_versions: ["3.0", "3.1"]` + `supported_protocols: ["signals"]` + UCP block under `ext.ucp` + `adcp.idempotency.{supported, replay_ttl_seconds}` + `governance.mode` (advisory/audit/enforce). Accepts `protocols` filter param. |
 | `get_signals` | ✅ | `signal_spec` + `deliver_to` (required) + relevance ranking + `x_dts` (with v3.0.1 `policy_attestations[]`) + `x_ucp` on every signal |
 | `activate_signal` | ✅ | `deliver_to` required. Async — returns `task_id + pending` immediately |
-| `get_operation_status` | ✅ | Aliases: `get_task_status`, `get_signal_status`. `destinations` field. |
+| `get_operation_status` | ✅ | `destinations` field. Alias `get_signal_status` kept. |
+| `get_task_status` | ✅ | Canonical 3.x task-status tool since #319 (was an alias of `get_operation_status`) |
+| `list_tasks` | ✅ | Async tasks for the calling operator (3.x namespace alias of the legacy tasks/list surface), #318 |
+| `comply_test_controller` | ✅ | Sandbox-only deterministic test controller — `force_get_signals_arm`, `force_task_completion` — so the storyboard runner can grade the async paths (#318) |
 | `get_similar_signals` | ✅ | UCP vector cosine similarity search |
 | `query_signals_nl` | ✅ | Hybrid NL audience query — exact_rule → embedding_similarity → lexical_fallback. v2.1 |
 | `get_concept` | ✅ | Concept registry exact lookup by concept_id |
 | `search_concepts` | ✅ | Semantic search over concept registry |
 
-Passes the AdCP conformance test suite at `@adcp/client@5.25.1`: **7 / 7 scenarios** (health · discovery · capability_discovery · signals_flow · error_handling · validation · schema_compliance — last 3 unblocked by upstream fixes for our filed issues #1060 + #1062).
+Passes the official AdCP **storyboard** suite (`@adcp/sdk@13.0.2`, compliance line 3.1.20): **57 / 57 scenarios**, 0 failed steps, 76 steps skipped (not applicable, missing tool, or no webhook receiver on that run; the receiver-mode run reads 42 passed / 2 failed, both upstream — see `src/constants/specVersion.ts`) (2026-09-08, auto-written to `src/constants/complianceState.ts` by `npm run compliance`). The AAO hosted grader has graded the same line twice daily since 2026-09-03 and lists the agent **verified** (66/68 scenarios; storyboards 9 passing, 5 failing-or-partial on the hosted runner — 37 steps that do not reproduce locally on the same line — and 21 not applicable to a signals-only agent; card status "degraded") — feed: `https://agenticadvertising.org/api/registry/agents/https%3A%2F%2Fadcp.signal-stack.io%2Fmcp/compliance`. The 7/7 `@adcp/client@5.25.1` figure that used to sit here was the legacy scenario suite, retired 2026-09-07.
 
 ### Adapter-side capabilities (v3.0.1+)
 
-Beyond the 8 MCP signal tools above, this adaptor also exposes **federation, registry, governance, and agentic-orchestration surfaces** via REST endpoints. These are NOT in the spec but are workshop-visible value-adds and most are mocked locally where the spec is silent.
+Beyond the 11 MCP tools above, this adaptor also exposes **federation, registry, governance, and agentic-orchestration surfaces** via REST endpoints. These are NOT in the spec but are workshop-visible value-adds and most are mocked locally where the spec is silent.
 
 | Surface | Endpoint(s) | Spec status |
 |---|---|---|
@@ -71,7 +75,7 @@ Beyond the 8 MCP signal tools above, this adaptor also exposes **federation, reg
 
 | Standard | Coverage |
 |---|---|
-| AdCP Signals Activation Protocol v3.0 GA | Full — all 4 core tools + `get_similar_signals` + NL query + concept registry extensions. Capabilities response conforms to v3 schema (UCP under `ext.ucp`, `protocols` filter, `adcp.idempotency` block, `governance.mode` field). |
+| AdCP Signals Activation Protocol 3.1 GA (corpus v3.1.20) | Full — all 4 core tools + `get_similar_signals` + NL query + concept registry extensions + task listing + the sandbox test controller. Capabilities response conforms to v3 schema (UCP under `ext.ucp`, `protocols` filter, `adcp.idempotency` block, `governance.mode` field). |
 | AdCP 3.0.1 spec extensions | Governance `mode` field on capabilities · paginated `max_results` enforcement |
 | IAB Data Transparency Standard v1.2 | Full — `x_dts` on every signal, all field types, onboarder section |
 | **DTS v1.3 proposal** | `policy_attestations[]` extension on every DTS label (8 default claims for our demo provider; bridges IAB content-trust to AdCP governance layer) |
@@ -647,12 +651,15 @@ wrote.) A rollback to a shape that removes a field that callers
 started depending on is the failure mode; everyone else is fine with
 staleness under 1 hour.
 
-### Upgrading `@adcp/client`
+### Upgrading `@adcp/sdk` (formerly `@adcp/client`)
 
-`@adcp/client` is pinned with a caret range (current: `^5.21.1`).
-Compliance-runner behavior can drift under us on `npm install`, so
-the discipline is to re-run compliance whenever the lockfile shifts.
-Before bumping the floor:
+`@adcp/sdk` is pinned exactly (current: `13.0.2`; `scripts/run-compliance.mjs`
+pins the same build and the 3.1.20 storyboard line). Do not move to 13.0.3
+until adcp-client#2867 ships its fix — that build fails every
+`comply_test_controller` response-schema check under `storyboard run`
+(the mode `npm run compliance` uses). Compliance-runner behavior
+drifts under us on version bumps, so the discipline is to re-run compliance
+on every bump. Before bumping:
 
 1. Read the upstream release notes:
    `https://github.com/adcontextprotocol/adcp-client/releases`.
@@ -706,7 +713,7 @@ npm run test:live                                       # full live API suite (3
 BASE=https://staging.example.workers.dev API_KEY=xxx npm run test:live
 ```
 
-57 unit tests + NLAQ test suite covering: ID utilities, estimation, taxonomy loader, rule engine, signal catalog, DTS v1.2, MCP tool definitions (8 tools), NL query AST, three-pass resolver, archetype expansion, title inference, unresolved handling, cosine similarity, mixed-space detection.
+57 unit tests + NLAQ test suite covering: ID utilities, estimation, taxonomy loader, rule engine, signal catalog, DTS v1.2, MCP tool definitions (11 tools), NL query AST, three-pass resolver, archetype expansion, title inference, unresolved handling, cosine similarity, mixed-space detection.
 
 ---
 

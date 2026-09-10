@@ -378,7 +378,9 @@ async function handleInitialize(
         capabilities: { tools: { listChanged: false } },
         serverInfo: {
             name: "adcp-signals-adaptor",
-            version: env.API_VERSION ?? ADCP_WIRE_PIN,
+            // The wire pin, not env.API_VERSION: a dashboard-level var override
+            // could silently re-advertise an old line and nothing smokes this field.
+            version: ADCP_WIRE_PIN,
             description:
                 "AdCP Signals Provider — IAB Audience Taxonomy 1.1 aligned signal discovery, " +
                 "brief-driven custom segment proposals, and async activation with webhook support.",

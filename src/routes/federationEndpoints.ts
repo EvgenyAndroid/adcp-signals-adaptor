@@ -38,7 +38,7 @@ export function handleAgentsRegistry(): Response {
           "portfolio_optimizer",
         ],
         tools_exposed: [
-              "get_adcp_capabilities", "get_signals", "activate_signal",
+          "get_adcp_capabilities", "get_signals", "activate_signal",
           "get_operation_status", "get_task_status", "list_tasks",
           "get_similar_signals", "query_signals_nl",
           "get_concept", "search_concepts", "comply_test_controller",

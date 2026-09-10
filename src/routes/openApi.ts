@@ -13,6 +13,7 @@ export function handleOpenApi(request: Request): Response {
     openapi: "3.1.0",
     info: {
       title: "AdCP Signals Adaptor",
+      // The corpus patch we validate against (SPEC_VERSION), not the wire pin.
       version: SPEC_VERSION,
       description:
         "Reference implementation of the Ad Context Protocol Signals Activation Protocol. " +

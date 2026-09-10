@@ -23,6 +23,8 @@
 // fetch calls can include it as a Bearer token if any endpoint becomes
 // auth-gated later.
 
+import { SPEC_VERSION } from "../constants/specVersion";
+
 export function handleRaceCanvas(env: { DEMO_API_KEY: string }): Response {
   return new Response(renderRaceCanvas(env.DEMO_API_KEY), {
     status: 200,
@@ -966,7 +968,7 @@ function renderRaceCanvas(demoKey: string): string {
 <div class="modal-backdrop" id="signal-trace-backdrop" style="display:none">
   <div class="modal" style="max-width:920px;width:96vw;max-height:88vh;overflow-y:auto">
     <div class="modal-title">Signal traces · raw protocol JSON</div>
-    <div class="modal-sub" style="opacity:0.7">Every recorded AdCP tool call (get_signals, activate_signal, query_signals_nl, get_operation_status, list_creative_formats, get_products, create_media_buy, check_governance) with schema validation against the vendored 3.0.8 corpus. Refresh to pull latest.</div>
+    <div class="modal-sub" style="opacity:0.7">Every recorded AdCP tool call (get_signals, activate_signal, query_signals_nl, get_operation_status, list_creative_formats, get_products, create_media_buy, check_governance) with schema validation against the vendored ${SPEC_VERSION} corpus. Refresh to pull latest.</div>
     <button class="modal-close" id="signal-trace-modal-close">close</button>
     <div style="margin-top:14px"><button class="try-chip" id="signal-trace-refresh">↻ refresh</button></div>
     <div id="signal-trace-list" style="margin-top:12px;font:11.5px ui-monospace,Menlo,Consolas,monospace">loading…</div>

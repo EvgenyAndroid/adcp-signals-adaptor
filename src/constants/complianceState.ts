@@ -18,6 +18,7 @@
 // /capabilities.
 //
 // History (auto-prepended; manual entries also preserved across rewrites):
+//   2026-09-10 — auto-written by scripts/run-compliance.mjs (57/57 scenarios, 32/108 steps passed, 76 skipped, 18 storyboards; AdCP 3.1.20 via @adcp/sdk@13.0.2).
 //   2026-09-08 — auto-written by scripts/run-compliance.mjs (57/57 scenarios, 32/108 steps passed, 76 skipped, 18 storyboards; AdCP 3.1.20 via @adcp/sdk@13.0.2).
 //   2026-09-07 — auto-written by scripts/run-compliance.mjs (49/49 scenarios, 32/77 steps passed, 45 skipped, 15 storyboards; AdCP 3.1.15 via @adcp/sdk@13.0.0).
 //   2026-08-04 — auto-written by scripts/run-compliance.mjs (7/7 applicable, 32 skipped).
@@ -37,7 +38,7 @@
 
 export const COMPLIANCE_STATE = {
   /** ISO date (YYYY-MM-DD) of the last passing compliance run. */
-  last_run: "2026-09-08",
+  last_run: "2026-09-10",
 
   /** The @adcp/sdk build that executed the suite, captured live by the
    *  runner so /capabilities never advertises a stale runner version. */

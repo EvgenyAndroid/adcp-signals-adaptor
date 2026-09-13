@@ -321,7 +321,7 @@ async function handleSingleMessage(
                     if (err instanceof McpToolError) {
                         const details = (err.details ?? {}) as Record<string, unknown>;
                         const rawCode = details["code"];
-                        const code = typeof rawCode === "string" ? rawCode : "INTERNAL_ERROR";
+                        const code = typeof rawCode === "string" ? rawCode : "SERVICE_UNAVAILABLE";
                         const adcpError: { code: string; message: string; recovery?: string; field?: string; details?: unknown; supported_major_versions?: number[] } = {
                             code,
                             message: err.message,
@@ -359,7 +359,7 @@ async function handleSingleMessage(
         // branch for defensiveness — convert to MCP shape if it does.
         if (err instanceof McpToolError) {
             const details = (err.details ?? {}) as Record<string, unknown>;
-            const code = typeof details["code"] === "string" ? details["code"] as string : "INTERNAL_ERROR";
+            const code = typeof details["code"] === "string" ? details["code"] as string : "SERVICE_UNAVAILABLE";
             return rpcSuccess(id, toolError({ code, message: err.message }, undefined));
         }
         logger.error("mcp_unhandled_error", { method, error: String(err) });
@@ -524,7 +524,7 @@ async function handleToolCall(
     };
     const resolvedName = TOOL_ALIASES[name] ?? name;
     const toolDef = getToolByName(resolvedName);
-    if (!toolDef) throw new McpToolError(`Unknown tool: ${name}`);
+    if (!toolDef) throw new McpToolError(`Unknown tool: ${name}`, { code: "UNSUPPORTED_FEATURE", recovery: "terminal" });
 
     // Version negotiation — must run BEFORE per-tool dispatch so the
     // error surfaces uniformly across every state-changing tool. The
@@ -544,11 +544,11 @@ async function handleToolCall(
         case "get_signal_status":
             return callGetOperation(args, env, logger, operatorId);
         case "get_task_status": {
-            if (!operatorId) throw new McpToolError("get_task_status requires an authenticated caller");
+            if (!operatorId) throw new McpToolError("get_task_status requires an authenticated caller", { code: "AUTH_REQUIRED", recovery: "correctable" });
             return callGetTaskStatus(args, env, logger, operatorId);
         }
         case "comply_test_controller": {
-            if (!operatorId) throw new McpToolError("comply_test_controller requires an authenticated caller");
+            if (!operatorId) throw new McpToolError("comply_test_controller requires an authenticated caller", { code: "AUTH_REQUIRED", recovery: "correctable" });
             const controllerResult = await handleComplyTestController(env, args, operatorId);
             // The vendored schema's response is a bespoke discriminated union
             // (success:true|false + scenario-specific fields), NOT the generic
@@ -564,7 +564,7 @@ async function handleToolCall(
             return toolResultJson(envelope);
         }
         case "list_tasks": {
-            if (!operatorId) throw new McpToolError("list_tasks requires an authenticated caller");
+            if (!operatorId) throw new McpToolError("list_tasks requires an authenticated caller", { code: "AUTH_REQUIRED", recovery: "correctable" });
             const allTasks = await listComplianceTasks(env, operatorId, args["account"]);
 
             // get_signals_async.yaml's list_signals_task step filters by
@@ -642,7 +642,7 @@ async function handleToolCall(
             return toolResultJson(conceptResponse);
         }
         default:
-            throw new McpToolError(`Tool not implemented: ${name}`);
+            throw new McpToolError(`Tool not implemented: ${name}`, { code: "UNSUPPORTED_FEATURE", recovery: "terminal" });
     }
 }
 
@@ -1204,7 +1204,7 @@ async function callActivateSignal(
     const webhookUrl = args["webhook_url"] as string | undefined;
     const pricingOptionId = args["pricing_option_id"] as string | undefined;
 
-    if (!signalId) throw new McpToolError("signal_agent_segment_id is required");
+    if (!signalId) throw new McpToolError("signal_agent_segment_id is required", { code: "INVALID_REQUEST", recovery: "correctable", field: "/signal_agent_segment_id" });
 
     const req = {
         signalId,
@@ -1371,7 +1371,7 @@ async function callActivateSignal(
             });
         }
         if (err instanceof ValidationError) {
-            throw new McpToolError(err.message);
+            throw new McpToolError(err.message, { code: "VALIDATION_ERROR", recovery: "correctable" });
         }
         const STORYBOARD_FIXTURE_PREFIXES = ["prism_"];
         const isStoryboardFixture = STORYBOARD_FIXTURE_PREFIXES.some(
@@ -1529,7 +1529,7 @@ async function callGetOperation(
     operatorId: string | null
 ): Promise<unknown> {
     const taskId = (args["task_id"] ?? args["operationId"]) as string;
-    if (!taskId) throw new McpToolError("task_id is required");
+    if (!taskId) throw new McpToolError("task_id is required", { code: "INVALID_REQUEST", recovery: "correctable", field: "/task_id" });
 
     // comply_test_controller's force_task_completion hook. Compliance tasks
     // live in KV under the operator's own namespace, not D1, so they're
@@ -1597,7 +1597,7 @@ async function callGetOperation(
             duration_ms: Date.now() - _t0,
         });
         await persistSignalTrace(env, _trace);
-        if (err instanceof NotFoundError) throw new McpToolError(err.message);
+        if (err instanceof NotFoundError) throw new McpToolError(err.message, { code: "REFERENCE_NOT_FOUND", recovery: "terminal" });
         throw err;
     }
 }
@@ -1621,7 +1621,7 @@ async function callGetTaskStatus(
     operatorId: string
 ): Promise<unknown> {
     const taskId = args["task_id"] as string;
-    if (!taskId) throw new McpToolError("task_id is required");
+    if (!taskId) throw new McpToolError("task_id is required", { code: "INVALID_REQUEST", recovery: "correctable", field: "/task_id" });
     const includeResult = args["include_result"] === true;
 
     const lookup = await getComplianceTask(env, operatorId, taskId, args["account"]);
@@ -1689,7 +1689,7 @@ async function callGetSimilarSignals(
     _logger: Logger
 ): Promise<unknown> {
     const signalId = (args["signal_agent_segment_id"] ?? args["signal_id"]) as string;
-    if (!signalId) throw new McpToolError("signal_agent_segment_id is required");
+    if (!signalId) throw new McpToolError("signal_agent_segment_id is required", { code: "INVALID_REQUEST", recovery: "correctable", field: "/signal_agent_segment_id" });
 
     const topK = Math.min(numArg(args["top_k"], 5), 20);
     const minSimilarity = numArg(args["min_similarity"], 0.7);
@@ -1768,7 +1768,7 @@ async function callQuerySignalsNl(
     logger: Logger
 ): Promise<unknown> {
     const query = args["query"] as string | undefined;
-    if (!query) throw new McpToolError("query is required");
+    if (!query) throw new McpToolError("query is required", { code: "INVALID_REQUEST", recovery: "correctable", field: "/query" });
 
     const limit = numArg(args["limit"], 10);
 

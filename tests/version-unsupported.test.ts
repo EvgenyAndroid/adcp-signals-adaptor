@@ -109,6 +109,10 @@ describe("VERSION_UNSUPPORTED enforcement", () => {
     const adcp_error = adcpErrorOf(body);
     expect(adcp_error?.code).toBe("VERSION_UNSUPPORTED");
     expect(adcp_error?.supported_major_versions).toEqual([3]);
+    // The bundled enums/error-code.json classes this correctable: re-pin and
+    // retry. Omitting recovery leaves the buyer nothing to branch on, and 3.1
+    // says senders SHOULD populate it on every error.
+    expect(adcp_error?.recovery).toBe("correctable");
   });
 
   it("get_signals with adcp_major_version: 1 (below range) returns VERSION_UNSUPPORTED", async () => {
@@ -187,6 +191,7 @@ describe("VERSION_UNSUPPORTED enforcement", () => {
     expect(body.error).toBeUndefined();
     expect(body.result?.isError).toBe(true);
     expect(adcpErrorOf(body)?.code).toBe("VERSION_UNSUPPORTED");
+    expect(adcpErrorOf(body)?.recovery).toBe("correctable");
   });
 
   it("get_signals with adcp_version '3.1' (supported release) does NOT trip version check", async () => {

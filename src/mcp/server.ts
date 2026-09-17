@@ -482,7 +482,7 @@ function validateAdcpMajorVersion(toolName: string, args: Record<string, unknown
         if (!Number.isInteger(num) || !SUPPORTED_MAJOR_VERSIONS.includes(num)) {
             throw new McpToolError(
                 `adcp_major_version ${v} not supported. This seller supports: [${SUPPORTED_MAJOR_VERSIONS.join(", ")}]. Call get_adcp_capabilities without adcp_major_version to discover supported versions, then retry with a supported version.`,
-                { code: "VERSION_UNSUPPORTED", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS] },
+                { code: "VERSION_UNSUPPORTED", recovery: "correctable", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS] },
             );
         }
     }
@@ -498,7 +498,7 @@ function validateAdcpMajorVersion(toolName: string, args: Record<string, unknown
         if (!Number.isInteger(relMajor) || !SUPPORTED_MAJOR_VERSIONS.includes(relMajor)) {
             throw new McpToolError(
                 `adcp_version ${rel} not supported. This seller supports releases 3.0 and 3.1 (major versions [${SUPPORTED_MAJOR_VERSIONS.join(", ")}]). Call get_adcp_capabilities to discover supported versions, then retry with a supported adcp_version.`,
-                { code: "VERSION_UNSUPPORTED", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS] },
+                { code: "VERSION_UNSUPPORTED", recovery: "correctable", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS] },
             );
         }
     }

@@ -94,7 +94,10 @@ describe("tool-level errors carry canonical AdCP codes", () => {
   it("an unknown tool name returns UNSUPPORTED_FEATURE, not INTERNAL_ERROR", async () => {
     const { adcp_error } = await callTool("no_such_tool_exists", {}, 3);
     expect(adcp_error?.code).toBe("UNSUPPORTED_FEATURE");
-    expect(adcp_error?.recovery).toBe("terminal");
+    // A misspelled tool name is fixed by spelling it right, so this is
+    // correctable. "Tool not implemented" (the dispatch default) stays
+    // terminal -- no request edit makes us grow the handler.
+    expect(adcp_error?.recovery).toBe("correctable");
   });
 
   it("no argument-guard path emits a code outside the canonical enum", async () => {

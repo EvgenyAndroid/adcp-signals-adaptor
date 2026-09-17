@@ -446,6 +446,15 @@ async function handleInitialize(
 const SUPPORTED_MAJOR_VERSIONS: ReadonlyArray<number> = [3];
 
 /**
+ * Release-precision versions we speak. error-details/version-unsupported.json
+ * marks `supported_versions` authoritative for retry and `supported_majors`
+ * deprecated, so a refused pin carries both and the buyer can re-pin without a
+ * capabilities round-trip. MUST match capabilityService.ts `supported_versions`
+ * (there: ["3.0", "3.1"]); version-unsupported.test.ts compares the two live.
+ */
+const SUPPORTED_RELEASE_VERSIONS: ReadonlyArray<string> = ["3.0", "3.1"];
+
+/**
  * Per AdCP 3.0.x (vendor/.../signals/get-signals-request.json:10):
  *   "Sellers validate against their supported major_versions and
  *    return VERSION_UNSUPPORTED if unsupported."
@@ -482,7 +491,7 @@ function validateAdcpMajorVersion(toolName: string, args: Record<string, unknown
         if (!Number.isInteger(num) || !SUPPORTED_MAJOR_VERSIONS.includes(num)) {
             throw new McpToolError(
                 `adcp_major_version ${v} not supported. This seller supports: [${SUPPORTED_MAJOR_VERSIONS.join(", ")}]. Call get_adcp_capabilities without adcp_major_version to discover supported versions, then retry with a supported version.`,
-                { code: "VERSION_UNSUPPORTED", recovery: "correctable", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS] },
+                { code: "VERSION_UNSUPPORTED", recovery: "correctable", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS], supported_versions: [...SUPPORTED_RELEASE_VERSIONS], supported_majors: [...SUPPORTED_MAJOR_VERSIONS] },
             );
         }
     }
@@ -498,7 +507,7 @@ function validateAdcpMajorVersion(toolName: string, args: Record<string, unknown
         if (!Number.isInteger(relMajor) || !SUPPORTED_MAJOR_VERSIONS.includes(relMajor)) {
             throw new McpToolError(
                 `adcp_version ${rel} not supported. This seller supports releases 3.0 and 3.1 (major versions [${SUPPORTED_MAJOR_VERSIONS.join(", ")}]). Call get_adcp_capabilities to discover supported versions, then retry with a supported adcp_version.`,
-                { code: "VERSION_UNSUPPORTED", recovery: "correctable", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS] },
+                { code: "VERSION_UNSUPPORTED", recovery: "correctable", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS], supported_versions: [...SUPPORTED_RELEASE_VERSIONS], supported_majors: [...SUPPORTED_MAJOR_VERSIONS] },
             );
         }
     }
@@ -524,7 +533,7 @@ async function handleToolCall(
     };
     const resolvedName = TOOL_ALIASES[name] ?? name;
     const toolDef = getToolByName(resolvedName);
-    if (!toolDef) throw new McpToolError(`Unknown tool: ${name}`, { code: "UNSUPPORTED_FEATURE", recovery: "terminal" });
+    if (!toolDef) throw new McpToolError(`Unknown tool: ${name}`, { code: "UNSUPPORTED_FEATURE", recovery: "correctable" });
 
     // Version negotiation — must run BEFORE per-tool dispatch so the
     // error surfaces uniformly across every state-changing tool. The
@@ -1597,7 +1606,7 @@ async function callGetOperation(
             duration_ms: Date.now() - _t0,
         });
         await persistSignalTrace(env, _trace);
-        if (err instanceof NotFoundError) throw new McpToolError(err.message, { code: "REFERENCE_NOT_FOUND", recovery: "terminal" });
+        if (err instanceof NotFoundError) throw new McpToolError(err.message, { code: "REFERENCE_NOT_FOUND", recovery: "correctable" });
         throw err;
     }
 }

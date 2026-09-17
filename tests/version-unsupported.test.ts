@@ -52,6 +52,7 @@ type McpResultBody = {
         recovery?: string;
         field?: string;
         supported_major_versions?: number[];
+        details?: { supported_versions?: string[]; supported_majors?: number[]; [k: string]: unknown };
       };
       context?: unknown;
       [k: string]: unknown;
@@ -95,6 +96,25 @@ describe("VERSION_UNSUPPORTED enforcement", () => {
     return body.result?.structuredContent?.adcp_error;
   }
 
+  it("the refusal's supported_versions matches what get_adcp_capabilities advertises", async () => {
+    // The retry list is duplicated: server.ts SUPPORTED_RELEASE_VERSIONS and
+    // capabilityService's adcp.supported_versions. If they drift, we hand a
+    // refused buyer a list to re-pin against that we do not actually honour.
+    const { body: caps } = await call(mcpReq({
+      jsonrpc: "2.0", id: 20, method: "tools/call",
+      params: { name: "get_adcp_capabilities", arguments: {} },
+    }));
+    const advertised = (caps.result?.structuredContent as Record<string, unknown> | undefined);
+    const adcp = advertised?.["adcp"] as { supported_versions?: string[] } | undefined;
+    expect(adcp?.supported_versions).toBeDefined();
+
+    const { body: refused } = await call(mcpReq({
+      jsonrpc: "2.0", id: 21, method: "tools/call",
+      params: { name: "get_signals", arguments: { signal_spec: "anything", adcp_version: "4.0" } },
+    }));
+    expect(adcpErrorOf(refused)?.details?.supported_versions).toEqual(adcp?.supported_versions);
+  });
+
   it("get_signals with adcp_major_version: 99 returns VERSION_UNSUPPORTED", async () => {
     const { body } = await call(mcpReq({
       jsonrpc: "2.0", id: 3, method: "tools/call",
@@ -113,6 +133,12 @@ describe("VERSION_UNSUPPORTED enforcement", () => {
     // retry. Omitting recovery leaves the buyer nothing to branch on, and 3.1
     // says senders SHOULD populate it on every error.
     expect(adcp_error?.recovery).toBe("correctable");
+    // error-details/version-unsupported.json: `supported_versions` is the
+    // authoritative retry list (release-precision), `supported_majors` its
+    // deprecated companion that servers SHOULD emit through 3.x. The legacy
+    // `supported_major_versions` key stays for callers already reading it.
+    expect(adcp_error?.details?.supported_versions).toEqual(["3.0", "3.1"]);
+    expect(adcp_error?.details?.supported_majors).toEqual([3]);
   });
 
   it("get_signals with adcp_major_version: 1 (below range) returns VERSION_UNSUPPORTED", async () => {

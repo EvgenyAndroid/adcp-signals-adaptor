@@ -60,7 +60,7 @@ Implements AdCP Signals Activation Protocol 3.1 GA — 11 MCP tools. Capabilitie
 | `get_concept` | ✅ | Concept registry exact lookup by concept_id |
 | `search_concepts` | ✅ | Semantic search over concept registry |
 
-Passes the official AdCP **storyboard** suite (`@adcp/sdk@13.0.2`, compliance line 3.1.20): **57 / 57 scenarios**, 0 failed steps, 76 steps skipped (not applicable, missing tool, or no webhook receiver on that run; the receiver-mode run reads 42 passed / 2 failed, both upstream — see `src/constants/specVersion.ts`) (2026-09-08, auto-written to `src/constants/complianceState.ts` by `npm run compliance`). The AAO hosted grader has graded the same line twice daily since 2026-09-03 and lists the agent **verified** (66/68 scenarios; storyboards 9 passing, 5 failing-or-partial on the hosted runner — 37 steps that do not reproduce locally on the same line — and 21 not applicable to a signals-only agent; card status "degraded") — feed: `https://agenticadvertising.org/api/registry/agents/https%3A%2F%2Fadcp.signal-stack.io%2Fmcp/compliance`. The 7/7 `@adcp/client@5.25.1` figure that used to sit here was the legacy scenario suite, retired 2026-09-07.
+Graded by the AAO hosted grader on compliance line **3.1.24**: card status **passing** since 2026-09-29 20:56 UTC (the first heartbeat on 3.1.24, `@adcp/sdk@14.0.0-rc.50`), re-graded twice daily by heartbeat on the stable `@adcp/sdk@14.0.0` runner since 2026-10-02, last at 2026-10-06 04:05 UTC with a six-day passing streak. **10 of 38 storyboards pass and 28 are untested** — not applicable to a signals-only agent — and every scenario in the three graded tracks passes (core 38/38, signals 9/9, error handling 8/8; creative, media-buy and security-transport are skipped). The agent is **verified** for the signals role (specialism `signal-owned` passing; badges for 3.1 since 2026-06-20 and 3.0 since 2026-06-18, no eligibility blockers) with one forward notice: `request_signing.supported` becomes required for spend-committing operations in AdCP 4.0. Feed: `https://agenticadvertising.org/api/registry/agents/https%3A%2F%2Fadcp.signal-stack.io%2Fmcp/compliance`. Before 2026-09-29 the card read "degraded" on line 3.1.20 with two hosted partials: `error_compliance_signals` 6/7 was an agent defect (an out-of-enum error code, fixed in 7662f38 on 2026-09-13) and `billing_gate_dispatch` 1/2 became not applicable on 3.1.24, where the storyboard gates on `sync_accounts`. The last **local** run of the same storyboard suite (`npm run compliance` on `@adcp/sdk@13.0.2`, line 3.1.20, 2026-09-10, auto-written to `src/constants/complianceState.ts`) read 57/57 scenarios, 0 failed steps, 76 skipped (not applicable, missing tool, or no webhook receiver on that run; the receiver-mode run read 42 passed / 2 failed, both upstream — see `src/constants/specVersion.ts`); the pinned `@adcp/sdk@13.0.4` bundles the 3.1.20 line, not 3.1.24, so a local run on the card's line needs a 13.1.x pin. The 7/7 `@adcp/client@5.25.1` figure that used to sit here was the legacy scenario suite, retired 2026-09-07.
 
 ### Adapter-side capabilities (v3.0.1+)
 
@@ -662,11 +662,12 @@ staleness under 1 hour.
 
 ### Upgrading `@adcp/sdk` (formerly `@adcp/client`)
 
-`@adcp/sdk` is pinned exactly (current: `13.0.2`; `scripts/run-compliance.mjs`
-pins the same build and the 3.1.20 storyboard line). Do not move to 13.0.3
-until adcp-client#2867 ships its fix — that build fails every
-`comply_test_controller` response-schema check under `storyboard run`
-(the mode `npm run compliance` uses). Compliance-runner behavior
+`@adcp/sdk` is pinned exactly (current: `13.0.4`, which bundles the 3.1.20
+storyboard line; `scripts/run-compliance.mjs` still names `13.0.2` as its pin and
+warns, then runs, on any other build that carries the line). 13.0.3 is the one
+build to avoid: it failed every `comply_test_controller` response-schema check
+under `storyboard run` (the mode `npm run compliance` uses) until
+adcp-client#2867 was fixed by adcp-client#2894 in 13.0.4. Compliance-runner behavior
 drifts under us on version bumps, so the discipline is to re-run compliance
 on every bump. Before bumping:
 

@@ -67,6 +67,12 @@
       "number": 6242,
       "kind": "issue",
       "context": "OURS (P0, still open). Account-resolution bug: advertising list_accounts switches the runner into discovery mode and hard-fails 'ambiguous' instead of falling back to the natural key. THE LIVE GATE for the sales agent's badge. SDK fix merged 2026-08-08 in adcp-client#2488 (schema-default account routing + agency-operated brand matching); runner guidance in adcp#6289. bokelley is keeping this P0 OPEN until a post-#2488 SDK RC publishes AND the hosted grader adopts it — rc.9 PREDATES #2488. **STANDING HYPOTHESIS TO TEST, do not start agent work before it:** the sales agent sits at storyboards_passing 5/37 while scenarios read 132/138, and a large share of those 32 storyboards need an account resolved first — so much of the gap may be THIS bug rather than agent defects. TEST: after the post-#2488 RC ships and the grader adopts, requeue and check whether storyboards_passing moves off 5/37. Jumps => the sales-non-guaranteed specialism work was never ours. Barely moves => it is real, and the dashboard's storyboard-level view (amber bars) is the starting point, NOT the compliance API (storyboard_statuses is empty — see #6291). Drop once the RC lands and the storyboard count is checked."
+    },
+    {
+      "repo": "adcontextprotocol/adcp-client",
+      "number": 3124,
+      "kind": "issue",
+      "context": "OURS, filed 2026-10-06. 13.x (the graded adcp-3.1 line) runs capabilities discovery major-only, validates it against the 3.0 schema and console.warns the closed compliance_testing.scenarios enum for every 3.1 agent; the structured result is clean (discoverAgentProfile re-validates on 3.1.24), 14.x is unaffected (#2603 gated it). Ask: backport #2603 to 13.x. Drop once closed or once a 13.1.x release stops printing it (re-run npm run compliance to confirm)."
     }
   ],
   "contribution_page": {

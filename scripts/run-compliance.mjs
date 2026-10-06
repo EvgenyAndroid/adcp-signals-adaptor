@@ -123,8 +123,8 @@ const require = createRequire(import.meta.url);
 // The GA line the grader runs. Bump BOTH together, and re-verify against the
 // card before trusting the new numbers (see the sales agent's history: a
 // line bump has changed pass/fail on individual steps more than once).
-const SDK_PIN = "13.0.2";
-const LINE = "3.1.20";
+const SDK_PIN = "13.1.3";
+const LINE = "3.1.24";
 
 const SDK_DIR = resolve(ROOT, "node_modules", "@adcp", "sdk");
 const CLI = join(SDK_DIR, "bin", "adcp.js");

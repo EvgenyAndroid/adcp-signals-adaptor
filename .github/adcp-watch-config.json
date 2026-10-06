@@ -73,6 +73,12 @@
       "number": 3124,
       "kind": "issue",
       "context": "OURS, filed 2026-10-06. 13.x (the graded adcp-3.1 line) runs capabilities discovery major-only, validates it against the 3.0 schema and console.warns the closed compliance_testing.scenarios enum for every 3.1 agent; the structured result is clean (discoverAgentProfile re-validates on 3.1.24), 14.x is unaffected (#2603 gated it). Ask: backport #2603 to 13.x. Drop once closed or once a 13.1.x release stops printing it (re-run npm run compliance to confirm)."
+    },
+    {
+      "repo": "adcontextprotocol/adcp-client",
+      "number": 3125,
+      "kind": "issue",
+      "context": "OURS, filed 2026-10-06 as the follow-up #3124 triage asked for (item 2): under a major-only envelope validateResponseSchema should take the validation line from the capabilities response itself (adcp_version via hasSchemaBundle, then the highest bundled supported_versions entry, then 3.0), changing only the local validationVersion and leaving responseAdcpVersionForValidation() alone. Drop once closed or shipped on 13.x/14.x."
     }
   ],
   "contribution_page": {

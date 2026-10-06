@@ -18,6 +18,7 @@
 // /capabilities.
 //
 // History (auto-prepended; manual entries also preserved across rewrites):
+//   2026-10-06 — auto-written by scripts/run-compliance.mjs (55/55 scenarios, 31/106 steps passed, 75 skipped, 18 storyboards; AdCP 3.1.24 via @adcp/sdk@13.1.3).
 //   2026-09-10 — auto-written by scripts/run-compliance.mjs (57/57 scenarios, 32/108 steps passed, 76 skipped, 18 storyboards; AdCP 3.1.20 via @adcp/sdk@13.0.2).
 //   2026-09-08 — auto-written by scripts/run-compliance.mjs (57/57 scenarios, 32/108 steps passed, 76 skipped, 18 storyboards; AdCP 3.1.20 via @adcp/sdk@13.0.2).
 //   2026-09-07 — auto-written by scripts/run-compliance.mjs (49/49 scenarios, 32/77 steps passed, 45 skipped, 15 storyboards; AdCP 3.1.15 via @adcp/sdk@13.0.0).
@@ -38,14 +39,14 @@
 
 export const COMPLIANCE_STATE = {
   /** ISO date (YYYY-MM-DD) of the last passing compliance run. */
-  last_run: "2026-09-10",
+  last_run: "2026-10-06",
 
   /** The @adcp/sdk build that executed the suite, captured live by the
    *  runner so /capabilities never advertises a stale runner version. */
-  client_runner: "@adcp/sdk@13.0.2",
+  client_runner: "@adcp/sdk@13.1.3",
 
   /** AdCP compliance line the storyboards were resolved from. */
-  compliance_line: "3.1.20",
+  compliance_line: "3.1.24",
 
   /** Runner headline for the run (track-level status, e.g. "1 partial, 2 silent"). */
   headline: "3 silent",
@@ -89,9 +90,7 @@ export const COMPLIANCE_STATE = {
     "pagination_integrity_creative_formats/not_applicable",
     "pagination_integrity_list_accounts/not_applicable",
     "pagination_integrity_property_lists/not_applicable",
-    "read_tool_idempotency/omitted_key_grace_accept_path",
-    "read_tool_idempotency/omitted_key_grace_assertion",
-    "read_tool_idempotency/omitted_key_grace_reject_path",
+    "read_tool_idempotency/omitted_key_optional",
     "read_tool_idempotency/read_requests_accept_idempotency_key",
     "schema_validation/not_applicable",
     "schema_validation_signals/capability_discovery",
@@ -114,18 +113,18 @@ export const COMPLIANCE_STATE = {
   /** Scenario-level pass / fail / skip counts from the last passing run.
    *  Served on /capabilities as `results`. */
   results: {
-    applicable: 57,
-    passed: 57,
+    applicable: 55,
+    passed: 55,
     failed: 0,
     skipped: 5,
   },
 
   /** Step-level counts for the same run (the runner's primary accounting). */
   steps: {
-    passed: 32,
+    passed: 31,
     failed: 0,
-    skipped: 76,
-    total: 108,
+    skipped: 75,
+    total: 106,
   },
 
   /** Storyboards the runner executed vs. skipped for tools this agent

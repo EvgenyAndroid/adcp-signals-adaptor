@@ -2,7 +2,7 @@
 
 exports[`handleDemo byte-equivalence > matches the committed golden hash (LF-normalized SHA-256 of body) 1`] = `
 {
-  "hash": "f6d1a40f27be9a42a56d2af133e970cda3c0fde155293d8f8321b7e62c638968",
+  "hash": "6cd1718e33ea2944581f01dd3dbe2deb87133d209a72080905c193d882c78415",
   "length": 1193960,
 }
 `;

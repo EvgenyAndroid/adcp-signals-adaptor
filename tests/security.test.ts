@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { constantTimeEqual, requireAuth } from "../src/routes/shared";
 import { escapeHtml, escapeHtmlAttr, handleLinkedInAuthInit, handleLinkedInAuthCallback } from "../src/activations/auth/linkedin";
-import { corsHeaders } from "../src/index";
+import worker, { corsHeaders } from "../src/index";
 import { ADCP_TOOLS, getToolByName } from "../src/mcp/tools";
 import { toolResult, numArg, handleMcpRequest } from "../src/mcp/server";
 
@@ -958,4 +958,30 @@ describe("handleMcpRequest — auth gate", () => {
     );
     expect(res.status).toBe(202);
   });
+});
+
+// The live test-kit key (comply_controller_mode_gate's principal) is
+// recognised by the MCP gate only. Every REST and admin route still checks
+// requireAuth against DEMO_API_KEY.
+describe("worker entrypoint — the live test-kit key does not open REST or admin routes", () => {
+  const env = { DEMO_API_KEY: "worker-test-key" } as unknown as import("../src/types/env").Env;
+  const ctx = {
+    waitUntil(p: Promise<unknown>) { void p.catch(() => {}); },
+    passThroughOnException() {},
+  } as unknown as ExecutionContext;
+
+  for (const [method, path] of [["GET", "/signals/search?q=auto"], ["POST", "/signals/activate"], ["POST", "/admin/reseed"]] as const) {
+    it(`${method} ${path} with the live test-kit key → 401`, async () => {
+      const res = await worker.fetch(
+        new Request(`https://example.com${path}`, {
+          method,
+          headers: { Authorization: "Bearer demo-acme-outdoor-live-v1", "Content-Type": "application/json" },
+          ...(method === "POST" ? { body: "{}" } : {}),
+        }),
+        env,
+        ctx,
+      );
+      expect(res.status).toBe(401);
+    });
+  }
 });

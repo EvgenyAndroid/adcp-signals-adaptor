@@ -102,6 +102,27 @@ describe("handleComplyTestController — request-shape gate", () => {
   });
 });
 
+describe("handleComplyTestController — live-caller gate", () => {
+  it("refuses a live-mode principal with FORBIDDEN before the request-shape check", async () => {
+    const env = makeEnv(makeKv());
+    // No account at all: a sandbox principal would get INVALID_PARAMS here.
+    const r = await handleComplyTestController(env, { scenario: "list_scenarios" }, OP_A, "live");
+    expect(r).toMatchObject({ success: false, error: "FORBIDDEN" });
+  });
+
+  it("a live-mode principal cannot arm a forced state", async () => {
+    const env = makeEnv(makeKv());
+    const r = await handleComplyTestController(
+      env,
+      { scenario: "force_get_signals_arm", account: { sandbox: true }, params: { arm: "submitted", task_id: "live_task" } },
+      OP_A,
+      "live",
+    );
+    expect(r).toMatchObject({ success: false, error: "FORBIDDEN" });
+    expect(await checkAndConsumeGetSignalsArm(env, OP_A, undefined)).toBeNull();
+  });
+});
+
 describe("force_get_signals_arm / checkAndConsumeGetSignalsArm", () => {
   it("rejects params.arm values other than 'submitted'", async () => {
     const env = makeEnv(makeKv());
@@ -581,6 +602,75 @@ describe("MCP dispatch — comply_test_controller / list_tasks", () => {
     });
     const res = await handleMcpRequest(req, env, logger);
     expect(res.status).toBe(401);
+  });
+
+  // The api_key the compliance bundle publishes in
+  // test-kits/acme-outdoor-live.yaml (sandbox: false).
+  const LIVE_KIT_KEY = "demo-acme-outdoor-live-v1";
+
+  async function callToolAs(
+    env: import("../src/types/env").Env,
+    bearer: string,
+    name: string,
+    args: Record<string, unknown>,
+  ) {
+    const req = new Request("https://example.com/mcp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${bearer}` },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }),
+    });
+    const res = await handleMcpRequest(req, env, logger);
+    return { status: res.status, body: JSON.parse(await res.text()) };
+  }
+
+  it("the live test-kit key gets ControllerError FORBIDDEN with context echoed (comply_controller_mode_gate/deny_live_caller)", async () => {
+    const env = makeMcpEnv(makeKv());
+    // The storyboard step's sample_request, verbatim.
+    const { status, body } = await callToolAs(env, LIVE_KIT_KEY, "comply_test_controller", {
+      scenario: "force_creative_status",
+      params: { creative_id: "comply-live-mode-probe-000", status: "approved" },
+      account: { sandbox: true },
+      context: { correlation_id: "comply_controller_mode_gate--deny_live_caller" },
+    });
+    expect(status).toBe(200);
+    expect(body.error).toBeUndefined();
+    const sc = body.result?.structuredContent;
+    expect(sc.success).toBe(false);
+    expect(sc.error).toBe("FORBIDDEN");
+    expect(sc.context).toEqual({ correlation_id: "comply_controller_mode_gate--deny_live_caller" });
+  });
+
+  it("the live test-kit key reaches other tools (parity), and its refused arm leaves nothing armed", async () => {
+    const env = makeMcpEnv(makeKv());
+    await callToolAs(env, LIVE_KIT_KEY, "comply_test_controller", {
+      scenario: "force_get_signals_arm",
+      account: { sandbox: true },
+      params: { arm: "submitted", task_id: "live_arm" },
+    });
+    const { status, body } = await callToolAs(env, LIVE_KIT_KEY, "get_signals", { signal_spec: "anything" });
+    expect(status).toBe(200);
+    expect(body.error).toBeUndefined();
+    expect(body.result?.structuredContent?.task_id ?? body.result?.task_id).toBeUndefined();
+  });
+
+  it("only the exact live test-kit key is recognised", async () => {
+    const env = makeMcpEnv(makeKv());
+    const { status } = await callToolAs(env, `${LIVE_KIT_KEY}x`, "comply_test_controller", {
+      scenario: "list_scenarios",
+      account: { sandbox: true },
+    });
+    expect(status).toBe(401);
+  });
+
+  it("sandbox controller responses echo context too", async () => {
+    const env = makeMcpEnv(makeKv());
+    const body = await callTool(env, "comply_test_controller", {
+      scenario: "list_scenarios",
+      account: { sandbox: true },
+      context: { correlation_id: "ctx-echo-1" },
+    });
+    expect(body.result?.structuredContent.success).toBe(true);
+    expect(body.result?.structuredContent.context).toEqual({ correlation_id: "ctx-echo-1" });
   });
 
   it("get_signals with no armed task behaves exactly as before (unaffected by the hook)", async () => {

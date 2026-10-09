@@ -41,46 +41,38 @@
 // dispatches to UNKNOWN_SCENARIO, which is the schema's own accepted answer
 // for an unimplemented force_* scenario, not a workaround.
 //
-// LIVE-CALLER GATE — NOT built. This is a known, accepted gap, NOT an
-// exemption. An earlier version of this comment claimed the storyboard
-// exempted us; that reading was inverted, and it is corrected here
-// (2026-09-08) so nobody re-derives the wrong conclusion from it.
+// LIVE-CALLER GATE — built 2026-10-09.
 //
-// What universal/comply-controller-mode-gate.yaml actually says: the
-// live_account_denial phase is optional "for two-deployment sellers whose
-// sandbox endpoint admits all authenticated principals regardless of
-// account mode" — those sellers rely on their PRODUCTION endpoint simply
-// not advertising the controller. It then states the opposite case
-// explicitly: "Single-endpoint sellers that expose the controller on their
+// universal/comply-controller-mode-gate.yaml makes the live_account_denial
+// phase optional only "for two-deployment sellers whose sandbox endpoint
+// admits all authenticated principals regardless of account mode", and
+// states: "Single-endpoint sellers that expose the controller on their
 // main endpoint MUST implement per-account gating and MUST pass this
-// phase." We are single-endpoint (adcp.signal-stack.io) and we DO
-// advertise comply_test_controller there, so by the storyboard's own text
-// we are in the MUST bucket, not the exempt one.
+// phase." We are single-endpoint (adcp.signal-stack.io) and advertise
+// comply_test_controller there, so the gate is a MUST for us.
 //
-// Why it is still unbuilt: the step authenticates with the
-// acme-outdoor-live test kit's OWN api_key (`auth: {from_test_kit: true}`,
-// prerequisites.test_kit: test-kits/acme-outdoor-live.yaml). This
-// deployment has exactly one credential (DEMO_API_KEY — see
-// src/types/env.ts and src/utils/operatorId.ts; no sandbox/live principal
-// concept exists anywhere in this codebase), so that key gets a 401 from
-// requireAuth long before any controller dispatch, and the step's
-// response_schema validation fails against the ControllerError branch.
-// Verified live: that request returns
-// {"error":{"code":-32001,"message":"Authentication required..."}}.
+// The step authenticates with the acme-outdoor-live test kit's own api_key
+// (`auth: {from_test_kit: true}`, test-kits/acme-outdoor-live.yaml,
+// sandbox: false). Since adcp#7772 was fixed (#7808, 2026-10-01) the
+// hosted grader sends that step with that key. Before this gate the key got
+// a 401 from the MCP auth gate, the step failed the ControllerError branch
+// of the response schema, and the Strict Spec grading profile failed on it
+// even though the optional phase never counted in steps_failed.
 //
-// Closing it means introducing a second recognized principal that resolves
-// as live-mode and is refused with ControllerError FORBIDDEN — a real
-// auth-surface change on a production endpoint, for a phase the runner
-// currently reports advisorily (it appears under STORYBOARD-FAIL but is
-// NOT counted in steps_failed, because the phase is optional; a full
-// --webhook-receiver run grades 4 failures and this is not one of them).
-// That tradeoff is why it stays unbuilt — deliberately deferred on cost,
-// not waved through as inapplicable.
+// How it works: src/mcp/server.ts recognises that published key with an
+// exact, constant-time match (LIVE_TEST_KIT_API_KEY) as a live-mode
+// principal with the same MCP access as the public DEMO_API_KEY, and
+// handleComplyTestController refuses a live-mode principal with
+// ControllerError FORBIDDEN as its first statement — before the request
+// shape check and before any scenario dispatch, so a live caller can
+// neither arm nor complete anything. The MCP layer echoes `context` on
+// every controller response. REST and admin routes still accept only
+// DEMO_API_KEY.
 //
-// What IS still enforced: the vendored request schema requires
-// `account.sandbox` to be the literal `true` (schema-invalid otherwise) —
-// validated below as ordinary request shape, independent of the
-// live-caller question.
+// Separately, the vendored request schema requires `account.sandbox` to be
+// the literal `true` (schema-invalid otherwise) — validated below as
+// ordinary request shape. That payload claim is the caller's declaration;
+// the live-mode decision comes from the authenticated principal.
 //
 // STATE MODEL — KV, not D1. The forced arm and the discovery task it
 // produces are ephemeral, one-shot, compliance-test-only state: nothing a
@@ -197,10 +189,20 @@ export async function handleComplyTestController(
   env: Env,
   args: Record<string, unknown>,
   operatorId: string,
+  principalMode: "sandbox" | "live" = "sandbox",
 ): Promise<ControllerResult> {
-  // Ordinary request-shape validation — see the module header on why this
-  // is NOT a live-caller gate. Every valid request MUST assert
-  // account.sandbox === true per the vendored schema's `const: true`.
+  // Live-caller gate — see the module header. First, before the request
+  // shape check and any dispatch.
+  if (principalMode === "live") {
+    return ctlError(
+      "FORBIDDEN",
+      "comply_test_controller requires a sandbox principal; the authenticated caller resolves to live mode",
+    );
+  }
+
+  // Ordinary request-shape validation, separate from the live-caller gate
+  // above. Every valid request MUST assert account.sandbox === true per the
+  // vendored schema's `const: true`.
   const account = args["account"];
   const sandbox =
     account && typeof account === "object" && !Array.isArray(account)

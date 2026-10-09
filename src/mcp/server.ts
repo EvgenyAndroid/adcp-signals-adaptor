@@ -111,6 +111,18 @@ const AUTHENTICATED_MCP_METHODS = new Set(["tools/call"]);
 // All other tools/call invocations remain auth-gated.
 const PUBLIC_TOOL_CALL_NAMES = new Set(["get_adcp_capabilities"]);
 
+// Live-mode test principal. This is the api_key the AdCP compliance bundle
+// publishes in test-kits/acme-outdoor-live.yaml (sandbox: false) — a public
+// spec fixture, not a secret, like the public DEMO_API_KEY.
+// universal/comply-controller-mode-gate.yaml authenticates with it and
+// expects comply_test_controller to refuse with FORBIDDEN. An exact match
+// gives the caller the same MCP access as DEMO_API_KEY (its own operatorId
+// namespace) and marks it live-mode; the only thing that changes is that
+// the controller refuses it. REST and admin routes still accept only
+// DEMO_API_KEY. See the LIVE-CALLER GATE note in
+// src/domain/complianceController.ts.
+const LIVE_TEST_KIT_API_KEY = "demo-acme-outdoor-live-v1";
+
 interface McpInitializeParams {
     protocolVersion: string;
     capabilities?: Record<string, unknown>;
@@ -164,7 +176,11 @@ export async function handleMcpRequest(
     // methods (initialize, tools/list, ping) stay public — that matches how
     // MCP clients typically bootstrap a connection and gives the evaluator
     // the unauthenticated discovery handshake it expects.
-    const isAuthed = requireAuth(request, env.DEMO_API_KEY);
+    // The live test-kit key is a second recognised principal that resolves
+    // to live mode — see LIVE_TEST_KIT_API_KEY.
+    const isSandboxCaller = requireAuth(request, env.DEMO_API_KEY);
+    const isLiveCaller = !isSandboxCaller && requireAuth(request, LIVE_TEST_KIT_API_KEY);
+    const isAuthed = isSandboxCaller || isLiveCaller;
     // Derived once per HTTP request — every message in a (possibly batched)
     // JSON-RPC body shares the same Authorization header, so one derivation
     // is correct for all of them. Null for unauthenticated requests; tool
@@ -178,12 +194,12 @@ export async function handleMcpRequest(
         // discovery messages that legitimately succeed alongside unauth'd
         // tools/call attempts in the same batch.
         const responses = await Promise.all(
-            body.map((msg) => handleSingleMessage(msg, env, logger, isAuthed, operatorId, ctx))
+            body.map((msg) => handleSingleMessage(msg, env, logger, isAuthed, operatorId, isLiveCaller, ctx))
         );
         return jsonResponse(responses.filter(Boolean));
     }
 
-    const response = await handleSingleMessage(body, env, logger, isAuthed, operatorId, ctx);
+    const response = await handleSingleMessage(body, env, logger, isAuthed, operatorId, isLiveCaller, ctx);
     if (response === null) {
         return new Response(null, { status: 202 });
     }
@@ -218,6 +234,7 @@ async function handleSingleMessage(
     logger: Logger,
     isAuthed: boolean,
     operatorId: string | null,
+    isLiveCaller: boolean,
     ctx?: ExecutionContext,
 ): Promise<JsonRpcResponse | null> {
     if (!isValidRpcRequest(msg)) {
@@ -270,7 +287,7 @@ async function handleSingleMessage(
                 const toolStart = performance.now();
                 const caller: "authed" | "unauth" = isAuthed ? "authed" : "unauth";
                 try {
-                    const result = await handleToolCall(toolCallParams, env, logger, operatorId);
+                    const result = await handleToolCall(toolCallParams, env, logger, operatorId, isLiveCaller);
                     const responseBytes = tryLen(result) ?? 0;
                     const durationMs = Math.round(performance.now() - toolStart);
                     recordToolLog({
@@ -517,7 +534,8 @@ async function handleToolCall(
     params: McpCallToolParams,
     env: Env,
     logger: Logger,
-    operatorId: string | null
+    operatorId: string | null,
+    isLiveCaller: boolean
 ): Promise<unknown> {
     const { name, arguments: args = {} } = params;
 
@@ -558,7 +576,9 @@ async function handleToolCall(
         }
         case "comply_test_controller": {
             if (!operatorId) throw new McpToolError("comply_test_controller requires an authenticated caller", { code: "AUTH_REQUIRED", recovery: "correctable" });
-            const controllerResult = await handleComplyTestController(env, args, operatorId);
+            const controllerResult = await handleComplyTestController(
+                env, args, operatorId, isLiveCaller ? "live" : "sandbox"
+            );
             // The vendored schema's response is a bespoke discriminated union
             // (success:true|false + scenario-specific fields), NOT the generic
             // adcp_error envelope — see complianceController.ts's module header.
@@ -566,10 +586,17 @@ async function handleToolCall(
             // synchronous call complete" status, distinct from the controller's
             // own success:true/false payload field, so it's always "completed"
             // here regardless of which branch the controller returned.
-            const envelope = withMcpEnvelope(
-                { status: "completed" },
-                controllerResult as unknown as Record<string, unknown>
-            );
+            // Every branch of the response schema allows `context`, and
+            // comply_controller_mode_gate asserts context.correlation_id on the
+            // FORBIDDEN branch, so echo it on every controller response
+            // (opaque copy-through per /schemas/core/context.json).
+            const ctxEcho = args["context"];
+            const envelope = withMcpEnvelope({ status: "completed" }, {
+                ...(controllerResult as unknown as Record<string, unknown>),
+                ...(ctxEcho && typeof ctxEcho === "object" && !Array.isArray(ctxEcho)
+                    ? { context: ctxEcho as Record<string, unknown> }
+                    : {}),
+            });
             return toolResultJson(envelope);
         }
         case "list_tasks": {

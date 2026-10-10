@@ -10,7 +10,8 @@
 // POSTURE. supported: true, every operation list empty, digest coverage
 // "either" (the 3.1 posture; 3.2 makes "required" mandatory, and this
 // endpoint serves 3.0/3.1 only). Empty lists mean no operation REQUIRES a
-// signature — bearer callers are untouched — but any signature that IS
+// signature — bearer callers are untouched, except for the webhook
+// `authentication` payload rule below — but any signature that IS
 // presented is verified on its merits, and a failure is a 401, never a
 // fall-back to the bearer. The 401 carries exactly
 // `WWW-Authenticate: Signature error="<code>"` (security.mdx @ v3.1.27,
@@ -26,12 +27,19 @@
 // stronger than the public DEMO key — src/mcp/server.ts never maps it to live
 // mode. test-gov-2026 (wrong adcp_use) and test-revoked-2026 (pre-revoked) are
 // loaded so vectors 009 and 017 reach the checks they test instead of failing
-// as unknown keys. There is no key discovery for real counterparties: brand.json
-// → jwks_uri vs Web Bot Auth is unsettled upstream (deferred to 4.0 / settled
-// discovery), so every other keyid is request_signature_key_unknown.
+// as unknown keys. Two 3.1.27 verifier MUSTs are deliberately skipped while
+// supported is true: step-7 key discovery (capabilities → brand_json_url →
+// brand.json → jwks_uri, :1227) for real counterparties, so every other keyid
+// is request_signature_key_unknown; and revocation-list polling (:1324), for
+// which the static snapshot below stands in. Discovery is being redesigned
+// upstream (Web Bot Auth, DR-0023, proposed for 3.3; adcp#8118 retires the
+// brand.json path in 4.0), so it is deferred to 4.0 / settled discovery.
 //
 // ORDER. The SDK runs checklist steps 1–13, including the step-13 replay
-// insert into the D1 store (src/storage/replayRepo.ts). 13.1.3 has no step 14,
+// insert into the D1 store (src/storage/replayRepo.ts) — not quite in spec
+// order: 13.1.3 looks the nonce up (step 12) before crypto verify (step 10),
+// so a forged signature reusing a seen nonce reads request_signature_replayed
+// rather than request_signature_invalid (:1235, :1249). 13.1.3 has no step 14,
 // so after it returns "verified" we reject duplicate object keys ourselves with
 // request_body_malformed, a 401 like every transport code (security.mdx @
 // v3.1.27: step 13 :1236, step 14 :1237, taxonomy row :1381). That is the
@@ -94,6 +102,9 @@ const jwks = new StaticJwksResolver(TEST_COUNTERPARTY_KEYS);
 
 // The test kit's pre-revoked key (test-kits/signed-requests-runner.yaml).
 // A static snapshot: InMemoryRevocationStore consults revoked_kids only.
+// next_update is already past and nothing refreshes it. 13.1.3 never reads
+// it, but an SDK that enforces step-9 staleness (request_signature_revocation_stale)
+// would reject every signed request — revisit on any SDK upgrade.
 const revocationStore = new InMemoryRevocationStore({
   issuer: "https://adcontextprotocol.org/compliance/3.1.24/test-kits/signed-requests-runner.yaml",
   updated: "2026-10-10T00:00:00Z",
@@ -128,6 +139,14 @@ export async function checkRequestSignature(
       : { status: "unsigned" };
   }
 
+  // Present but blank (both, after trimming) reads as absent to the SDK,
+  // which would then run its own any-depth payload heuristic and return
+  // "unsigned". A signature header that is present never falls back to
+  // unsigned, so reject it here, before the SDK.
+  if (!request.headers.get("signature")?.trim() && !request.headers.get("signature-input")?.trim()) {
+    return { status: "rejected", code: "request_signature_header_malformed", detail: "empty Signature and Signature-Input headers" };
+  }
+
   let result;
   try {
     result = await verifyRequestSignature(
@@ -138,8 +157,8 @@ export async function checkRequestSignature(
     if (err instanceof RequestSignatureError) return { status: "rejected", code: err.code, detail: err.message };
     throw err;
   }
-  // A header that is present but empty reads as absent to the SDK. A
-  // malformed pair always hard-rejects; it never falls back to unsigned.
+  // Unreachable after the blank-header check above; kept as the type guard,
+  // and it still rejects rather than falling back to unsigned.
   if (result.status !== "verified") {
     return { status: "rejected", code: "request_signature_header_malformed", detail: "empty Signature or Signature-Input header" };
   }

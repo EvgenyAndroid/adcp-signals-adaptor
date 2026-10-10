@@ -40,9 +40,14 @@ identity no stronger than the public `DEMO_API_KEY`**:
   entries, both enforced in D1. If D1 is unavailable, a signed request
   fails closed with a 503.
 
-No real counterparty keys are trusted. Discovering them (brand.json →
-`jwks_uri` vs Web Bot Auth) is unsettled upstream and waits for AdCP
-4.0. Any other keyid is rejected with `request_signature_key_unknown`.
+No real counterparty keys are trusted. Two 3.1.27 verifier MUSTs are
+deliberately skipped while `supported` is true: step-7 key discovery
+(`brand_json_url` → brand.json → `jwks_uri`), so any other keyid is
+rejected with `request_signature_key_unknown`; and revocation-list
+polling, for which a static snapshot with the test kit's revoked key
+stands in. Signer discovery is being redesigned upstream (Web Bot Auth,
+DR-0023, proposed for 3.3; adcp#8118 retires the brand.json path in
+4.0), so both wait for AdCP 4.0 / settled discovery.
 
 ## Per-operator resource scoping (Sec-18)
 

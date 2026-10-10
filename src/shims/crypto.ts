@@ -56,6 +56,11 @@ export function verify(
     typeof key === "object" && key !== null && "dsaEncoding" in key && key.dsaEncoding === "ieee-p1363" &&
     "key" in key && key.key instanceof nodeCrypto.KeyObject
   ) {
+    // P1363 for P-256 is exactly 64 bytes (r||s, 32 each), the only ECDSA
+    // curve the request-signing profile allows. Node's own P1363 verify
+    // rejects any other length; without this, a zero-padded r||s would
+    // convert to the same DER and verify here (review fix 2026-10-10).
+    if (signature.byteLength !== 64) return false;
     const raw = new Uint8Array(signature.buffer, signature.byteOffset, signature.byteLength);
     return nodeCrypto.verify(algorithm, data, key.key, p1363ToDer(raw));
   }

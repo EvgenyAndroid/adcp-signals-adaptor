@@ -24,7 +24,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
-import { createPublicKey, generateKeyPairSync, sign as nodeSign } from "node:crypto";
+import { createHash, createPublicKey, generateKeyPairSync, sign as nodeSign, verify as nodeVerify } from "node:crypto";
 import { signRequest, type AdcpJsonWebKey } from "@adcp/sdk/signing/client";
 import {
   checkRequestSignature,
@@ -74,8 +74,13 @@ function makeD1(): { db: D1Database; sqlite: DatabaseSync; prepares: () => numbe
   return { db, sqlite, prepares: () => prepares };
 }
 
+/** The stored form of a nonce (src/storage/replayRepo.ts): hex SHA-256. */
+function sha256Hex(nonce: string): string {
+  return createHash("sha256").update(nonce, "utf8").digest("hex");
+}
+
 function seedReplay(sqlite: DatabaseSync, keyid: string, nonce: string, expiresAt: number): void {
-  sqlite.prepare("INSERT INTO request_signing_replay (keyid, nonce, expires_at) VALUES (?, ?, ?)").run(keyid, nonce, expiresAt);
+  sqlite.prepare("INSERT INTO request_signing_replay (keyid, nonce_sha256, expires_at) VALUES (?, ?, ?)").run(keyid, sha256Hex(nonce), expiresAt);
 }
 
 function liveRows(sqlite: DatabaseSync): number {
@@ -339,7 +344,16 @@ describe("D1ReplayStore — (keyid, nonce) replay cache with a per-keyid cap", (
     expect(await store.has(K, "s", "n0", T + 360)).toBe(false);
     expect(await store.insert(K, "s", "n0", 360, T + 360)).toBe("ok"); // overwritten, not a replay
     expect(await store.insert(K, "s", "n0", 360, T + 361)).toBe("replayed");
-    expect((sqlite.prepare("SELECT expires_at FROM request_signing_replay WHERE nonce = 'n0'").get() as { expires_at: number }).expires_at).toBe(T + 720);
+    expect((sqlite.prepare("SELECT expires_at FROM request_signing_replay WHERE nonce_sha256 = ?").get(sha256Hex("n0")) as { expires_at: number }).expires_at).toBe(T + 720);
+  });
+
+  it("stores a fixed-size digest, never the nonce as sent (a 16 KB nonce is still a 64-char row key)", async () => {
+    const { db, sqlite } = makeD1();
+    const store = new D1ReplayStore(db);
+    const huge = "A".repeat(16_000);
+    expect(await store.insert(K, "s", huge, 360, T)).toBe("ok");
+    expect(await store.insert(K, "s", huge, 360, T + 1)).toBe("replayed");
+    expect(sqlite.prepare("SELECT nonce_sha256 FROM request_signing_replay").all()).toEqual([{ nonce_sha256: sha256Hex(huge) }]);
   });
 
   it("the weekly purge deletes expired rows only", async () => {
@@ -352,7 +366,7 @@ describe("D1ReplayStore — (keyid, nonce) replay cache with a per-keyid cap", (
     const result = await runScheduledPurge({ DB: db } as unknown as Env, logger);
     expect(result.deleted.request_signing_replay).toBe(2);
     expect(result.errors.filter((e) => e.startsWith("request_signing_replay"))).toEqual([]);
-    expect(sqlite.prepare("SELECT nonce FROM request_signing_replay").all()).toEqual([{ nonce: "live" }]);
+    expect(sqlite.prepare("SELECT nonce_sha256 FROM request_signing_replay").all()).toEqual([{ nonce_sha256: sha256Hex("live") }]);
   });
 });
 
@@ -433,13 +447,16 @@ describe("handleMcpRequest — bearer OR verified signature", () => {
     expect(body.id).toBe(1);
   });
 
-  it("the same webhook authentication on a SIGNED request is accepted", async () => {
+  it("the same webhook authentication on a SIGNED request is accepted, and logged (3.1.27 :1455)", async () => {
     const { env } = makeEnv();
+    const info = vi.spyOn(logger, "info");
     const { status } = await call(env, signedReq(toolCall("update_media_buy", {
       media_buy_id: "mb_001",
       push_notification_config: { url: "https://buyer.example.com/webhook", authentication: { scheme: "HMAC-SHA256", credentials: "shared-secret-placeholder" } },
     })));
     expect(status).toBe(200);
+    expect(info).toHaveBeenCalledWith("mcp_webhook_authentication_present", { keyid: "test-ed25519-2026" });
+    info.mockRestore();
   });
 
   it("a lone Signature header on the public capabilities tool → 401 Signature request_signature_header_malformed", async () => {
@@ -455,6 +472,17 @@ describe("handleMcpRequest — bearer OR verified signature", () => {
     const { env } = makeEnv();
     const req = unsignedReq(toolCall("comply_test_controller", { scenario: "list_scenarios", account: { sandbox: true } }), DEMO_KEY);
     req.headers.set("Signature-Input", 'sig1=("@method");created=1;expires=2;nonce="x";keyid="test-ed25519-2026";alg="ed25519";tag="adcp/request-signing/v1"');
+    const { status, res } = await call(env, req);
+    expect(status).toBe(401);
+    expect(res.headers.get("WWW-Authenticate")).toBe('Signature error="request_signature_header_malformed"');
+  });
+
+  it("a blank Signature header → 401 header_malformed, never the SDK's any-depth payload heuristic", async () => {
+    const { env } = makeEnv();
+    // authentication at a site the 3.1.27 rule does not name: the SDK's own
+    // unsigned path would answer request_signature_required here.
+    const req = unsignedReq(toolCall("sync_governance", { governance_agents: [{ url: "https://g.example", authentication: { scheme: "Bearer", credentials: "x".repeat(32) } }] }), DEMO_KEY);
+    req.headers.set("Signature", "  ");
     const { status, res } = await call(env, req);
     expect(status).toBe(401);
     expect(res.headers.get("WWW-Authenticate")).toBe('Signature error="request_signature_header_malformed"');
@@ -547,6 +575,15 @@ describe("handleMcpRequest — bearer OR verified signature", () => {
     expect(body.error.message).toMatch(/too large/i);
   });
 
+  it("a body that fails to read is still -32700 (HTTP 200), as it was under request.json()", async () => {
+    const { env } = makeEnv();
+    const body = new ReadableStream({ start(c) { c.error(new Error("client aborted")); } });
+    const req = new Request(MCP_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body, duplex: "half" } as RequestInit);
+    const { status, body: out } = await call(env, req);
+    expect(status).toBe(200);
+    expect(out.error.code).toBe(-32700);
+  });
+
   it("D1 failure on the signed path fails closed with 503, never accepts", async () => {
     const broken = { prepare() { throw new Error("D1_ERROR: unavailable"); } } as unknown as D1Database;
     const { env } = makeEnv(broken);
@@ -597,6 +634,16 @@ describe("src/shims/crypto.ts — P1363 → DER for ES256", () => {
       const sig = nodeSign("sha256", data, { key: privateKey, dsaEncoding: "ieee-p1363" });
       expect(shimVerify("sha256", data, { key: publicKey, dsaEncoding: "ieee-p1363" }, sig)).toBe(true);
     }
+  });
+
+  it("rejects a P1363 signature that is not exactly 64 bytes, as Node does (zero-padded r and s)", () => {
+    const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
+    const data = Buffer.from("padded");
+    const sig = nodeSign("sha256", data, { key: privateKey, dsaEncoding: "ieee-p1363" });
+    const padded = Buffer.concat([Buffer.from([0]), sig.subarray(0, 32), Buffer.from([0]), sig.subarray(32)]);
+    expect(nodeVerify("sha256", data, { key: publicKey, dsaEncoding: "ieee-p1363" }, padded)).toBe(false);
+    expect(shimVerify("sha256", data, { key: publicKey, dsaEncoding: "ieee-p1363" }, padded)).toBe(false);
+    expect(shimVerify("sha256", data, { key: publicKey, dsaEncoding: "ieee-p1363" }, sig)).toBe(true);
   });
 
   it("passes every other call shape through unchanged (Ed25519)", () => {

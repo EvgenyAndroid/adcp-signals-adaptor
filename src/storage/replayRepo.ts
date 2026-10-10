@@ -17,6 +17,12 @@
 // any path and query string, so a cap per (keyid, scope) could be bypassed by
 // varying ?x=N with the public test key.
 //
+// The nonce is stored as its SHA-256 (hex), never as sent. 13.1.3 checks
+// only that the nonce is a string (no length or format check), and anyone
+// can sign with the public test keys, so a raw column would let a caller
+// write multi-KB rows into the shared database at the cap's full rate.
+// Review fix 2026-10-10.
+//
 // Cap: REPLAY_CAP_PER_KEYID UNEXPIRED entries per keyid, the test kit's
 // grading target (test-kits/signed-requests-runner.yaml, rate_abuse:
 // 100). The only trusted keys are the public test counterparty's, so the
@@ -36,13 +42,18 @@ import type { ReplayInsertResult, ReplayStore } from "@adcp/sdk/signing/server";
 
 export const REPLAY_CAP_PER_KEYID = 100;
 
+async function nonceDigest(nonce: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(nonce));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 export class D1ReplayStore implements ReplayStore {
   constructor(private readonly db: D1Database) {}
 
   async has(keyid: string, _scope: string, nonce: string, now: number): Promise<boolean> {
     const row = await this.db
-      .prepare("SELECT 1 AS hit FROM request_signing_replay WHERE keyid = ? AND nonce = ? AND expires_at > ?")
-      .bind(keyid, nonce, now)
+      .prepare("SELECT 1 AS hit FROM request_signing_replay WHERE keyid = ? AND nonce_sha256 = ? AND expires_at > ?")
+      .bind(keyid, await nonceDigest(nonce), now)
       .first();
     return row !== null;
   }
@@ -61,13 +72,13 @@ export class D1ReplayStore implements ReplayStore {
     // overwritten. changes === 1 exactly when this request claimed the nonce.
     const res = await this.db
       .prepare(
-        `INSERT INTO request_signing_replay (keyid, nonce, expires_at)
+        `INSERT INTO request_signing_replay (keyid, nonce_sha256, expires_at)
          SELECT ?1, ?2, ?3
           WHERE (SELECT COUNT(*) FROM request_signing_replay WHERE keyid = ?1 AND expires_at > ?4) < ?5
-         ON CONFLICT (keyid, nonce) DO UPDATE SET expires_at = excluded.expires_at
+         ON CONFLICT (keyid, nonce_sha256) DO UPDATE SET expires_at = excluded.expires_at
           WHERE request_signing_replay.expires_at <= ?4`,
       )
-      .bind(keyid, nonce, now + ttlSeconds, now, REPLAY_CAP_PER_KEYID)
+      .bind(keyid, await nonceDigest(nonce), now + ttlSeconds, now, REPLAY_CAP_PER_KEYID)
       .run();
     if (res.meta.changes > 0) return "ok";
     return (await this.has(keyid, scope, nonce, now)) ? "replayed" : "rate_abuse";

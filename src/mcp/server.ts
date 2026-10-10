@@ -55,7 +55,7 @@ import { safeRecordSignalTrace, persistSignalTrace } from "../domain/signalTrace
 import { record as recordToolLog, argKeysOf } from "./toolLog";
 import { logCall as d1LogCall, cleanup as d1Cleanup, shouldRunCleanup } from "../storage/toolLogRepo";
 import { operatorIdFromRequest } from "../utils/operatorId";
-import { checkRequestSignature, signerOperatorId, type SignatureCheck } from "../domain/requestSigning";
+import { checkRequestSignature, carriesWebhookAuthentication, signerOperatorId, type SignatureCheck } from "../domain/requestSigning";
 import { D1ReplayStore } from "../storage/replayRepo";
 import { ADCP_WIRE_PIN } from "../constants/specVersion";
 import {
@@ -177,8 +177,16 @@ export async function handleMcpRequest(
     // The cap is re-checked on the real length — Content-Length above is
     // only the cheap early reject and may be absent or wrong. ignoreBOM keeps
     // a leading U+FEFF in `text` so the verifier re-encodes the exact bytes;
-    // the JSON parse strips it, as request.json() did.
-    const raw = await request.arrayBuffer();
+    // the JSON parse strips it, as the Fetch spec's json() does. (workerd's
+    // request.json() did not, so a BOM-prefixed body that used to read
+    // -32700 now parses.) A body that fails to read is still -32700, as it
+    // was when request.json() read it inside the try below.
+    let raw: ArrayBuffer;
+    try {
+        raw = await request.arrayBuffer();
+    } catch {
+        return rpcErrorResponse(null, RPC_PARSE_ERROR, "Parse error: invalid JSON");
+    }
     if (raw.byteLength > MAX_MCP_BODY_BYTES) {
         return rpcErrorResponse(
             null,
@@ -227,6 +235,12 @@ export async function handleMcpRequest(
         );
     }
     const signer = signature.status === "verified" ? signature.keyid : null;
+    // Sellers MUST log every request carrying a non-empty webhook
+    // `authentication` block (security.mdx @ v3.1.27 :1455). Unsigned ones
+    // were refused and logged above; this is the accepted, signed case.
+    if (signer !== null && carriesWebhookAuthentication(body)) {
+        logger.info("mcp_webhook_authentication_present", { keyid: signer });
+    }
 
     // Gate state-changing methods (tools/call) behind the API key. Discovery
     // methods (initialize, tools/list, ping) stay public — that matches how

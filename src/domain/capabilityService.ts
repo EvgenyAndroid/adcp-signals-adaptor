@@ -78,7 +78,12 @@
 //         force_task_completion) now that the tool actually exists — see
 //         src/domain/complianceController.ts. Prefix bump so the field
 //         isn't served empty from a stale v29 blob.
-const CACHE_KEY_PREFIX = "adcp_capabilities_v30";
+//   v31 → request_signing.supported true (2026-10-10): inbound RFC 9421
+//         verification of the public conformance test counterparty — the
+//         REQUEST_SIGNING_CAPABILITY constant in src/domain/requestSigning.ts.
+//         A value change the SPEC_VERSION + last_run suffix doesn't see, so
+//         the prefix bumps.
+const CACHE_KEY_PREFIX = "adcp_capabilities_v31";
 const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
@@ -87,6 +92,7 @@ import { SPEC_VERSION } from "../constants/specVersion";
 import { SUPPORTED_SCENARIOS } from "./complianceController";
 import { resolveWebhookSigning, type WebhookSigningKey } from "./webhookSigning";
 import { CANONICAL_ORIGIN } from "../constants/origin";
+import { REQUEST_SIGNING_CAPABILITY } from "./requestSigning";
 
 /**
  * Env slice the capability builder reads. Extends the UCP engine env with
@@ -231,17 +237,11 @@ function buildStaticCapabilities(env: CapabilityEnv, signing: WebhookSigningKey 
     // Sec-42 (AdCP 3.0 GA): top-level protocol-level capability blocks.
     // See /schemas/<ADCP_SPEC_VERSION>/protocol/get-adcp-capabilities-response.json.
     // Declared honestly — we only claim what we actually implement.
-    request_signing: {
-      // RFC 9421 signature VERIFICATION on inbound requests.
-      // Honest declaration: this demo agent doesn't verify inbound
-      // signatures. Buyer agents should treat us as unsigned-safe over
-      // bearer auth + HTTPS.
-      supported: false,
-      covers_content_digest: "either",
-      required_for: [],
-      warn_for: [],
-      supported_for: [],
-    },
+    // RFC 9421 signature VERIFICATION on inbound requests — the constant the
+    // verifier itself enforces (src/domain/requestSigning.ts), so the
+    // declaration can't outrun it. Every list is empty: no operation
+    // requires a signature, and any signature presented is verified.
+    request_signing: REQUEST_SIGNING_CAPABILITY,
     // Emission of signed outbound webhooks under the adcp/webhook-signing/v1
     // profile — RFC 9421, Ed25519 (src/domain/webhookSigning.ts, closes
     // #248). Derived from the secret, not hardcoded: `supported` is true
@@ -270,7 +270,7 @@ function buildStaticCapabilities(env: CapabilityEnv, signing: WebhookSigningKey 
       // compromise-notification webhook.
       per_principal_key_isolation: false,
       // key_origins entries must each match a declared posture; only
-      // webhook_signing qualifies (request_signing stays unsupported).
+      // webhook_signing qualifies (request_signing's lists are all empty).
       ...(signing ? { key_origins: { webhook_signing: CANONICAL_ORIGIN } } : {}),
     },
     // compliance_testing declarations are the CONTROL levers a test

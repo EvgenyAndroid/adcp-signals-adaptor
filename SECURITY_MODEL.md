@@ -19,6 +19,31 @@ multiple distinct tokens with full resource isolation between them.
 Provisioning additional tokens is purely a wrangler-secret operation
 and needs no code change.
 
+### Signed requests: a second, sandbox-only identity (2026-10-10)
+
+The bearer is no longer the only identity on `POST /mcp`. A request
+whose RFC 9421 signature verifies is authenticated too (see
+[src/domain/requestSigning.ts](src/domain/requestSigning.ts)). The
+only keys trusted are the four public AdCP conformance test keys, and
+their private halves are published alongside the test vectors, so
+anyone can produce such a signature. It is therefore a **sandbox
+identity no stronger than the public `DEMO_API_KEY`**:
+
+- It never resolves to live mode. Only the live test-kit bearer does.
+- A valid bearer on the same request wins, with its own operator id and
+  mode.
+- It gets its own operator namespace, `rs:<keyid>`. The `:` is outside
+  the base64url alphabet of bearer-derived ids, so the two cannot
+  collide.
+- It opens MCP only. REST and admin routes still require the bearer.
+- Each nonce is accepted once, and each keyid is capped at 100 live
+  entries, both enforced in D1. If D1 is unavailable, a signed request
+  fails closed with a 503.
+
+No real counterparty keys are trusted. Discovering them (brand.json →
+`jwks_uri` vs Web Bot Auth) is unsettled upstream and waits for AdCP
+4.0. Any other keyid is rejected with `request_signature_key_unknown`.
+
 ## Per-operator resource scoping (Sec-18)
 
 Every inbound call that touches operator-scoped resources derives a

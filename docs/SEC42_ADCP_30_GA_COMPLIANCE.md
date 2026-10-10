@@ -157,7 +157,7 @@ The one failure:
 
 1. ~~**`webhook_signing.supported: false`.**~~ **Closed 2026-09-08 (#248).** Outbound webhooks are signed under `adcp/webhook-signing/v1` (RFC 9421, Ed25519) via `src/domain/webhookSigning.ts`; the public key is published at `/.well-known/jwks.json` and discovered through `identity.brand_json_url` → `/.well-known/brand.json` `agents[].jwks_uri`. HMAC is gone. `supported` is derived from whether `WEBHOOK_SIGNING_PRIVATE_JWK` is configured, so the declaration cannot outrun the delivery path.
 
-2. **`request_signing.supported: false`.** We gate inbound mutating requests on bearer auth + HTTPS. RFC 9421 inbound-signature verification is Sec-43 scope.
+2. ~~**`request_signing.supported: false`.**~~ **Closed 2026-10-10.** Inbound RFC 9421 signatures are verified (`src/domain/requestSigning.ts`) with every operation list empty, so bearer auth still covers every operation. The only trusted signer is the public conformance test counterparty, and it authenticates as a sandbox principal.
 
 3. **`identity.per_principal_key_isolation: false`.** Single-principal demo (one `DEMO_API_KEY`). Multi-tenant key isolation is out of scope for a reference implementation.
 

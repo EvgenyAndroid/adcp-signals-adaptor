@@ -16,6 +16,7 @@ import { handleMcpRequest } from "../src/mcp/server";
 import { handleGetCapabilities } from "../src/routes/capabilities";
 import { createLogger } from "../src/utils/logger";
 import { CANONICAL_ORIGIN } from "../src/constants/origin";
+import { REQUEST_SIGNING_CAPABILITY } from "../src/domain/requestSigning";
 import type { Env } from "../src/types/env";
 
 function makeKv(): { kv: KVNamespace; store: Map<string, string> } {
@@ -120,14 +121,23 @@ describe("get_adcp_capabilities — webhook_signing / identity posture (builder)
     expect(filtered.media_buy).toBeUndefined(); // the filter itself still works
     expect(filtered.webhook_signing["supported"]).toBe(true);
     expect(filtered.identity["brand_json_url"]).toBe(`${CANONICAL_ORIGIN}/.well-known/brand.json`);
-    expect(filtered.request_signing["supported"]).toBe(false);
+    expect(filtered.request_signing).toEqual(REQUEST_SIGNING_CAPABILITY);
   });
 
-  it("request_signing stays unsupported — the key signs webhooks, we don't verify inbound requests", async () => {
+  it("request_signing is the verifier's own posture constant; empty lists ⇒ no key_origins.request_signing", async () => {
+    // 2026-10-10: inbound verification is live (src/domain/requestSigning.ts).
+    // The webhook key is still never a request_signing key origin.
     const caps = (await getCapabilities(makeKv().kv, undefined, {
       WEBHOOK_SIGNING_PRIVATE_JWK: await mintSecret("caps-rs"),
     })) as unknown as Caps;
-    expect(caps.request_signing["supported"]).toBe(false);
+    expect(caps.request_signing).toEqual({
+      supported: true,
+      covers_content_digest: "either",
+      required_for: [],
+      warn_for: [],
+      supported_for: [],
+    });
+    expect(caps.request_signing).toEqual(REQUEST_SIGNING_CAPABILITY);
     expect((caps.identity["key_origins"] as Record<string, unknown>)["request_signing"]).toBeUndefined();
   });
 

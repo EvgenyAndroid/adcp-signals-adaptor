@@ -239,4 +239,34 @@ describe("VERSION_UNSUPPORTED enforcement", () => {
       expect(adcpErrorOf(body)?.code).not.toBe("VERSION_UNSUPPORTED");
     }
   });
+
+  // Prerelease pins match exactly (versioning.mdx), so a prerelease above the
+  // releases we serve is refused instead of being served at "3.1".
+  for (const pin of ["3.2-rc.0", "3.3-beta.1", "3.10-rc.1"]) {
+    it(`get_signals with prerelease adcp_version '${pin}' returns VERSION_UNSUPPORTED with supported_versions`, async () => {
+      const { body } = await call(mcpReq({
+        jsonrpc: "2.0", id: 13, method: "tools/call",
+        params: { name: "get_signals", arguments: { signal_spec: "anything", adcp_version: pin } },
+      }));
+      expect(body.error).toBeUndefined();
+      expect(body.result?.isError).toBe(true);
+      expect(adcpErrorOf(body)?.code).toBe("VERSION_UNSUPPORTED");
+      expect(adcpErrorOf(body)?.recovery).toBe("correctable");
+      expect(adcpErrorOf(body)?.details?.supported_versions).toEqual(["3.0", "3.1"]);
+    });
+  }
+
+  // Unchanged: a release pin above 3.1 is served at 3.1, and prerelease pins
+  // on 3.1 stay lenient (the 3.1.24 bundle pins "3.1-beta.5").
+  for (const pin of ["3.2", "3.3", "3.1-beta.5"]) {
+    it(`get_signals with adcp_version '${pin}' does NOT trip version check`, async () => {
+      const { body } = await call(mcpReq({
+        jsonrpc: "2.0", id: 14, method: "tools/call",
+        params: { name: "get_signals", arguments: { signal_spec: "anything", adcp_version: pin } },
+      }));
+      if (body.result?.isError) {
+        expect(adcpErrorOf(body)?.code).not.toBe("VERSION_UNSUPPORTED");
+      }
+    });
+  }
 });

@@ -527,6 +527,20 @@ function validateAdcpMajorVersion(toolName: string, args: Record<string, unknown
                 { code: "VERSION_UNSUPPORTED", recovery: "correctable", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS], supported_versions: [...SUPPORTED_RELEASE_VERSIONS], supported_majors: [...SUPPORTED_MAJOR_VERSIONS] },
             );
         }
+
+        // A prerelease pin above the releases we serve ("3.2-rc.0", "3.3-beta.1")
+        // matches exactly or not at all — prerelease pins never resolve to a
+        // release (versioning.mdx) — so it is refused rather than served at "3.1"
+        // the way a "3.2" release pin is. Prerelease pins on 3.0 and 3.1 stay as
+        // before: the 3.1.24 bundle itself pins "3.1-beta.5".
+        const pre = /^(\d+)\.(\d+)-/.exec(String(rel));
+        const highestMinor = Math.max(...SUPPORTED_RELEASE_VERSIONS.map((s) => Number(s.split(".")[1])));
+        if (pre && Number(pre[2]) > highestMinor) {
+            throw new McpToolError(
+                `adcp_version ${rel} is a prerelease this seller does not serve. Prerelease pins match exactly; this seller serves releases 3.0 and 3.1. Call get_adcp_capabilities to discover supported versions, then retry with a supported adcp_version.`,
+                { code: "VERSION_UNSUPPORTED", recovery: "correctable", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS], supported_versions: [...SUPPORTED_RELEASE_VERSIONS], supported_majors: [...SUPPORTED_MAJOR_VERSIONS] },
+            );
+        }
     }
 }
 

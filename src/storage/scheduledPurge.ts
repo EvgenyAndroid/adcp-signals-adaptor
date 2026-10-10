@@ -22,6 +22,10 @@
 //     dangerous if they accumulate but the table is append-mostly
 //     without this cleanup.
 //
+//   • request_signing_replay — expired request-signature nonces (added
+//     2026-10-10, migration 0009). Live rows are the replay cache and the
+//     per-keyid cap (src/storage/replayRepo.ts) and are never touched.
+//
 // Not purged:
 //   • seeded / derived signals (generation_mode in ('seeded','derived'))
 //     — these are the canonical catalog shipped with the code. Deleting
@@ -63,6 +67,7 @@ export interface PurgeResult {
     activation_events: number;
     mcp_tool_calls: number;
     oauth_state: number;
+    request_signing_replay: number;
   };
   retention: typeof RETENTION;
   errors: string[];
@@ -83,6 +88,7 @@ export async function runScheduledPurge(
       activation_events: 0,
       mcp_tool_calls: 0,
       oauth_state: 0,
+      request_signing_replay: 0,
     },
     retention: RETENTION,
     errors: [],
@@ -197,6 +203,23 @@ export async function runScheduledPurge(
     }
   } catch (e) {
     result.errors.push("oauth_state: " + String(e));
+  }
+
+  // ── 5. Expired request-signing replay entries (expires_at is unix seconds) ──
+  try {
+    const nowSec = Math.floor(nowMs / 1000);
+    const before = await queryAll<{ c: number }>(
+      db,
+      `SELECT COUNT(*) AS c FROM request_signing_replay WHERE expires_at <= ?`,
+      [nowSec],
+    );
+    const beforeCount = before[0]?.c ?? 0;
+    if (beforeCount > 0) {
+      await execute(db, `DELETE FROM request_signing_replay WHERE expires_at <= ?`, [nowSec]);
+      result.deleted.request_signing_replay = beforeCount;
+    }
+  } catch (e) {
+    result.errors.push("request_signing_replay: " + String(e));
   }
 
   result.duration_ms = Date.now() - started;

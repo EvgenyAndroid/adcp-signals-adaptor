@@ -26,12 +26,19 @@ id      = "e17c4c99b649460a92016e1257436f22"
 port           = 8787
 local_protocol = "http"
 
+# 2026-10-10: every bare `crypto` import in the bundle resolves to this shim
+# (node:crypto re-exported, `verify` fixed for workerd's ES256 call shape).
+# It exists for the @adcp/sdk request verifier only — see its header.
+[alias]
+"crypto" = "./src/shims/crypto.ts"
+
 # Sec-40: weekly D1 housekeeping purge.
 # Schedule: Sundays 06:00 UTC (01:00 ET / 22:00 PT Saturday).
 # The scheduled() handler in src/index.ts invokes runScheduledPurge which
 # sweeps: dynamic signals (>7d), activation_jobs + events (>30d),
 # mcp_tool_calls (>7d, matches ext.governance.audit_log.retention_days),
-# and expired OAuth state. Canonical seeded/derived signals are preserved.
+# expired OAuth state and expired request-signing nonces.
+# Canonical seeded/derived signals are preserved.
 # Manual trigger available via POST /admin/purge (DEMO_API_KEY gated).
 [triggers]
 # Two cron schedules:

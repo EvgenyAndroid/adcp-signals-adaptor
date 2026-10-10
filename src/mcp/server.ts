@@ -18,6 +18,11 @@
 // list_tasks also gained real filters[] handling (task_ids/task_type/
 // status/has_webhook) and a has_webhook field — the same storyboard's
 // list_signals_task step filters on both and asserts an exact count.
+// 2026-10-10: RFC 9421 request signing (signed_requests). handleMcpRequest
+// reads the raw body once and runs src/domain/requestSigning.ts before the
+// bearer gate; a verified signature authenticates as a sandbox principal
+// when no valid bearer is present. Unsigned traffic is unchanged except for
+// the spec's webhook-authentication payload rule.
 
 import type { Env } from "../types/env";
 import type { Logger } from "../utils/logger";
@@ -50,6 +55,8 @@ import { safeRecordSignalTrace, persistSignalTrace } from "../domain/signalTrace
 import { record as recordToolLog, argKeysOf } from "./toolLog";
 import { logCall as d1LogCall, cleanup as d1Cleanup, shouldRunCleanup } from "../storage/toolLogRepo";
 import { operatorIdFromRequest } from "../utils/operatorId";
+import { checkRequestSignature, carriesWebhookAuthentication, signerOperatorId, type SignatureCheck } from "../domain/requestSigning";
+import { D1ReplayStore } from "../storage/replayRepo";
 import { ADCP_WIRE_PIN } from "../constants/specVersion";
 import {
     handleComplyTestController,
@@ -165,11 +172,74 @@ export async function handleMcpRequest(
         );
     }
 
-    let body: unknown;
+    // 2026-10-10: the body is read once, as bytes, because request signing
+    // needs exactly what was received (Content-Digest covers the raw bytes).
+    // The cap is re-checked on the real length — Content-Length above is
+    // only the cheap early reject and may be absent or wrong. ignoreBOM keeps
+    // a leading U+FEFF in `text` so the verifier re-encodes the exact bytes;
+    // the JSON parse strips it, as the Fetch spec's json() does. (workerd's
+    // request.json() did not, so a BOM-prefixed body that used to read
+    // -32700 now parses.) A body that fails to read is still -32700, as it
+    // was when request.json() read it inside the try below.
+    let raw: ArrayBuffer;
     try {
-        body = await request.json();
+        raw = await request.arrayBuffer();
     } catch {
         return rpcErrorResponse(null, RPC_PARSE_ERROR, "Parse error: invalid JSON");
+    }
+    if (raw.byteLength > MAX_MCP_BODY_BYTES) {
+        return rpcErrorResponse(
+            null,
+            RPC_INVALID_REQUEST,
+            `Request body too large (${raw.byteLength} > ${MAX_MCP_BODY_BYTES})`,
+        );
+    }
+    const text = new TextDecoder("utf-8", { fatal: false, ignoreBOM: true }).decode(raw);
+
+    let body: unknown;
+    try {
+        body = JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
+    } catch {
+        return rpcErrorResponse(null, RPC_PARSE_ERROR, "Parse error: invalid JSON");
+    }
+
+    // RFC 9421 request signing, BEFORE the bearer gate — see
+    // src/domain/requestSigning.ts. A signed request is verified once for the
+    // whole HTTP request (batches included) and any failure is a 401
+    // Signature challenge whatever the bearer says. An unsigned request
+    // carrying webhook `authentication` at the spec's sites is refused the
+    // same way. Every other unsigned request takes the path below unchanged,
+    // with no D1 access.
+    let signature: SignatureCheck;
+    try {
+        signature = await checkRequestSignature(
+            { method: request.method, url: request.url, headers: request.headers, body: text },
+            body,
+            new D1ReplayStore(env.DB),
+        );
+    } catch (err) {
+        // Replay store (D1) failure on the signed path: fail closed.
+        logger.error("mcp_request_signature_store_error", { error: String(err) });
+        return jsonResponse(rpcError(null, RPC_INTERNAL_ERROR, "Request signature verification unavailable"), 503);
+    }
+    if (signature.status === "rejected") {
+        logger.warn("mcp_request_signature_rejected", { code: signature.code, detail: signature.detail });
+        const id = !Array.isArray(body) && isValidRpcRequest(body) ? (body.id ?? null) : null;
+        // Same JSON-RPC -32001 body and CORS headers as the Bearer 401 below;
+        // the challenge is the spec's exact form, no realm and no other
+        // parameters (security.mdx 3.1.27, "WWW-Authenticate format").
+        return jsonResponse(
+            rpcError(id, RPC_UNAUTHORIZED, `Request signature rejected: ${signature.code}`),
+            401,
+            { "WWW-Authenticate": `Signature error="${signature.code}"` },
+        );
+    }
+    const signer = signature.status === "verified" ? signature.keyid : null;
+    // Sellers MUST log every request carrying a non-empty webhook
+    // `authentication` block (security.mdx @ v3.1.27 :1455). Unsigned ones
+    // were refused and logged above; this is the accepted, signed case.
+    if (signer !== null && carriesWebhookAuthentication(body)) {
+        logger.info("mcp_webhook_authentication_present", { keyid: signer });
     }
 
     // Gate state-changing methods (tools/call) behind the API key. Discovery
@@ -178,15 +248,23 @@ export async function handleMcpRequest(
     // the unauthenticated discovery handshake it expects.
     // The live test-kit key is a second recognised principal that resolves
     // to live mode — see LIVE_TEST_KIT_API_KEY.
+    // A verified signature is the other way in: bearer wins when it is
+    // present and valid; otherwise the signer is a sandbox principal with the
+    // public DEMO key's privileges. Live mode only ever comes from the live
+    // bearer — the only trusted signing keys are public test keys.
     const isSandboxCaller = requireAuth(request, env.DEMO_API_KEY);
     const isLiveCaller = !isSandboxCaller && requireAuth(request, LIVE_TEST_KIT_API_KEY);
-    const isAuthed = isSandboxCaller || isLiveCaller;
+    const isBearerAuthed = isSandboxCaller || isLiveCaller;
+    const isAuthed = isBearerAuthed || signer !== null;
     // Derived once per HTTP request — every message in a (possibly batched)
     // JSON-RPC body shares the same Authorization header, so one derivation
     // is correct for all of them. Null for unauthenticated requests; tool
     // handlers that need it are all behind AUTHENTICATED_MCP_METHODS, so a
     // null here only ever reaches code paths that don't consult it.
-    const operatorId = await operatorIdFromRequest(request);
+    // A signature-only caller gets an id in its own namespace (signerOperatorId).
+    const operatorId = !isBearerAuthed && signer !== null
+        ? signerOperatorId(signer)
+        : await operatorIdFromRequest(request);
 
     if (Array.isArray(body)) {
         // Batched requests — mixed auth per message stays as JSON-RPC 200 OK
@@ -2042,14 +2120,15 @@ function rpcErrorResponse(id: string | number | null, code: number, message: str
     return jsonResponse(rpcError(id, code, message));
 }
 
-function jsonResponse(data: unknown): Response {
+function jsonResponse(data: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
     return new Response(JSON.stringify(data), {
-        status: 200,
+        status,
         headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type, Authorization, Mcp-Session-Id",
+            ...extraHeaders,
         },
     });
 }

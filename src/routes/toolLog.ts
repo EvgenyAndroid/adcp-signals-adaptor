@@ -4,15 +4,30 @@
 // Public by design: this is agent-observability, same spirit as
 // /capabilities being readable — a buyer agent shouldn't need a
 // credential to see whether the upstream is alive and what kinds
-// of calls it's handling. NO arg VALUES leak (see mcp/toolLog.ts)
-// so there's no confidentiality surface.
+// of calls it's handling. Arg VALUES are not returned: D1 stores the
+// args, but this route returns only their top-level keys (argKeysOf
+// in mcp/toolLog.ts), the same shape as the in-memory fallback. Args
+// can carry briefs and push_notification_config credentials.
+// errorKind is still the stored error message, which can name an ID
+// the caller sent (e.g. "Signal not found: <id>").
 
 import type { Env } from "../types/env";
 import type { Logger } from "../utils/logger";
 import { jsonResponse } from "./shared";
-import { recent } from "../mcp/toolLog";
+import { recent, argKeysOf } from "../mcp/toolLog";
 import { getDb } from "../storage/db";
 import { recentCalls } from "../storage/toolLogRepo";
+
+// Parse the stored JSON only to read its keys; values never leave this
+// function. Rows truncated at write time no longer parse, so they show
+// no keys rather than a partial payload.
+function argKeysOfStored(argumentsJson: string): string[] {
+  try {
+    return argKeysOf(JSON.parse(argumentsJson));
+  } catch {
+    return [];
+  }
+}
 
 export async function handleToolLog(
   request: Request,
@@ -38,7 +53,7 @@ export async function handleToolLog(
       id: r.id,
       ts: new Date(r.createdAt).toISOString(),
       tool: r.toolName,
-      argumentsJson: r.argumentsJson,
+      argKeys: argKeysOfStored(r.argumentsJson),
       latencyMs: r.durationMs,
       responseBytes: r.responseSizeBytes,
       ok: r.status === "ok",

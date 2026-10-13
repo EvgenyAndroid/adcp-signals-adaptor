@@ -42,7 +42,7 @@ describe("MCP tool definitions", () => {
   it("get_task_status requires task_id and returns the canonical envelope", () => {
     const tool = getToolByName("get_task_status")!;
     expect(tool.inputSchema.required).toContain("task_id");
-    expect(tool.outputSchema?.required).toEqual(
+    expect((tool.outputSchema?.anyOf?.[0] as { required?: string[] } | undefined)?.required).toEqual(
       expect.arrayContaining(["task_id", "task_type", "protocol", "status", "created_at", "updated_at"])
     );
   });

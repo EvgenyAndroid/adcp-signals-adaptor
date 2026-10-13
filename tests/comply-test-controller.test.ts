@@ -11,6 +11,7 @@
 //     handleMcpRequest end-to-end.
 
 import { describe, it, expect, vi } from "vitest";
+import { expectMatchesOutputSchema } from "./outputSchemaConformance";
 
 // callGetSignals unconditionally calls getWholesaleFeedVersion(db) near the
 // top of every get_signals call (to have a token ready to echo even on the
@@ -505,7 +506,9 @@ async function callTool(env: import("../src/types/env").Env, name: string, args:
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }),
   });
   const res = await handleMcpRequest(req, env, logger);
-  return JSON.parse(await res.text());
+  const body = JSON.parse(await res.text());
+  if (body.result?.structuredContent) expectMatchesOutputSchema(name, body.result.structuredContent);
+  return body;
 }
 
 describe("MCP dispatch — comply_test_controller / list_tasks", () => {

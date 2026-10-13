@@ -9,7 +9,9 @@ import { constantTimeEqual, requireAuth } from "../src/routes/shared";
 import { escapeHtml, escapeHtmlAttr, handleLinkedInAuthInit, handleLinkedInAuthCallback } from "../src/activations/auth/linkedin";
 import worker, { corsHeaders } from "../src/index";
 import { ADCP_TOOLS, getToolByName } from "../src/mcp/tools";
-import { toolResult, numArg, handleMcpRequest } from "../src/mcp/server";
+import { toolResult, toolError, numArg, handleMcpRequest } from "../src/mcp/server";
+import { Validator } from "@cfworker/json-schema";
+import { expectMatchesOutputSchema } from "./outputSchemaConformance";
 
 // ── toolResult helper: structuredContent + backwards-compat text ──────────────
 
@@ -83,6 +85,12 @@ describe("numArg (MCP optional-number coercion)", () => {
 // and fail validation.
 
 describe("MCP tool definitions — outputSchema", () => {
+  // Every outputSchema is orToolError(<success shape(s)>) (src/mcp/tools.ts):
+  // anyOf[0] is the tool's first success shape, the last branch the
+  // toolError() envelope.
+  const successShape = (toolName: string) =>
+    getToolByName(toolName)!.outputSchema!.anyOf![0] as { required?: string[]; properties?: Record<string, any> };
+
   const STRUCTURED_TOOLS = [
     "get_adcp_capabilities",
     "get_signals",
@@ -102,7 +110,7 @@ describe("MCP tool definitions — outputSchema", () => {
   });
 
   it("get_adcp_capabilities outputSchema requires adcp + supported_protocols (matches v3)", () => {
-    const schema = getToolByName("get_adcp_capabilities")!.outputSchema!;
+    const schema = successShape("get_adcp_capabilities");
     expect(schema.required).toContain("adcp");
     expect(schema.required).toContain("supported_protocols");
   });
@@ -121,7 +129,7 @@ describe("MCP tool definitions — outputSchema", () => {
   });
 
   it("get_adcp_capabilities outputSchema requires adcp.idempotency.{supported, replay_ttl_seconds} (HEAD schema discriminated union)", () => {
-    const schema = getToolByName("get_adcp_capabilities")!.outputSchema!;
+    const schema = successShape("get_adcp_capabilities");
     const adcp = (schema.properties as Record<string, any>).adcp;
     expect(adcp.required).toContain("idempotency");
     const idempotency = adcp.properties.idempotency;
@@ -136,23 +144,40 @@ describe("MCP tool definitions — outputSchema", () => {
   });
 
   it("get_adcp_capabilities outputSchema declares optional `context` for echo", () => {
-    const schema = getToolByName("get_adcp_capabilities")!.outputSchema!;
+    const schema = successShape("get_adcp_capabilities");
     const props = schema.properties as Record<string, { type?: string }>;
     expect(props.context?.type).toBe("object");
   });
 
-  it("activate_signal outputSchema requires task_id, status, signal_agent_segment_id", () => {
-    const schema = getToolByName("activate_signal")!.outputSchema!;
+  it("activate_signal outputSchema requires task_id, status, deployments (3.1 success arm; segment id rides in ext)", () => {
+    const schema = successShape("activate_signal");
+    expect(schema.required).toEqual(
+      expect.arrayContaining(["task_id", "status", "deployments"])
+    );
+  });
+
+  it("get_operation_status outputSchema requires task_id, status, signal_agent_segment_id", () => {
+    const schema = successShape("get_operation_status");
     expect(schema.required).toEqual(
       expect.arrayContaining(["task_id", "status", "signal_agent_segment_id"])
     );
   });
 
-  it("get_operation_status outputSchema requires task_id, status, signal_agent_segment_id", () => {
-    const schema = getToolByName("get_operation_status")!.outputSchema!;
-    expect(schema.required).toEqual(
-      expect.arrayContaining(["task_id", "status", "signal_agent_segment_id"])
-    );
+  // 2026-10-13: MCP clients validate error results against outputSchema too
+  // (src/mcp/tools.ts TOOL_ERROR_RESULT). The toolError() envelope must pass
+  // every served schema; something that is neither a success shape nor that
+  // envelope must not.
+  it.each(ADCP_TOOLS.map((t) => t.name))("'%s' outputSchema admits the toolError() envelope", (toolName) => {
+    const envelope = (toolError({ code: "INVALID_REQUEST", message: "x", recovery: "correctable" }, { correlation_id: "c-1" }) as {
+      structuredContent: unknown;
+    }).structuredContent;
+    expectMatchesOutputSchema(toolName, envelope);
+  });
+
+  it("get_signals outputSchema rejects a result that is neither a success arm nor the error envelope", () => {
+    const schema = getToolByName("get_signals")!.outputSchema!;
+    const bogus = { status: "completed", adcp_version: "3.1", count: 3 };
+    expect(new Validator(schema as { [k: string]: unknown }, "7", false).validate(bogus).valid).toBe(false);
   });
 
   it("every advertised tool is round-trippable via getToolByName", () => {

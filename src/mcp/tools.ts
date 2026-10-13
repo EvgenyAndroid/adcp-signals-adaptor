@@ -30,9 +30,12 @@ export interface McpToolDefinition {
      * against this schema. Schemas here are deliberately permissive
      * (additionalProperties: true, only require the contractually-required
      * fields) so additive changes to response shape don't trip validators.
+     * Every schema is built with orToolError() below: the tool's success
+     * shape(s) OR the toolError() envelope.
      */
     outputSchema?: {
         type: "object";
+        anyOf?: object[];
         properties?: Record<string, unknown>;
         required?: string[];
         additionalProperties?: boolean;
@@ -54,6 +57,33 @@ const DEPLOYMENT_ITEM = {
     },
     additionalProperties: true,
 };
+
+// 2026-10-13: the structuredContent of a toolError() result
+// (src/mcp/server.ts) is {status: "failed", adcp_version, adcp_error,
+// context?}. MCP clients validate structuredContent against outputSchema on
+// error results too — @modelcontextprotocol/sdk 1.32.1's Client.callTool does
+// once listTools() has cached the validators, and the MCP spec says
+// structuredContent MUST match a declared outputSchema — so every schema in
+// this file is "the success shape(s) OR this envelope". The hosted grader
+// began validating this way with @adcp/sdk 15.8.1: its 2026-10-12 heartbeat
+// failed every get_signals call (the schema still required the v2 `count`
+// the payload dropped) and every error result of activate_signal,
+// get_operation_status, get_similar_signals and get_task_status with -32602.
+const TOOL_ERROR_RESULT = {
+    type: "object",
+    required: ["status", "adcp_error"],
+    properties: {
+        status: { const: "failed" },
+        adcp_version: { type: "string" },
+        adcp_error: { type: "object", required: ["code", "message"], additionalProperties: true },
+        context: { type: "object", additionalProperties: true },
+    },
+    additionalProperties: true,
+};
+
+function orToolError(...shapes: object[]): NonNullable<McpToolDefinition["outputSchema"]> {
+    return { type: "object", anyOf: [...shapes, TOOL_ERROR_RESULT] };
+}
 
 export const ADCP_TOOLS: McpToolDefinition[] = [
     {
@@ -93,7 +123,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 },
             },
         },
-        outputSchema: {
+        outputSchema: orToolError({
             type: "object",
             required: ["adcp", "supported_protocols"],
             properties: {
@@ -139,7 +169,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 last_updated: { type: "string" },
             },
             additionalProperties: true,
-        },
+        }),
     },
 
     {
@@ -308,21 +338,43 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
             },
             required: ["signal_spec", "deliver_to"],
         },
-        outputSchema: {
-            type: "object",
-            required: ["signals", "count"],
-            properties: {
-                message: { type: "string" },
-                context_id: { type: "string" },
-                signals: { type: "array", items: { type: "object", additionalProperties: true } },
-                proposals: { type: "array", items: { type: "object", additionalProperties: true } },
-                count: { type: "integer", minimum: 0 },
-                totalCount: { type: "integer", minimum: 0 },
-                offset: { type: "integer", minimum: 0 },
-                hasMore: { type: "boolean" },
+        // Three success arms (src/mcp/server.ts callGetSignals), each plus the
+        // envelope's status/adcp_version: a search result, the 3.1
+        // get-signals-response payload (the v2 count/totalCount/offset/hasMore
+        // and message/context_id were dropped from it, so the schema no longer
+        // names them); the wholesale `unchanged: true` arm, which MUST omit
+        // `signals`; and the Submitted arm forced by comply_test_controller.
+        outputSchema: orToolError(
+            {
+                type: "object",
+                required: ["signals"],
+                properties: {
+                    signals: { type: "array", items: { type: "object", additionalProperties: true } },
+                    pagination: { type: "object", additionalProperties: true },
+                    cache_scope: { type: "string" },
+                    context: { type: "object", additionalProperties: true },
+                },
+                additionalProperties: true,
             },
-            additionalProperties: true,
-        },
+            {
+                type: "object",
+                required: ["unchanged", "wholesale_feed_version"],
+                properties: {
+                    unchanged: { const: true },
+                    wholesale_feed_version: { type: "string" },
+                },
+                additionalProperties: true,
+            },
+            {
+                type: "object",
+                required: ["status", "task_id"],
+                properties: {
+                    status: { const: "submitted" },
+                    task_id: { type: "string" },
+                },
+                additionalProperties: true,
+            },
+        ),
     },
 
     {
@@ -421,19 +473,20 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
             },
             required: ["signal_agent_segment_id"],
         },
-        outputSchema: {
+        // The 3.1 activate-signal-response success arm requires `deployments`;
+        // callActivateSignal carries signal_agent_segment_id, webhook_url and
+        // pricing_option_id in `ext`, not at the top level.
+        outputSchema: orToolError({
             type: "object",
-            required: ["task_id", "status", "signal_agent_segment_id"],
+            required: ["task_id", "status", "deployments"],
             properties: {
                 task_id: { type: "string" },
                 status: { type: "string" },
-                signal_agent_segment_id: { type: "string" },
                 deployments: { type: "array", items: DEPLOYMENT_ITEM },
-                webhook_url: { type: "string" },
-                pricing_option_id: { type: "string" },
+                ext: { type: "object", additionalProperties: true },
             },
             additionalProperties: true,
-        },
+        }),
     },
 
     {
@@ -453,7 +506,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
             },
             required: ["task_id"],
         },
-        outputSchema: {
+        outputSchema: orToolError({
             type: "object",
             required: ["task_id", "status", "signal_agent_segment_id"],
             properties: {
@@ -466,7 +519,18 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 completedAt: { type: "string" },
             },
             additionalProperties: true,
-        },
+        }, {
+            // A task forced by comply_test_controller (force_task_completion):
+            // {status, task_id} plus the task's own result, no segment id
+            // (callGetOperation's compliance-hook branch).
+            type: "object",
+            required: ["task_id", "status"],
+            properties: {
+                task_id: { type: "string" },
+                status: { type: "string" },
+            },
+            additionalProperties: true,
+        }),
     },
 
     {
@@ -502,7 +566,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
             },
             required: ["signal_agent_segment_id", "deliver_to"],
         },
-        outputSchema: {
+        outputSchema: orToolError({
             type: "object",
             required: ["reference_signal_id", "results", "count"],
             properties: {
@@ -514,7 +578,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 count: { type: "integer", minimum: 0 },
             },
             additionalProperties: true,
-        },
+        }),
     },
 
     // ── UCP extension tools ──────────────────────────────────────────────────────
@@ -548,7 +612,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
             },
             required: ["query"],
         },
-        outputSchema: {
+        outputSchema: orToolError({
             type: "object",
             properties: {
                 query: { type: "string" },
@@ -558,7 +622,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 count: { type: "integer", minimum: 0 },
             },
             additionalProperties: true,
-        },
+        }),
     },
 
     {
@@ -578,7 +642,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
             },
             required: ["concept_id"],
         },
-        outputSchema: {
+        outputSchema: orToolError({
             type: "object",
             properties: {
                 concept_id: { type: "string" },
@@ -589,7 +653,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 available_count: { type: "integer" },
             },
             additionalProperties: true,
-        },
+        }),
     },
 
     {
@@ -619,7 +683,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
             },
             required: ["q"],
         },
-        outputSchema: {
+        outputSchema: orToolError({
             type: "object",
             properties: {
                 query: { type: "string" },
@@ -629,7 +693,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 error: { type: "string" },
             },
             additionalProperties: true,
-        },
+        }),
     },
 
     {
@@ -671,7 +735,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
             },
             required: ["scenario", "account"],
         },
-        outputSchema: {
+        outputSchema: orToolError({
             type: "object",
             required: ["success"],
             properties: {
@@ -684,7 +748,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 error_detail: { type: "string" },
             },
             additionalProperties: true,
-        },
+        }),
     },
 
     {
@@ -719,7 +783,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
             },
             required: ["task_id"],
         },
-        outputSchema: {
+        outputSchema: orToolError({
             type: "object",
             required: ["task_id", "task_type", "protocol", "status", "created_at", "updated_at"],
             properties: {
@@ -735,7 +799,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 error: { type: "object", additionalProperties: true },
             },
             additionalProperties: true,
-        },
+        }),
     },
 
     {
@@ -770,7 +834,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 context: { type: "object", additionalProperties: true },
             },
         },
-        outputSchema: {
+        outputSchema: orToolError({
             type: "object",
             required: ["tasks", "pagination"],
             properties: {
@@ -805,7 +869,7 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
                 },
             },
             additionalProperties: true,
-        },
+        }),
     },
 
 ];

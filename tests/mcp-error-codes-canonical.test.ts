@@ -19,6 +19,7 @@
 // the ones a buyer hits first and the ones the suite grades.
 
 import { describe, it, expect } from "vitest";
+import { expectMatchesOutputSchema } from "./outputSchemaConformance";
 import { handleMcpRequest } from "../src/mcp/server";
 import { createLogger } from "../src/utils/logger";
 
@@ -68,6 +69,7 @@ async function callTool(name: string, args: Record<string, unknown>, id = 1) {
   );
   const text = await res.text();
   const body: McpResultBody = text ? JSON.parse(text) : {};
+  if (body.result?.structuredContent) expectMatchesOutputSchema(name, body.result.structuredContent);
   return { body, adcp_error: body.result?.structuredContent?.adcp_error };
 }
 

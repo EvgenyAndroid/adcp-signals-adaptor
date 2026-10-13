@@ -25,6 +25,7 @@
 // over canonical fixtures, so the response shape is the production shape.
 
 import { describe, it, expect, vi } from "vitest";
+import { expectMatchesOutputSchema } from "./outputSchemaConformance";
 import type { CanonicalSignal } from "../src/types/signal";
 
 function fixture(id: string, status: CanonicalSignal["status"] = "available"): CanonicalSignal {
@@ -118,6 +119,7 @@ async function callGetSignals(args: Record<string, unknown>) {
   });
   const res = await handleMcpRequest(req, env, logger);
   const body = JSON.parse(await res.text());
+  if (body.result?.structuredContent) expectMatchesOutputSchema("get_signals", body.result.structuredContent);
   return body.result?.structuredContent ?? {};
 }
 

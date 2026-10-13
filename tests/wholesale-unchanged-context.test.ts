@@ -14,6 +14,7 @@
 // without a seeded D1 (the early return happens before any DB query).
 
 import { describe, it, expect, vi } from "vitest";
+import { expectMatchesOutputSchema } from "./outputSchemaConformance";
 
 vi.mock("../src/domain/signalService", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/domain/signalService")>();
@@ -45,6 +46,7 @@ async function callUnchanged(correlationId: string) {
   });
   const res = await handleMcpRequest(req, env, logger);
   const body = JSON.parse(await res.text());
+  if (body.result?.structuredContent) expectMatchesOutputSchema("get_signals", body.result.structuredContent);
   return body.result?.structuredContent ?? {};
 }
 

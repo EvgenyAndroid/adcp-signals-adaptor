@@ -700,7 +700,11 @@ function resolvePin(args: Record<string, unknown>, supported: string[], fallback
     const rel = args["adcp_version"];
     if (rel === undefined || rel === null || rel === "") return fallback;
     const m = typeof rel === "string" ? ADCP_VERSION_PATTERN.exec(rel) : null;
-    if (!m) return { refused: `adcp_version ${String(rel)} is not a release-precision version (MAJOR.MINOR).` };
+    if (!m) {
+        return { refused: typeof rel === "string"
+            ? `adcp_version ${rel} is not a release-precision version (MAJOR.MINOR).`
+            : `adcp_version must be a string "MAJOR.MINOR", not ${Array.isArray(rel) ? "an array" : `a ${typeof rel}`}.` };
+    }
     const pin = m[0];
     const relMajor = Number(m[1]);
     if (!SUPPORTED_MAJOR_VERSIONS.includes(relMajor)) return { refused: `adcp_version ${pin} not supported.` };

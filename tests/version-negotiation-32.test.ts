@@ -158,6 +158,14 @@ describe("flag ON: get_signals resolves every pin class", () => {
     }
   });
 
+  it("a non-string adcp_version is refused as a type error, not as a malformed version string", async () => {
+    const { env } = makeEnv(true);
+    for (const [pin, kind] of [[3.1, "a number"], [["3.1"], "an array"]] as const) {
+      const { sc } = await tool(env, "get_signals", { signal_spec: "anything", adcp_version: pin });
+      expect(sc.adcp_error?.message).toContain(`adcp_version must be a string "MAJOR.MINOR", not ${kind}.`);
+    }
+  });
+
   it("the same resolution applies to every tool, not only get_signals (activate_signal, controller)", async () => {
     const { env } = makeEnv(true);
     const act = await tool(env, "activate_signal", { signal_agent_segment_id: "s", adcp_version: "3.1-beta.5" });

@@ -110,12 +110,13 @@
 //     `controller_seeding: true` with ACCOUNT fixtures only, and the runner
 //     seeds them all-or-nothing before step one: one unadvertised seed_*
 //     skips the whole storyboard (fixture_seed_unsupported), a seed that
-//     returns success:false is a setup gap. Each storyboard seeds one
-//     sandbox:true and one sandbox:false fixture under its own account_id; no
-//     step reads a seeded account back (steps send natural-key account refs).
+//     returns success:false is a setup gap. Most seed one sandbox:true and
+//     one sandbox:false fixture, each under its own account_id
+//     (get_signals_async seeds only the sandbox one); no step reads a seeded
+//     account back (steps send natural-key account refs).
 //     This agent has no account store, so a seed is recorded as test state of
 //     the calling sandbox principal — KV, per the STATE MODEL note above,
-//     under compliance:account:<operatorId>:<account_id>, one-hour TTL — and
+//     under compliance:account:<operatorId>:<account_id>, 30-minute TTL — and
 //     nothing else reads it: it cannot overwrite a real account, and it
 //     changes no response of any other tool. The sandbox:false fixture is a
 //     row of the sandbox caller's own test state, requested on a request that
@@ -123,7 +124,17 @@
 //     live principal before any write. Re-seeds follow the controller doc's
 //     "Seeding semantics": an identical fixture succeeds, a diverging one is
 //     INVALID_PARAMS naming the fields, never a merge. The success carries
-//     no previous_state, which the 3.2.4 SeedSuccess branch forbids.
+//     no previous_state, which the 3.2.4 SeedSuccess branch forbids. The
+//     check is a KV get then put, so two concurrent seeds of one account_id
+//     (or seeds landing at two edge locations) can both succeed; the runner
+//     seeds sequentially. SHARED PRINCIPAL: the DEMO key is the only
+//     sandbox bearer, so it is the hosted grader's saved credential too, and
+//     anyone holding that public key shares the grader's
+//     operatorId and can pre-seed a diverging fixture that turns the
+//     grader's seed into INVALID_PARAMS — a setup gap, so a degraded card —
+//     until the seed expires. force_get_signals_arm has the same exposure.
+//     The fix is a second, secret sandbox credential for the grader (a flip
+//     prerequisite in the README); the 30-minute TTL bounds each instance.
 //   - operator_unit. 3.2's account natural key is brand + operator +
 //     optional operator_unit.id (core/account-ref.json), so the unit joins
 //     deriveAccountKey's key when present. brand_id, currency, timezone and
@@ -170,9 +181,14 @@ export function supportedScenarios(env: { SERVE_ADCP_3_2?: string }): string[] {
 const ARM_TTL_SECONDS = 600; // "typical turnaround 10 minutes" — matches the storyboard's own forced message text
 const TASK_TTL_SECONDS = 3600; // generous compliance-run window; this is test-only state, never real data
 const INDEX_TTL_SECONDS = 3600;
-const SEEDED_ACCOUNT_TTL_SECONDS = 3600;
+// One hosted run's budget (30 min). The seed only has to outlive the run that
+// made it, and every seed holds its account_id against a diverging re-seed by
+// the same principal until it expires — see the shared-principal caveat in
+// the ADCP 3.2 module note.
+const SEEDED_ACCOUNT_TTL_SECONDS = 1800;
 const MAX_ACCOUNT_ID_BYTES = 190; // keeps the KV key well inside its 512-byte limit
 const MAX_FIXTURE_BYTES = 8 * 1024;
+const MAX_FIXTURE_DEPTH = 32; // nesting levels, the fixture object being the first
 
 const armKey = (operatorId: string) => `compliance:arm:get_signals:${operatorId}`;
 const taskKey = (operatorId: string, taskId: string) => `compliance:task:${operatorId}:${taskId}`;
@@ -292,17 +308,33 @@ export async function handleComplyTestController(
   }
 }
 
-/** Canonical (recursively sorted-key) JSON — re-seeds compare fixtures, not key order. */
-function canonicalJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
-  if (value && typeof value === "object") {
-    return `{${Object.entries(value as Record<string, unknown>)
-      .filter(([, v]) => v !== undefined)
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-      .map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`)
-      .join(",")}}`;
+/**
+ * Canonical (recursively sorted-key) JSON — re-seeds compare fixtures, not
+ * key order. Null when a container sits more than MAX_FIXTURE_DEPTH levels
+ * deep, checked before recursing, so a deep fixture is INVALID_PARAMS rather
+ * than a stack overflow (-32603).
+ */
+function canonicalJson(value: unknown, depth = 0): string | null {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (depth >= MAX_FIXTURE_DEPTH) return null;
+  const parts: string[] = [];
+  if (Array.isArray(value)) {
+    for (const v of value) {
+      const c = canonicalJson(v, depth + 1);
+      if (c === null) return null;
+      parts.push(c);
+    }
+    return `[${parts.join(",")}]`;
   }
-  return JSON.stringify(value) ?? "null";
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, v]) => v !== undefined)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  for (const [k, v] of entries) {
+    const c = canonicalJson(v, depth + 1);
+    if (c === null) return null;
+    parts.push(`${JSON.stringify(k)}:${c}`);
+  }
+  return `{${parts.join(",")}}`;
 }
 
 /**
@@ -327,6 +359,9 @@ async function seedAccount(
     return ctlError("INVALID_PARAMS", "params.fixture must be an object");
   }
   const serialized = canonicalJson(fixture ?? null);
+  if (serialized === null) {
+    return ctlError("INVALID_PARAMS", `params.fixture is nested more than ${MAX_FIXTURE_DEPTH} levels deep`);
+  }
   if (new TextEncoder().encode(serialized).length > MAX_FIXTURE_BYTES) {
     return ctlError("INVALID_PARAMS", `params.fixture exceeds ${MAX_FIXTURE_BYTES} bytes`);
   }

@@ -1039,12 +1039,25 @@ describe("seed_account — flag ON", () => {
     expect(puts).toEqual([]);
   });
 
+  it("a fixture nested deeper than 32 levels → INVALID_PARAMS, not an internal error, nothing written", async () => {
+    const nest = (n: number): unknown => { let v: unknown = 1; for (let i = 0; i < n; i++) v = [v]; return v; };
+    const { kv, puts } = makeRecordingKv();
+    // The fixture object is level 1, so { a: nest(31) } is 32 levels deep.
+    for (const fixture of [{ deep: nest(5000) }, { a: nest(32) }]) {
+      const r = await handleComplyTestController(makeEnv(kv, FLAG_ON), seed({ account_id: "acct_deep", fixture }), OP_A);
+      expect(r).toMatchObject({ success: false, error: "INVALID_PARAMS" });
+    }
+    expect(puts).toEqual([]);
+    expect(await handleComplyTestController(makeEnv(kv, FLAG_ON), seed({ account_id: "acct_deep", fixture: { a: nest(31) } }), OP_A))
+      .toMatchObject({ success: true });
+  });
+
   it("an account_id of exactly 190 bytes, and no fixture at all, are accepted", async () => {
     const { kv } = makeRecordingKv();
     expect(await handleComplyTestController(makeEnv(kv, FLAG_ON), seed({ account_id: "a".repeat(190) }), OP_A)).toMatchObject({ success: true });
   });
 
-  it("signal_owned's two fixtures (sandbox true and false) both seed, under the caller's namespace, for one hour", async () => {
+  it("signal_owned's two fixtures (sandbox true and false) both seed, under the caller's namespace, for 30 minutes", async () => {
     const { kv, store, puts } = makeRecordingKv();
     const env = makeEnv(kv, FLAG_ON);
     for (const f of [OWNED_SANDBOX, OWNED_LIVE]) {
@@ -1054,8 +1067,8 @@ describe("seed_account — flag ON", () => {
       for (const k of ["previous_state", "scenarios", "forced", "error"]) expect(r).not.toHaveProperty(k);
     }
     expect(puts).toEqual([
-      { key: `compliance:account:${OP_A}:${OWNED_SANDBOX.account_id}`, ttl: 3600 },
-      { key: `compliance:account:${OP_A}:${OWNED_LIVE.account_id}`, ttl: 3600 },
+      { key: `compliance:account:${OP_A}:${OWNED_SANDBOX.account_id}`, ttl: 1800 },
+      { key: `compliance:account:${OP_A}:${OWNED_LIVE.account_id}`, ttl: 1800 },
     ]);
     expect(JSON.parse(store.get(`compliance:account:${OP_A}:${OWNED_LIVE.account_id}`)!)).toEqual(OWNED_LIVE.fixture);
   });

@@ -635,6 +635,14 @@ wrangler secret put DEMO_API_KEY
 # the live test-kit key is ignored (and logged); unset means no grader key.
 # Never reuse an api_key from the AdCP spec's test-kits/*.yaml: those are public.
 wrangler secret put GRADER_API_KEY
+# Is the grader actually sending it? The registry shows only auth_type bearer,
+# so a request that authenticates with GRADER_API_KEY leaves a marker in KV:
+# {"at", "method", "tool"}, i.e. when, the JSON-RPC method and, for tools/call,
+# the tool. Never the key, its hash, the operator id, arguments or IPs. Written
+# at most once a minute per isolate, kept 30 days. Run from the repo root;
+# --remote is required (wrangler 4 reads local storage by default), and a 404
+# means no grader-key request in the last 30 days.
+npx wrangler kv key get auth:grader:last_seen --binding SIGNALS_CACHE --remote --text
 
 # Optional: RFC 9421 (Ed25519) signatures on outbound webhooks. The value is a
 # JSON private JWK — see "Webhook signatures" above and src/domain/webhookSigning.ts.

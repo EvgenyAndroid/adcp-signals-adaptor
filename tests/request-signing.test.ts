@@ -446,6 +446,30 @@ describe("handleMcpRequest — bearer OR verified signature", () => {
     expect(status).toBe(200);
   });
 
+  it("GRADER_API_KEY last-seen marker: signature-only (alone or beside a demo, live or invalid bearer) never writes it; signature + the grader bearer does", async () => {
+    vi.resetModules();
+    const fresh = await import("../src/mcp/server"); // per-isolate throttle unset
+    const grader = "fake-grader-key-request-signing-test";
+    const { env, kv } = makeEnv();
+    const graderEnv = { ...env, GRADER_API_KEY: grader } as Env;
+    const pending: Array<Promise<unknown>> = [];
+    const ctx = { waitUntil(p: Promise<unknown>) { pending.push(p); }, passThroughOnException() {} } as unknown as ExecutionContext;
+    const list = (id: number) => toolCall("comply_test_controller", { scenario: "list_scenarios", account: { sandbox: true } }, id);
+
+    for (const [i, bearer] of [undefined, DEMO_KEY, LIVE_KIT_KEY, "not-the-key"].entries()) {
+      const res = await fresh.handleMcpRequest(signedReq(list(i + 1), bearer ? { bearer } : {}), graderEnv, logger, ctx);
+      expect(res.status).toBe(200);
+    }
+    await Promise.all(pending);
+    expect(kv.has("auth:grader:last_seen")).toBe(false);
+
+    // Bearer wins: a signed request carrying the grader bearer is the grader principal.
+    const res = await fresh.handleMcpRequest(signedReq(list(9), { bearer: grader }), graderEnv, logger, ctx);
+    expect(res.status).toBe(200);
+    await Promise.all(pending);
+    expect(JSON.parse(kv.get("auth:grader:last_seen")!)).toMatchObject({ method: "tools/call", tool: "comply_test_controller" });
+  });
+
   it("vector 027 shape: unsigned update_media_buy carrying push_notification_config.authentication + a VALID bearer → 401 Signature request_signature_required", async () => {
     const { env } = makeEnv();
     const { status, body, res } = await call(env, unsignedReq(toolCall("update_media_buy", {

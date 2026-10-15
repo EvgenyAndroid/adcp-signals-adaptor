@@ -29,6 +29,7 @@ export async function handleGetCapabilities(
       ...(env.WEBHOOK_SIGNING_PRIVATE_JWK !== undefined
         ? { WEBHOOK_SIGNING_PRIVATE_JWK: env.WEBHOOK_SIGNING_PRIVATE_JWK }
         : {}),
+      ...(env.SERVE_ADCP_3_2 !== undefined ? { SERVE_ADCP_3_2: env.SERVE_ADCP_3_2 } : {}),
     });
 
     // Echo back any context the caller passed. REST /capabilities is a GET,

@@ -14,6 +14,8 @@
 //   SIGNALS_TOOLS = ['get_signals', 'activate_signal']
 //   ADCP_STATUS   — canonical status constants
 
+import { servesAdcp32 } from "../constants/specVersion";
+
 export const ADCP_SIGNALS_CORE_TOOLS = ['get_signals', 'activate_signal'] as const;
 
 export interface McpToolDefinition {
@@ -876,4 +878,24 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
 
 export function getToolByName(name: string): McpToolDefinition | undefined {
     return ADCP_TOOLS.find((t) => t.name === name);
+}
+
+// With SERVE_ADCP_3_2 ON the controller also implements seed_account
+// (src/domain/complianceController.ts). Prose only: the schemas are the same.
+// Built from the base description so the two cannot drift; the golden's
+// flag-ON allowlist fails if the replace stops matching.
+const COMPLY_TEST_CONTROLLER_DESCRIPTION_3_2 = ADCP_TOOLS
+    .find((t) => t.name === "comply_test_controller")!
+    .description.replace(
+        "conformance path; any other scenario",
+        "conformance path, and seed_account, which records an account fixture as the calling " +
+            "sandbox principal's own test state for 30 minutes (nothing else reads it); any other scenario",
+    );
+
+/** tools/list. ADCP_TOOLS itself with the flag OFF. */
+export function listTools(env: { SERVE_ADCP_3_2?: string }): McpToolDefinition[] {
+    if (!servesAdcp32(env)) return ADCP_TOOLS;
+    return ADCP_TOOLS.map((t) =>
+        t.name === "comply_test_controller" ? { ...t, description: COMPLY_TEST_CONTROLLER_DESCRIPTION_3_2 } : t,
+    );
 }

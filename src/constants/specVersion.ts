@@ -14,8 +14,29 @@ export const ADCP_MAJOR_LINE = "3.1 GA";
 /** The major.minor pin we actually negotiate on the wire (envelope
  *  adcp_version echo, X-AdCP-Version header, /health). Distinct from
  *  SPEC_VERSION (the patch we last conformed to) and from
- *  adcp.supported_versions (everything we accept). */
+ *  adcp.supported_versions (everything we accept).
+ *
+ *  2026-10-15: this is the flag-OFF pin. With SERVE_ADCP_3_2 ON
+ *  (src/types/env.ts) the agent also serves 3.2 and defaults to it; the three
+ *  helpers below are the only place that decides, and every surface that
+ *  self-describes (envelope echo, X-AdCP-Version, /health, initialize,
+ *  capabilities) reads them. */
 export const ADCP_WIRE_PIN = "3.1";
+
+/** AdCP 3.2 is served only when SERVE_ADCP_3_2 is exactly "true". */
+export function servesAdcp32(env?: { SERVE_ADCP_3_2?: string }): boolean {
+  return env?.SERVE_ADCP_3_2 === "true";
+}
+
+/** Release-precision versions advertised (adcp.supported_versions) and accepted as pins. */
+export function supportedReleaseVersions(env?: { SERVE_ADCP_3_2?: string }): string[] {
+  return servesAdcp32(env) ? ["3.0", "3.1", "3.2"] : ["3.0", "3.1"];
+}
+
+/** The release served when the caller pins none: the highest supported. */
+export function defaultServedVersion(env?: { SERVE_ADCP_3_2?: string }): string {
+  return servesAdcp32(env) ? "3.2" : ADCP_WIRE_PIN;
+}
 
 /** Specific spec patch version we're tested against. Bump on each
  *  successful conformance pass against a new patch.

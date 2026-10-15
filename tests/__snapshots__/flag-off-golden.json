@@ -1,0 +1,4305 @@
+{
+  "initialize": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "protocolVersion": "2024-11-05",
+        "capabilities": {
+          "tools": {
+            "listChanged": false
+          }
+        },
+        "serverInfo": {
+          "name": "adcp-signals-adaptor",
+          "version": "3.1",
+          "description": "AdCP Signals Provider — IAB Audience Taxonomy 1.1 aligned signal discovery, brief-driven custom segment proposals, and async activation with webhook support.",
+          "ucp": {
+            "space_id": "openai-te3-small-d512-v1",
+            "phase": "v1",
+            "gts": {
+              "supported": true,
+              "endpoint": "/ucp/gts",
+              "version": "adcp-gts-v1.0",
+              "pair_count": 15,
+              "pass_threshold": 0.95
+            },
+            "projector": {
+              "available": true,
+              "endpoint": "/ucp/projector",
+              "algorithm": "procrustes_svd",
+              "from_space": "openai-te3-small-d512-v1",
+              "to_space": "ucp-space-v1.0",
+              "status": "simulated"
+            },
+            "handshake_simulator": {
+              "supported": true,
+              "endpoint": "/ucp/simulate-handshake"
+            },
+            "nl_query": {
+              "supported": true,
+              "endpoint": "/signals/query",
+              "min_embedding_score": 0.45,
+              "archetype_count": 4,
+              "concept_count": 19
+            },
+            "concept_registry": {
+              "supported": true,
+              "endpoint": "/ucp/concepts",
+              "concept_count": 19
+            }
+          }
+        }
+      }
+    }
+  },
+  "tools/list": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "tools": [
+          {
+            "name": "get_adcp_capabilities",
+            "description": "Returns the capabilities of this AdCP Signals Provider: supported operations, signal categories, available destinations, activation mode, and limits. Call this first to understand what the provider supports before searching or activating signals. Optionally pass `protocols` to filter the response to specific protocol blocks.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "protocols": {
+                  "type": "array",
+                  "description": "Optional filter — return only the listed protocol blocks. Top-level adcp, supported_protocols, and ext are always returned.",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "media_buy",
+                      "signals",
+                      "governance",
+                      "sponsored_intelligence",
+                      "creative",
+                      "brand"
+                    ]
+                  }
+                },
+                "protocol": {
+                  "type": "string",
+                  "description": "Singular alias for `protocols` — accepts a single protocol name. Provided for compatibility with clients that use the singular form.",
+                  "enum": [
+                    "media_buy",
+                    "signals",
+                    "governance",
+                    "sponsored_intelligence",
+                    "creative",
+                    "brand"
+                  ]
+                },
+                "context": {
+                  "type": "object",
+                  "description": "Opaque correlation data echoed unchanged in the response. Use for tracing / session IDs / correlation IDs. Per the AdCP context schema, contents are not parsed by the agent — they round-trip.",
+                  "additionalProperties": true
+                }
+              }
+            },
+            "outputSchema": {
+              "type": "object",
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "adcp",
+                    "supported_protocols"
+                  ],
+                  "properties": {
+                    "adcp": {
+                      "type": "object",
+                      "required": [
+                        "major_versions",
+                        "idempotency"
+                      ],
+                      "properties": {
+                        "major_versions": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "minItems": 1
+                        },
+                        "idempotency": {
+                          "type": "object",
+                          "required": [
+                            "supported",
+                            "replay_ttl_seconds"
+                          ],
+                          "properties": {
+                            "supported": {
+                              "type": "boolean",
+                              "const": true
+                            },
+                            "replay_ttl_seconds": {
+                              "type": "integer",
+                              "minimum": 3600,
+                              "maximum": 604800
+                            }
+                          }
+                        }
+                      },
+                      "additionalProperties": true
+                    },
+                    "supported_protocols": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "media_buy",
+                          "signals",
+                          "governance",
+                          "sponsored_intelligence",
+                          "creative",
+                          "brand"
+                        ]
+                      }
+                    },
+                    "signals": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "media_buy": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "governance": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "sponsored_intelligence": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "creative": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "brand": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "ext": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "context": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "extensions_supported": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "last_updated": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "adcp_error"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "failed"
+                    },
+                    "adcp_version": {
+                      "type": "string"
+                    },
+                    "adcp_error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "context": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              ]
+            }
+          },
+          {
+            "name": "get_signals",
+            "description": "Discover and propose audience signals from this AdCP provider. Pass a natural language signal_spec to get AI-generated custom segment proposals alongside catalog signals. Proposals have signal_type='custom' and is_live=false — activate them to create and deploy. deliver_to is required: specifies target deployments and countries.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "signal_spec": {
+                  "type": "string",
+                  "description": "Natural language targeting brief or signal specification. Generates custom segment proposals inline with catalog results. Examples: 'high income households interested in luxury goods', 'college-educated sci-fi fans aged 25-34', 'affluent cord cutters in top metros'."
+                },
+                "discovery_mode": {
+                  "type": "string",
+                  "enum": [
+                    "brief",
+                    "wholesale"
+                  ],
+                  "description": "Caller intent. 'brief' (default): semantic discovery via signal_spec / signal_refs / signal_ids. 'wholesale': full priced-catalog mirroring with wholesale_feed_version conditional fetch; lookup fields do not apply."
+                },
+                "account": {
+                  "type": "object",
+                  "description": "Optional account scope. When a comply_test_controller-forced task is created under this call, it's stamped with this account and only visible to a later get_task_status/list_tasks call that declares the same account.",
+                  "additionalProperties": true
+                },
+                "signal_refs": {
+                  "type": "array",
+                  "minItems": 1,
+                  "description": "AdCP 3.1 exact lookup: SignalRef objects (scope-discriminated — product | data_provider | signal_source — each carrying signal_id). Returns exact matches only; unknown refs yield an empty result, not an error. Not valid in wholesale mode.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "scope": {
+                        "type": "string",
+                        "enum": [
+                          "product",
+                          "data_provider",
+                          "signal_source"
+                        ]
+                      },
+                      "signal_id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "signal_id"
+                    ]
+                  }
+                },
+                "signal_ids": {
+                  "type": "array",
+                  "minItems": 1,
+                  "description": "DEPRECATED — use signal_refs. Legacy exact lookup: SignalId objects ({ id, ... }) per the spec; bare id strings also accepted for backward compatibility. Exact matches only; unknown ids yield an empty result.",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "deliver_to": {
+                  "type": "object",
+                  "description": "Required. Specifies where signals should be delivered.",
+                  "properties": {
+                    "deployments": {
+                      "type": "array",
+                      "description": "Target deployment platforms.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "platform",
+                              "agent"
+                            ]
+                          },
+                          "platform": {
+                            "type": "string",
+                            "enum": [
+                              "mock_dsp",
+                              "mock_cleanroom",
+                              "mock_cdp",
+                              "mock_measurement"
+                            ]
+                          },
+                          "account_id": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type"
+                        ]
+                      }
+                    },
+                    "countries": {
+                      "type": "array",
+                      "description": "ISO country codes. Example: ['US']",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "deployments",
+                    "countries"
+                  ]
+                },
+                "filters": {
+                  "type": "object",
+                  "description": "Optional structured filters.",
+                  "properties": {
+                    "category_type": {
+                      "type": "string",
+                      "enum": [
+                        "demographic",
+                        "interest",
+                        "purchase_intent",
+                        "geo",
+                        "composite"
+                      ],
+                      "description": "Filter by signal category type."
+                    },
+                    "generation_mode": {
+                      "type": "string",
+                      "enum": [
+                        "seeded",
+                        "derived",
+                        "dynamic"
+                      ],
+                      "description": "Filter by generation mode."
+                    },
+                    "taxonomy_id": {
+                      "type": "string",
+                      "description": "Filter by IAB Audience Taxonomy 1.1 node ID."
+                    },
+                    "query": {
+                      "type": "string",
+                      "description": "Keyword search across signal names and descriptions."
+                    }
+                  }
+                },
+                "max_results": {
+                  "type": "number",
+                  "description": "Maximum number of signals to return. Default 5, max 100."
+                },
+                "pagination": {
+                  "type": "object",
+                  "description": "Pagination parameters.",
+                  "properties": {
+                    "offset": {
+                      "type": "number",
+                      "description": "Pagination offset. Default 0."
+                    },
+                    "cursor": {
+                      "type": "string",
+                      "description": "Pagination cursor."
+                    },
+                    "max_results": {
+                      "type": "number",
+                      "description": "Max results (preferred over top-level max_results)."
+                    }
+                  }
+                },
+                "fields": {
+                  "type": "array",
+                  "description": "Extension fields to include inline. Omit for a compact discovery response (core fields only). Use 'all' for everything, or name specific extensions: 'x_dts' (IAB DTS v1.2 label), 'x_ucp' (embedding/vector payload), 'x_cross_taxonomy' (cross-taxonomy bridge), 'x_analytics' (derived facets).",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "x_dts",
+                      "x_ucp",
+                      "x_cross_taxonomy",
+                      "x_analytics",
+                      "all"
+                    ]
+                  }
+                },
+                "if_wholesale_feed_version": {
+                  "type": "string",
+                  "description": "AdCP 3.1 wholesale feed mirroring. Echo the wholesale_feed_version token from a prior response for ETag-style conditional fetch: if the catalog is unchanged the response is { unchanged: true, signals: [] } instead of the full payload."
+                },
+                "if_pricing_version": {
+                  "type": "string",
+                  "description": "AdCP 3.1 wholesale pricing-layer probe. Only valid alongside if_wholesale_feed_version. This agent does not separate a pricing layer — the wholesale_feed_version token covers both — so a standalone if_pricing_version is rejected with INVALID_REQUEST."
+                }
+              },
+              "required": [
+                "signal_spec",
+                "deliver_to"
+              ]
+            },
+            "outputSchema": {
+              "type": "object",
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "signals"
+                  ],
+                  "properties": {
+                    "signals": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "cache_scope": {
+                      "type": "string"
+                    },
+                    "context": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "unchanged",
+                    "wholesale_feed_version"
+                  ],
+                  "properties": {
+                    "unchanged": {
+                      "const": true
+                    },
+                    "wholesale_feed_version": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "task_id"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "submitted"
+                    },
+                    "task_id": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "adcp_error"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "failed"
+                    },
+                    "adcp_version": {
+                      "type": "string"
+                    },
+                    "adcp_error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "context": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              ]
+            }
+          },
+          {
+            "name": "activate_signal",
+            "description": "Activate an audience signal to a destination platform. Returns task_id immediately with status 'pending' — this is an async operation. Poll get_operation_status with task_id to check progress. Optionally provide webhook_url to receive a POST callback on completion. If activating a custom proposal from get_signals (is_live=false), the segment is created on activation.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "signal_agent_segment_id": {
+                  "type": "string",
+                  "description": "The signal to activate. From get_signals catalog or proposals array. Example: 'sig_high_income_households'"
+                },
+                "destinations": {
+                  "type": "array",
+                  "description": "Spec-canonical activation targets. Each item is either { type: 'platform', platform: '...', account?: '...' } or { type: 'agent', agent_url: '...' }.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "platform",
+                          "agent"
+                        ]
+                      },
+                      "platform": {
+                        "type": "string"
+                      },
+                      "agent_url": {
+                        "type": "string"
+                      },
+                      "account": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  }
+                },
+                "idempotency_key": {
+                  "type": "string",
+                  "description": "UUID v4 idempotency key. Reuse the same key on retries."
+                },
+                "account": {
+                  "type": "object",
+                  "description": "Buyer account context (spec field — accepted and ignored for demo).",
+                  "additionalProperties": true
+                },
+                "deliver_to": {
+                  "type": "object",
+                  "description": "Legacy nested shape — use destinations[] for new integrations.",
+                  "properties": {
+                    "deployments": {
+                      "type": "array",
+                      "description": "Target deployment platforms.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "platform",
+                              "agent"
+                            ]
+                          },
+                          "platform": {
+                            "type": "string",
+                            "enum": [
+                              "mock_dsp",
+                              "mock_cleanroom",
+                              "mock_cdp",
+                              "mock_measurement"
+                            ]
+                          },
+                          "account_id": {
+                            "type": "string",
+                            "description": "Platform account/seat ID."
+                          }
+                        },
+                        "required": [
+                          "type"
+                        ]
+                      }
+                    },
+                    "countries": {
+                      "type": "array",
+                      "description": "ISO country codes. Example: ['US']",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "deployments",
+                    "countries"
+                  ]
+                },
+                "webhook_url": {
+                  "type": "string",
+                  "description": "Optional URL to receive a POST callback when activation completes. Payload: { task_id, status, signal_agent_segment_id, deployments }"
+                },
+                "pricing_option_id": {
+                  "type": "string",
+                  "description": "Pricing option to use, from the signal's pricing_options array."
+                },
+                "notes": {
+                  "type": "string",
+                  "description": "Optional notes about this activation."
+                }
+              },
+              "required": [
+                "signal_agent_segment_id"
+              ]
+            },
+            "outputSchema": {
+              "type": "object",
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "task_id",
+                    "status",
+                    "deployments"
+                  ],
+                  "properties": {
+                    "task_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "deployments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string"
+                          },
+                          "platform": {
+                            "type": "string"
+                          },
+                          "is_live": {
+                            "type": "boolean"
+                          },
+                          "activation_key": {
+                            "type": "object"
+                          },
+                          "estimated_activation_duration_minutes": {
+                            "type": "number"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "ext": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "adcp_error"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "failed"
+                    },
+                    "adcp_version": {
+                      "type": "string"
+                    },
+                    "adcp_error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "context": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              ]
+            }
+          },
+          {
+            "name": "get_operation_status",
+            "description": "Poll the status of an async activation task. Returns current status: pending → working → completed (or failed). On completion, includes the activated deployments with activation keys. Use the task_id returned by activate_signal.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "task_id": {
+                  "type": "string",
+                  "description": "The task ID returned by activate_signal. Format: 'op_{timestamp}_{nanoid}'"
+                }
+              },
+              "required": [
+                "task_id"
+              ]
+            },
+            "outputSchema": {
+              "type": "object",
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "task_id",
+                    "status",
+                    "signal_agent_segment_id"
+                  ],
+                  "properties": {
+                    "task_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "signal_agent_segment_id": {
+                      "type": "string"
+                    },
+                    "deployments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string"
+                          },
+                          "platform": {
+                            "type": "string"
+                          },
+                          "is_live": {
+                            "type": "boolean"
+                          },
+                          "activation_key": {
+                            "type": "object"
+                          },
+                          "estimated_activation_duration_minutes": {
+                            "type": "number"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "submittedAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "completedAt": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "task_id",
+                    "status"
+                  ],
+                  "properties": {
+                    "task_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "adcp_error"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "failed"
+                    },
+                    "adcp_version": {
+                      "type": "string"
+                    },
+                    "adcp_error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "context": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              ]
+            }
+          },
+          {
+            "name": "get_similar_signals",
+            "description": "Find audience signals semantically similar to a reference signal using UCP embedding cosine similarity. Returns ranked signals with similarity scores. Demonstrates UCP vector search vs keyword search — related signals cluster by taxonomy, category, and data source quality.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "signal_agent_segment_id": {
+                  "type": "string",
+                  "description": "Reference signal ID. Similar signals will be ranked by cosine similarity to this signal."
+                },
+                "top_k": {
+                  "type": "number",
+                  "description": "Number of similar signals to return. Default 5, max 20."
+                },
+                "min_similarity": {
+                  "type": "number",
+                  "description": "Minimum cosine similarity threshold (0–1). Default 0.7."
+                },
+                "deliver_to": {
+                  "type": "object",
+                  "description": "Required. Specifies target deployments and countries.",
+                  "properties": {
+                    "deployments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "countries": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "deployments",
+                    "countries"
+                  ]
+                }
+              },
+              "required": [
+                "signal_agent_segment_id",
+                "deliver_to"
+              ]
+            },
+            "outputSchema": {
+              "type": "object",
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "reference_signal_id",
+                    "results",
+                    "count"
+                  ],
+                  "properties": {
+                    "reference_signal_id": {
+                      "type": "string"
+                    },
+                    "model_id": {
+                      "type": "string"
+                    },
+                    "space_id": {
+                      "type": "string"
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    },
+                    "context_id": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "adcp_error"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "failed"
+                    },
+                    "adcp_version": {
+                      "type": "string"
+                    },
+                    "adcp_error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "context": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              ]
+            }
+          },
+          {
+            "name": "query_signals_nl",
+            "description": "Find audience signals matching a natural language description. Decomposes the query into a boolean AST (AND/OR/NOT), resolves each dimension against the signal catalog using hybrid rule+embedding+lexical matching, and returns ranked matches with a compositional audience size estimate. Use when the user describes a target audience in free-form language.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string",
+                  "description": "Natural language audience description. Examples: 'soccer moms 35+ who stream heavily', 'urban professionals without children who watch sci-fi', 'affluent families 35-44 in top DMAs'.",
+                  "maxLength": 2000
+                },
+                "limit": {
+                  "type": "number",
+                  "description": "Maximum number of matched signals to return. Range 1–50. Default 10.",
+                  "minimum": 1,
+                  "maximum": 50
+                }
+              },
+              "required": [
+                "query"
+              ]
+            },
+            "outputSchema": {
+              "type": "object",
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "query": {
+                      "type": "string"
+                    },
+                    "matched_signals": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    },
+                    "composite_audience": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "resolved_ast": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "adcp_error"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "failed"
+                    },
+                    "adcp_version": {
+                      "type": "string"
+                    },
+                    "adcp_error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "context": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              ]
+            }
+          },
+          {
+            "name": "get_concept",
+            "description": "Look up a specific concept from the UCP Concept-Level VAC registry by concept_id. Returns the concept definition including label, description, constituent dimensions, and cross-taxonomy member nodes showing how it maps to IAB, LiveRamp, TradeDesk, etc.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "concept_id": {
+                  "type": "string",
+                  "description": "Concept registry ID. Examples: HIGH_INCOME_HOUSEHOLD_US, SOCCER_MOM_US, DRAMA_VIEWER_US, NASHVILLE_DMA_US"
+                }
+              },
+              "required": [
+                "concept_id"
+              ]
+            },
+            "outputSchema": {
+              "type": "object",
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "concept_id": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "category": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "available_count": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "adcp_error"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "failed"
+                    },
+                    "adcp_version": {
+                      "type": "string"
+                    },
+                    "adcp_error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "context": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              ]
+            }
+          },
+          {
+            "name": "search_concepts",
+            "description": "Semantic search over the UCP Concept Registry. Find concepts matching a natural language description. Use this to discover concept_ids for use in audience queries, or to explore what cross-taxonomy mappings exist for a given audience type. Optionally filter by category: demographic, interest, behavioral, geo, archetype, content, purchase_intent.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "q": {
+                  "type": "string",
+                  "description": "Search query. Examples: 'soccer mom', 'high income', 'afternoon drama viewer'"
+                },
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "demographic",
+                    "interest",
+                    "behavioral",
+                    "geo",
+                    "archetype",
+                    "content",
+                    "purchase_intent"
+                  ],
+                  "description": "Optional category filter"
+                },
+                "limit": {
+                  "type": "number",
+                  "description": "Max results (1–50, default 10)"
+                }
+              },
+              "required": [
+                "q"
+              ]
+            },
+            "outputSchema": {
+              "type": "object",
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "query": {
+                      "type": "string"
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "total_in_registry": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "adcp_error"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "failed"
+                    },
+                    "adcp_version": {
+                      "type": "string"
+                    },
+                    "adcp_error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "context": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              ]
+            }
+          },
+          {
+            "name": "comply_test_controller",
+            "description": "Sandbox-only deterministic-testing surface (AdCP compliance protocol, universal — not gated to any one AdCP protocol). Implements list_scenarios, force_get_signals_arm, and force_task_completion for the async-discovery conformance path; any other scenario returns UNKNOWN_SCENARIO, which the spec accepts as a valid response for an unimplemented force_*/simulate_*/seed_* scenario. Every request MUST carry account.sandbox: true.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "scenario": {
+                  "type": "string",
+                  "description": "Scenario to dispatch. 'list_scenarios' reports what is implemented."
+                },
+                "account": {
+                  "type": "object",
+                  "description": "Must carry sandbox: true.",
+                  "additionalProperties": true
+                },
+                "params": {
+                  "type": "object",
+                  "description": "Scenario arguments, e.g. { arm, task_id, message } or { task_id, result }.",
+                  "additionalProperties": true
+                },
+                "context": {
+                  "type": "object",
+                  "description": "Opaque correlation data echoed unchanged in the response.",
+                  "additionalProperties": true
+                },
+                "adcp_version": {
+                  "type": "string"
+                },
+                "adcp_major_version": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "scenario",
+                "account"
+              ]
+            },
+            "outputSchema": {
+              "type": "object",
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "success"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "scenarios": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "forced": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "previous_state": {
+                      "type": "string"
+                    },
+                    "current_state": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "error_detail": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "adcp_error"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "failed"
+                    },
+                    "adcp_version": {
+                      "type": "string"
+                    },
+                    "adcp_error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "context": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              ]
+            }
+          },
+          {
+            "name": "get_task_status",
+            "description": "Canonical AdCP 3.x get_task_status: retrieve a specific async task by ID, with an optional terminal result payload. Distinct from the legacy get_operation_status shape — this returns the spec's task_type/protocol/created_at/updated_at envelope. Sellers MUST return REFERENCE_NOT_FOUND for a task_id that exists only under a different account/caller.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "task_id": {
+                  "type": "string",
+                  "description": "Unique identifier of the task to retrieve."
+                },
+                "account": {
+                  "type": "object",
+                  "description": "Account scope for the task lookup. Optional — this deployment has a single credential-bound account.",
+                  "additionalProperties": true
+                },
+                "include_history": {
+                  "type": "boolean",
+                  "description": "Include full conversation history. Not implemented — no history is ever returned."
+                },
+                "include_result": {
+                  "type": "boolean",
+                  "description": "Include the task's result payload when status is completed. Defaults to false."
+                },
+                "context": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "ext": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              },
+              "required": [
+                "task_id"
+              ]
+            },
+            "outputSchema": {
+              "type": "object",
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "task_id",
+                    "task_type",
+                    "protocol",
+                    "status",
+                    "created_at",
+                    "updated_at"
+                  ],
+                  "properties": {
+                    "task_id": {
+                      "type": "string"
+                    },
+                    "task_type": {
+                      "type": "string"
+                    },
+                    "protocol": {
+                      "type": "string",
+                      "enum": [
+                        "media_buy",
+                        "signals",
+                        "governance",
+                        "sponsored_intelligence",
+                        "creative",
+                        "brand"
+                      ]
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "completed_at": {
+                      "type": "string"
+                    },
+                    "has_webhook": {
+                      "type": "boolean"
+                    },
+                    "result": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "adcp_error"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "failed"
+                    },
+                    "adcp_version": {
+                      "type": "string"
+                    },
+                    "adcp_error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "context": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              ]
+            }
+          },
+          {
+            "name": "list_tasks",
+            "description": "List async AdCP tasks for the calling operator (3.x protocol-namespace alias for the legacy tasks/list surface). Today this deployment is single-operator, and this lists compliance-test discovery tasks created via comply_test_controller's force_get_signals_arm/force_task_completion scenarios — see src/domain/complianceController.ts for why real activation_jobs rows aren't merged in yet.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "account": {
+                  "type": "object",
+                  "description": "Account scope for task reconciliation. Optional — this deployment has a single credential-bound account.",
+                  "additionalProperties": true
+                },
+                "filters": {
+                  "type": "object",
+                  "description": "Optional filter criteria: task_ids, task_type/task_types, status/statuses, has_webhook.",
+                  "additionalProperties": true
+                },
+                "pagination": {
+                  "type": "object",
+                  "description": "Optional. max_results caps the page size.",
+                  "properties": {
+                    "max_results": {
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                "context": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            },
+            "outputSchema": {
+              "type": "object",
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "tasks",
+                    "pagination"
+                  ],
+                  "properties": {
+                    "tasks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "task_id",
+                          "task_type",
+                          "domain",
+                          "status",
+                          "created_at",
+                          "updated_at"
+                        ],
+                        "properties": {
+                          "task_id": {
+                            "type": "string"
+                          },
+                          "task_type": {
+                            "type": "string"
+                          },
+                          "domain": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "updated_at": {
+                            "type": "string"
+                          },
+                          "completed_at": {
+                            "type": "string"
+                          },
+                          "has_webhook": {
+                            "type": "boolean"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "query_summary": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "required": [
+                        "has_more"
+                      ],
+                      "properties": {
+                        "has_more": {
+                          "type": "boolean"
+                        },
+                        "cursor": {
+                          "type": "string"
+                        },
+                        "total_count": {
+                          "type": "number"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "adcp_error"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "failed"
+                    },
+                    "adcp_version": {
+                      "type": "string"
+                    },
+                    "adcp_error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "context": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "caps unauthenticated": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "status": "completed",
+          "adcp_version": "3.1",
+          "adcp": {
+            "major_versions": [
+              3
+            ],
+            "supported_versions": [
+              "3.0",
+              "3.1"
+            ],
+            "idempotency": {
+              "supported": true,
+              "replay_ttl_seconds": 86400
+            }
+          },
+          "supported_protocols": [
+            "signals"
+          ],
+          "specialisms": [
+            "signal-owned"
+          ],
+          "request_signing": {
+            "supported": true,
+            "covers_content_digest": "either",
+            "required_for": [],
+            "warn_for": [],
+            "supported_for": []
+          },
+          "webhook_signing": {
+            "supported": false,
+            "legacy_hmac_fallback": false
+          },
+          "identity": {
+            "brand_json_url": "https://adcp.signal-stack.io/.well-known/brand.json",
+            "per_principal_key_isolation": false
+          },
+          "compliance_testing": {
+            "scenarios": [
+              "force_get_signals_arm",
+              "force_task_completion"
+            ]
+          },
+          "experimental_features": [
+            "ucp.embedding_bridge",
+            "ucp.concept_registry",
+            "ucp.gts_anchors",
+            "ucp.projector_simulation",
+            "dts.label_v1_2",
+            "cross_taxonomy.nine_systems",
+            "analytics.query_vector",
+            "analytics.semantic_arithmetic",
+            "analytics.analogy",
+            "analytics.neighborhood",
+            "analytics.coverage_gaps",
+            "analytics.knn_graph",
+            "analytics.lorenz",
+            "portfolio.pareto_frontier",
+            "portfolio.greedy_marginal_reach",
+            "portfolio.info_overlap",
+            "portfolio.from_brief",
+            "federation.a2a_dstillery",
+            "federation.cross_similarity",
+            "federation.multi_agent_orchestrator",
+            "governance.data_hygiene",
+            "governance.audit_log",
+            "measurement.reach_forecaster",
+            "measurement.lift_forecaster_mock",
+            "id_resolution.nine_id_types",
+            "temporal.seasonality_profiles",
+            "temporal.decay_half_life",
+            "temporal.volatility_index"
+          ],
+          "wholesale_feed_versioning": {
+            "supported": true
+          },
+          "signals": {
+            "discovery_modes": [
+              "brief",
+              "wholesale"
+            ],
+            "in_flight_max_seconds": 30,
+            "data_provider_domains": [
+              "evgeny.dev"
+            ],
+            "features": {
+              "catalog_signals": true
+            },
+            "signal_categories": [
+              "demographic",
+              "interest",
+              "purchase_intent",
+              "geo",
+              "composite"
+            ],
+            "dynamic_segment_generation": true,
+            "activation_mode": "async",
+            "provider": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+            "destinations": [
+              {
+                "id": "mock_dsp",
+                "name": "Mock DSP",
+                "type": "dsp",
+                "activation_supported": true,
+                "stage": "live",
+                "vendor": "Internal mock",
+                "activation_pattern": "push_async",
+                "auth_mechanism": "bearer_token (DEMO_API_KEY)",
+                "id_types_accepted": [
+                  "segment_id",
+                  "hashed_email",
+                  "maid_ios",
+                  "maid_android",
+                  "uid2",
+                  "ctv_device"
+                ],
+                "data_format": "segment_id + platform_segment_id pair",
+                "segment_refresh_sla": "< 60 seconds (synchronous in demo)",
+                "latency_p50_ms": 120,
+                "latency_p99_ms": 450,
+                "use_cases": [
+                  "Prospecting",
+                  "Retargeting",
+                  "CTV reach",
+                  "Measurement passback"
+                ],
+                "activation_flow": "activate_signal -> ephemeral platform_segment_id -> POST segment membership -> get_operation_status polling",
+                "docs_url": "https://github.com/EvgenyAndroid/adcp-signals-adaptor#mock-dsp",
+                "onboarding": "No onboarding — always live in demo.",
+                "notes": "Reference DSP that always returns completed within ~5 seconds. Safe target for any storyboard run."
+              },
+              {
+                "id": "mock_cleanroom",
+                "name": "Mock Clean Room",
+                "type": "cleanroom",
+                "activation_supported": true,
+                "stage": "live",
+                "vendor": "Internal mock (simulating Snowflake / Habu / InfoSum / AWS CR shape)",
+                "activation_pattern": "share_async",
+                "auth_mechanism": "cleanroom_agreement_id + bearer",
+                "id_types_accepted": [
+                  "hashed_email",
+                  "ramp_id",
+                  "uid2",
+                  "graph_id"
+                ],
+                "data_format": "cleanroom table share (SIGNAL_MEMBERS)",
+                "segment_refresh_sla": "< 15 minutes",
+                "latency_p50_ms": 800,
+                "latency_p99_ms": 3500,
+                "use_cases": [
+                  "1P x 2P match-rate analysis",
+                  "Campaign overlap",
+                  "Incrementality lift",
+                  "No-PII joins"
+                ],
+                "activation_flow": "activate_signal -> grant table share -> cleanroom provider ingests -> membership available on next scheduled compute",
+                "docs_url": "https://github.com/EvgenyAndroid/adcp-signals-adaptor#mock-cleanroom",
+                "onboarding": "Mock — grants auto-accepted.",
+                "notes": "Models the governance boundary: buyer's 1P data never leaves their clean-room tenant. Returns a stub JOIN matrix."
+              },
+              {
+                "id": "mock_cdp",
+                "name": "Mock CDP",
+                "type": "cdp",
+                "activation_supported": true,
+                "stage": "live",
+                "vendor": "Internal mock (simulating Segment / mParticle / Tealium / Treasure Data shape)",
+                "activation_pattern": "push_sync",
+                "auth_mechanism": "write_key",
+                "id_types_accepted": [
+                  "user_id",
+                  "anonymous_id",
+                  "hashed_email"
+                ],
+                "data_format": "Audience membership events (audience_entered / audience_exited)",
+                "segment_refresh_sla": "real-time (stream)",
+                "latency_p50_ms": 60,
+                "latency_p99_ms": 220,
+                "use_cases": [
+                  "Personalization",
+                  "Owned-channel orchestration",
+                  "Email / push audience sync"
+                ],
+                "activation_flow": "activate_signal -> stream audience_entered events keyed by user_id -> CDP fans out to downstream tools",
+                "docs_url": "https://github.com/EvgenyAndroid/adcp-signals-adaptor#mock-cdp",
+                "onboarding": "Mock — write-key auto-provisioned.",
+                "notes": "Best fit when the audience drives owned-channel surfaces (email, push, on-site) vs paid media."
+              },
+              {
+                "id": "mock_measurement",
+                "name": "Mock Measurement Platform",
+                "type": "measurement",
+                "activation_supported": false,
+                "stage": "live",
+                "vendor": "Internal mock (simulating Nielsen DAR / Kantar / IAS / DV shape)",
+                "activation_pattern": "read_only",
+                "auth_mechanism": "api_key",
+                "id_types_accepted": [
+                  "segment_id"
+                ],
+                "data_format": "Lift / reach / frequency report rows",
+                "segment_refresh_sla": "T+1 day (batch)",
+                "latency_p50_ms": null,
+                "latency_p99_ms": null,
+                "use_cases": [
+                  "Brand-lift studies",
+                  "Campaign reach validation",
+                  "Third-party verification"
+                ],
+                "activation_flow": "Not an activation target. Read-only: fetches lift/reach reports tagged to a signal's activations.",
+                "docs_url": "https://github.com/EvgenyAndroid/adcp-signals-adaptor#mock-measurement",
+                "onboarding": "Mock — reports synthesized per signal.",
+                "notes": "activation_supported=false by design. Surfaced so planners see measurement coverage alongside activation."
+              },
+              {
+                "id": "ttd_sandbox",
+                "name": "The Trade Desk (sandbox)",
+                "type": "dsp",
+                "activation_supported": false,
+                "stage": "sandbox",
+                "vendor": "The Trade Desk",
+                "activation_pattern": "push_async",
+                "auth_mechanism": "oauth2 (TTD Partner Console)",
+                "id_types_accepted": [
+                  "ttd_id",
+                  "uid2",
+                  "hashed_email",
+                  "maid_ios",
+                  "maid_android"
+                ],
+                "data_format": "Third-party data segment CSV upload (TTD DMP format)",
+                "segment_refresh_sla": "< 24 hours",
+                "latency_p50_ms": null,
+                "latency_p99_ms": null,
+                "use_cases": [
+                  "Open-web DSP activation",
+                  "CTV across TTD's OpenPath inventory",
+                  "UID2 cookieless targeting"
+                ],
+                "activation_flow": "activate_signal -> request OAuth consent -> upload segment CSV via TTD Partner API -> segment available in TTD UI once ingested",
+                "docs_url": "https://partner.thetradedesk.com/v3/portal/api/doc/ThirdPartyData",
+                "onboarding": "Requires TTD Partner account + OAuth app registration. Target Q2 2026.",
+                "notes": "Roadmap. When live, will be the default DSP for UID2-centric cookieless plans."
+              },
+              {
+                "id": "dv360_sandbox",
+                "name": "DV360 (sandbox)",
+                "type": "dsp",
+                "activation_supported": false,
+                "stage": "sandbox",
+                "vendor": "Google Display & Video 360",
+                "activation_pattern": "push_async",
+                "auth_mechanism": "oauth2 (Google Cloud / DV360 API)",
+                "id_types_accepted": [
+                  "hashed_email",
+                  "maid_ios",
+                  "maid_android",
+                  "publisher_provided_id"
+                ],
+                "data_format": "Customer Match list upload (Google Ads API)",
+                "segment_refresh_sla": "< 12 hours",
+                "latency_p50_ms": null,
+                "latency_p99_ms": null,
+                "use_cases": [
+                  "YouTube reach",
+                  "Programmatic display",
+                  "Customer Match seed audiences"
+                ],
+                "activation_flow": "activate_signal -> OAuth consent -> hash + upload via Customer Match API -> list available in DV360 after match-rate check",
+                "docs_url": "https://developers.google.com/display-video/api/reference/rest",
+                "onboarding": "Requires Google Ads account + MCC access + OAuth app. Target Q3 2026.",
+                "notes": "Roadmap. When live, will be the default DSP for Google-ecosystem plans."
+              }
+            ],
+            "limits": {
+              "max_signals_per_request": 100,
+              "max_rules_per_segment": 6,
+              "default_max_results": 5
+            }
+          },
+          "ext": {
+            "compliance": {
+              "spec_version": "adcp_3.1",
+              "compliance_line": "<COMPLIANCE_STATE.compliance_line>",
+              "headline": "<COMPLIANCE_STATE.headline>",
+              "client_runner": "<COMPLIANCE_STATE.client_runner>",
+              "last_run": "<COMPLIANCE_STATE.last_run>",
+              "results": "<COMPLIANCE_STATE.results>",
+              "non_applicable_scenarios": [
+                {
+                  "scenario": "media-buy / creative / governance / brand-rights / SI storyboards",
+                  "reason": "Require get_products, create_media_buy, sync_creatives, build_creative, si_*, check_governance, check_brand_rights tools that a signals-only agent does not expose; the storyboard runner's required_tools gate skips them as not applicable.",
+                  "upstream_issue": "https://github.com/adcontextprotocol/adcp/issues/2916",
+                  "upstream_status": "resolved — capability-aware skips; signals-only agents keep the core / signals / error-handling tracks."
+                }
+              ],
+              "report": "src/constants/complianceState.ts",
+              "registry_card": "https://agenticadvertising.org/api/registry/agents/https%3A%2F%2Fadcp.signal-stack.io%2Fmcp/compliance",
+              "reproduce": "API_KEY=$DEMO_API_KEY AGENT_URL=https://adcp.signal-stack.io/mcp npm run compliance"
+            },
+            "ucp": {
+              "supported_spaces": [
+                "adcp-bridge-space-v1.0"
+              ],
+              "supported_encodings": [
+                "float32"
+              ],
+              "dimensions": [
+                512
+              ],
+              "embedding_endpoint_template": "/signals/{signal_id}/embedding",
+              "similarity_search": true,
+              "phase": "pseudo-v1",
+              "gts_version": "adcp-gts-v1.0"
+            },
+            "dts": {
+              "supported": true,
+              "version": "1.2",
+              "iab_techlab_compliant": true,
+              "label_field": "x_dts",
+              "privacy_compliance_mechanisms": [
+                "TCF (Europe)",
+                "GPP",
+                "MSPA",
+                "USPrivacy",
+                "GPC"
+              ],
+              "supported_precision_levels": [
+                "Individual",
+                "Household",
+                "Device",
+                "Browser",
+                "Geography"
+              ],
+              "offline_sources_supported": true,
+              "provider_privacy_policy_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/privacy"
+            },
+            "id_resolution": {
+              "supported": true,
+              "cookieless_ready": true,
+              "id_types_supported": [
+                "cookie_3p",
+                "maid_ios",
+                "maid_android",
+                "ctv_device",
+                "uid2",
+                "ramp_id",
+                "id5",
+                "hashed_email",
+                "ip_only"
+              ],
+              "graph_partners": [
+                {
+                  "name": "UID 2.0",
+                  "stage": "sandbox",
+                  "endpoint": null
+                },
+                {
+                  "name": "ID5",
+                  "stage": "sandbox",
+                  "endpoint": null
+                },
+                {
+                  "name": "LiveRamp RampID",
+                  "stage": "roadmap",
+                  "endpoint": null
+                },
+                {
+                  "name": "Yahoo ConnectID",
+                  "stage": "roadmap",
+                  "endpoint": null
+                }
+              ],
+              "resolution_method": "derived_from_dts",
+              "resolution_surface": "/signals/{signal_agent_segment_id} x_dts.data_sources + audience_precision_levels"
+            },
+            "measurement": {
+              "supported": true,
+              "reach_forecasting": {
+                "supported": true,
+                "endpoint": "/signals/{id} (detail panel)",
+                "methodology": "logistic saturation against declared CPM + budget"
+              },
+              "overlap_analysis": {
+                "supported": true,
+                "endpoint": "/signals/overlap",
+                "methodology": "category_affinity × min/max Jaccard heuristic"
+              },
+              "lift_measurement": {
+                "supported": "mock",
+                "partners_roadmap": [
+                  "Nielsen",
+                  "IAS",
+                  "DV",
+                  "Kantar",
+                  "Circana"
+                ]
+              },
+              "delivery_simulation": {
+                "supported": "mock",
+                "surface": "/signals/{id} detail panel (post-activation)"
+              }
+            },
+            "governance": {
+              "audit_log": {
+                "supported": true,
+                "endpoint": "/mcp/recent",
+                "retention_days": 7,
+                "export_format": "csv_download"
+              },
+              "sensitive_category_flagging": {
+                "supported": true,
+                "categories_flagged": [
+                  "health",
+                  "financial",
+                  "political"
+                ],
+                "surface": "x_governance.sensitive block on signal + UI pill in signal detail"
+              },
+              "opt_out_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/privacy#opt-out",
+              "audience_bias_governance_schema": {
+                "supported": true,
+                "version": "adcp_3.1"
+              },
+              "data_hygiene": {
+                "supported": true,
+                "schedule": {
+                  "cron": "0 6 * * SUN",
+                  "cadence": "weekly",
+                  "timezone": "UTC"
+                },
+                "retention": {
+                  "dynamic_signals_days": 7,
+                  "activation_jobs_days": 30,
+                  "tool_call_log_days": 7,
+                  "oauth_state_minutes": 10
+                },
+                "preserved": [
+                  "seeded signals (canonical catalog)",
+                  "derived signals (shipped with code)",
+                  "taxonomy nodes",
+                  "source records"
+                ],
+                "manual_trigger": {
+                  "method": "POST",
+                  "endpoint": "/admin/purge",
+                  "auth": "DEMO_API_KEY bearer"
+                }
+              }
+            },
+            "analytics": {
+              "supported": true,
+              "endpoints": {
+                "query_vector": {
+                  "method": "POST",
+                  "path": "/ucp/query-vector"
+                },
+                "semantic_arithmetic": {
+                  "method": "POST",
+                  "path": "/ucp/arithmetic"
+                },
+                "analogy": {
+                  "method": "POST",
+                  "path": "/ucp/analogy"
+                },
+                "neighborhood": {
+                  "method": "POST",
+                  "path": "/ucp/neighborhood"
+                },
+                "coverage_gaps": {
+                  "method": "GET",
+                  "path": "/analytics/coverage-gaps"
+                },
+                "lorenz": {
+                  "method": "GET",
+                  "path": "/analytics/lorenz"
+                },
+                "summary": {
+                  "method": "GET",
+                  "path": "/analytics/summary"
+                },
+                "knn_graph": {
+                  "method": "GET",
+                  "path": "/analytics/knn-graph"
+                },
+                "seasonality": {
+                  "method": "GET",
+                  "path": "/analytics/seasonality"
+                },
+                "best_for_window": {
+                  "method": "GET",
+                  "path": "/analytics/best-for"
+                },
+                "portfolio_optimize": {
+                  "method": "POST",
+                  "path": "/portfolio/optimize"
+                },
+                "portfolio_pareto": {
+                  "method": "GET",
+                  "path": "/portfolio/pareto"
+                },
+                "portfolio_info_overlap": {
+                  "method": "POST",
+                  "path": "/portfolio/info-overlap"
+                },
+                "portfolio_from_brief": {
+                  "method": "POST",
+                  "path": "/portfolio/from-brief"
+                },
+                "portfolio_what_if": {
+                  "method": "POST",
+                  "path": "/portfolio/what-if"
+                },
+                "portfolio_hit_target": {
+                  "method": "POST",
+                  "path": "/portfolio/hit-target"
+                },
+                "audience_compose": {
+                  "method": "POST",
+                  "path": "/audience/compose"
+                },
+                "audience_saturation": {
+                  "method": "POST",
+                  "path": "/audience/saturation"
+                },
+                "audience_affinity_audit": {
+                  "method": "POST",
+                  "path": "/audience/affinity-audit"
+                },
+                "audience_journey": {
+                  "method": "POST",
+                  "path": "/audience/journey"
+                },
+                "audience_privacy_check": {
+                  "method": "POST",
+                  "path": "/audience/privacy-check"
+                },
+                "audience_holdout": {
+                  "method": "POST",
+                  "path": "/audience/holdout"
+                },
+                "audience_compose_ast": {
+                  "method": "POST",
+                  "path": "/audience/compose-ast"
+                },
+                "agents_directory": {
+                  "method": "GET",
+                  "path": "/agents/directory"
+                },
+                "agents_probe_all": {
+                  "method": "GET",
+                  "path": "/agents/probe-all"
+                },
+                "agents_orchestrate": {
+                  "method": "POST",
+                  "path": "/agents/orchestrate"
+                },
+                "agents_capability_matrix": {
+                  "method": "GET",
+                  "path": "/agents/capability-matrix"
+                },
+                "snapshot_save": {
+                  "method": "POST",
+                  "path": "/snapshots"
+                },
+                "snapshot_list": {
+                  "method": "GET",
+                  "path": "/snapshots"
+                },
+                "snapshot_get": {
+                  "method": "GET",
+                  "path": "/snapshots/:id"
+                },
+                "snapshot_delete": {
+                  "method": "DELETE",
+                  "path": "/snapshots/:id"
+                },
+                "snapshot_diff": {
+                  "method": "POST",
+                  "path": "/snapshots/diff"
+                }
+              },
+              "methods": {
+                "similarity_metric": "cosine",
+                "arithmetic_model": "vector_l2_normalized",
+                "analogy_algorithms": [
+                  "3cos_add",
+                  "3cos_mul"
+                ],
+                "portfolio_solver": "greedy_marginal_reach",
+                "overlap_metrics": [
+                  "jaccard",
+                  "kl_divergence",
+                  "mutual_information"
+                ],
+                "projection_algorithms": [
+                  "jl_random",
+                  "umap_local_refine"
+                ],
+                "set_op_overlap_model": "category_affinity_jaccard_pairwise_inclusion_exclusion",
+                "saturation_model": "poisson_1_minus_exp_neg_frequency",
+                "affinity_index_basis": "reach_weighted_share_vs_catalog_baseline",
+                "journey_model": "per_stage_compose_then_monotone_funnel",
+                "privacy_model": "k_anonymity_floor_plus_sensitive_category_keywords",
+                "holdout_model": "two_proportion_z_test_balanced_arms"
+              },
+              "limits": {
+                "max_arithmetic_terms": 6,
+                "max_portfolio_signals": 20,
+                "max_neighborhood_k": 50,
+                "max_query_vector_dim": 512,
+                "min_signals_for_info_overlap": 2,
+                "max_compose_signals": 20,
+                "max_saturation_signals": 15,
+                "max_affinity_audit_signals": 20
+              },
+              "signal_facets": {
+                "x_analytics_fields": [
+                  "seasonality.monthly[12]",
+                  "seasonality.peakMonth",
+                  "decayHalfLifeDays",
+                  "volatilityIndex",
+                  "authorityScore",
+                  "idStabilityClass"
+                ],
+                "derivation": "deterministic_from_signal_metadata",
+                "note": "Facets computed at mapper time; no DB migration required."
+              }
+            },
+            "federation": {
+              "supported": true,
+              "protocol": "adcp_a2a_v0.1",
+              "endpoints": {
+                "registry": {
+                  "method": "GET",
+                  "path": "/agents/registry"
+                },
+                "federated_search": {
+                  "method": "POST",
+                  "path": "/agents/federated-search"
+                },
+                "cross_similarity": {
+                  "method": "POST",
+                  "path": "/agents/cross-similarity"
+                },
+                "reverse_taxonomy": {
+                  "method": "POST",
+                  "path": "/taxonomy/reverse"
+                }
+              },
+              "partners": [
+                {
+                  "id": "dstillery",
+                  "url": "https://adcp-signals-agent.dstillery.com/mcp",
+                  "stage": "live",
+                  "specialties": [
+                    "behavioral_audiences",
+                    "ttd_deployment"
+                  ]
+                },
+                {
+                  "id": "peer39",
+                  "stage": "roadmap",
+                  "specialties": [
+                    "contextual",
+                    "brand_safety"
+                  ]
+                },
+                {
+                  "id": "scope3",
+                  "stage": "roadmap",
+                  "specialties": [
+                    "sustainability"
+                  ]
+                },
+                {
+                  "id": "nextdata",
+                  "stage": "roadmap",
+                  "specialties": [
+                    "b2b_intent"
+                  ]
+                }
+              ],
+              "alignment_method": "procrustes_svd_shared_anchors",
+              "cache_ttl_seconds": 600
+            }
+          }
+        }
+      }
+    }
+  },
+  "caps protocols=signals": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "status": "completed",
+          "adcp_version": "3.1",
+          "adcp": {
+            "major_versions": [
+              3
+            ],
+            "supported_versions": [
+              "3.0",
+              "3.1"
+            ],
+            "idempotency": {
+              "supported": true,
+              "replay_ttl_seconds": 86400
+            }
+          },
+          "supported_protocols": [
+            "signals"
+          ],
+          "specialisms": [
+            "signal-owned"
+          ],
+          "wholesale_feed_versioning": {
+            "supported": true
+          },
+          "compliance_testing": {
+            "scenarios": [
+              "force_get_signals_arm",
+              "force_task_completion"
+            ]
+          },
+          "request_signing": {
+            "supported": true,
+            "covers_content_digest": "either",
+            "required_for": [],
+            "warn_for": [],
+            "supported_for": []
+          },
+          "webhook_signing": {
+            "supported": false,
+            "legacy_hmac_fallback": false
+          },
+          "identity": {
+            "brand_json_url": "https://adcp.signal-stack.io/.well-known/brand.json",
+            "per_principal_key_isolation": false
+          },
+          "experimental_features": [
+            "ucp.embedding_bridge",
+            "ucp.concept_registry",
+            "ucp.gts_anchors",
+            "ucp.projector_simulation",
+            "dts.label_v1_2",
+            "cross_taxonomy.nine_systems",
+            "analytics.query_vector",
+            "analytics.semantic_arithmetic",
+            "analytics.analogy",
+            "analytics.neighborhood",
+            "analytics.coverage_gaps",
+            "analytics.knn_graph",
+            "analytics.lorenz",
+            "portfolio.pareto_frontier",
+            "portfolio.greedy_marginal_reach",
+            "portfolio.info_overlap",
+            "portfolio.from_brief",
+            "federation.a2a_dstillery",
+            "federation.cross_similarity",
+            "federation.multi_agent_orchestrator",
+            "governance.data_hygiene",
+            "governance.audit_log",
+            "measurement.reach_forecaster",
+            "measurement.lift_forecaster_mock",
+            "id_resolution.nine_id_types",
+            "temporal.seasonality_profiles",
+            "temporal.decay_half_life",
+            "temporal.volatility_index"
+          ],
+          "ext": {
+            "compliance": {
+              "spec_version": "adcp_3.1",
+              "compliance_line": "<COMPLIANCE_STATE.compliance_line>",
+              "headline": "<COMPLIANCE_STATE.headline>",
+              "client_runner": "<COMPLIANCE_STATE.client_runner>",
+              "last_run": "<COMPLIANCE_STATE.last_run>",
+              "results": "<COMPLIANCE_STATE.results>",
+              "non_applicable_scenarios": [
+                {
+                  "scenario": "media-buy / creative / governance / brand-rights / SI storyboards",
+                  "reason": "Require get_products, create_media_buy, sync_creatives, build_creative, si_*, check_governance, check_brand_rights tools that a signals-only agent does not expose; the storyboard runner's required_tools gate skips them as not applicable.",
+                  "upstream_issue": "https://github.com/adcontextprotocol/adcp/issues/2916",
+                  "upstream_status": "resolved — capability-aware skips; signals-only agents keep the core / signals / error-handling tracks."
+                }
+              ],
+              "report": "src/constants/complianceState.ts",
+              "registry_card": "https://agenticadvertising.org/api/registry/agents/https%3A%2F%2Fadcp.signal-stack.io%2Fmcp/compliance",
+              "reproduce": "API_KEY=$DEMO_API_KEY AGENT_URL=https://adcp.signal-stack.io/mcp npm run compliance"
+            },
+            "ucp": {
+              "supported_spaces": [
+                "adcp-bridge-space-v1.0"
+              ],
+              "supported_encodings": [
+                "float32"
+              ],
+              "dimensions": [
+                512
+              ],
+              "embedding_endpoint_template": "/signals/{signal_id}/embedding",
+              "similarity_search": true,
+              "phase": "pseudo-v1",
+              "gts_version": "adcp-gts-v1.0"
+            },
+            "dts": {
+              "supported": true,
+              "version": "1.2",
+              "iab_techlab_compliant": true,
+              "label_field": "x_dts",
+              "privacy_compliance_mechanisms": [
+                "TCF (Europe)",
+                "GPP",
+                "MSPA",
+                "USPrivacy",
+                "GPC"
+              ],
+              "supported_precision_levels": [
+                "Individual",
+                "Household",
+                "Device",
+                "Browser",
+                "Geography"
+              ],
+              "offline_sources_supported": true,
+              "provider_privacy_policy_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/privacy"
+            },
+            "id_resolution": {
+              "supported": true,
+              "cookieless_ready": true,
+              "id_types_supported": [
+                "cookie_3p",
+                "maid_ios",
+                "maid_android",
+                "ctv_device",
+                "uid2",
+                "ramp_id",
+                "id5",
+                "hashed_email",
+                "ip_only"
+              ],
+              "graph_partners": [
+                {
+                  "name": "UID 2.0",
+                  "stage": "sandbox",
+                  "endpoint": null
+                },
+                {
+                  "name": "ID5",
+                  "stage": "sandbox",
+                  "endpoint": null
+                },
+                {
+                  "name": "LiveRamp RampID",
+                  "stage": "roadmap",
+                  "endpoint": null
+                },
+                {
+                  "name": "Yahoo ConnectID",
+                  "stage": "roadmap",
+                  "endpoint": null
+                }
+              ],
+              "resolution_method": "derived_from_dts",
+              "resolution_surface": "/signals/{signal_agent_segment_id} x_dts.data_sources + audience_precision_levels"
+            },
+            "measurement": {
+              "supported": true,
+              "reach_forecasting": {
+                "supported": true,
+                "endpoint": "/signals/{id} (detail panel)",
+                "methodology": "logistic saturation against declared CPM + budget"
+              },
+              "overlap_analysis": {
+                "supported": true,
+                "endpoint": "/signals/overlap",
+                "methodology": "category_affinity × min/max Jaccard heuristic"
+              },
+              "lift_measurement": {
+                "supported": "mock",
+                "partners_roadmap": [
+                  "Nielsen",
+                  "IAS",
+                  "DV",
+                  "Kantar",
+                  "Circana"
+                ]
+              },
+              "delivery_simulation": {
+                "supported": "mock",
+                "surface": "/signals/{id} detail panel (post-activation)"
+              }
+            },
+            "governance": {
+              "audit_log": {
+                "supported": true,
+                "endpoint": "/mcp/recent",
+                "retention_days": 7,
+                "export_format": "csv_download"
+              },
+              "sensitive_category_flagging": {
+                "supported": true,
+                "categories_flagged": [
+                  "health",
+                  "financial",
+                  "political"
+                ],
+                "surface": "x_governance.sensitive block on signal + UI pill in signal detail"
+              },
+              "opt_out_url": "https://adcp-signals-adaptor.evgeny-193.workers.dev/privacy#opt-out",
+              "audience_bias_governance_schema": {
+                "supported": true,
+                "version": "adcp_3.1"
+              },
+              "data_hygiene": {
+                "supported": true,
+                "schedule": {
+                  "cron": "0 6 * * SUN",
+                  "cadence": "weekly",
+                  "timezone": "UTC"
+                },
+                "retention": {
+                  "dynamic_signals_days": 7,
+                  "activation_jobs_days": 30,
+                  "tool_call_log_days": 7,
+                  "oauth_state_minutes": 10
+                },
+                "preserved": [
+                  "seeded signals (canonical catalog)",
+                  "derived signals (shipped with code)",
+                  "taxonomy nodes",
+                  "source records"
+                ],
+                "manual_trigger": {
+                  "method": "POST",
+                  "endpoint": "/admin/purge",
+                  "auth": "DEMO_API_KEY bearer"
+                }
+              }
+            },
+            "analytics": {
+              "supported": true,
+              "endpoints": {
+                "query_vector": {
+                  "method": "POST",
+                  "path": "/ucp/query-vector"
+                },
+                "semantic_arithmetic": {
+                  "method": "POST",
+                  "path": "/ucp/arithmetic"
+                },
+                "analogy": {
+                  "method": "POST",
+                  "path": "/ucp/analogy"
+                },
+                "neighborhood": {
+                  "method": "POST",
+                  "path": "/ucp/neighborhood"
+                },
+                "coverage_gaps": {
+                  "method": "GET",
+                  "path": "/analytics/coverage-gaps"
+                },
+                "lorenz": {
+                  "method": "GET",
+                  "path": "/analytics/lorenz"
+                },
+                "summary": {
+                  "method": "GET",
+                  "path": "/analytics/summary"
+                },
+                "knn_graph": {
+                  "method": "GET",
+                  "path": "/analytics/knn-graph"
+                },
+                "seasonality": {
+                  "method": "GET",
+                  "path": "/analytics/seasonality"
+                },
+                "best_for_window": {
+                  "method": "GET",
+                  "path": "/analytics/best-for"
+                },
+                "portfolio_optimize": {
+                  "method": "POST",
+                  "path": "/portfolio/optimize"
+                },
+                "portfolio_pareto": {
+                  "method": "GET",
+                  "path": "/portfolio/pareto"
+                },
+                "portfolio_info_overlap": {
+                  "method": "POST",
+                  "path": "/portfolio/info-overlap"
+                },
+                "portfolio_from_brief": {
+                  "method": "POST",
+                  "path": "/portfolio/from-brief"
+                },
+                "portfolio_what_if": {
+                  "method": "POST",
+                  "path": "/portfolio/what-if"
+                },
+                "portfolio_hit_target": {
+                  "method": "POST",
+                  "path": "/portfolio/hit-target"
+                },
+                "audience_compose": {
+                  "method": "POST",
+                  "path": "/audience/compose"
+                },
+                "audience_saturation": {
+                  "method": "POST",
+                  "path": "/audience/saturation"
+                },
+                "audience_affinity_audit": {
+                  "method": "POST",
+                  "path": "/audience/affinity-audit"
+                },
+                "audience_journey": {
+                  "method": "POST",
+                  "path": "/audience/journey"
+                },
+                "audience_privacy_check": {
+                  "method": "POST",
+                  "path": "/audience/privacy-check"
+                },
+                "audience_holdout": {
+                  "method": "POST",
+                  "path": "/audience/holdout"
+                },
+                "audience_compose_ast": {
+                  "method": "POST",
+                  "path": "/audience/compose-ast"
+                },
+                "agents_directory": {
+                  "method": "GET",
+                  "path": "/agents/directory"
+                },
+                "agents_probe_all": {
+                  "method": "GET",
+                  "path": "/agents/probe-all"
+                },
+                "agents_orchestrate": {
+                  "method": "POST",
+                  "path": "/agents/orchestrate"
+                },
+                "agents_capability_matrix": {
+                  "method": "GET",
+                  "path": "/agents/capability-matrix"
+                },
+                "snapshot_save": {
+                  "method": "POST",
+                  "path": "/snapshots"
+                },
+                "snapshot_list": {
+                  "method": "GET",
+                  "path": "/snapshots"
+                },
+                "snapshot_get": {
+                  "method": "GET",
+                  "path": "/snapshots/:id"
+                },
+                "snapshot_delete": {
+                  "method": "DELETE",
+                  "path": "/snapshots/:id"
+                },
+                "snapshot_diff": {
+                  "method": "POST",
+                  "path": "/snapshots/diff"
+                }
+              },
+              "methods": {
+                "similarity_metric": "cosine",
+                "arithmetic_model": "vector_l2_normalized",
+                "analogy_algorithms": [
+                  "3cos_add",
+                  "3cos_mul"
+                ],
+                "portfolio_solver": "greedy_marginal_reach",
+                "overlap_metrics": [
+                  "jaccard",
+                  "kl_divergence",
+                  "mutual_information"
+                ],
+                "projection_algorithms": [
+                  "jl_random",
+                  "umap_local_refine"
+                ],
+                "set_op_overlap_model": "category_affinity_jaccard_pairwise_inclusion_exclusion",
+                "saturation_model": "poisson_1_minus_exp_neg_frequency",
+                "affinity_index_basis": "reach_weighted_share_vs_catalog_baseline",
+                "journey_model": "per_stage_compose_then_monotone_funnel",
+                "privacy_model": "k_anonymity_floor_plus_sensitive_category_keywords",
+                "holdout_model": "two_proportion_z_test_balanced_arms"
+              },
+              "limits": {
+                "max_arithmetic_terms": 6,
+                "max_portfolio_signals": 20,
+                "max_neighborhood_k": 50,
+                "max_query_vector_dim": 512,
+                "min_signals_for_info_overlap": 2,
+                "max_compose_signals": 20,
+                "max_saturation_signals": 15,
+                "max_affinity_audit_signals": 20
+              },
+              "signal_facets": {
+                "x_analytics_fields": [
+                  "seasonality.monthly[12]",
+                  "seasonality.peakMonth",
+                  "decayHalfLifeDays",
+                  "volatilityIndex",
+                  "authorityScore",
+                  "idStabilityClass"
+                ],
+                "derivation": "deterministic_from_signal_metadata",
+                "note": "Facets computed at mapper time; no DB migration required."
+              }
+            },
+            "federation": {
+              "supported": true,
+              "protocol": "adcp_a2a_v0.1",
+              "endpoints": {
+                "registry": {
+                  "method": "GET",
+                  "path": "/agents/registry"
+                },
+                "federated_search": {
+                  "method": "POST",
+                  "path": "/agents/federated-search"
+                },
+                "cross_similarity": {
+                  "method": "POST",
+                  "path": "/agents/cross-similarity"
+                },
+                "reverse_taxonomy": {
+                  "method": "POST",
+                  "path": "/taxonomy/reverse"
+                }
+              },
+              "partners": [
+                {
+                  "id": "dstillery",
+                  "url": "https://adcp-signals-agent.dstillery.com/mcp",
+                  "stage": "live",
+                  "specialties": [
+                    "behavioral_audiences",
+                    "ttd_deployment"
+                  ]
+                },
+                {
+                  "id": "peer39",
+                  "stage": "roadmap",
+                  "specialties": [
+                    "contextual",
+                    "brand_safety"
+                  ]
+                },
+                {
+                  "id": "scope3",
+                  "stage": "roadmap",
+                  "specialties": [
+                    "sustainability"
+                  ]
+                },
+                {
+                  "id": "nextdata",
+                  "stage": "roadmap",
+                  "specialties": [
+                    "b2b_intent"
+                  ]
+                }
+              ],
+              "alignment_method": "procrustes_svd_shared_anchors",
+              "cache_ttl_seconds": 600
+            }
+          },
+          "signals": {
+            "discovery_modes": [
+              "brief",
+              "wholesale"
+            ],
+            "in_flight_max_seconds": 30,
+            "data_provider_domains": [
+              "evgeny.dev"
+            ],
+            "features": {
+              "catalog_signals": true
+            },
+            "signal_categories": [
+              "demographic",
+              "interest",
+              "purchase_intent",
+              "geo",
+              "composite"
+            ],
+            "dynamic_segment_generation": true,
+            "activation_mode": "async",
+            "provider": "AdCP Signals Adaptor - Demo Provider (Evgeny)",
+            "destinations": [
+              {
+                "id": "mock_dsp",
+                "name": "Mock DSP",
+                "type": "dsp",
+                "activation_supported": true,
+                "stage": "live",
+                "vendor": "Internal mock",
+                "activation_pattern": "push_async",
+                "auth_mechanism": "bearer_token (DEMO_API_KEY)",
+                "id_types_accepted": [
+                  "segment_id",
+                  "hashed_email",
+                  "maid_ios",
+                  "maid_android",
+                  "uid2",
+                  "ctv_device"
+                ],
+                "data_format": "segment_id + platform_segment_id pair",
+                "segment_refresh_sla": "< 60 seconds (synchronous in demo)",
+                "latency_p50_ms": 120,
+                "latency_p99_ms": 450,
+                "use_cases": [
+                  "Prospecting",
+                  "Retargeting",
+                  "CTV reach",
+                  "Measurement passback"
+                ],
+                "activation_flow": "activate_signal -> ephemeral platform_segment_id -> POST segment membership -> get_operation_status polling",
+                "docs_url": "https://github.com/EvgenyAndroid/adcp-signals-adaptor#mock-dsp",
+                "onboarding": "No onboarding — always live in demo.",
+                "notes": "Reference DSP that always returns completed within ~5 seconds. Safe target for any storyboard run."
+              },
+              {
+                "id": "mock_cleanroom",
+                "name": "Mock Clean Room",
+                "type": "cleanroom",
+                "activation_supported": true,
+                "stage": "live",
+                "vendor": "Internal mock (simulating Snowflake / Habu / InfoSum / AWS CR shape)",
+                "activation_pattern": "share_async",
+                "auth_mechanism": "cleanroom_agreement_id + bearer",
+                "id_types_accepted": [
+                  "hashed_email",
+                  "ramp_id",
+                  "uid2",
+                  "graph_id"
+                ],
+                "data_format": "cleanroom table share (SIGNAL_MEMBERS)",
+                "segment_refresh_sla": "< 15 minutes",
+                "latency_p50_ms": 800,
+                "latency_p99_ms": 3500,
+                "use_cases": [
+                  "1P x 2P match-rate analysis",
+                  "Campaign overlap",
+                  "Incrementality lift",
+                  "No-PII joins"
+                ],
+                "activation_flow": "activate_signal -> grant table share -> cleanroom provider ingests -> membership available on next scheduled compute",
+                "docs_url": "https://github.com/EvgenyAndroid/adcp-signals-adaptor#mock-cleanroom",
+                "onboarding": "Mock — grants auto-accepted.",
+                "notes": "Models the governance boundary: buyer's 1P data never leaves their clean-room tenant. Returns a stub JOIN matrix."
+              },
+              {
+                "id": "mock_cdp",
+                "name": "Mock CDP",
+                "type": "cdp",
+                "activation_supported": true,
+                "stage": "live",
+                "vendor": "Internal mock (simulating Segment / mParticle / Tealium / Treasure Data shape)",
+                "activation_pattern": "push_sync",
+                "auth_mechanism": "write_key",
+                "id_types_accepted": [
+                  "user_id",
+                  "anonymous_id",
+                  "hashed_email"
+                ],
+                "data_format": "Audience membership events (audience_entered / audience_exited)",
+                "segment_refresh_sla": "real-time (stream)",
+                "latency_p50_ms": 60,
+                "latency_p99_ms": 220,
+                "use_cases": [
+                  "Personalization",
+                  "Owned-channel orchestration",
+                  "Email / push audience sync"
+                ],
+                "activation_flow": "activate_signal -> stream audience_entered events keyed by user_id -> CDP fans out to downstream tools",
+                "docs_url": "https://github.com/EvgenyAndroid/adcp-signals-adaptor#mock-cdp",
+                "onboarding": "Mock — write-key auto-provisioned.",
+                "notes": "Best fit when the audience drives owned-channel surfaces (email, push, on-site) vs paid media."
+              },
+              {
+                "id": "mock_measurement",
+                "name": "Mock Measurement Platform",
+                "type": "measurement",
+                "activation_supported": false,
+                "stage": "live",
+                "vendor": "Internal mock (simulating Nielsen DAR / Kantar / IAS / DV shape)",
+                "activation_pattern": "read_only",
+                "auth_mechanism": "api_key",
+                "id_types_accepted": [
+                  "segment_id"
+                ],
+                "data_format": "Lift / reach / frequency report rows",
+                "segment_refresh_sla": "T+1 day (batch)",
+                "latency_p50_ms": null,
+                "latency_p99_ms": null,
+                "use_cases": [
+                  "Brand-lift studies",
+                  "Campaign reach validation",
+                  "Third-party verification"
+                ],
+                "activation_flow": "Not an activation target. Read-only: fetches lift/reach reports tagged to a signal's activations.",
+                "docs_url": "https://github.com/EvgenyAndroid/adcp-signals-adaptor#mock-measurement",
+                "onboarding": "Mock — reports synthesized per signal.",
+                "notes": "activation_supported=false by design. Surfaced so planners see measurement coverage alongside activation."
+              },
+              {
+                "id": "ttd_sandbox",
+                "name": "The Trade Desk (sandbox)",
+                "type": "dsp",
+                "activation_supported": false,
+                "stage": "sandbox",
+                "vendor": "The Trade Desk",
+                "activation_pattern": "push_async",
+                "auth_mechanism": "oauth2 (TTD Partner Console)",
+                "id_types_accepted": [
+                  "ttd_id",
+                  "uid2",
+                  "hashed_email",
+                  "maid_ios",
+                  "maid_android"
+                ],
+                "data_format": "Third-party data segment CSV upload (TTD DMP format)",
+                "segment_refresh_sla": "< 24 hours",
+                "latency_p50_ms": null,
+                "latency_p99_ms": null,
+                "use_cases": [
+                  "Open-web DSP activation",
+                  "CTV across TTD's OpenPath inventory",
+                  "UID2 cookieless targeting"
+                ],
+                "activation_flow": "activate_signal -> request OAuth consent -> upload segment CSV via TTD Partner API -> segment available in TTD UI once ingested",
+                "docs_url": "https://partner.thetradedesk.com/v3/portal/api/doc/ThirdPartyData",
+                "onboarding": "Requires TTD Partner account + OAuth app registration. Target Q2 2026.",
+                "notes": "Roadmap. When live, will be the default DSP for UID2-centric cookieless plans."
+              },
+              {
+                "id": "dv360_sandbox",
+                "name": "DV360 (sandbox)",
+                "type": "dsp",
+                "activation_supported": false,
+                "stage": "sandbox",
+                "vendor": "Google Display & Video 360",
+                "activation_pattern": "push_async",
+                "auth_mechanism": "oauth2 (Google Cloud / DV360 API)",
+                "id_types_accepted": [
+                  "hashed_email",
+                  "maid_ios",
+                  "maid_android",
+                  "publisher_provided_id"
+                ],
+                "data_format": "Customer Match list upload (Google Ads API)",
+                "segment_refresh_sla": "< 12 hours",
+                "latency_p50_ms": null,
+                "latency_p99_ms": null,
+                "use_cases": [
+                  "YouTube reach",
+                  "Programmatic display",
+                  "Customer Match seed audiences"
+                ],
+                "activation_flow": "activate_signal -> OAuth consent -> hash + upload via Customer Match API -> list available in DV360 after match-rate check",
+                "docs_url": "https://developers.google.com/display-video/api/reference/rest",
+                "onboarding": "Requires Google Ads account + MCC access + OAuth app. Target Q3 2026.",
+                "notes": "Roadmap. When live, will be the default DSP for Google-ecosystem plans."
+              }
+            ],
+            "limits": {
+              "max_signals_per_request": 100,
+              "max_rules_per_segment": 6,
+              "default_max_results": 5
+            }
+          },
+          "context": {
+            "correlation_id": "golden-caps"
+          }
+        }
+      }
+    }
+  },
+  "caps @none": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @none": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "status": "completed",
+          "adcp_version": "3.1",
+          "signals": [
+            {
+              "signal_agent_segment_id": "sig_golden_1",
+              "name": "Golden test segment",
+              "signal_type": "owned",
+              "coverage_percentage": 12.5,
+              "pricing_options": [
+                {
+                  "pricing_option_id": "po_cpm",
+                  "model": "cpm",
+                  "cpm": 2.5,
+                  "currency": "USD"
+                }
+              ]
+            }
+          ],
+          "pagination": {
+            "has_more": false,
+            "total_count": 1
+          },
+          "cache_scope": "public",
+          "wholesale_feed_version": "wf_golden_token",
+          "context": {
+            "correlation_id": "golden-gs"
+          }
+        }
+      }
+    }
+  },
+  "caps @empty": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @empty": {
+    "same_as": "get_signals @none"
+  },
+  "caps @3.0": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @3.0": {
+    "same_as": "get_signals @none"
+  },
+  "caps @3.1": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @3.1": {
+    "same_as": "get_signals @none"
+  },
+  "caps @3.2": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @3.2": {
+    "same_as": "get_signals @none"
+  },
+  "caps @3.3": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @3.3": {
+    "same_as": "get_signals @none"
+  },
+  "caps @3.10": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @3.10": {
+    "same_as": "get_signals @none"
+  },
+  "caps @3.1-beta.5": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @3.1-beta.5": {
+    "same_as": "get_signals @none"
+  },
+  "caps @3.2-rc.0": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @3.2-rc.0": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": true,
+        "structuredContent": {
+          "status": "failed",
+          "adcp_version": "3.1",
+          "adcp_error": {
+            "code": "VERSION_UNSUPPORTED",
+            "message": "adcp_version 3.2-rc.0 is a prerelease this seller does not serve. Prerelease pins match exactly; this seller serves releases 3.0 and 3.1. Call get_adcp_capabilities to discover supported versions, then retry with a supported adcp_version.",
+            "recovery": "correctable",
+            "supported_major_versions": [
+              3
+            ],
+            "details": {
+              "supported_versions": [
+                "3.0",
+                "3.1"
+              ],
+              "supported_majors": [
+                3
+              ]
+            }
+          },
+          "context": {
+            "correlation_id": "golden-gs"
+          }
+        }
+      }
+    }
+  },
+  "caps @3.3-beta.1": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @3.3-beta.1": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": true,
+        "structuredContent": {
+          "status": "failed",
+          "adcp_version": "3.1",
+          "adcp_error": {
+            "code": "VERSION_UNSUPPORTED",
+            "message": "adcp_version 3.3-beta.1 is a prerelease this seller does not serve. Prerelease pins match exactly; this seller serves releases 3.0 and 3.1. Call get_adcp_capabilities to discover supported versions, then retry with a supported adcp_version.",
+            "recovery": "correctable",
+            "supported_major_versions": [
+              3
+            ],
+            "details": {
+              "supported_versions": [
+                "3.0",
+                "3.1"
+              ],
+              "supported_majors": [
+                3
+              ]
+            }
+          },
+          "context": {
+            "correlation_id": "golden-gs"
+          }
+        }
+      }
+    }
+  },
+  "caps @3.1.20": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @3.1.20": {
+    "same_as": "get_signals @none"
+  },
+  "caps @v3.1": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @v3.1": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": true,
+        "structuredContent": {
+          "status": "failed",
+          "adcp_version": "3.1",
+          "adcp_error": {
+            "code": "VERSION_UNSUPPORTED",
+            "message": "adcp_version v3.1 not supported. This seller supports releases 3.0 and 3.1 (major versions [3]). Call get_adcp_capabilities to discover supported versions, then retry with a supported adcp_version.",
+            "recovery": "correctable",
+            "supported_major_versions": [
+              3
+            ],
+            "details": {
+              "supported_versions": [
+                "3.0",
+                "3.1"
+              ],
+              "supported_majors": [
+                3
+              ]
+            }
+          },
+          "context": {
+            "correlation_id": "golden-gs"
+          }
+        }
+      }
+    }
+  },
+  "caps @3": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @3": {
+    "same_as": "get_signals @none"
+  },
+  "caps @4.0": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @4.0": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": true,
+        "structuredContent": {
+          "status": "failed",
+          "adcp_version": "3.1",
+          "adcp_error": {
+            "code": "VERSION_UNSUPPORTED",
+            "message": "adcp_version 4.0 not supported. This seller supports releases 3.0 and 3.1 (major versions [3]). Call get_adcp_capabilities to discover supported versions, then retry with a supported adcp_version.",
+            "recovery": "correctable",
+            "supported_major_versions": [
+              3
+            ],
+            "details": {
+              "supported_versions": [
+                "3.0",
+                "3.1"
+              ],
+              "supported_majors": [
+                3
+              ]
+            }
+          },
+          "context": {
+            "correlation_id": "golden-gs"
+          }
+        }
+      }
+    }
+  },
+  "caps @2.1": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @2.1": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": true,
+        "structuredContent": {
+          "status": "failed",
+          "adcp_version": "3.1",
+          "adcp_error": {
+            "code": "VERSION_UNSUPPORTED",
+            "message": "adcp_version 2.1 not supported. This seller supports releases 3.0 and 3.1 (major versions [3]). Call get_adcp_capabilities to discover supported versions, then retry with a supported adcp_version.",
+            "recovery": "correctable",
+            "supported_major_versions": [
+              3
+            ],
+            "details": {
+              "supported_versions": [
+                "3.0",
+                "3.1"
+              ],
+              "supported_majors": [
+                3
+              ]
+            }
+          },
+          "context": {
+            "correlation_id": "golden-gs"
+          }
+        }
+      }
+    }
+  },
+  "caps @major:3": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @major:3": {
+    "same_as": "get_signals @none"
+  },
+  "caps @major:'3'": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @major:'3'": {
+    "same_as": "get_signals @none"
+  },
+  "caps @major:99": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @major:99": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": true,
+        "structuredContent": {
+          "status": "failed",
+          "adcp_version": "3.1",
+          "adcp_error": {
+            "code": "VERSION_UNSUPPORTED",
+            "message": "adcp_major_version 99 not supported. This seller supports: [3]. Call get_adcp_capabilities without adcp_major_version to discover supported versions, then retry with a supported version.",
+            "recovery": "correctable",
+            "supported_major_versions": [
+              3
+            ],
+            "details": {
+              "supported_versions": [
+                "3.0",
+                "3.1"
+              ],
+              "supported_majors": [
+                3
+              ]
+            }
+          },
+          "context": {
+            "correlation_id": "golden-gs"
+          }
+        }
+      }
+    }
+  },
+  "caps @major:3+4.0": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @major:3+4.0": {
+    "same_as": "get_signals @4.0"
+  },
+  "caps @major:4+3.1": {
+    "same_as": "caps unauthenticated"
+  },
+  "get_signals @major:4+3.1": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": true,
+        "structuredContent": {
+          "status": "failed",
+          "adcp_version": "3.1",
+          "adcp_error": {
+            "code": "VERSION_UNSUPPORTED",
+            "message": "adcp_major_version 4 not supported. This seller supports: [3]. Call get_adcp_capabilities without adcp_major_version to discover supported versions, then retry with a supported version.",
+            "recovery": "correctable",
+            "supported_major_versions": [
+              3
+            ],
+            "details": {
+              "supported_versions": [
+                "3.0",
+                "3.1"
+              ],
+              "supported_majors": [
+                3
+              ]
+            }
+          },
+          "context": {
+            "correlation_id": "golden-gs"
+          }
+        }
+      }
+    }
+  },
+  "get_signals wholesale unchanged": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "status": "completed",
+          "adcp_version": "3.1",
+          "pagination": {
+            "has_more": false
+          },
+          "cache_scope": "public",
+          "wholesale_feed_version": "wf_golden_token",
+          "unchanged": true,
+          "context": {
+            "correlation_id": "golden-wf"
+          }
+        }
+      }
+    }
+  },
+  "get_signals if_pricing_version alone": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": true,
+        "structuredContent": {
+          "status": "failed",
+          "adcp_version": "3.1",
+          "adcp_error": {
+            "code": "INVALID_REQUEST",
+            "message": "if_pricing_version is only valid alongside if_wholesale_feed_version",
+            "recovery": "correctable",
+            "field": "/if_pricing_version"
+          }
+        }
+      }
+    }
+  },
+  "activate_signal no segment id": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": true,
+        "structuredContent": {
+          "status": "failed",
+          "adcp_version": "3.1",
+          "adcp_error": {
+            "code": "INVALID_REQUEST",
+            "message": "signal_agent_segment_id is required",
+            "recovery": "correctable",
+            "field": "/signal_agent_segment_id"
+          }
+        }
+      }
+    }
+  },
+  "activate_signal empty destination": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": true,
+        "structuredContent": {
+          "status": "failed",
+          "adcp_version": "3.1",
+          "adcp_error": {
+            "code": "MISSING_DESTINATION",
+            "message": "destination is required"
+          },
+          "context": {
+            "correlation_id": "golden-act"
+          }
+        }
+      }
+    }
+  },
+  "unknown tool": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": true,
+        "structuredContent": {
+          "status": "failed",
+          "adcp_version": "3.1",
+          "adcp_error": {
+            "code": "UNSUPPORTED_FEATURE",
+            "message": "Unknown tool: no_such_tool",
+            "recovery": "correctable"
+          }
+        }
+      }
+    }
+  },
+  "get_task_status no task_id": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": true,
+        "structuredContent": {
+          "status": "failed",
+          "adcp_version": "3.1",
+          "adcp_error": {
+            "code": "INVALID_REQUEST",
+            "message": "task_id is required",
+            "recovery": "correctable",
+            "field": "/task_id"
+          }
+        }
+      }
+    }
+  },
+  "tools/call unauthenticated": {
+    "http": 401,
+    "www_authenticate": "Bearer realm=\"adcp-signals-adaptor\", error=\"invalid_token\"",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "error": {
+        "code": -32001,
+        "message": "Authentication required for this method. Supply Authorization: Bearer <key>."
+      }
+    }
+  },
+  "controller list_scenarios": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "status": "completed",
+          "adcp_version": "3.1",
+          "success": true,
+          "scenarios": [
+            "force_get_signals_arm",
+            "force_task_completion"
+          ]
+        }
+      }
+    }
+  },
+  "controller seed_account sandbox fixture": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "status": "completed",
+          "adcp_version": "3.1",
+          "success": false,
+          "error": "UNKNOWN_SCENARIO",
+          "error_detail": "scenario not implemented: seed_account. Supported: force_get_signals_arm, force_task_completion.",
+          "context": {
+            "correlation_id": "golden-seed"
+          }
+        }
+      }
+    }
+  },
+  "controller seed_account live fixture": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "status": "completed",
+          "adcp_version": "3.1",
+          "success": false,
+          "error": "UNKNOWN_SCENARIO",
+          "error_detail": "scenario not implemented: seed_account. Supported: force_get_signals_arm, force_task_completion."
+        }
+      }
+    }
+  },
+  "controller seed_account no account_id": {
+    "same_as": "controller seed_account live fixture"
+  },
+  "controller unknown scenario": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "status": "completed",
+          "adcp_version": "3.1",
+          "success": false,
+          "error": "UNKNOWN_SCENARIO",
+          "error_detail": "scenario not implemented: force_creative_status. Supported: force_get_signals_arm, force_task_completion."
+        }
+      }
+    }
+  },
+  "controller without sandbox": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "status": "completed",
+          "adcp_version": "3.1",
+          "success": false,
+          "error": "INVALID_PARAMS",
+          "error_detail": "account.sandbox must be true"
+        }
+      }
+    }
+  },
+  "controller live caller list_scenarios": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "status": "completed",
+          "adcp_version": "3.1",
+          "success": false,
+          "error": "FORBIDDEN",
+          "error_detail": "comply_test_controller requires a sandbox principal; the authenticated caller resolves to live mode"
+        }
+      }
+    }
+  },
+  "controller live caller seed_account": {
+    "same_as": "controller live caller list_scenarios"
+  },
+  "controller arm": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "status": "completed",
+          "adcp_version": "3.1",
+          "success": true,
+          "forced": {
+            "arm": "submitted",
+            "task_id": "golden_task_u1"
+          }
+        }
+      }
+    }
+  },
+  "get_signals consumes arm (unit 1)": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "status": "submitted",
+          "adcp_version": "3.1",
+          "task_id": "golden_task_u1"
+        }
+      }
+    }
+  },
+  "list_tasks unit 1": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "status": "completed",
+          "adcp_version": "3.1",
+          "tasks": [
+            {
+              "task_id": "golden_task_u1",
+              "task_type": "get_signals",
+              "domain": "signals",
+              "status": "submitted",
+              "created_at": "<iso>",
+              "updated_at": "<iso>",
+              "has_webhook": true
+            }
+          ],
+          "query_summary": {
+            "total_matching": 1,
+            "returned": 1
+          },
+          "pagination": {
+            "has_more": false,
+            "total_count": 1
+          }
+        }
+      }
+    }
+  },
+  "list_tasks unit 2": {
+    "same_as": "list_tasks unit 1"
+  },
+  "list_tasks no unit": {
+    "same_as": "list_tasks unit 1"
+  },
+  "get_task_status unit 2": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "status": "submitted",
+          "adcp_version": "3.1",
+          "task_id": "golden_task_u1",
+          "task_type": "get_signals",
+          "protocol": "signals",
+          "created_at": "<iso>",
+          "updated_at": "<iso>",
+          "has_webhook": true
+        }
+      }
+    }
+  },
+  "get_task_status unit 1": {
+    "same_as": "get_task_status unit 2"
+  },
+  "get_operation_status unit 2": {
+    "same_as": "get_signals consumes arm (unit 1)"
+  },
+  "controller force_task_completion": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "status": "completed",
+          "adcp_version": "3.1",
+          "success": true,
+          "previous_state": "submitted",
+          "current_state": "completed"
+        }
+      }
+    }
+  },
+  "get_task_status include_result": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<JSON.stringify(structuredContent)>"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "status": "completed",
+          "adcp_version": "3.1",
+          "task_id": "golden_task_u1",
+          "task_type": "get_signals",
+          "protocol": "signals",
+          "created_at": "<iso>",
+          "updated_at": "<iso>",
+          "has_webhook": true,
+          "completed_at": "<iso>",
+          "result": {
+            "signals": []
+          }
+        }
+      }
+    }
+  },
+  "batch": {
+    "http": 200,
+    "body": [
+      {
+        "jsonrpc": "2.0",
+        "id": "b1",
+        "result": {}
+      },
+      {
+        "jsonrpc": "2.0",
+        "id": "b2",
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "<JSON.stringify(structuredContent)>"
+            }
+          ],
+          "isError": false,
+          "structuredContent": {
+            "status": "completed",
+            "adcp_version": "3.1",
+            "signals": [
+              {
+                "signal_agent_segment_id": "sig_golden_1",
+                "name": "Golden test segment",
+                "signal_type": "owned",
+                "coverage_percentage": 12.5,
+                "pricing_options": [
+                  {
+                    "pricing_option_id": "po_cpm",
+                    "model": "cpm",
+                    "cpm": 2.5,
+                    "currency": "USD"
+                  }
+                ]
+              }
+            ],
+            "pagination": {
+              "has_more": false,
+              "total_count": 1
+            },
+            "cache_scope": "public",
+            "wholesale_feed_version": "wf_golden_token"
+          }
+        }
+      },
+      {
+        "jsonrpc": "2.0",
+        "id": "b3",
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "<JSON.stringify(structuredContent)>"
+            }
+          ],
+          "isError": true,
+          "structuredContent": {
+            "status": "failed",
+            "adcp_version": "3.1",
+            "adcp_error": {
+              "code": "VERSION_UNSUPPORTED",
+              "message": "adcp_version 9.9 not supported. This seller supports releases 3.0 and 3.1 (major versions [3]). Call get_adcp_capabilities to discover supported versions, then retry with a supported adcp_version.",
+              "recovery": "correctable",
+              "supported_major_versions": [
+                3
+              ],
+              "details": {
+                "supported_versions": [
+                  "3.0",
+                  "3.1"
+                ],
+                "supported_majors": [
+                  3
+                ]
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "kv": {
+    "adcp_capabilities_v31_3.1.20_<COMPLIANCE_STATE.last_run>_<COMPLIANCE_STATE.client_runner>_ws-off": {
+      "ttl": 3600,
+      "value": {
+        "sha256": "ee9280e130522604873821ddf142aed05a351a6450ea2caeba47c3042953a8e8"
+      }
+    },
+    "compliance:task-owner:golden_task_u1": {
+      "ttl": 3600,
+      "value": "YK_6raN6d6J1"
+    },
+    "compliance:task:YK_6raN6d6J1:golden_task_u1": {
+      "ttl": 3600,
+      "value": {
+        "task_id": "golden_task_u1",
+        "task_type": "get_signals",
+        "status": "completed",
+        "push_notification_config": {
+          "url": "http://127.0.0.1:9/hook",
+          "operation_id": "op-golden"
+        },
+        "account_key": "novamotors.example|pinnacle-agency.example",
+        "created_at": "<iso>",
+        "result": {
+          "signals": []
+        },
+        "completed_at": "<iso>"
+      }
+    },
+    "compliance:tasks:YK_6raN6d6J1": {
+      "ttl": 3600,
+      "value": [
+        "golden_task_u1"
+      ]
+    },
+    "sigtrace:#1": {
+      "ttl": 21600,
+      "value": {
+        "tool_name": "get_signals",
+        "response_adcp_version": "3.1",
+        "response_status": "completed"
+      }
+    },
+    "sigtrace:#10": {
+      "ttl": 21600,
+      "value": {
+        "tool_name": "get_signals",
+        "response_adcp_version": "3.1",
+        "response_status": "completed"
+      }
+    },
+    "sigtrace:#11": {
+      "ttl": 21600,
+      "value": {
+        "tool_name": "get_signals",
+        "response_adcp_version": "3.1",
+        "response_status": "completed"
+      }
+    },
+    "sigtrace:#12": {
+      "ttl": 21600,
+      "value": {
+        "tool_name": "get_signals",
+        "response_adcp_version": "3.1",
+        "response_status": "completed"
+      }
+    },
+    "sigtrace:#13": {
+      "ttl": 21600,
+      "value": {
+        "tool_name": "get_signals",
+        "response_adcp_version": "3.1",
+        "response_status": "completed"
+      }
+    },
+    "sigtrace:#14": {
+      "ttl": 21600,
+      "value": {
+        "tool_name": "get_signals",
+        "response_adcp_version": "3.1",
+        "response_status": "submitted"
+      }
+    },
+    "sigtrace:#15": {
+      "ttl": 21600,
+      "value": {
+        "tool_name": "get_signals",
+        "response_adcp_version": "3.1",
+        "response_status": "completed"
+      }
+    },
+    "sigtrace:#2": {
+      "ttl": 21600,
+      "value": {
+        "tool_name": "get_signals",
+        "response_adcp_version": "3.1",
+        "response_status": "completed"
+      }
+    },
+    "sigtrace:#3": {
+      "ttl": 21600,
+      "value": {
+        "tool_name": "get_signals",
+        "response_adcp_version": "3.1",
+        "response_status": "completed"
+      }
+    },
+    "sigtrace:#4": {
+      "ttl": 21600,
+      "value": {
+        "tool_name": "get_signals",
+        "response_adcp_version": "3.1",
+        "response_status": "completed"
+      }
+    },
+    "sigtrace:#5": {
+      "ttl": 21600,
+      "value": {
+        "tool_name": "get_signals",
+        "response_adcp_version": "3.1",
+        "response_status": "completed"
+      }
+    },
+    "sigtrace:#6": {
+      "ttl": 21600,
+      "value": {
+        "tool_name": "get_signals",
+        "response_adcp_version": "3.1",
+        "response_status": "completed"
+      }
+    },
+    "sigtrace:#7": {
+      "ttl": 21600,
+      "value": {
+        "tool_name": "get_signals",
+        "response_adcp_version": "3.1",
+        "response_status": "completed"
+      }
+    },
+    "sigtrace:#8": {
+      "ttl": 21600,
+      "value": {
+        "tool_name": "get_signals",
+        "response_adcp_version": "3.1",
+        "response_status": "completed"
+      }
+    },
+    "sigtrace:#9": {
+      "ttl": 21600,
+      "value": {
+        "tool_name": "get_signals",
+        "response_adcp_version": "3.1",
+        "response_status": "completed"
+      }
+    },
+    "sigtrace:index": {
+      "ttl": 21600,
+      "value": {
+        "entries": 15
+      }
+    }
+  },
+  "signed 3.1.24 positive/001-basic-post": {
+    "http": 200,
+    "body": {
+      "jsonrpc": "2.0",
+      "id": null,
+      "error": {
+        "code": -32600,
+        "message": "Invalid JSON-RPC request"
+      }
+    },
+    "replay_rows": 1
+  },
+  "signed 3.1.24 positive/002-post-with-content-digest": {
+    "same_as": "signed 3.1.24 positive/001-basic-post"
+  },
+  "signed profile-3.2 positive/001-post-with-content-digest.json": {
+    "same_as": "signed 3.1.24 positive/001-basic-post"
+  },
+  "signed profile-3.2 negative/001-base64url-sf-binary.json": {
+    "same_as": "signed 3.1.24 positive/001-basic-post"
+  },
+  "signed profile-3.2 negative/007-missing-content-digest.json": {
+    "http": 401,
+    "www_authenticate": "Signature error=\"request_signature_invalid\"",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": null,
+      "error": {
+        "code": -32001,
+        "message": "Request signature rejected: request_signature_invalid"
+      }
+    },
+    "replay_rows": 0
+  },
+  "signed profile-3.2 negative/029-duplicate-signature-label.json": {
+    "same_as": "signed 3.1.24 positive/001-basic-post"
+  },
+  "GET /health": {
+    "http": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version, Last-Event-ID",
+      "access-control-allow-methods": "GET, POST, OPTIONS",
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "Mcp-Session-Id",
+      "access-control-max-age": "86400",
+      "content-type": "application/json",
+      "x-adcp-provider": "adcp-signals-adaptor-demo",
+      "x-adcp-version": "3.1"
+    },
+    "body": {
+      "status": "ok",
+      "version": "3.1",
+      "adcp_version": "3.1",
+      "adcp_spec_version": "3.1.20",
+      "worker_version": "1.1.0",
+      "built_at": "<iso>",
+      "_trace": {
+        "operation": "GET Health",
+        "duration_ms": "<ms>",
+        "steps": [
+          {
+            "id": "handler",
+            "label": "Handler · /health",
+            "duration_ms": "<ms>",
+            "details": [
+              {
+                "k": "method",
+                "v": "GET"
+              },
+              {
+                "k": "path",
+                "v": "/health"
+              },
+              {
+                "k": "status",
+                "v": "200"
+              },
+              {
+                "k": "duration_ms",
+                "v": "0"
+              }
+            ],
+            "note": "Default auto-trace (handler did not emit a richer one). Drop a buildTrace() call into the handler for step-level detail."
+          }
+        ],
+        "performance": {
+          "total_ms": 0
+        },
+        "ts": "<iso>"
+      }
+    }
+  },
+  "GET /capabilities": {
+    "http": 200,
+    "headers": {
+      "access-control-allow-headers": "Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version, Last-Event-ID",
+      "access-control-allow-methods": "GET, POST, OPTIONS",
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "Mcp-Session-Id",
+      "access-control-max-age": "86400",
+      "content-type": "application/json",
+      "x-adcp-provider": "adcp-signals-adaptor-demo",
+      "x-adcp-version": "3.1"
+    },
+    "body_has_trace": true,
+    "body_adcp": {
+      "major_versions": [
+        3
+      ],
+      "supported_versions": [
+        "3.0",
+        "3.1"
+      ],
+      "idempotency": {
+        "supported": true,
+        "replay_ttl_seconds": 86400
+      }
+    },
+    "body_compliance_testing": {
+      "scenarios": [
+        "force_get_signals_arm",
+        "force_task_completion"
+      ]
+    },
+    "body_request_signing": {
+      "supported": true,
+      "covers_content_digest": "either",
+      "required_for": [],
+      "warn_for": [],
+      "supported_for": []
+    },
+    "body_sha256": "ee9280e130522604873821ddf142aed05a351a6450ea2caeba47c3042953a8e8"
+  },
+  "GET /signals/search unauthenticated": {
+    "http": 401,
+    "headers": {
+      "access-control-allow-headers": "Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version, Last-Event-ID",
+      "access-control-allow-methods": "GET, POST, OPTIONS",
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "Mcp-Session-Id",
+      "access-control-max-age": "86400",
+      "content-type": "application/json",
+      "x-adcp-provider": "adcp-signals-adaptor-demo",
+      "x-adcp-version": "3.1"
+    },
+    "body": {
+      "error": "Valid API key required (Authorization: Bearer <key>)",
+      "code": "UNAUTHORIZED"
+    }
+  }
+}

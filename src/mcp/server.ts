@@ -28,7 +28,7 @@ import type { Env } from "../types/env";
 import type { Logger } from "../utils/logger";
 import type { SearchSignalsRequest } from "../types/api";
 import { requireAuth } from "../routes/shared";
-import { ADCP_TOOLS, getToolByName } from "./tools";
+import { getToolByName, listTools } from "./tools";
 import { getCapabilities } from "../domain/capabilityService";
 import { resolveWebhookSigning } from "../domain/webhookSigning";
 import { searchSignalsService } from "../domain/signalService";
@@ -57,7 +57,7 @@ import { logCall as d1LogCall, cleanup as d1Cleanup, shouldRunCleanup } from "..
 import { operatorIdFromRequest } from "../utils/operatorId";
 import { checkRequestSignature, carriesWebhookAuthentication, signerOperatorId, type SignatureCheck } from "../domain/requestSigning";
 import { D1ReplayStore } from "../storage/replayRepo";
-import { ADCP_WIRE_PIN } from "../constants/specVersion";
+import { ADCP_WIRE_PIN, servesAdcp32, supportedReleaseVersions, defaultServedVersion } from "../constants/specVersion";
 import {
     handleComplyTestController,
     checkAndConsumeGetSignalsArm,
@@ -216,6 +216,8 @@ export async function handleMcpRequest(
             { method: request.method, url: request.url, headers: request.headers, body: text },
             body,
             new D1ReplayStore(env.DB),
+            // The endpoint's profile, never the request's pin (requestSigning.ts).
+            servesAdcp32(env) ? "3.2" : "3.1",
         );
     } catch (err) {
         // Replay store (D1) failure on the signed path: fail closed.
@@ -354,7 +356,7 @@ async function handleSingleMessage(
             case "ping":
                 return rpcSuccess(id, {});
             case "tools/list":
-                return rpcSuccess(id, { tools: ADCP_TOOLS });
+                return rpcSuccess(id, { tools: listTools(env) });
             case "tools/call": {
                 // Sec-33: time + record the tool call for observability.
                 // Sec-35: additionally persist to D1 via ctx.waitUntil for
@@ -364,8 +366,13 @@ async function handleSingleMessage(
                 const toolCallParams = params as McpCallToolParams;
                 const toolStart = performance.now();
                 const caller: "authed" | "unauth" = isAuthed ? "authed" : "unauth";
+                // The release this call is served at. handleToolCall overwrites
+                // the default once the pin resolves, so an error raised after
+                // that echoes the resolved release, and one raised before it
+                // (unknown tool, refused pin) echoes the default.
+                const call = { served: defaultServedVersion(env) };
                 try {
-                    const result = await handleToolCall(toolCallParams, env, logger, operatorId, isLiveCaller);
+                    const result = await handleToolCall(toolCallParams, env, logger, operatorId, isLiveCaller, call);
                     const responseBytes = tryLen(result) ?? 0;
                     const durationMs = Math.round(performance.now() - toolStart);
                     recordToolLog({
@@ -422,6 +429,7 @@ async function handleSingleMessage(
                             message: err.message,
                         };
                         if (typeof details["recovery"] === "string") adcpError.recovery = details["recovery"] as string;
+                        else if (servesAdcp32(env)) adcpError.recovery = recoveryFor(code);
                         if (typeof details["field"] === "string") adcpError.field = details["field"] as string;
                         if (Array.isArray(details["supported_major_versions"])) adcpError.supported_major_versions = details["supported_major_versions"] as number[];
                         // Preserve any other details (e.g. validation errors)
@@ -435,7 +443,7 @@ async function handleSingleMessage(
                         if (Object.keys(remainder).length > 0) adcpError.details = remainder;
                         const argObj = toolCallParams.arguments as Record<string, unknown> | undefined;
                         const context = argObj && typeof argObj === "object" ? argObj["context"] : undefined;
-                        return rpcSuccess(id, toolError(adcpError, context));
+                        return rpcSuccess(id, toolError(adcpError, context, call.served));
                     }
                     throw err;
                 }
@@ -455,11 +463,26 @@ async function handleSingleMessage(
         if (err instanceof McpToolError) {
             const details = (err.details ?? {}) as Record<string, unknown>;
             const code = typeof details["code"] === "string" ? details["code"] as string : "SERVICE_UNAVAILABLE";
-            return rpcSuccess(id, toolError({ code, message: err.message }, undefined));
+            const recovery = servesAdcp32(env)
+                ? { recovery: typeof details["recovery"] === "string" ? details["recovery"] as string : recoveryFor(code) }
+                : {};
+            return rpcSuccess(id, toolError({ code, message: err.message, ...recovery }, undefined, defaultServedVersion(env)));
         }
         logger.error("mcp_unhandled_error", { method, error: String(err) });
         return rpcError(id, RPC_INTERNAL_ERROR, "Internal error");
     }
+}
+
+/**
+ * AdCP 3.2 makes error.recovery a MUST on every error. With SERVE_ADCP_3_2 ON
+ * the two places that assemble an adcp_error fill it when the thrown error
+ * carried none: SERVICE_UNAVAILABLE is transient (its registered class); the
+ * only other codes that reach there without one are request-validation codes
+ * (validateActivateRequest's MISSING_DESTINATION and friends), which the
+ * caller corrects. Flag OFF: unchanged, no fill.
+ */
+function recoveryFor(code: string): string {
+    return code === "SERVICE_UNAVAILABLE" ? "transient" : "correctable";
 }
 
 // ── MCP method handlers ───────────────────────────────────────────────────────
@@ -475,7 +498,8 @@ async function handleInitialize(
             name: "adcp-signals-adaptor",
             // The wire pin, not env.API_VERSION: a dashboard-level var override
             // could silently re-advertise an old line and nothing smokes this field.
-            version: ADCP_WIRE_PIN,
+            // With SERVE_ADCP_3_2 ON that is 3.2 (defaultServedVersion).
+            version: defaultServedVersion(env),
             description:
                 "AdCP Signals Provider — IAB Audience Taxonomy 1.1 aligned signal discovery, " +
                 "brief-driven custom segment proposals, and async activation with webhook support.",
@@ -546,8 +570,10 @@ const SUPPORTED_MAJOR_VERSIONS: ReadonlyArray<number> = [3];
  * deprecated, so a refused pin carries both and the buyer can re-pin without a
  * capabilities round-trip. MUST match capabilityService.ts `supported_versions`
  * (there: ["3.0", "3.1"]); version-unsupported.test.ts compares the two live.
+ * This is the flag-OFF list, used by validateAdcpMajorVersion below;
+ * resolveServedVersion reads supportedReleaseVersions(env) with the flag ON.
  */
-const SUPPORTED_RELEASE_VERSIONS: ReadonlyArray<string> = ["3.0", "3.1"];
+const SUPPORTED_RELEASE_VERSIONS: ReadonlyArray<string> = supportedReleaseVersions();
 
 /**
  * Per AdCP 3.0.x (vendor/.../signals/get-signals-request.json:10):
@@ -622,12 +648,84 @@ function validateAdcpMajorVersion(toolName: string, args: Record<string, unknown
     }
 }
 
+// adcp_version wire shape (core/version-envelope.json, 3.2.4): MAJOR.MINOR
+// with an optional prerelease tag, no leading zeros, no patch.
+const ADCP_VERSION_PATTERN = /^(0|[1-9]\d*)\.(0|[1-9]\d*)(-[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?)?$/;
+
+/**
+ * The release a tool call is served at, or VERSION_UNSUPPORTED.
+ *
+ * Flag OFF: exactly today's behaviour — validateAdcpMajorVersion, then 3.1.
+ *
+ * Flag ON (SERVE_ADCP_3_2): the server-resolves rules of versioning.mdx
+ * (adcp main, "Bidirectional negotiation", "Pre-release pins", "Patches are
+ * not negotiated", "Major-precision negotiation"):
+ *   - adcp_version omitted or "" → the default release (3.2), whatever
+ *     adcp_major_version says, as long as that major is supported;
+ *   - an exact supported release → that release;
+ *   - a later release in a supported major ("3.3", "3.10") → the highest
+ *     supported release ≤ the pin (3.2);
+ *   - a prerelease pin matches exactly or not at all, and none is advertised;
+ *   - anything that is not MAJOR.MINOR[-pre] ("3.1.20", "v3.1", "3") is not a
+ *     wire value;
+ *   - another major, or adcp_major_version disagreeing with adcp_version's
+ *     major, is refused.
+ * get_adcp_capabilities is never refused (the recovery carve-out above): it
+ * echoes the resolved release when there is one, else the default.
+ */
+function resolveServedVersion(env: Env, toolName: string, args: Record<string, unknown>): string {
+    if (!servesAdcp32(env)) {
+        validateAdcpMajorVersion(toolName, args);
+        return ADCP_WIRE_PIN;
+    }
+    const supported = supportedReleaseVersions(env);
+    const outcome = resolvePin(args, supported, defaultServedVersion(env));
+    if (typeof outcome === "string") return outcome;
+    if (toolName === "get_adcp_capabilities") return defaultServedVersion(env);
+    throw new McpToolError(
+        `${outcome.refused} This seller supports releases ${supported.join(", ")} (major versions [${SUPPORTED_MAJOR_VERSIONS.join(", ")}]). Call get_adcp_capabilities to discover supported versions, then retry with a supported adcp_version.`,
+        { code: "VERSION_UNSUPPORTED", recovery: "correctable", supported_major_versions: [...SUPPORTED_MAJOR_VERSIONS], supported_versions: [...supported], supported_majors: [...SUPPORTED_MAJOR_VERSIONS] },
+    );
+}
+
+/** The flag-ON pin rules above: the release to serve, or why the pin is refused. */
+function resolvePin(args: Record<string, unknown>, supported: string[], fallback: string): string | { refused: string } {
+    let major: number | undefined;
+    const v = args["adcp_major_version"];
+    if (v !== undefined && v !== null) {
+        const num = typeof v === "number" ? v : Number(v);
+        if (!Number.isInteger(num) || !SUPPORTED_MAJOR_VERSIONS.includes(num)) return { refused: `adcp_major_version ${v} not supported.` };
+        major = num;
+    }
+    const rel = args["adcp_version"];
+    if (rel === undefined || rel === null || rel === "") return fallback;
+    const m = typeof rel === "string" ? ADCP_VERSION_PATTERN.exec(rel) : null;
+    if (!m) {
+        return { refused: typeof rel === "string"
+            ? `adcp_version ${rel} is not a release-precision version (MAJOR.MINOR).`
+            : `adcp_version must be a string "MAJOR.MINOR", not ${Array.isArray(rel) ? "an array" : `a ${typeof rel}`}.` };
+    }
+    const pin = m[0];
+    const relMajor = Number(m[1]);
+    if (!SUPPORTED_MAJOR_VERSIONS.includes(relMajor)) return { refused: `adcp_version ${pin} not supported.` };
+    if (major !== undefined && major !== relMajor) return { refused: `adcp_version ${pin} disagrees with adcp_major_version ${major}.` };
+    if (supported.includes(pin)) return pin;
+    if (m[3] !== undefined) return { refused: `adcp_version ${pin} is a prerelease this seller does not serve; prerelease pins match exactly.` };
+    const minor = Number(m[2]);
+    const atOrBelow = supported
+        .map((r) => r.split(".").map(Number) as [number, number])
+        .filter(([ma, mi]) => ma === relMajor && mi <= minor)
+        .sort((a, b) => b[1] - a[1])[0];
+    return atOrBelow ? `${atOrBelow[0]}.${atOrBelow[1]}` : { refused: `adcp_version ${pin} is below every supported release.` };
+}
+
 async function handleToolCall(
     params: McpCallToolParams,
     env: Env,
     logger: Logger,
     operatorId: string | null,
-    isLiveCaller: boolean
+    isLiveCaller: boolean,
+    call: { served: string },
 ): Promise<unknown> {
     const { name, arguments: args = {} } = params;
 
@@ -648,23 +746,24 @@ async function handleToolCall(
     // Version negotiation — must run BEFORE per-tool dispatch so the
     // error surfaces uniformly across every state-changing tool. The
     // get_adcp_capabilities carve-out is encoded inside the helper.
-    validateAdcpMajorVersion(resolvedName, args as Record<string, unknown>);
+    call.served = resolveServedVersion(env, resolvedName, args as Record<string, unknown>);
+    const served = call.served;
 
     logger.info("mcp_tool_call", { tool: resolvedName });
 
     switch (resolvedName) {
         case "get_adcp_capabilities":
-            return callGetCapabilities(args, env);
+            return callGetCapabilities(args, env, served);
         case "get_signals":
-            return callGetSignals(args, env, operatorId);
+            return callGetSignals(args, env, operatorId, served);
         case "activate_signal":
-            return callActivateSignal(args, env, logger);
+            return callActivateSignal(args, env, logger, served);
         case "get_operation_status":
         case "get_signal_status":
-            return callGetOperation(args, env, logger, operatorId);
+            return callGetOperation(args, env, logger, operatorId, served);
         case "get_task_status": {
             if (!operatorId) throw new McpToolError("get_task_status requires an authenticated caller", { code: "AUTH_REQUIRED", recovery: "correctable" });
-            return callGetTaskStatus(args, env, logger, operatorId);
+            return callGetTaskStatus(args, env, logger, operatorId, served);
         }
         case "comply_test_controller": {
             if (!operatorId) throw new McpToolError("comply_test_controller requires an authenticated caller", { code: "AUTH_REQUIRED", recovery: "correctable" });
@@ -688,7 +787,7 @@ async function handleToolCall(
                 ...(ctxEcho && typeof ctxEcho === "object" && !Array.isArray(ctxEcho)
                     ? { context: ctxEcho as Record<string, unknown> }
                     : {}),
-            });
+            }, served);
             return toolResultJson(envelope);
         }
         case "list_tasks": {
@@ -748,14 +847,15 @@ async function handleToolCall(
                         has_more: page.length < matching.length,
                         total_count: matching.length,
                     },
-                }
+                },
+                served
             );
             return toolResultJson(response);
         }
         case "get_similar_signals":
-            return callGetSimilarSignals(args, env, logger);
+            return callGetSimilarSignals(args, env, logger, served);
         case "query_signals_nl":
-            return callQuerySignalsNl(args, env, logger);
+            return callQuerySignalsNl(args, env, logger, served);
         case "get_concept":
         case "search_concepts": {
             // handleConceptToolCall returns a plain object; wrap it in MCP tool
@@ -765,7 +865,8 @@ async function handleToolCall(
             const conceptResult = handleConceptToolCall(resolvedName, args);
             const conceptResponse = withMcpEnvelope(
                 { status: "completed" },
-                conceptResult as Record<string, unknown>
+                conceptResult as Record<string, unknown>,
+                served
             );
             return toolResultJson(conceptResponse);
         }
@@ -778,7 +879,8 @@ async function handleToolCall(
 
 async function callGetCapabilities(
     args: Record<string, unknown>,
-    env: Env
+    env: Env,
+    served: string,
 ): Promise<unknown> {
     // Accept both `protocols` (array, canonical) and `protocol` (string, singular
     // alias) — some clients/evaluators send the singular form. Same intent.
@@ -798,6 +900,7 @@ async function callGetCapabilities(
         ...(env.WEBHOOK_SIGNING_PRIVATE_JWK !== undefined
             ? { WEBHOOK_SIGNING_PRIVATE_JWK: env.WEBHOOK_SIGNING_PRIVATE_JWK }
             : {}),
+        ...(env.SERVE_ADCP_3_2 !== undefined ? { SERVE_ADCP_3_2: env.SERVE_ADCP_3_2 } : {}),
     });
 
     // Echo back the request's context block. Capability-discovery storyboards
@@ -811,7 +914,7 @@ async function callGetCapabilities(
 
     // MCP transport binding (adcp#3999): envelope fields flat-merged into
     // structuredContent. Capability discovery is fully synchronous → completed.
-    const response = withMcpEnvelope({ status: "completed" }, payload as Record<string, unknown>);
+    const response = withMcpEnvelope({ status: "completed" }, payload as Record<string, unknown>, served);
 
     return toolResultJson(response);
 }
@@ -862,7 +965,8 @@ function extractRequestedSignalIds(args: Record<string, unknown>): string[] {
 async function callGetSignals(
     args: Record<string, unknown>,
     env: Env,
-    operatorId: string | null
+    operatorId: string | null,
+    served: string,
 ): Promise<unknown> {
     const _t0_get_signals = Date.now();
     const filters = args["filters"] as Record<string, unknown> | undefined;
@@ -1003,7 +1107,7 @@ async function callGetSignals(
             ...(ctxEcho && typeof ctxEcho === "object" && !Array.isArray(ctxEcho)
                 ? { context: ctxEcho as Record<string, unknown> }
                 : {}),
-        });
+        }, served);
         const _trace_unchanged = safeRecordSignalTrace({
             tool_name: "get_signals",
             direction: "inbound",
@@ -1032,7 +1136,7 @@ async function callGetSignals(
                 ...(ctxEcho && typeof ctxEcho === "object" && !Array.isArray(ctxEcho)
                     ? { context: ctxEcho as Record<string, unknown> }
                     : {}),
-            });
+            }, served);
             const _trace_armed = safeRecordSignalTrace({
                 tool_name: "get_signals",
                 direction: "inbound",
@@ -1236,7 +1340,7 @@ async function callGetSignals(
 
     // MCP transport binding (adcp#3999): envelope fields flat-merged into
     // structuredContent. Signals discovery is fully synchronous → completed.
-    const response = withMcpEnvelope({ status: "completed" }, cleanResponse);
+    const response = withMcpEnvelope({ status: "completed" }, cleanResponse, served);
 
     // Record the get_signals trace for observability across the demo.
     // Persist to KV so it survives isolate cycles.
@@ -1282,7 +1386,8 @@ async function requestFingerprint(args: Record<string, unknown>): Promise<string
 async function callActivateSignal(
     args: Record<string, unknown>,
     env: Env,
-    logger: Logger
+    logger: Logger,
+    served: string,
 ): Promise<unknown> {
     const _t0_activate = Date.now();
     // Accept three request shapes for the destinations payload:
@@ -1431,7 +1536,8 @@ async function callActivateSignal(
         };
         const specResponse = withMcpEnvelope(
             { status: "submitted", task_id: result.task_id },
-            payload
+            payload,
+            served
         );
 
         const _trace_act_ok = safeRecordSignalTrace({
@@ -1618,7 +1724,8 @@ async function callActivateSignal(
             };
             const syntheticResponse = withMcpEnvelope(
                 { status: "completed" },
-                syntheticPayload
+                syntheticPayload,
+                served
             );
             logger.warn("activate_unknown_signal_synthetic", { signalId });
             const _trace_act_synth = safeRecordSignalTrace({
@@ -1654,7 +1761,8 @@ async function callGetOperation(
     args: Record<string, unknown>,
     env: Env,
     logger: Logger,
-    operatorId: string | null
+    operatorId: string | null,
+    served: string,
 ): Promise<unknown> {
     const taskId = (args["task_id"] ?? args["operationId"]) as string;
     if (!taskId) throw new McpToolError("task_id is required", { code: "INVALID_REQUEST", recovery: "correctable", field: "/task_id" });
@@ -1671,7 +1779,8 @@ async function callGetOperation(
             const task = lookup.task;
             const response = withMcpEnvelope(
                 { status: task.status === "completed" ? "completed" : "submitted", task_id: taskId },
-                (task.result as Record<string, unknown> | undefined) ?? {}
+                (task.result as Record<string, unknown> | undefined) ?? {},
+                served
             );
             return toolResultJson(response);
         }
@@ -1695,7 +1804,8 @@ async function callGetOperation(
         // task_id is echoed at envelope level to mirror the queried task ID.
         const response = withMcpEnvelope(
             { status: "completed", task_id: taskId },
-            result as unknown as Record<string, unknown>
+            result as unknown as Record<string, unknown>,
+            served
         );
         // Record the trace as an "extension" tool (no canonical AdCP
         // schema for get_operation_status yet). The trace viewer renders
@@ -1746,7 +1856,8 @@ async function callGetTaskStatus(
     args: Record<string, unknown>,
     env: Env,
     logger: Logger,
-    operatorId: string
+    operatorId: string,
+    served: string,
 ): Promise<unknown> {
     const taskId = args["task_id"] as string;
     if (!taskId) throw new McpToolError("task_id is required", { code: "INVALID_REQUEST", recovery: "correctable", field: "/task_id" });
@@ -1774,7 +1885,7 @@ async function callGetTaskStatus(
                 ? { result: task.result }
                 : {}),
         };
-        const response = withMcpEnvelope({ status: task.status, task_id: taskId }, payload);
+        const response = withMcpEnvelope({ status: task.status, task_id: taskId }, payload, served);
         return toolResultJson(response);
     }
 
@@ -1797,7 +1908,7 @@ async function callGetTaskStatus(
                 ? { result: { signal_agent_segment_id: result.signal_agent_segment_id, deployments: result.deployments } }
                 : {}),
         };
-        const response = withMcpEnvelope({ status: result.status, task_id: taskId }, payload);
+        const response = withMcpEnvelope({ status: result.status, task_id: taskId }, payload, served);
         return toolResultJson(response);
     } catch (err) {
         if (err instanceof NotFoundError) {
@@ -1814,7 +1925,8 @@ async function callGetTaskStatus(
 async function callGetSimilarSignals(
     args: Record<string, unknown>,
     env: Env,
-    _logger: Logger
+    _logger: Logger,
+    served: string,
 ): Promise<unknown> {
     const signalId = (args["signal_agent_segment_id"] ?? args["signal_id"]) as string;
     if (!signalId) throw new McpToolError("signal_agent_segment_id is required", { code: "INVALID_REQUEST", recovery: "correctable", field: "/signal_agent_segment_id" });
@@ -1884,7 +1996,8 @@ async function callGetSimilarSignals(
     // a fresh request id as the envelope context_id for correlation.
     const response = withMcpEnvelope(
         { status: "completed", context_id: requestId() },
-        result as Record<string, unknown>
+        result as Record<string, unknown>,
+        served
     );
 
     return toolResultJson(response);
@@ -1893,7 +2006,8 @@ async function callGetSimilarSignals(
 async function callQuerySignalsNl(
     args: Record<string, unknown>,
     env: Env,
-    logger: Logger
+    logger: Logger,
+    served: string,
 ): Promise<unknown> {
     const query = args["query"] as string | undefined;
     if (!query) throw new McpToolError("query is required", { code: "INVALID_REQUEST", recovery: "correctable", field: "/query" });
@@ -1914,7 +2028,8 @@ async function callQuerySignalsNl(
     if (structured && typeof structured === "object" && !Array.isArray(structured)) {
         response = withMcpEnvelope(
             { status: "completed" },
-            structured as Record<string, unknown>
+            structured as Record<string, unknown>,
+            served
         );
     } else {
         response = structured ?? text;
@@ -1978,10 +2093,11 @@ export function toolResult(text: string, structured?: unknown): unknown {
 export function toolError(
     adcpError: { code: string; message: string; recovery?: string; field?: string; details?: unknown; supported_major_versions?: number[] },
     context?: unknown,
+    served: string = SERVED_ADCP_VERSION,
 ): unknown {
     const structuredContent: Record<string, unknown> = {
         status: "failed",
-        adcp_version: SERVED_ADCP_VERSION,
+        adcp_version: served,
         adcp_error: adcpError,
     };
     if (context !== undefined && context !== null && typeof context === "object" && !Array.isArray(context)) {
@@ -2043,16 +2159,21 @@ export function toolResultJson(structured: unknown): unknown {
  *
  * Served from ADCP_WIRE_PIN so the envelope, the X-AdCP-Version header
  * and /health cannot drift from each other.
+ *
+ * 2026-10-15: every tool call now passes the release it was served at
+ * (resolveServedVersion; 3.1 with SERVE_ADCP_3_2 OFF), so this constant is
+ * only toolError's default for callers outside a tool call.
  */
 const SERVED_ADCP_VERSION = ADCP_WIRE_PIN;
 
 function withMcpEnvelope(
     envelope: { status: string; task_id?: string; context_id?: string; message?: string },
-    payload: Record<string, unknown>
+    payload: Record<string, unknown>,
+    served: string,
 ): Record<string, unknown> {
     const out: Record<string, unknown> = {
         status: envelope.status,
-        adcp_version: SERVED_ADCP_VERSION,
+        adcp_version: served,
     };
     if (envelope.task_id !== undefined) out["task_id"] = envelope.task_id;
     if (envelope.context_id !== undefined) out["context_id"] = envelope.context_id;

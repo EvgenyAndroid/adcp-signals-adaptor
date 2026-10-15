@@ -30,7 +30,7 @@ import { handleGetProjector } from "./routes/getProjector";
 import { handleUcpProjection, handleUcpSimilarity } from "./routes/ucpProjection";
 import { handleEmbedText } from "./routes/embedText";
 import { ADCP_SPEC_VERSION } from "./schemas/adcp";
-import { ADCP_WIRE_PIN } from "./constants/specVersion";
+import { defaultServedVersion } from "./constants/specVersion";
 import {
   handleQueryVector,
   handleArithmetic,
@@ -417,7 +417,8 @@ export default {
 
         if (!isPublic && !requireAuth(request, env.DEMO_API_KEY)) {
             return withCors(
-                errorResponse("UNAUTHORIZED", "Valid API key required (Authorization: Bearer <key>)", 401)
+                errorResponse("UNAUTHORIZED", "Valid API key required (Authorization: Bearer <key>)", 401),
+                defaultServedVersion(env),
             );
         }
 
@@ -506,11 +507,13 @@ export default {
                 // (patch we validate against). `version`/`adcp_version` had
                 // been hard-coded "3.0" as back-compat long after the agent
                 // moved to the 3.1 line — a consumer keying on them was
-                // being told the wrong major line.
+                // being told the wrong major line. With SERVE_ADCP_3_2 ON the
+                // default release is 3.2; adcp_spec_version stays the vendored
+                // 3.1.x corpus the trace validator actually uses.
                 response = jsonResponse({
                     status: "ok",
-                    version: ADCP_WIRE_PIN,                    // major.minor on the wire
-                    adcp_version: ADCP_WIRE_PIN,               // major.minor on the wire
+                    version: defaultServedVersion(env),        // major.minor on the wire
+                    adcp_version: defaultServedVersion(env),   // major.minor on the wire
                     adcp_spec_version: ADCP_SPEC_VERSION,      // patch (e.g. 3.1.20)
                     worker_version: WORKER_VERSION,
                     built_at: builtAt(),
@@ -963,11 +966,12 @@ export default {
             // See src/utils/trace.ts for the implementation.
             response = await injectTraceIfMissing(response, path, _traceStart, method);
 
-            return withCors(response);
+            return withCors(response, defaultServedVersion(env));
         } catch (err) {
             logger.error("unhandled_error", { error: String(err) });
             return withCors(
-                errorResponse("INTERNAL_ERROR", "An unexpected error occurred", 500)
+                errorResponse("INTERNAL_ERROR", "An unexpected error occurred", 500),
+                defaultServedVersion(env),
             );
         }
     },
@@ -1035,11 +1039,18 @@ export function corsHeaders(): Record<string, string> {
     };
 }
 
-function withCors(response: Response): Response {
+/**
+ * `servedVersion` is the release REST responses report in X-AdCP-Version
+ * (src/routes/shared.ts sets the header to the 3.1 wire pin; with
+ * SERVE_ADCP_3_2 ON it is rewritten to 3.2 here). Responses without the
+ * header — MCP, static pages — are left without it.
+ */
+function withCors(response: Response, servedVersion: string): Response {
     const headers = new Headers(response.headers);
     for (const [k, v] of Object.entries(corsHeaders())) {
         headers.set(k, v);
     }
+    if (headers.has("X-AdCP-Version")) headers.set("X-AdCP-Version", servedVersion);
     return new Response(response.body, {
         status: response.status,
         headers,

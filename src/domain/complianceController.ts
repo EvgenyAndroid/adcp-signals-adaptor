@@ -99,8 +99,49 @@
 // majority of real callers (including our own tests) never send one. The
 // mismatch check only fires when BOTH sides declared an account and they
 // differ, which is exactly the storyboard's own test shape.
+//
+// ADCP 3.2 (SERVE_ADCP_3_2, src/constants/specVersion.ts) — added 2026-10-15.
+// Two additions, both absent with the flag OFF:
+//
+//   - seed_account. The 3.2.4 signals storyboards (signals_baseline,
+//     signal_owned, get_signals_pagination_integrity, wholesale_feed_signals,
+//     error_compliance_signals, schema_validation_signals,
+//     read_tool_idempotency, get_signals_async, webhook_emission) declare
+//     `controller_seeding: true` with ACCOUNT fixtures only, and the runner
+//     seeds them all-or-nothing before step one: one unadvertised seed_*
+//     skips the whole storyboard (fixture_seed_unsupported), a seed that
+//     returns success:false is a setup gap. Most seed one sandbox:true and
+//     one sandbox:false fixture, each under its own account_id
+//     (get_signals_async seeds only the sandbox one); no step reads a seeded
+//     account back (steps send natural-key account refs).
+//     This agent has no account store, so a seed is recorded as test state of
+//     the calling sandbox principal — KV, per the STATE MODEL note above,
+//     under compliance:account:<operatorId>:<account_id>, 30-minute TTL — and
+//     nothing else reads it: it cannot overwrite a real account, and it
+//     changes no response of any other tool. The sandbox:false fixture is a
+//     row of the sandbox caller's own test state, requested on a request that
+//     asserts account.sandbox: true; the live-caller gate still refuses a
+//     live principal before any write. Re-seeds follow the controller doc's
+//     "Seeding semantics": an identical fixture succeeds, a diverging one is
+//     INVALID_PARAMS naming the fields, never a merge. The success carries
+//     no previous_state, which the 3.2.4 SeedSuccess branch forbids. The
+//     check is a KV get then put, so two concurrent seeds of one account_id
+//     (or seeds landing at two edge locations) can both succeed; the runner
+//     seeds sequentially. SHARED PRINCIPAL: the DEMO key is the only
+//     sandbox bearer, so it is the hosted grader's saved credential too, and
+//     anyone holding that public key shares the grader's
+//     operatorId and can pre-seed a diverging fixture that turns the
+//     grader's seed into INVALID_PARAMS — a setup gap, so a degraded card —
+//     until the seed expires. force_get_signals_arm has the same exposure.
+//     The fix is a second, secret sandbox credential for the grader (a flip
+//     prerequisite in the README); the 30-minute TTL bounds each instance.
+//   - operator_unit. 3.2's account natural key is brand + operator +
+//     optional operator_unit.id (core/account-ref.json), so the unit joins
+//     deriveAccountKey's key when present. brand_id, currency, timezone and
+//     sandbox are also natural-key fields and remain unscoped here.
 
 import type { Env } from "../types/env";
+import { servesAdcp32 } from "../constants/specVersion";
 import { signWebhookRequest, resolveWebhookSigning } from "./webhookSigning";
 
 /**
@@ -108,8 +149,10 @@ import { signWebhookRequest, resolveWebhookSigning } from "./webhookSigning";
  * Returns undefined for anything that isn't a well-formed account object
  * (missing, malformed, or carrying neither field) — callers treat undefined
  * as "no account declared," never as a key that could collide with a real one.
+ * `withUnit` (AdCP 3.2 served): operator_unit.id, when present, is part of
+ * the key; a ref without a unit keeps the 3.1 key.
  */
-function deriveAccountKey(account: unknown): string | undefined {
+function deriveAccountKey(account: unknown, withUnit: boolean): string | undefined {
   if (!account || typeof account !== "object" || Array.isArray(account)) return undefined;
   const a = account as Record<string, unknown>;
   const operator = typeof a["operator"] === "string" ? a["operator"] : "";
@@ -119,14 +162,33 @@ function deriveAccountKey(account: unknown): string | undefined {
     : undefined;
   const domainStr = typeof domain === "string" ? domain : "";
   if (!operator && !domainStr) return undefined;
-  return `${domainStr}|${operator}`;
+  const unit = a["operator_unit"];
+  const unitId = withUnit && unit && typeof unit === "object" && !Array.isArray(unit)
+    ? (unit as Record<string, unknown>)["id"]
+    : undefined;
+  return typeof unitId === "string" && unitId.length > 0
+    ? `${domainStr}|${operator}|${unitId}`
+    : `${domainStr}|${operator}`;
 }
 
 export const SUPPORTED_SCENARIOS = ["force_get_signals_arm", "force_task_completion"] as const;
 
+/** Scenarios list_scenarios and capabilities compliance_testing advertise: plus seed_account under 3.2. */
+export function supportedScenarios(env: { SERVE_ADCP_3_2?: string }): string[] {
+  return servesAdcp32(env) ? [...SUPPORTED_SCENARIOS, "seed_account"] : [...SUPPORTED_SCENARIOS];
+}
+
 const ARM_TTL_SECONDS = 600; // "typical turnaround 10 minutes" — matches the storyboard's own forced message text
 const TASK_TTL_SECONDS = 3600; // generous compliance-run window; this is test-only state, never real data
 const INDEX_TTL_SECONDS = 3600;
+// One hosted run's budget (30 min). The seed only has to outlive the run that
+// made it, and every seed holds its account_id against a diverging re-seed by
+// the same principal until it expires — see the shared-principal caveat in
+// the ADCP 3.2 module note.
+const SEEDED_ACCOUNT_TTL_SECONDS = 1800;
+const MAX_ACCOUNT_ID_BYTES = 190; // keeps the KV key well inside its 512-byte limit
+const MAX_FIXTURE_BYTES = 8 * 1024;
+const MAX_FIXTURE_DEPTH = 32; // nesting levels, the fixture object being the first
 
 const armKey = (operatorId: string) => `compliance:arm:get_signals:${operatorId}`;
 const taskKey = (operatorId: string, taskId: string) => `compliance:task:${operatorId}:${taskId}`;
@@ -138,6 +200,9 @@ const taskIndexKey = (operatorId: string) => `compliance:tasks:${operatorId}`;
 // distinction, and the two are different error conditions per the spec's
 // own account-scoping language on get_task_status/list_tasks.
 const taskOwnerKey = (taskId: string) => `compliance:task-owner:${taskId}`;
+// seed_account (AdCP 3.2 only). Written and read by seedAccount alone — see
+// the ADCP 3.2 module note.
+const seededAccountKey = (operatorId: string, accountId: string) => `compliance:account:${operatorId}:${accountId}`;
 
 interface ComplianceTask {
   task_id: string;
@@ -219,9 +284,13 @@ export async function handleComplyTestController(
       ? (args["params"] as Record<string, unknown>)
       : {};
 
+  // AdCP 3.2 only; with the flag OFF seed_account takes the default branch
+  // below (UNKNOWN_SCENARIO), exactly as before.
+  if (scenario === "seed_account" && servesAdcp32(env)) return seedAccount(env, params, operatorId);
+
   switch (scenario) {
     case "list_scenarios":
-      return { success: true, scenarios: [...SUPPORTED_SCENARIOS] };
+      return { success: true, scenarios: supportedScenarios(env) };
     case "force_get_signals_arm":
       return forceGetSignalsArm(env, params, operatorId);
     case "force_task_completion":
@@ -234,9 +303,90 @@ export async function handleComplyTestController(
       // outcome for the scenarios we don't implement.
       return ctlError(
         "UNKNOWN_SCENARIO",
-        `scenario not implemented: ${scenario}. Supported: ${SUPPORTED_SCENARIOS.join(", ")}.`,
+        `scenario not implemented: ${scenario}. Supported: ${supportedScenarios(env).join(", ")}.`,
       );
   }
+}
+
+/**
+ * Canonical (recursively sorted-key) JSON — re-seeds compare fixtures, not
+ * key order. Null when a container sits more than MAX_FIXTURE_DEPTH levels
+ * deep, checked before recursing, so a deep fixture is INVALID_PARAMS rather
+ * than a stack overflow (-32603).
+ */
+function canonicalJson(value: unknown, depth = 0): string | null {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (depth >= MAX_FIXTURE_DEPTH) return null;
+  const parts: string[] = [];
+  if (Array.isArray(value)) {
+    for (const v of value) {
+      const c = canonicalJson(v, depth + 1);
+      if (c === null) return null;
+      parts.push(c);
+    }
+    return `[${parts.join(",")}]`;
+  }
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, v]) => v !== undefined)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  for (const [k, v] of entries) {
+    const c = canonicalJson(v, depth + 1);
+    if (c === null) return null;
+    parts.push(`${JSON.stringify(k)}:${c}`);
+  }
+  return `{${parts.join(",")}}`;
+}
+
+/**
+ * seed_account — see the ADCP 3.2 module note. Runs after the live-caller
+ * gate and the account.sandbox check in handleComplyTestController, so a
+ * live principal or a non-sandbox request never reaches it.
+ */
+async function seedAccount(
+  env: Env,
+  params: Record<string, unknown>,
+  operatorId: string,
+): Promise<ControllerResult> {
+  const accountId = params["account_id"];
+  if (typeof accountId !== "string" || accountId.length === 0) {
+    return ctlError("INVALID_PARAMS", "params.account_id is required for seed_account");
+  }
+  if (new TextEncoder().encode(accountId).length > MAX_ACCOUNT_ID_BYTES) {
+    return ctlError("INVALID_PARAMS", `params.account_id exceeds ${MAX_ACCOUNT_ID_BYTES} bytes`);
+  }
+  const fixture = params["fixture"];
+  if (fixture !== undefined && (fixture === null || typeof fixture !== "object" || Array.isArray(fixture))) {
+    return ctlError("INVALID_PARAMS", "params.fixture must be an object");
+  }
+  const serialized = canonicalJson(fixture ?? null);
+  if (serialized === null) {
+    return ctlError("INVALID_PARAMS", `params.fixture is nested more than ${MAX_FIXTURE_DEPTH} levels deep`);
+  }
+  if (new TextEncoder().encode(serialized).length > MAX_FIXTURE_BYTES) {
+    return ctlError("INVALID_PARAMS", `params.fixture exceeds ${MAX_FIXTURE_BYTES} bytes`);
+  }
+
+  const key = seededAccountKey(operatorId, accountId);
+  const existing = await env.SIGNALS_CACHE.get(key);
+  if (existing !== null) {
+    if (existing === serialized) {
+      return { success: true, message: `account ${accountId} already seeded with an identical fixture` };
+    }
+    const before = JSON.parse(existing) as Record<string, unknown> | null;
+    const after = (fixture ?? null) as Record<string, unknown> | null;
+    const fields = before && after
+      ? [...new Set([...Object.keys(before), ...Object.keys(after)])]
+          .filter((k) => canonicalJson(before[k]) !== canonicalJson(after[k]))
+          .sort()
+      : ["fixture"];
+    return ctlError(
+      "INVALID_PARAMS",
+      `account ${accountId} is already seeded with a different fixture (diverging: ${fields.join(", ")}); ` +
+        "a re-seed must match it, use force_* scenarios to change state",
+    );
+  }
+  await env.SIGNALS_CACHE.put(key, serialized, { expirationTtl: SEEDED_ACCOUNT_TTL_SECONDS });
+  return { success: true, message: `seeded account ${accountId}` };
 }
 
 async function forceGetSignalsArm(
@@ -297,7 +447,7 @@ export async function checkAndConsumeGetSignalsArm(
   // Idempotent by construction, no lost-update window that matters here.
   await env.SIGNALS_CACHE.delete(armKey(operatorId));
 
-  const accountKey = deriveAccountKey(account);
+  const accountKey = deriveAccountKey(account, servesAdcp32(env));
   const task: ComplianceTask = {
     task_id,
     task_type: "get_signals",
@@ -462,7 +612,7 @@ export async function getComplianceTask(
     | ComplianceTask
     | null;
   if (!task) return { found: false }; // owner index outlived the task record (TTL edge) — treat as absent
-  const callerAccountKey = deriveAccountKey(callerAccount);
+  const callerAccountKey = deriveAccountKey(callerAccount, servesAdcp32(env));
   if (task.account_key && callerAccountKey && task.account_key !== callerAccountKey) {
     return { found: true, owned: false };
   }
@@ -501,7 +651,7 @@ export async function listComplianceTasks(
     ids.map((id) => env.SIGNALS_CACHE.get(taskKey(operatorId, id), "json")),
   );
   const found = tasks.filter((t): t is ComplianceTask => !!t && typeof t === "object");
-  const callerAccountKey = deriveAccountKey(callerAccount);
+  const callerAccountKey = deriveAccountKey(callerAccount, servesAdcp32(env));
   if (!callerAccountKey) return found;
   return found.filter((t) => !t.account_key || t.account_key === callerAccountKey);
 }

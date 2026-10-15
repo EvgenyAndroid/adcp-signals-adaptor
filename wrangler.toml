@@ -8,6 +8,12 @@ ENVIRONMENT          = "production"
 API_VERSION          = "3.1"
 EMBEDDING_ENGINE     = "llm"
 LINKEDIN_REDIRECT_URI = "https://adcp-signals-adaptor.evgeny-193.workers.dev/auth/linkedin/callback"
+# AdCP 3.2 (src/types/env.ts). Only the exact string "true" turns it on.
+# Flipping it moves hosted grading to the 3.2 bundle and replaces the 3.1
+# card, so the flip is a reviewed PR of its own. `wrangler deploy` replaces
+# dashboard vars, so this line is the source of truth. Local runs:
+# `wrangler dev --var SERVE_ADCP_3_2:true`.
+SERVE_ADCP_3_2       = "false"
 # DEMO_API_KEY is provisioned via `wrangler secret put DEMO_API_KEY` — do NOT
 # add it here. Checked-in vars land in the public Worker bundle, which makes
 # a plaintext API key in [vars] equivalent to having no auth. Secrets are

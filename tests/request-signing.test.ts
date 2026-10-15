@@ -652,3 +652,295 @@ describe("src/shims/crypto.ts — P1363 → DER for ES256", () => {
     expect(shimVerify(null, data, publicKey, nodeSign(null, data, privateKey))).toBe(true);
   });
 });
+
+// ── 1b/3b/4b. the AdCP 3.2 request-signing profile (SERVE_ADCP_3_2) ────────
+//
+// An endpoint that advertises a 3.2 release applies the 3.2 profile to EVERY
+// signed request, whatever the request pins (security.mdx, "Request-profile
+// binary value encoding"; 3-1-to-3-2.mdx "Mixed-version request signing"), and
+// the 3.2.4 capabilities schema requires covers_content_digest "required"
+// when signing is supported. So the profile follows the flag, never the
+// request. Vectors: the 3.2.4 bundle's profile-3.2 tree, vendored into
+// tests/fixtures by scripts/vendor-request-signing-vectors.mjs.
+
+import { REQUEST_SIGNING_CAPABILITY_3_2 } from "../src/domain/requestSigning";
+
+interface Profile32Fixture {
+  keys: AdcpJsonWebKey[];
+  vectors: Record<string, { sha256: string; vector: Vector }>;
+}
+const PROFILE_32 = JSON.parse(readFileSync(resolve(HERE, "fixtures/request-signing-3.2.4-profile-3.2.json"), "utf8")) as Profile32Fixture;
+const profile32 = (kind: "positive" | "negative") =>
+  Object.entries(PROFILE_32.vectors)
+    .filter(([f]) => f.startsWith(`${kind}/`))
+    .map(([f, { vector }]) => [f.slice(kind.length + 1), vector] as [string, Vector]);
+
+// Profile-3.2 vectors whose outcome with OUR posture is not the vector's
+// expected_outcome, pinned to what we actually do, each with the reason.
+const OUR_POSTURE_32: Record<string, SignatureCheck["status"] | { code: string }> = {
+  // required_for is empty, so an unsigned request is not refused by the
+  // signing layer (the bearer gate answers it). Not selected for our posture.
+  "001-no-signature-header.json": "unsigned",
+  // Needs protocol_methods_required_for: ["tasks/cancel"]; not selected either.
+  "028-unsigned-protocol-method-required.json": "unsigned",
+  // Our trusted set is static, so the vector's jwks_override keyid is unknown
+  // here; the grader checks 025 in-library and never sends it to an agent.
+  "025-jwk-alg-crv-mismatch.json": { code: "request_signature_key_unknown" },
+  // Target-URI defects in the Host: 13.1.3 reads the authority from the URL.
+  // None can reach a Worker through Cloudflare's edge, and the 3.2.4 grader
+  // marks them transport-ungradable (002, 026) or ungradable (031).
+  "002-multiple-trailing-dots.json": { code: "request_signature_invalid" },
+  "026-non-ascii-host.json": { code: "request_signature_header_malformed" },
+  "031-malformed-host-authority.json": "verified",
+};
+
+async function runVector32(file: string, v: Vector, profile: "3.1" | "3.2" = "3.2") {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(v.reference_now * 1000);
+  const { db, sqlite } = makeD1();
+  const state = v.test_harness_state;
+  for (const e of state?.replay_cache_entries ?? []) seedReplay(sqlite, e.keyid, e.nonce, v.reference_now + e.ttl_seconds);
+  if (state?.replay_cache_per_keyid_cap_hit) {
+    for (let i = 0; i < REPLAY_CAP_PER_KEYID; i++) {
+      seedReplay(sqlite, state.replay_cache_per_keyid_cap_hit.keyid, `cap-fill-${i}`, v.reference_now + 360);
+    }
+  }
+  const parsed = file.startsWith("027-")
+    ? toolCall(v.request.url.split("/").pop()!, JSON.parse(v.request.body) as Record<string, unknown>)
+    : JSON.parse(v.request.body);
+  const result = await checkRequestSignature(
+    { method: v.request.method, url: v.request.url, headers: new Headers(v.request.headers), body: v.request.body },
+    parsed,
+    new D1ReplayStore(db),
+    profile,
+  );
+  return { result, sqlite };
+}
+
+describe("conformance vectors 3.2.4 profile-3.2 — checkRequestSignature with the 3.2 profile", () => {
+  it("the vendored fixture holds the full profile (14 positive, 32 negative) and the same public test keys as 3.1.24", () => {
+    expect(profile32("positive")).toHaveLength(14);
+    expect(profile32("negative")).toHaveLength(32);
+    expect(PROFILE_32.keys).toEqual(TEST_KEYS.map(({ _private_d_for_test_only: _d, ...pub }) => pub));
+    expect(JSON.stringify(PROFILE_32)).not.toContain("_private_d");
+  });
+
+  for (const [file, v] of profile32("positive")) {
+    it(`positive/${file}: verified, and the nonce is burned`, async () => {
+      const { result, sqlite } = await runVector32(file, v);
+      expect(result).toEqual({ status: "verified", keyid: expect.stringMatching(/^test-(ed25519|es256)-2026$/) });
+      expect(liveRows(sqlite)).toBe(1);
+    });
+  }
+
+  for (const [file, v] of profile32("negative")) {
+    const ours = OUR_POSTURE_32[file];
+    const label = ours === undefined ? v.expected_outcome.error_code : `our posture: ${typeof ours === "string" ? ours : ours.code}`;
+    it(`negative/${file}: ${label}`, async () => {
+      const { result } = await runVector32(file, v);
+      if (ours === undefined) {
+        expect(result).toMatchObject({ status: "rejected", code: v.expected_outcome.error_code });
+      } else if (typeof ours === "string") {
+        expect(result.status).toBe(ours);
+      } else {
+        expect(result).toMatchObject({ status: "rejected", code: ours.code });
+      }
+    });
+  }
+
+  it("the step-1 pre-checks reject before the SDK runs, so no nonce is burned (negatives 001 and 029)", async () => {
+    for (const f of ["001-base64url-sf-binary.json", "029-duplicate-signature-label.json"]) {
+      const { result, sqlite } = await runVector32(f, PROFILE_32.vectors[`negative/${f}`]!.vector);
+      expect(result).toMatchObject({ status: "rejected", code: "request_signature_header_malformed" });
+      expect(liveRows(sqlite)).toBe(0);
+    }
+  });
+
+  it("Base64URL in Content-Digest is malformed too, under the 3.2 profile only", async () => {
+    const v = PROFILE_32.vectors["positive/001-post-with-content-digest.json"]!.vector;
+    const headers = { ...v.request.headers, "Content-Digest": v.request.headers["Content-Digest"]!.replace(/\//g, "_").replace(/=:$/, ":") };
+    const tampered = { ...v, request: { ...v.request, headers } };
+    expect((await runVector32("x", tampered, "3.2")).result).toMatchObject({ status: "rejected", code: "request_signature_header_malformed" });
+    expect((await runVector32("x", tampered, "3.1")).result.status).toBe("rejected"); // the 3.1 path: whatever the SDK says
+  });
+
+  it("the default profile is 3.1: profile-3.2 negatives 001 and 029 are still accepted there (the flag-OFF posture)", async () => {
+    for (const f of ["001-base64url-sf-binary.json", "029-duplicate-signature-label.json"]) {
+      const { result } = await runVector32(f, PROFILE_32.vectors[`negative/${f}`]!.vector, "3.1");
+      expect(result.status).toBe("verified");
+    }
+  });
+});
+
+describe("handleMcpRequest with SERVE_ADCP_3_2 ON — the endpoint-wide 3.2 profile", () => {
+  function onEnv(db?: D1Database) {
+    const made = makeEnv(db);
+    return { ...made, env: { ...made.env, SERVE_ADCP_3_2: "true" } as Env };
+  }
+  function vectorReq(v: Vector): Request {
+    return new Request(v.request.url, { method: v.request.method, headers: v.request.headers, body: v.request.body });
+  }
+  async function atVectorTime(v: Vector, env: Env) {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(v.reference_now * 1000);
+    return call(env, vectorReq(v));
+  }
+
+  it("profile-3.2 positive 001 is accepted (200; the vector body is not JSON-RPC, so -32600)", async () => {
+    const { env } = onEnv();
+    const { status, body } = await atVectorTime(PROFILE_32.vectors["positive/001-post-with-content-digest.json"]!.vector, env);
+    expect(status).toBe(200);
+    expect(body.error.code).toBe(-32600);
+  });
+
+  it.each(["negative/001-base64url-sf-binary.json", "negative/029-duplicate-signature-label.json"])(
+    "%s → 401 Signature header_malformed, and the replay table stays empty",
+    async (f) => {
+      const d1 = makeD1();
+      const { env } = onEnv(d1.db);
+      const { status, res } = await atVectorTime(PROFILE_32.vectors[f]!.vector, env);
+      expect(status).toBe(401);
+      expect(res.headers.get("WWW-Authenticate")).toBe('Signature error="request_signature_header_malformed"');
+      expect(liveRows(d1.sqlite)).toBe(0);
+    },
+  );
+
+  it("negative 007 (body not covered by content-digest) → 401 components_incomplete", async () => {
+    const { env } = onEnv();
+    const { status, res } = await atVectorTime(PROFILE_32.vectors["negative/007-missing-content-digest.json"]!.vector, env);
+    expect(status).toBe(401);
+    expect(res.headers.get("WWW-Authenticate")).toBe('Signature error="request_signature_components_incomplete"');
+  });
+
+  it("mixed-version rule: a 3.1-profile (Base64URL) signature is rejected with the flag ON, accepted with it OFF", async () => {
+    const v = JSON.parse(readFileSync(join(VECTORS, "positive", "001-basic-post.json"), "utf8")) as Vector;
+    const on = await atVectorTime(v, onEnv().env);
+    expect(on.status).toBe(401);
+    expect(on.res.headers.get("WWW-Authenticate")).toBe('Signature error="request_signature_header_malformed"');
+    const off = await atVectorTime(v, makeEnv().env);
+    expect(off.status).toBe(200);
+  });
+
+  it("a fresh 3.2-profile signature (standard padded Base64, content-digest covered) authenticates a tools/call", async () => {
+    const { env } = onEnv();
+    const req = signedReq(toolCall("comply_test_controller", { scenario: "list_scenarios", account: { sandbox: true } }));
+    const b64 = (t: string) => Buffer.from(t.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("base64");
+    req.headers.set("Signature", req.headers.get("Signature")!.replace(/:([^:]*):/, (_m, t: string) => `:${b64(t)}:`));
+    const { status, body } = await call(env, req);
+    expect(status).toBe(200);
+    expect(body.result.structuredContent.success).toBe(true);
+  });
+});
+
+describe("get_adcp_capabilities request_signing under SERVE_ADCP_3_2", () => {
+  it("ON: covers_content_digest \"required\" (REQUEST_SIGNING_CAPABILITY_3_2); OFF: unchanged", async () => {
+    const off = makeEnv();
+    const on = { ...makeEnv().env, SERVE_ADCP_3_2: "true" } as Env;
+    expect((await call(on, unsignedReq(toolCall("get_adcp_capabilities", {})))).body.result.structuredContent.request_signing)
+      .toEqual(REQUEST_SIGNING_CAPABILITY_3_2);
+    expect(REQUEST_SIGNING_CAPABILITY_3_2).toEqual({
+      supported: true, covers_content_digest: "required", required_for: [], warn_for: [], supported_for: [],
+    });
+    expect((await call(off.env, unsignedReq(toolCall("get_adcp_capabilities", {})))).body.result.structuredContent.request_signing)
+      .toEqual(REQUEST_SIGNING_CAPABILITY);
+  });
+});
+
+// ── 1c. the 3.2 pre-check parses the dictionaries (review of 664166d) ──────
+//
+// A 3.2 verifier parses Signature and Content-Digest as RFC 8941 dictionaries
+// and MUST NOT retry a value through a legacy decoder (security.mdx, "Request-
+// profile binary value encoding"). 13.1.3 does: Signature is a last-wins
+// dictionary over Base64URL-normalised text, and Content-Digest falls back to
+// a regex and a Base64URL-tolerant decode. Every shape below verified behind
+// the first pre-check (a `label=:token:` pattern scan); each must be
+// header_malformed before the SDK runs, so no nonce is burned.
+
+import { createPrivateKey, randomBytes } from "node:crypto";
+import { buildSignatureBase, formatSignatureParams } from "@adcp/sdk/signing/server";
+
+/** A fresh 3.2-profile request with Content-Digest given verbatim (and covered). */
+function signed32(body: string, contentDigest: string, encode = (sig: Buffer) => sig.toString("base64")) {
+  const now = Math.floor(Date.now() / 1000);
+  const headers: Record<string, string> = { "Content-Type": "application/json", "Content-Digest": contentDigest };
+  const components = ["@method", "@target-uri", "@authority", "content-type", "content-digest"];
+  const params = {
+    created: now, expires: now + 120, nonce: randomBytes(16).toString("base64url"),
+    keyid: "test-ed25519-2026", alg: "ed25519", tag: "adcp/request-signing/v1",
+  };
+  const base = buildSignatureBase(components, { method: "POST", url: MCP_URL, headers, body }, params);
+  const key = createPrivateKey({ key: privateJwk("test-ed25519-2026") as never, format: "jwk" });
+  headers["Signature-Input"] = `sig1=${formatSignatureParams(components, params)}`;
+  headers["Signature"] = `sig1=:${encode(nodeSign(null, Buffer.from(base, "utf8"), key))}:`;
+  return { method: "POST", url: MCP_URL, headers: new Headers(headers), body };
+}
+
+async function check32(req: { method: string; url: string; headers: Headers; body: string }) {
+  const { db, sqlite } = makeD1();
+  const result = await checkRequestSignature(req, JSON.parse(req.body), new D1ReplayStore(db), "3.2");
+  return { result, burned: liveRows(sqlite) };
+}
+
+describe("3.2 pre-check: Signature and Content-Digest must parse as RFC 8941 dictionaries", () => {
+  const BODY = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" });
+  const std = createHash("sha256").update(BODY, "utf8").digest("base64");
+  const url = createHash("sha256").update(BODY, "utf8").digest("base64url");
+  const v = PROFILE_32.vectors["positive/001-post-with-content-digest.json"]!.vector;
+  const real = v.request.headers["Signature"]!;
+
+  async function atVector(signature: string | string[]) {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(v.reference_now * 1000);
+    const headers = new Headers(v.request.headers);
+    headers.delete("Signature");
+    for (const s of Array.isArray(signature) ? signature : [signature]) headers.append("Signature", s);
+    return check32({ ...v.request, headers });
+  }
+
+  it.each([
+    ["a non-binary first member repeating the label (boolean)", `sig1=?1, ${real}`],
+    ["… an empty inner list", `sig1=(), ${real}`],
+    ["… an integer", `sig1=1, ${real}`],
+    ["… a string", `sig1="x", ${real}`],
+    ["… a token", `sig1=tok, ${real}`],
+    ["the label repeated after the real member", `${real}, sig1=?1`],
+    ["Base64URL inside a member parameter", `${real};x=:ab-_:`],
+  ])("Signature: %s → header_malformed, no nonce burned", async (_label, signature) => {
+    expect(await atVector(signature)).toEqual({
+      result: expect.objectContaining({ status: "rejected", code: "request_signature_header_malformed" }),
+      burned: 0,
+    });
+  });
+
+  it("Signature: two header fields repeating the label (Headers joins them) → header_malformed", async () => {
+    expect((await atVector(["sig1=?1", real])).result).toMatchObject({ status: "rejected", code: "request_signature_header_malformed" });
+  });
+
+  it("Signature: a quoted parameter that merely contains `, sig1=:…:` is one member, and verifies", async () => {
+    expect((await atVector(`${real};x=", sig1=:AAAA:"`)).result.status).toBe("verified");
+  });
+
+  it.each([
+    ["a junk token before the member, Base64URL value", `x sha-256=:${url}:`],
+    ["a junk token before the member, standard value", `x sha-256=:${std}:`],
+    ["members separated by a tab, not a comma", `md5=:AAAA:\tsha-256=:${url}:`],
+    ["Base64URL inside a member parameter", `sha-256=:${std}:;p=:ab-_:`],
+    ["an uppercase key", `SHA-256=:${std}:`],
+  ])("Content-Digest: %s → header_malformed, no nonce burned", async (_label, contentDigest) => {
+    expect(await check32(signed32(BODY, contentDigest))).toEqual({
+      result: expect.objectContaining({ status: "rejected", code: "request_signature_header_malformed" }),
+      burned: 0,
+    });
+  });
+
+  it("Signature: unpadded standard Base64 is header_malformed (RFC 8941 sf-binary is padded)", async () => {
+    const unpadded = await check32(signed32(BODY, `sha-256=:${std}:`, (sig) => sig.toString("base64").replace(/=+$/, "")));
+    expect(unpadded).toEqual({ result: expect.objectContaining({ code: "request_signature_header_malformed" }), burned: 0 });
+  });
+
+  it("controls: the well-formed request verifies, two digest algorithms verify", async () => {
+    expect((await check32(signed32(BODY, `sha-256=:${std}:`))).result.status).toBe("verified");
+    const sha512 = createHash("sha512").update(BODY, "utf8").digest("base64");
+    expect((await check32(signed32(BODY, `sha-256=:${std}:, sha-512=:${sha512}:`))).result.status).toBe("verified");
+  });
+});

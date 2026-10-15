@@ -153,6 +153,42 @@ function graderApiKey(env: Env, logger: Logger): string | null {
     return null;
 }
 
+// Last-seen marker for GRADER_API_KEY. The AAO registry shows only
+// auth_type bearer, so nothing else tells the owner whether the hosted grader
+// sends this key. A request that authenticates with it records when, its
+// JSON-RPC method and, for tools/call, the tool — never the key, its hash,
+// the operatorId, the arguments or an IP. Read it with
+//   npx wrangler kv key get auth:grader:last_seen --binding SIGNALS_CACHE --remote --text
+// Deferred through ctx.waitUntil (no ctx, no write), at most once a minute
+// per isolate, kept 30 days. A KV failure is logged without details and
+// never touches the response.
+const GRADER_LAST_SEEN_KEY = "auth:grader:last_seen";
+let graderLastSeenWrittenAt = -Infinity;
+function recordGraderLastSeen(body: unknown, env: Env, logger: Logger, ctx: ExecutionContext): void {
+    const now = Date.now();
+    if (now - graderLastSeenWrittenAt < 60_000) return;
+    graderLastSeenWrittenAt = now;
+    // Caller-supplied strings are capped so the value stays small.
+    let method = Array.isArray(body) ? "batch" : "invalid";
+    let tool: unknown;
+    if (isValidRpcRequest(body)) {
+        method = body.method;
+        if (method === "tools/call") tool = (body.params as { name?: unknown } | null | undefined)?.name;
+    }
+    const marker = {
+        at: new Date(now).toISOString(),
+        method: method.slice(0, 64),
+        ...(typeof tool === "string" ? { tool: tool.slice(0, 64) } : {}),
+    };
+    ctx.waitUntil((async () => {
+        try {
+            await env.SIGNALS_CACHE.put(GRADER_LAST_SEEN_KEY, JSON.stringify(marker), { expirationTtl: 30 * 24 * 60 * 60 });
+        } catch {
+            logger.warn("grader_last_seen_write_failed");
+        }
+    })());
+}
+
 interface McpInitializeParams {
     protocolVersion: string;
     capabilities?: Record<string, unknown>;
@@ -279,8 +315,10 @@ export async function handleMcpRequest(
     // public DEMO key's privileges. Live mode only ever comes from the live
     // bearer — the only trusted signing keys are public test keys.
     const graderKey = graderApiKey(env, logger);
-    const isSandboxCaller = requireAuth(request, env.DEMO_API_KEY)
-        || (graderKey !== null && requireAuth(request, graderKey));
+    const isDemoCaller = requireAuth(request, env.DEMO_API_KEY);
+    const isGraderCaller = !isDemoCaller && graderKey !== null && requireAuth(request, graderKey);
+    const isSandboxCaller = isDemoCaller || isGraderCaller;
+    if (isGraderCaller && ctx) recordGraderLastSeen(body, env, logger, ctx);
     const isLiveCaller = !isSandboxCaller && requireAuth(request, LIVE_TEST_KIT_API_KEY);
     const isBearerAuthed = isSandboxCaller || isLiveCaller;
     const isAuthed = isBearerAuthed || signer !== null;

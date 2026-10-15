@@ -13,7 +13,8 @@
 // Every key below is an obviously fake test value except the live test-kit
 // key, which is a public spec fixture (test-kits/acme-outdoor-live.yaml).
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { createHash } from "node:crypto";
 import { handleMcpRequest } from "../src/mcp/server";
 import worker from "../src/index";
 import { createLogger, type Logger } from "../src/utils/logger";
@@ -328,5 +329,257 @@ describe("GRADER_API_KEY — MCP only: every DEMO_API_KEY-gated route refuses it
       expect(b).not.toContain(GRADER);
       expect(b).not.toContain("GRADER_API_KEY");
     }
+  });
+});
+
+// Last-seen marker: neither the AAO registry (it shows only auth_type bearer)
+// nor the agent's logs show which bearer the hosted grader actually sends, so
+// a request authenticated by GRADER_API_KEY records when it was seen, its
+// JSON-RPC method and, for tools/call, the tool. Written through
+// ctx.waitUntil, at most once a minute per isolate, never on any other path.
+describe("GRADER_API_KEY — last-seen marker in SIGNALS_CACHE", () => {
+  const LAST_SEEN = "auth:grader:last_seen";
+  const THIRTY_DAYS = 30 * 24 * 60 * 60;
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** A fresh server module, so each test starts with its per-isolate throttle unset. */
+  async function freshServer() {
+    vi.resetModules();
+    return (await import("../src/mcp/server")).handleMcpRequest;
+  }
+
+  function makeCtx() {
+    const pending: Array<Promise<unknown>> = [];
+    const ctx = {
+      waitUntil(p: Promise<unknown>) { pending.push(p); },
+      passThroughOnException() {},
+    } as unknown as ExecutionContext;
+    return { ctx, pending, settle: () => Promise.all(pending) };
+  }
+
+  const markerPuts = (put: { mock: { calls: unknown[][] } }) => put.mock.calls.filter(([k]) => k === LAST_SEEN);
+  const listRpc = (id: number) => ({ jsonrpc: "2.0", id, method: "tools/call", params: { name: "comply_test_controller", arguments: LIST } });
+  const initialize = { jsonrpc: "2.0", id: 3, method: "initialize", params: { protocolVersion: "2024-11-05" } };
+
+  it.each([
+    ["flag OFF", {}],
+    ["flag ON", FLAG_ON],
+  ])("%s: a grader-key tools/call records {at, method, tool} with a 30-day TTL, and no key, hash, operatorId, args or IP", async (_label, flag) => {
+    const handle = await freshServer();
+    const { env, store } = makeEnv({ GRADER_API_KEY: GRADER, ...flag });
+    const put = vi.spyOn(env.SIGNALS_CACHE, "put");
+    const { ctx, settle } = makeCtx();
+    const IP = "203.0.113.77";
+    const req = mcpReq(
+      { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "comply_test_controller", arguments: arm("marker_args_probe") } },
+      `Bearer ${GRADER}`,
+    );
+    req.headers.set("CF-Connecting-IP", IP);
+    req.headers.set("X-Forwarded-For", IP);
+
+    const before = Date.now();
+    const res = await handle(req, env, logger, ctx);
+    expect(JSON.parse(await res.text()).result.structuredContent.success).toBe(true);
+    await settle();
+    const after = Date.now();
+
+    const calls = markerPuts(put);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]![2]).toEqual({ expirationTtl: THIRTY_DAYS });
+    const raw = store.get(LAST_SEEN)!;
+    const marker = JSON.parse(raw);
+    expect(Object.keys(marker).sort()).toEqual(["at", "method", "tool"]);
+    expect(marker).toEqual({ at: new Date(Date.parse(marker.at)).toISOString(), method: "tools/call", tool: "comply_test_controller" });
+    expect(Date.parse(marker.at)).toBeGreaterThanOrEqual(before);
+    expect(Date.parse(marker.at)).toBeLessThanOrEqual(after);
+
+    const digest = createHash("sha256").update(GRADER, "utf8").digest();
+    for (const secret of [
+      GRADER,
+      digest.toString("hex"),
+      digest.toString("base64"),
+      digest.toString("base64url"),
+      await deriveOperatorId(GRADER),
+      "marker_args_probe",
+      "force_get_signals_arm",
+      IP,
+    ]) {
+      expect(raw).not.toContain(secret);
+    }
+  });
+
+  it("demo, live test-kit, unauthenticated and wrong bearers never write it; a grader request afterwards does", async () => {
+    const handle = await freshServer();
+    const { env, store } = makeEnv();
+    const put = vi.spyOn(env.SIGNALS_CACHE, "put");
+    const { ctx, settle } = makeCtx();
+    const capabilities = { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "get_adcp_capabilities", arguments: {} } };
+
+    const statuses: number[] = [];
+    for (const [rpc, authorization] of [
+      [listRpc(1), `Bearer ${DEMO}`],
+      [initialize, `Bearer ${DEMO}`],
+      [listRpc(1), `Bearer ${LIVE}`],
+      [initialize, `Bearer ${LIVE}`],
+      [listRpc(1), undefined],
+      [capabilities, undefined],
+      [initialize, undefined],
+      [listRpc(1), "Bearer wrong-key"],
+      [listRpc(1), `Bearer ${GRADER}x`],
+      [[listRpc(1), initialize], `Bearer ${DEMO}`],
+    ] as Array<[unknown, string | undefined]>) {
+      statuses.push((await handle(mcpReq(rpc, authorization), env, logger, ctx)).status);
+    }
+    await settle();
+    expect(statuses).toEqual([200, 200, 200, 200, 401, 200, 200, 401, 401, 200]);
+    expect(markerPuts(put)).toEqual([]);
+    expect(store.has(LAST_SEEN)).toBe(false);
+
+    // Contrast: the same isolate writes it for the grader key.
+    await handle(mcpReq(listRpc(1), `Bearer ${GRADER}`), env, logger, ctx);
+    await settle();
+    expect(markerPuts(put)).toHaveLength(1);
+    expect(JSON.parse(store.get(LAST_SEEN)!)).toMatchObject({ method: "tools/call", tool: "comply_test_controller" });
+  });
+
+  // A misconfigured GRADER_API_KEY is no principal (graderApiKey returns
+  // null), so the bearer it equals must not write the marker either.
+  it.each([
+    ["equal to DEMO_API_KEY", DEMO],
+    ["equal to the live test-kit key", LIVE],
+  ])("GRADER_API_KEY %s: that bearer never writes it (tools/call, initialize, batch); a configured grader key afterwards does", async (_label, key) => {
+    const handle = await freshServer();
+    const { env, store } = makeEnv({ GRADER_API_KEY: key });
+    const put = vi.spyOn(env.SIGNALS_CACHE, "put");
+    const { ctx, settle } = makeCtx();
+
+    for (const rpc of [listRpc(1), initialize, [listRpc(2), initialize]]) {
+      expect((await handle(mcpReq(rpc, `Bearer ${key}`), env, logger, ctx)).status).toBe(200);
+    }
+    await settle();
+    expect(markerPuts(put)).toEqual([]);
+    expect(store.has(LAST_SEEN)).toBe(false);
+
+    // Contrast: the same isolate's throttle is untouched, so a correctly
+    // configured grader key still writes it.
+    const ok = makeEnv();
+    await handle(mcpReq(listRpc(1), `Bearer ${GRADER}`), ok.env, logger, ctx);
+    await settle();
+    expect(JSON.parse(ok.store.get(LAST_SEEN)!)).toMatchObject({ method: "tools/call", tool: "comply_test_controller" });
+  });
+
+  it("throttle: two grader requests within 60 s write once; the first one after 60 s writes again (a discovery method has no tool)", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const T0 = Date.parse("2026-10-15T12:00:00.000Z");
+    const handle = await freshServer();
+    const { env, store } = makeEnv();
+    const put = vi.spyOn(env.SIGNALS_CACHE, "put");
+    const { ctx, settle } = makeCtx();
+
+    vi.setSystemTime(T0);
+    await handle(mcpReq(listRpc(1), `Bearer ${GRADER}`), env, logger, ctx);
+    vi.setSystemTime(T0 + 59_999);
+    await handle(mcpReq(initialize, `Bearer ${GRADER}`), env, logger, ctx);
+    await settle();
+    expect(markerPuts(put)).toHaveLength(1);
+    expect(JSON.parse(store.get(LAST_SEEN)!)).toEqual({ at: "2026-10-15T12:00:00.000Z", method: "tools/call", tool: "comply_test_controller" });
+
+    vi.setSystemTime(T0 + 60_000);
+    await handle(mcpReq(initialize, `Bearer ${GRADER}`), env, logger, ctx);
+    await settle();
+    expect(markerPuts(put)).toHaveLength(2);
+    expect(JSON.parse(store.get(LAST_SEEN)!)).toEqual({ at: "2026-10-15T12:01:00.000Z", method: "initialize" });
+  });
+
+  it("a batch records method \"batch\", a non-JSON-RPC body \"invalid\", and caller-supplied names are capped at 64 chars", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const T0 = Date.parse("2026-10-15T12:00:00.000Z");
+    const handle = await freshServer();
+    const { env, store } = makeEnv();
+    const { ctx, settle } = makeCtx();
+    const marker = async (at: number, rpc: unknown) => {
+      vi.setSystemTime(at);
+      await handle(mcpReq(rpc, `Bearer ${GRADER}`), env, logger, ctx);
+      await settle();
+      return JSON.parse(store.get(LAST_SEEN)!);
+    };
+
+    expect(await marker(T0, [listRpc(1), initialize])).toEqual({ at: "2026-10-15T12:00:00.000Z", method: "batch" });
+    expect(await marker(T0 + 60_000, { hello: "world" })).toEqual({ at: "2026-10-15T12:01:00.000Z", method: "invalid" });
+    const long = "x".repeat(500);
+    expect(await marker(T0 + 120_000, { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: long, arguments: {} } }))
+      .toEqual({ at: "2026-10-15T12:02:00.000Z", method: "tools/call", tool: "x".repeat(64) });
+    expect(await marker(T0 + 180_000, { jsonrpc: "2.0", id: 1, method: long }))
+      .toEqual({ at: "2026-10-15T12:03:00.000Z", method: "x".repeat(64) });
+  });
+
+  it.each([
+    ["throws synchronously", () => { throw new Error("kv boom secret-detail"); }],
+    ["rejects", () => Promise.reject(new Error("kv boom secret-detail"))],
+  ])("a KV put that %s leaves the response unchanged and is logged with no details", async (_label, failingPut) => {
+    const respond = async (kvPut?: () => unknown) => {
+      const handle = await freshServer();
+      const { env } = makeEnv();
+      const put = kvPut
+        ? vi.spyOn(env.SIGNALS_CACHE, "put").mockImplementation(kvPut as never)
+        : vi.spyOn(env.SIGNALS_CACHE, "put");
+      const log = createLogger("grader-last-seen-kv-failure");
+      const warn = vi.spyOn(log, "warn");
+      const debug = vi.spyOn(log, "debug");
+      const { ctx, settle } = makeCtx();
+      const res = await handle(mcpReq(listRpc(7), `Bearer ${GRADER}`), env, log, ctx);
+      const out = { status: res.status, headers: [...res.headers], text: await res.text() };
+      await expect(settle()).resolves.toBeDefined();
+      return { out, put, warn, debug };
+    };
+
+    const ok = await respond();
+    const failed = await respond(failingPut);
+    expect(markerPuts(failed.put)).toHaveLength(1); // the failure path really ran
+    expect(failed.out).toEqual(ok.out);
+    expect(JSON.parse(failed.out.text).result.structuredContent.success).toBe(true);
+    const logged = [...failed.warn.mock.calls, ...failed.debug.mock.calls].filter(([event]) => event === "grader_last_seen_write_failed");
+    expect(logged).toEqual([["grader_last_seen_write_failed"]]);
+    expect(JSON.stringify([failed.warn.mock.calls, failed.debug.mock.calls])).not.toMatch(/kv boom|secret-detail/);
+    expect(ok.warn.mock.calls.filter(([event]) => event === "grader_last_seen_write_failed")).toEqual([]);
+  });
+
+  it("the write goes through ctx.waitUntil: the response is returned while the put is still pending; without a ctx nothing is written", async () => {
+    const handle = await freshServer();
+    const { env, store } = makeEnv();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const put = vi.spyOn(env.SIGNALS_CACHE, "put").mockImplementation((async (k: string, v: string) => {
+      if (k === LAST_SEEN) await gate;
+      store.set(k, v);
+    }) as never);
+    const { ctx, pending } = makeCtx();
+
+    const res = await Promise.race([
+      handle(mcpReq(listRpc(1), `Bearer ${GRADER}`), env, logger, ctx),
+      new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), 2_000)),
+    ]);
+    expect(res).not.toBe("timeout");
+    expect(JSON.parse(await (res as Response).text()).result.structuredContent.success).toBe(true);
+    expect(markerPuts(put)).toHaveLength(1);
+    expect(store.has(LAST_SEEN)).toBe(false);
+
+    let settled = false;
+    const all = Promise.all(pending).then(() => { settled = true; });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(settled).toBe(false); // waitUntil holds the pending put
+    release();
+    await all;
+    expect(JSON.parse(store.get(LAST_SEEN)!)).toMatchObject({ method: "tools/call", tool: "comply_test_controller" });
+
+    // No ExecutionContext, so no way to defer the write: nothing is written.
+    const handle2 = await freshServer();
+    const fresh = makeEnv();
+    const put2 = vi.spyOn(fresh.env.SIGNALS_CACHE, "put");
+    expect((await handle2(mcpReq(listRpc(1), `Bearer ${GRADER}`), fresh.env, logger)).status).toBe(200);
+    expect(markerPuts(put2)).toEqual([]);
   });
 });

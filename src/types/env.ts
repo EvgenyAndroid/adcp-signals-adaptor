@@ -35,6 +35,16 @@ export interface Env {
   OPENAI_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;
 
+  // Optional — PRIVATE sandbox bearer for AAO's hosted grader, never a
+  // [vars] value and never published. MCP tools/call only, with exactly
+  // DEMO_API_KEY's MCP privileges in its own operatorId namespace, never live
+  // mode; REST and admin routes ignore it. Unset or empty ⇒ no principal; a
+  // value equal to DEMO_API_KEY or the live test-kit key is ignored and
+  // logged. See graderApiKey in src/mcp/server.ts. Provision:
+  //   wrangler secret put GRADER_API_KEY
+  // then enter the same value as the agent credential in the AAO registry.
+  GRADER_API_KEY?: string;
+
   // LinkedIn OAuth + Ads
   LINKEDIN_CLIENT_ID: string;
   LINKEDIN_CLIENT_SECRET: string;

@@ -130,6 +130,29 @@ const PUBLIC_TOOL_CALL_NAMES = new Set(["get_adcp_capabilities"]);
 // src/domain/complianceController.ts.
 const LIVE_TEST_KIT_API_KEY = "demo-acme-outdoor-live-v1";
 
+// Private sandbox principal for AAO's hosted grader: the optional
+// GRADER_API_KEY secret, handed to AAO only. Exactly DEMO_API_KEY's MCP
+// privileges, never live mode, in its own operatorId namespace (derived from
+// its own bearer), so a holder of the public demo key cannot pre-seed a
+// diverging comply_test_controller fixture under the grader's operatorId.
+// MCP only: REST and admin routes still accept only DEMO_API_KEY. Unset or
+// empty is no principal at all. A value equal to DEMO_API_KEY or the live
+// test-kit key is a misconfiguration: ignored as if unset, logged once per
+// isolate (the reason only, never the value).
+let graderKeyMisconfigLogged = false;
+function graderApiKey(env: Env, logger: Logger): string | null {
+    const key = env.GRADER_API_KEY;
+    if (!key) return null;
+    if (key !== env.DEMO_API_KEY && key !== LIVE_TEST_KIT_API_KEY) return key;
+    if (!graderKeyMisconfigLogged) {
+        graderKeyMisconfigLogged = true;
+        logger.warn("grader_api_key_ignored", {
+            reason: key === env.DEMO_API_KEY ? "equals DEMO_API_KEY" : "equals the live test-kit key",
+        });
+    }
+    return null;
+}
+
 interface McpInitializeParams {
     protocolVersion: string;
     capabilities?: Record<string, unknown>;
@@ -249,12 +272,15 @@ export async function handleMcpRequest(
     // MCP clients typically bootstrap a connection and gives the evaluator
     // the unauthenticated discovery handshake it expects.
     // The live test-kit key is a second recognised principal that resolves
-    // to live mode — see LIVE_TEST_KIT_API_KEY.
+    // to live mode — see LIVE_TEST_KIT_API_KEY. GRADER_API_KEY, when
+    // configured, is a sandbox bearer like DEMO_API_KEY — see graderApiKey.
     // A verified signature is the other way in: bearer wins when it is
     // present and valid; otherwise the signer is a sandbox principal with the
     // public DEMO key's privileges. Live mode only ever comes from the live
     // bearer — the only trusted signing keys are public test keys.
-    const isSandboxCaller = requireAuth(request, env.DEMO_API_KEY);
+    const graderKey = graderApiKey(env, logger);
+    const isSandboxCaller = requireAuth(request, env.DEMO_API_KEY)
+        || (graderKey !== null && requireAuth(request, graderKey));
     const isLiveCaller = !isSandboxCaller && requireAuth(request, LIVE_TEST_KIT_API_KEY);
     const isBearerAuthed = isSandboxCaller || isLiveCaller;
     const isAuthed = isBearerAuthed || signer !== null;

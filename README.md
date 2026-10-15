@@ -626,6 +626,15 @@ wrangler secret put OPENAI_API_KEY
 # Worker bundle and retrievable by anyone with the Worker URL.
 wrangler secret put DEMO_API_KEY
 
+# Optional, operator note: a PRIVATE sandbox bearer for the AAO hosted grader.
+# It opens /mcp tools/call only, with the demo key's MCP privileges but its own
+# operator namespace, so holders of the public demo key cannot pre-seed (and so
+# break) the grader's comply_test_controller fixtures. Use a fresh random value
+# (e.g. `openssl rand -base64 24`), keep it private, then enter the same value
+# as the agent credential in the AAO registry. A value equal to DEMO_API_KEY or
+# the live test-kit key is ignored (and logged); unset means no grader key.
+wrangler secret put GRADER_API_KEY
+
 # Optional: RFC 9421 (Ed25519) signatures on outbound webhooks. The value is a
 # JSON private JWK — see "Webhook signatures" above and src/domain/webhookSigning.ts.
 # In CI this is provisioned from the GitHub repo secret of the same name

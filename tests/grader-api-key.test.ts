@@ -445,6 +445,32 @@ describe("GRADER_API_KEY — last-seen marker in SIGNALS_CACHE", () => {
     expect(JSON.parse(store.get(LAST_SEEN)!)).toMatchObject({ method: "tools/call", tool: "comply_test_controller" });
   });
 
+  // A misconfigured GRADER_API_KEY is no principal (graderApiKey returns
+  // null), so the bearer it equals must not write the marker either.
+  it.each([
+    ["equal to DEMO_API_KEY", DEMO],
+    ["equal to the live test-kit key", LIVE],
+  ])("GRADER_API_KEY %s: that bearer never writes it (tools/call, initialize, batch); a configured grader key afterwards does", async (_label, key) => {
+    const handle = await freshServer();
+    const { env, store } = makeEnv({ GRADER_API_KEY: key });
+    const put = vi.spyOn(env.SIGNALS_CACHE, "put");
+    const { ctx, settle } = makeCtx();
+
+    for (const rpc of [listRpc(1), initialize, [listRpc(2), initialize]]) {
+      expect((await handle(mcpReq(rpc, `Bearer ${key}`), env, logger, ctx)).status).toBe(200);
+    }
+    await settle();
+    expect(markerPuts(put)).toEqual([]);
+    expect(store.has(LAST_SEEN)).toBe(false);
+
+    // Contrast: the same isolate's throttle is untouched, so a correctly
+    // configured grader key still writes it.
+    const ok = makeEnv();
+    await handle(mcpReq(listRpc(1), `Bearer ${GRADER}`), ok.env, logger, ctx);
+    await settle();
+    expect(JSON.parse(ok.store.get(LAST_SEEN)!)).toMatchObject({ method: "tools/call", tool: "comply_test_controller" });
+  });
+
   it("throttle: two grader requests within 60 s write once; the first one after 60 s writes again (a discovery method has no tool)", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     const T0 = Date.parse("2026-10-15T12:00:00.000Z");

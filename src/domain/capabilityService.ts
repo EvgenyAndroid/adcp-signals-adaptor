@@ -88,7 +88,7 @@ const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
 import { COMPLIANCE_STATE } from "../constants/complianceState";
-import { SPEC_VERSION } from "../constants/specVersion";
+import { SPEC_VERSION, servesAdcp32, supportedReleaseVersions } from "../constants/specVersion";
 import { SUPPORTED_SCENARIOS } from "./complianceController";
 import { resolveWebhookSigning, type WebhookSigningKey } from "./webhookSigning";
 import { CANONICAL_ORIGIN } from "../constants/origin";
@@ -102,6 +102,8 @@ import { REQUEST_SIGNING_CAPABILITY } from "./requestSigning";
  */
 export interface CapabilityEnv extends UcpCapabilityEnv {
   WEBHOOK_SIGNING_PRIVATE_JWK?: string;
+  /** AdCP 3.2 flag (src/types/env.ts): supported_versions and the cache key derive from it. */
+  SERVE_ADCP_3_2?: string;
 }
 
 /** Cache key folds in the spec version + compliance-state pointers so any
@@ -122,9 +124,13 @@ const CACHE_KEY = `${CACHE_KEY_PREFIX}_${SPEC_VERSION}_${COMPLIANCE_STATE.last_r
 /** The signing posture is part of the blob, so it is part of the key: a
  *  key rotation (new kid) or provisioning the secret after the cache is
  *  warm must not serve the previous posture for up to CACHE_TTL_SECONDS.
- *  kid is public (it's on every Signature-Input) — safe in a KV key. */
-function cacheKeyFor(signing: WebhookSigningKey | null): string {
-  return `${CACHE_KEY}_ws-${signing ? signing.kid : "off"}`;
+ *  kid is public (it's on every Signature-Input) — safe in a KV key.
+ *  The AdCP 3.2 flag changes the blob too, so it gets a suffix of its own —
+ *  appended only when ON, so the flag-OFF key (and every blob already warm
+ *  under it) is unchanged, and a flip in either direction never serves the
+ *  other state's blob. */
+function cacheKeyFor(signing: WebhookSigningKey | null, env?: CapabilityEnv): string {
+  return `${CACHE_KEY}_ws-${signing ? signing.kid : "off"}${servesAdcp32(env) ? "_adcp32" : ""}`;
 }
 
 const VALID_PROTOCOLS = new Set([
@@ -218,7 +224,9 @@ function buildStaticCapabilities(env: CapabilityEnv, signing: WebhookSigningKey 
       // 3.1.20 storyboard line 57/57 (complianceState.ts) — the #266
       // hotfix's documented re-add condition. CACHE_KEY_PREFIX bumped v26→v27 so the new field isn't
       // served from a stale cached blob.
-      supported_versions: ["3.0", "3.1"],
+      // 2026-10-15: plus "3.2" with SERVE_ADCP_3_2 ON (the same helper the
+      // MCP version resolver reads).
+      supported_versions: supportedReleaseVersions(env),
       // HEAD schema models idempotency as a discriminated union keyed on
       // `supported`. The IdempotencySupported variant requires both
       // `supported: true` and `replay_ttl_seconds` (3600..604800 per spec).
@@ -819,7 +827,7 @@ export async function getCapabilities(
   // Resolved (and PROVEN — see resolveWebhookSigning) up front because it
   // is part of the cache key: see cacheKeyFor.
   const signing = await resolveWebhookSigning(env ?? {});
-  const cacheKey = cacheKeyFor(signing);
+  const cacheKey = cacheKeyFor(signing, env);
 
   let full: AdcpCapabilities | null = null;
   try {

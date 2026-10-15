@@ -407,3 +407,96 @@ describe("flag OFF: byte-for-byte the pre-3.2 surface", () => {
     await expect(doc).toMatchFileSnapshot("./__snapshots__/flag-off-golden.json");
   });
 });
+
+// ── flag ON: only the differences AdCP 3.2 requires ─────────────────────────
+//
+// The same corpus with SERVE_ADCP_3_2=true, diffed against flag OFF leaf by
+// leaf. Every difference must be explained by one rule below, and every rule
+// must explain at least one difference, so this list is the complete OFF→ON
+// change set.
+
+/** Leaf paths (dot-joined, relative to the entry) where a and b differ. */
+function diffPaths(a: unknown, b: unknown, path: string, out: string[]): string[] {
+  if (JSON.stringify(a) === JSON.stringify(b)) return out;
+  const isObj = (x: unknown): x is Record<string, unknown> => x !== null && typeof x === "object";
+  if (isObj(a) && isObj(b) && Array.isArray(a) === Array.isArray(b)) {
+    for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) diffPaths(a[k], b[k], path ? `${path}.${k}` : k, out);
+    return out;
+  }
+  out.push(path);
+  return out;
+}
+
+/** Value at a dot path (paths here never contain keys with dots, except kv keys, which rules match by prefix). */
+function at(v: unknown, path: string): unknown {
+  return path.split(".").reduce<unknown>((o, k) => (o && typeof o === "object" ? (o as Record<string, unknown>)[k] : undefined), v);
+}
+
+const SERVED = new Set(["3.0", "3.1", "3.2"]);
+// Pins served at 3.1 with the flag OFF and refused with it ON (prerelease and
+// malformed wire values; versioning.mdx "Pre-release pins", "Patches are not negotiated").
+const NEWLY_REFUSED = /^get_signals @(3\.1-beta\.5|3\.1\.20|3)$/;
+const isRefused = (on: unknown, path = "body.result.structuredContent") => at(on, `${path}.adcp_error.code`) === "VERSION_UNSUPPORTED";
+
+const ON_RULES: Array<{ why: string; test: (entry: string, path: string, on: unknown) => boolean }> = [
+  {
+    why: "the envelope (and recorded trace) echo the release served",
+    test: (_e, p, on) => /adcp_version$/.test(p) && (SERVED.has(at(on, p) as string) || at(on, p) === undefined),
+  },
+  {
+    why: "supported_versions gains 3.2 (capabilities and VERSION_UNSUPPORTED details)",
+    test: (_e, p) => /(^|\.)supported_versions\.2$/.test(p),
+  },
+  {
+    why: "VERSION_UNSUPPORTED messages list the releases served",
+    test: (_e, p, on) => /adcp_error\.message$/.test(p) && at(on, p.replace(/message$/, "code")) === "VERSION_UNSUPPORTED",
+  },
+  {
+    why: "prerelease and malformed pins are refused instead of served at 3.1",
+    test: (e, _p, on) => NEWLY_REFUSED.test(e) && isRefused(on),
+  },
+  {
+    why: "initialize serverInfo.version",
+    test: (e, p) => e === "initialize" && p === "body.result.serverInfo.version",
+  },
+  {
+    why: "/health version",
+    test: (e, p) => e === "GET /health" && p === "body.version",
+  },
+  {
+    why: "REST X-AdCP-Version",
+    test: (e, p) => e.startsWith("GET ") && p === "headers.x-adcp-version",
+  },
+  {
+    why: "the REST capabilities body changes with supported_versions",
+    test: (e, p) => e === "GET /capabilities" && p === "body_sha256",
+  },
+  {
+    why: "the capabilities cache key gains the _adcp32 suffix",
+    test: (e, p) => e === "kv" && p.startsWith("adcp_capabilities_"),
+  },
+  {
+    why: "fewer get_signals traces (refused pins record none), numbered in write order",
+    test: (e, p) => e === "kv" && p.startsWith("sigtrace:"),
+  },
+];
+
+describe("flag ON: differs from the golden only where AdCP 3.2 requires", () => {
+  it("every OFF→ON difference is on the allowlist, and every allowlist rule is exercised", async () => {
+    const off = await runCorpus({});
+    const on = await runCorpus({ SERVE_ADCP_3_2: "true" });
+    expect(on.map((e) => e.name)).toEqual(off.map((e) => e.name));
+
+    const unexplained: string[] = [];
+    const fired = new Set<string>();
+    on.forEach(({ name, output }, i) => {
+      for (const path of diffPaths(off[i]!.output, output, "", [])) {
+        const rule = ON_RULES.find((r) => r.test(name, path, output));
+        if (rule) fired.add(rule.why);
+        else unexplained.push(`${name} :: ${path}`);
+      }
+    });
+    expect(unexplained).toEqual([]);
+    expect(ON_RULES.map((r) => r.why).filter((w) => !fired.has(w))).toEqual([]);
+  });
+});

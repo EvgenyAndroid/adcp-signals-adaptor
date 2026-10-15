@@ -18,6 +18,9 @@ SERVE_ADCP_3_2       = "false"
 # add it here. Checked-in vars land in the public Worker bundle, which makes
 # a plaintext API key in [vars] equivalent to having no auth. Secrets are
 # injected at runtime and never appear in the bundle.
+# GRADER_API_KEY (optional) is a secret too — `wrangler secret put
+# GRADER_API_KEY`, never added here: a PRIVATE sandbox bearer for AAO's hosted
+# grader, accepted on MCP tools/call only (src/types/env.ts, README "Deploying").
 
 [[d1_databases]]
 binding       = "DB"

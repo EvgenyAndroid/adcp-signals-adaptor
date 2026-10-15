@@ -49,6 +49,26 @@ stands in. Signer discovery is being redesigned upstream (Web Bot Auth,
 DR-0023, proposed for 3.3; adcp#8118 retires the brand.json path in
 4.0), so both wait for AdCP 4.0 / settled discovery.
 
+### The grader key: a private sandbox bearer on `POST /mcp` (2026-10-15)
+
+The optional `GRADER_API_KEY` secret is a second sandbox bearer, given
+only to AAO's hosted grader. `comply_test_controller` fixtures are
+stored per operator id, and a diverging re-seed is refused, so a grader
+using the public `DEMO_API_KEY` could have its seeding broken by anyone
+who seeded first. The grader key's operator id derives from its own
+value, so that cannot happen. It has exactly the demo key's MCP
+privileges and no more:
+
+- It opens MCP `tools/call` only. REST, `/admin`, `/ucp` and the
+  LinkedIn auth routes still require `DEMO_API_KEY`.
+- It never resolves to live mode, and with a verified signature on the
+  same request it wins like any valid bearer.
+- Unset or empty, it is no principal. A value equal to `DEMO_API_KEY`
+  or the live test-kit key is ignored as if unset and logged once per
+  isolate.
+- It is never advertised or served; capabilities and the demo pages
+  carry only the public demo key.
+
 ## Per-operator resource scoping (Sec-18)
 
 Every inbound call that touches operator-scoped resources derives a

@@ -429,6 +429,17 @@ describe("handleMcpRequest — bearer OR verified signature", () => {
     expect(live.body.result.structuredContent.error).toBe("FORBIDDEN"); // the live key stays live
   });
 
+  it("bearer + verified signature: a GRADER_API_KEY bearer wins the same way (its own operatorId, sandbox)", async () => {
+    const grader = "fake-grader-key-request-signing-test";
+    const { env, kv } = makeEnv();
+    const graderEnv = { ...env, GRADER_API_KEY: grader } as Env;
+    const r = await call(graderEnv, signedReq(toolCall("comply_test_controller", {
+      scenario: "force_get_signals_arm", account: { sandbox: true }, params: { arm: "submitted", task_id: "grader_arm" },
+    }), { bearer: grader }));
+    expect(r.body.result.structuredContent.success).toBe(true);
+    expect([...kv.keys()]).toEqual([`compliance:arm:get_signals:${await deriveOperatorId(grader)}`]);
+  });
+
   it("an invalid bearer does not spoil a verified signature (signature-only principal)", async () => {
     const { env } = makeEnv();
     const { status } = await call(env, signedReq(toolCall("comply_test_controller", { scenario: "list_scenarios", account: { sandbox: true } }), { bearer: "not-the-key" }));

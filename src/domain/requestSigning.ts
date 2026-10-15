@@ -66,20 +66,33 @@
 // signing"), and the 3.2.4 capabilities schema requires covers_content_digest
 // "required" whenever supported is true. So the profile is chosen by the flag,
 // never by the request: OFF keeps REQUEST_SIGNING_CAPABILITY and the exact
-// SDK call above; ON uses REQUEST_SIGNING_CAPABILITY_3_2 and two step-1
-// pre-checks in front of the same 13.1.3 verifier, which accepts both of
-// these: a Base64URL token (`-`/`_`) inside the sf-binary of Signature or
-// Content-Digest (3.2 MUST reject it; vector profile-3.2/negative/001), and a
-// Signature dictionary that repeats a label (RFC 8941 §3.2 keys are unique;
-// vector 029). Both are request_signature_header_malformed before the SDK
-// runs, so no nonce is burned. Everything the pre-checks cannot parse is left
-// to the SDK's own step-1 parser. Offline, every wire-graded profile-3.2
-// vector of the 3.2.4 bundle then matches; the remaining differences (002,
-// 026, 031: Host defects no request can carry through Cloudflare's edge) are
-// pinned in tests/request-signing.test.ts. A 15.x verifier would add only
-// those codes, at the cost of a two-major SDK bump that also moves the
-// flag-OFF path; the replay-store interface is unchanged there, so that
-// upgrade stays open as its own change.
+// SDK call above; ON uses REQUEST_SIGNING_CAPABILITY_3_2 and one step-1
+// pre-check in front of the same 13.1.3 verifier. A 3.2 verifier parses
+// Signature and Content-Digest as RFC 8941 dictionaries of padded standard
+// Base64 byte sequences and MUST NOT retry a value through a legacy decoder
+// (security.mdx :1213-1215). 13.1.3 does retry: it normalises Base64URL to
+// Base64 and keeps the last of a repeated Signature label, and when
+// Content-Digest is not a dictionary it falls back to a regex and a
+// Base64URL-tolerant decode. So the pre-check parses both headers itself
+// (sfDictionaryKeys) and rejects, as request_signature_header_malformed
+// before the SDK runs and so with no nonce burned: anything that is not an
+// RFC 8941 dictionary, any byte sequence that is not padded standard Base64
+// (vector profile-3.2/negative/001; padding also makes every 3.1-profile
+// Ed25519 signature malformed, not just the ~94% that contain `-` or `_`),
+// and a key repeated in either header (RFC 8941 §4.2.2 keeps the last; AdCP
+// rejects it, vector 029). Offline, every wire-graded profile-3.2 vector of
+// the 3.2.4 bundle then matches; the remaining differences (002, 026, 031:
+// Host defects no request can carry through Cloudflare's edge) are pinned in
+// tests/request-signing.test.ts. Within a well-formed Content-Digest, 13.1.3
+// still reads a `sha-256=:…:` it finds inside a quoted parameter when the
+// dictionary has no sha-256 member; the header is covered by the signature,
+// and @adcp/sdk 15.9.1 does the same. 15.9.1 (checked 2026-10-15) answers
+// header_malformed to every shape in that test's "3.2 pre-check" block except
+// three Content-Digest ones this parse is stricter on (it verifies two and
+// calls the uppercase key a digest mismatch), and adds the Host checks;
+// adopting it is a two-major SDK bump that also moves the flag-OFF path. The
+// replay-store interface is unchanged there, so that upgrade stays open as
+// its own change.
 
 import {
   verifyRequestSignature,
@@ -185,7 +198,7 @@ export async function checkRequestSignature(
     return { status: "rejected", code: "request_signature_header_malformed", detail: "empty Signature and Signature-Input headers" };
   }
 
-  // 3.2 profile step-1 pre-checks — see the THE 3.2 PROFILE note above.
+  // 3.2 profile step-1 pre-check — see THE 3.2 PROFILE note above.
   const defect = profile === "3.2" ? profile32HeaderDefect(request.headers) : null;
   if (defect) return { status: "rejected", code: "request_signature_header_malformed", detail: defect };
 
@@ -210,26 +223,71 @@ export async function checkRequestSignature(
   return { status: "verified", keyid: result.keyid };
 }
 
-// `label=:token:` members of an RFC 8941 dictionary (Signature, Content-Digest).
-const SF_BINARY_MEMBER = /(?:^|,)\s*([a-z*][a-z0-9_.*-]*)\s*=\s*:([^:]*):/g;
-const SF_BINARY_BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
+// RFC 8941 pieces for the 3.2 pre-check (sticky: matched at the cursor).
+const SF_KEY = /[a-z*][a-z0-9_.*-]*/y;
+const SF_BARE_ITEM = /-?\d{1,15}(?:\.\d{1,3})?|"(?:[\x20\x21\x23-\x5b\x5d-\x7e]|\\["\\])*"|[A-Za-z*][\w!#$%&'*+.^`|~:/-]*|:[A-Za-z0-9+/=]*:|\?[01]/y;
+const SF_PADDED_BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
 /**
- * The 3.2 profile's two step-1 defects the 13.1.3 parser lets through, or
- * null. Rejects only on positive evidence: a binary token outside the standard
- * Base64 alphabet in Signature or Content-Digest, or a Signature label that
- * appears twice.
+ * RFC 8941 §4.2.2: the member keys of a Dictionary, in order (repeats kept),
+ * or null when `value` is not one. Validation only. Under the 3.2 profile a
+ * byte sequence must also be padded standard Base64 (RFC 8941 §3.3.5), with
+ * no Base64URL fallback.
+ */
+function sfDictionaryKeys(value: string): string[] | null {
+  let i = 0;
+  const eat = (re: RegExp): string | null => {
+    re.lastIndex = i;
+    const m = re.exec(value);
+    if (m) i = re.lastIndex;
+    return m ? m[0] : null;
+  };
+  const bareItem = (): boolean => {
+    const item = eat(SF_BARE_ITEM);
+    return item !== null && (item[0] !== ":" || SF_PADDED_BASE64.test(item.slice(1, -1)));
+  };
+  const parameters = (): boolean => {
+    while (eat(/;/y) !== null) {
+      eat(/ */y);
+      if (eat(SF_KEY) === null || (eat(/=/y) !== null && !bareItem())) return false;
+    }
+    return true;
+  };
+  const keys: string[] = [];
+  eat(/ */y);
+  for (;;) {
+    const key = eat(SF_KEY);
+    if (key === null) return null;
+    keys.push(key);
+    if (eat(/=/y) !== null) {
+      if (eat(/\(/y) !== null) {
+        // Inner list: items separated by spaces, closed by ")".
+        for (eat(/ */y); eat(/\)/y) === null; ) {
+          if (!bareItem() || !parameters() || (eat(/ +/y) === null && value[i] !== ")")) return null;
+        }
+      } else if (!bareItem()) {
+        return null;
+      }
+    }
+    if (!parameters()) return null;
+    eat(/[ \t]*/y);
+    if (i === value.length) return keys;
+    if (eat(/,[ \t]*/y) === null || i === value.length) return null;
+  }
+}
+
+/**
+ * The 3.2 profile's step-1 defect in Signature or Content-Digest that the
+ * 13.1.3 parser lets through, or null: a value that is not an RFC 8941
+ * dictionary of padded standard Base64, or one that repeats a key.
  */
 export function profile32HeaderDefect(headers: Headers): string | null {
   for (const name of ["signature", "content-digest"]) {
     const value = headers.get(name);
     if (!value) continue;
-    const labels: string[] = [];
-    for (const [, label, token] of value.matchAll(SF_BINARY_MEMBER)) {
-      if (!SF_BINARY_BASE64.test(token ?? "")) return `${name}: ${label} is not standard Base64 (RFC 8941 sf-binary)`;
-      labels.push(label ?? "");
-    }
-    if (name === "signature" && new Set(labels).size !== labels.length) return "signature: a label appears more than once";
+    const keys = sfDictionaryKeys(value);
+    if (keys === null) return `${name}: not an RFC 8941 dictionary of padded standard Base64 byte sequences`;
+    if (new Set(keys).size !== keys.length) return `${name}: a key appears more than once`;
   }
   return null;
 }

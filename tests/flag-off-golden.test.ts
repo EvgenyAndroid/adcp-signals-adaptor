@@ -479,6 +479,36 @@ const ON_RULES: Array<{ why: string; test: (entry: string, path: string, on: unk
     why: "fewer get_signals traces (refused pins record none), numbered in write order",
     test: (e, p) => e === "kv" && p.startsWith("sigtrace:"),
   },
+  {
+    why: "seed_account joins the advertised scenarios (list_scenarios, compliance_testing, UNKNOWN_SCENARIO detail)",
+    test: (e, p, on) =>
+      /(^|\.)scenarios\.2$/.test(p) && at(on, p) === "seed_account" ||
+      e === "controller unknown scenario" && p === "body.result.structuredContent.error_detail",
+  },
+  {
+    why: "the tools/list description of comply_test_controller names seed_account",
+    test: (e, p, on) => e === "tools/list" && /^body\.result\.tools\.\d+\.description$/.test(p) &&
+      at(on, p.replace(/description$/, "name")) === "comply_test_controller",
+  },
+  {
+    why: "seed_account is implemented: fixtures seed, a missing account_id is INVALID_PARAMS",
+    test: (e, _p, on) => {
+      const sc = at(on, "body.result.structuredContent") as { success?: boolean; error?: string } | undefined;
+      return /^controller seed_account (sandbox|live) fixture$/.test(e) && sc?.success === true ||
+        e === "controller seed_account no account_id" && sc?.error === "INVALID_PARAMS";
+    },
+  },
+  {
+    why: "seeded fixtures are stored in the caller's compliance:account: namespace",
+    test: (e, p) => e === "kv" && p.startsWith("compliance:account:"),
+  },
+  {
+    why: "operator_unit joins the compliance-task account key, so another unit (or none) no longer sees the task",
+    test: (e, p, on) =>
+      e === "kv" && /^compliance:task:.*\.value\.account_key$/.test(p) ||
+      /^list_tasks (unit 2|no unit)$/.test(e) && at(on, "body.result.structuredContent.query_summary.total_matching") === 0 ||
+      /^get_(task|operation)_status unit 2$/.test(e) && at(on, "body.result.structuredContent.adcp_error.code") === "REFERENCE_NOT_FOUND",
+  },
 ];
 
 describe("flag ON: differs from the golden only where AdCP 3.2 requires", () => {

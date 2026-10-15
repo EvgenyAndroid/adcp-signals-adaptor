@@ -28,7 +28,7 @@ import type { Env } from "../types/env";
 import type { Logger } from "../utils/logger";
 import type { SearchSignalsRequest } from "../types/api";
 import { requireAuth } from "../routes/shared";
-import { ADCP_TOOLS, getToolByName } from "./tools";
+import { getToolByName, listTools } from "./tools";
 import { getCapabilities } from "../domain/capabilityService";
 import { resolveWebhookSigning } from "../domain/webhookSigning";
 import { searchSignalsService } from "../domain/signalService";
@@ -354,7 +354,7 @@ async function handleSingleMessage(
             case "ping":
                 return rpcSuccess(id, {});
             case "tools/list":
-                return rpcSuccess(id, { tools: ADCP_TOOLS });
+                return rpcSuccess(id, { tools: listTools(env) });
             case "tools/call": {
                 // Sec-33: time + record the tool call for observability.
                 // Sec-35: additionally persist to D1 via ctx.waitUntil for

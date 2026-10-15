@@ -913,3 +913,262 @@ describe("MCP dispatch — account-scoped task isolation (shared credential)", (
     expect(ownAccount.result?.structuredContent?.task_id).toBe("mcp_task_status_nova");
   });
 });
+
+// ── AdCP 3.2 (SERVE_ADCP_3_2): seed_account and operator_unit ───────────────
+//
+// 3.2.4 signals storyboards declare `controller_seeding: true` with account
+// fixtures only — one sandbox:true and one sandbox:false per storyboard — and
+// the runner seeds them all-or-nothing before the first step. No step reads a
+// seeded account back. With the flag OFF none of this exists: seed_account is
+// UNKNOWN_SCENARIO exactly as before (the golden pins the bytes).
+
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join as joinPath, resolve as resolvePath, dirname as dirnamePath } from "node:path";
+import { fileURLToPath as toPath } from "node:url";
+import { supportedScenarios } from "../src/domain/complianceController";
+import { ADCP_TOOLS } from "../src/mcp/tools";
+
+const FLAG_ON = { SERVE_ADCP_3_2: "true" };
+
+/** KV fake that also records every put's key and TTL. */
+function makeRecordingKv() {
+  const store = new Map<string, string>();
+  const puts: Array<{ key: string; ttl: number | undefined }> = [];
+  const kv = {
+    async get(k: string, type?: string) {
+      const v = store.get(k);
+      if (v === undefined) return null;
+      return type === "json" ? JSON.parse(v) : v;
+    },
+    async put(k: string, v: string, opts?: { expirationTtl?: number }) {
+      puts.push({ key: k, ttl: opts?.expirationTtl });
+      store.set(k, v);
+    },
+    async delete(k: string) { store.delete(k); },
+    async list() { return { keys: [...store.keys()].map((name) => ({ name })), list_complete: true } as never; },
+    async getWithMetadata() { return { value: null, metadata: null } as never; },
+  } as unknown as KVNamespace;
+  return { kv, store, puts };
+}
+
+// signal_owned's fixtures, verbatim from the 3.2.4 bundle
+// (specialisms/signal-owned/index.yaml, fixtures.accounts).
+const OWNED_SANDBOX = {
+  account_id: "acct_novamotors_example_sandbox_8d34b61fe263",
+  fixture: {
+    brand: { domain: "novamotors.example" },
+    operator: "pinnacle-agency.example",
+    operator_unit: { id: "compliance-signal_owned-9e5fc43a" },
+    billing: "operator",
+    status: "active",
+    sandbox: true,
+  },
+};
+const OWNED_LIVE = {
+  account_id: "acct_novamotors_example_live_ee0c6730d618",
+  fixture: { ...OWNED_SANDBOX.fixture, sandbox: false },
+};
+
+const seed = (params: Record<string, unknown>, account: unknown = { sandbox: true }) =>
+  ({ scenario: "seed_account", account, params });
+
+describe("seed_account — flag OFF is unchanged", () => {
+  it("UNKNOWN_SCENARIO with today's exact error_detail, nothing written", async () => {
+    const { kv, puts } = makeRecordingKv();
+    const r = await handleComplyTestController(makeEnv(kv), seed(OWNED_SANDBOX), OP_A);
+    expect(r).toEqual({
+      success: false,
+      error: "UNKNOWN_SCENARIO",
+      error_detail: "scenario not implemented: seed_account. Supported: force_get_signals_arm, force_task_completion.",
+    });
+    expect(puts).toEqual([]);
+  });
+
+  it("list_scenarios, capabilities scenarios and the tools/list description are unchanged", async () => {
+    const env = makeMcpEnv(makeKv());
+    expect((await callTool(env, "comply_test_controller", { scenario: "list_scenarios", account: { sandbox: true } })).result.structuredContent.scenarios)
+      .toEqual(["force_get_signals_arm", "force_task_completion"]);
+    expect((await callTool(env, "get_adcp_capabilities", {})).result.structuredContent.compliance_testing)
+      .toEqual({ scenarios: ["force_get_signals_arm", "force_task_completion"] });
+    const listed = await handleMcpRequest(new Request("https://example.com/mcp", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+    }), env, logger);
+    expect((JSON.parse(await listed.text())).result.tools).toEqual(JSON.parse(JSON.stringify(ADCP_TOOLS)));
+    expect(supportedScenarios(env)).toEqual([...SUPPORTED_SCENARIOS]);
+  });
+});
+
+describe("seed_account — flag ON", () => {
+  it("is advertised by list_scenarios, capabilities compliance_testing and the tools/list description", async () => {
+    const env = { ...makeMcpEnv(makeKv()), ...FLAG_ON } as import("../src/types/env").Env;
+    const expected = ["force_get_signals_arm", "force_task_completion", "seed_account"];
+    expect((await callTool(env, "comply_test_controller", { scenario: "list_scenarios", account: { sandbox: true } })).result.structuredContent.scenarios)
+      .toEqual(expected);
+    expect((await callTool(env, "get_adcp_capabilities", {})).result.structuredContent.compliance_testing).toEqual({ scenarios: expected });
+    const listed = await handleMcpRequest(new Request("https://example.com/mcp", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+    }), env, logger);
+    const tools = (JSON.parse(await listed.text())).result.tools as Array<{ name: string; description: string; inputSchema: unknown; outputSchema: unknown }>;
+    const ctl = tools.find((t) => t.name === "comply_test_controller")!;
+    expect(ctl.description).toContain("seed_account");
+    const before = ADCP_TOOLS.find((t) => t.name === "comply_test_controller")!;
+    expect(ctl.inputSchema).toEqual(JSON.parse(JSON.stringify(before.inputSchema)));
+    expect(ctl.outputSchema).toEqual(JSON.parse(JSON.stringify(before.outputSchema)));
+    // Every other tool is untouched.
+    expect(tools.filter((t) => t.name !== "comply_test_controller")).toEqual(
+      JSON.parse(JSON.stringify(ADCP_TOOLS.filter((t) => t.name !== "comply_test_controller"))),
+    );
+  });
+
+  it.each([
+    ["no params", undefined],
+    ["no account_id", { fixture: OWNED_SANDBOX.fixture }],
+    ["empty account_id", { account_id: "", fixture: OWNED_SANDBOX.fixture }],
+    ["account_id over 190 bytes", { account_id: "a".repeat(191), fixture: OWNED_SANDBOX.fixture }],
+    ["non-string account_id", { account_id: 42, fixture: OWNED_SANDBOX.fixture }],
+    ["array fixture", { account_id: "acct_x", fixture: [1, 2] }],
+    ["string fixture", { account_id: "acct_x", fixture: "x" }],
+    ["fixture over 8 KiB", { account_id: "acct_x", fixture: { pad: "x".repeat(9 * 1024) } }],
+  ])("%s → INVALID_PARAMS, nothing written", async (_label, params) => {
+    const { kv, puts } = makeRecordingKv();
+    const args = params === undefined ? { scenario: "seed_account", account: { sandbox: true } } : seed(params);
+    const r = await handleComplyTestController(makeEnv(kv, FLAG_ON), args, OP_A);
+    expect(r).toMatchObject({ success: false, error: "INVALID_PARAMS" });
+    expect(puts).toEqual([]);
+  });
+
+  it("an account_id of exactly 190 bytes, and no fixture at all, are accepted", async () => {
+    const { kv } = makeRecordingKv();
+    expect(await handleComplyTestController(makeEnv(kv, FLAG_ON), seed({ account_id: "a".repeat(190) }), OP_A)).toMatchObject({ success: true });
+  });
+
+  it("signal_owned's two fixtures (sandbox true and false) both seed, under the caller's namespace, for one hour", async () => {
+    const { kv, store, puts } = makeRecordingKv();
+    const env = makeEnv(kv, FLAG_ON);
+    for (const f of [OWNED_SANDBOX, OWNED_LIVE]) {
+      const r = await handleComplyTestController(env, seed(f), OP_A);
+      expect(r).toEqual({ success: true, message: `seeded account ${f.account_id}` });
+      // SeedSuccess (3.2.4) forbids these keys.
+      for (const k of ["previous_state", "scenarios", "forced", "error"]) expect(r).not.toHaveProperty(k);
+    }
+    expect(puts).toEqual([
+      { key: `compliance:account:${OP_A}:${OWNED_SANDBOX.account_id}`, ttl: 3600 },
+      { key: `compliance:account:${OP_A}:${OWNED_LIVE.account_id}`, ttl: 3600 },
+    ]);
+    expect(JSON.parse(store.get(`compliance:account:${OP_A}:${OWNED_LIVE.account_id}`)!)).toEqual(OWNED_LIVE.fixture);
+  });
+
+  it("over MCP: the response matches the tool outputSchema and echoes context", async () => {
+    const env = { ...makeMcpEnv(makeKv()), ...FLAG_ON } as import("../src/types/env").Env;
+    const body = await callTool(env, "comply_test_controller", { ...seed(OWNED_SANDBOX), context: { correlation_id: "seed-ctx" } });
+    expect(body.result.structuredContent).toMatchObject({
+      status: "completed", adcp_version: "3.2", success: true, context: { correlation_id: "seed-ctx" },
+    });
+  });
+
+  it("re-seed: an identical fixture (any key order) succeeds without writing; a diverging one is INVALID_PARAMS naming the fields", async () => {
+    const { kv, store, puts } = makeRecordingKv();
+    const env = makeEnv(kv, FLAG_ON);
+    await handleComplyTestController(env, seed(OWNED_SANDBOX), OP_A);
+    const key = `compliance:account:${OP_A}:${OWNED_SANDBOX.account_id}`;
+    const stored = store.get(key);
+
+    const same = await handleComplyTestController(env, seed(OWNED_SANDBOX), OP_A);
+    expect(same).toMatchObject({ success: true });
+    expect(same).not.toHaveProperty("previous_state");
+    const reordered = Object.fromEntries(Object.entries(OWNED_SANDBOX.fixture).reverse());
+    expect(await handleComplyTestController(env, seed({ account_id: OWNED_SANDBOX.account_id, fixture: reordered }), OP_A))
+      .toMatchObject({ success: true });
+    expect(puts).toHaveLength(1);
+
+    const diverging = await handleComplyTestController(
+      env, seed({ account_id: OWNED_SANDBOX.account_id, fixture: { ...OWNED_SANDBOX.fixture, status: "suspended" } }), OP_A,
+    );
+    expect(diverging).toMatchObject({ success: false, error: "INVALID_PARAMS" });
+    expect((diverging as { error_detail: string }).error_detail).toContain("status");
+    expect(store.get(key)).toBe(stored);
+    expect(puts).toHaveLength(1);
+  });
+
+  it("is scoped per principal: two callers seed the same account_id with different fixtures", async () => {
+    const { kv } = makeRecordingKv();
+    const env = makeEnv(kv, FLAG_ON);
+    expect(await handleComplyTestController(env, seed(OWNED_SANDBOX), OP_A)).toMatchObject({ success: true });
+    expect(await handleComplyTestController(env, seed({ account_id: OWNED_SANDBOX.account_id, fixture: OWNED_LIVE.fixture }), OP_B))
+      .toMatchObject({ success: true });
+    expect(await handleComplyTestController(env, seed(OWNED_SANDBOX), OP_A)).toMatchObject({ success: true });
+  });
+
+  it("a live principal is refused with FORBIDDEN and writes nothing; a request without account.sandbox is INVALID_PARAMS", async () => {
+    const { kv, puts } = makeRecordingKv();
+    const env = makeEnv(kv, FLAG_ON);
+    expect(await handleComplyTestController(env, seed(OWNED_SANDBOX), OP_A, "live")).toMatchObject({ success: false, error: "FORBIDDEN" });
+    expect(await handleComplyTestController(env, seed(OWNED_SANDBOX, { brand: { domain: "novamotors.example" } }), OP_A))
+      .toMatchObject({ success: false, error: "INVALID_PARAMS" });
+    expect(puts).toEqual([]);
+
+    // The same through MCP with the live test-kit key.
+    const mcpKv = makeRecordingKv();
+    const mcpEnv = { ...makeMcpEnv(mcpKv.kv), ...FLAG_ON } as import("../src/types/env").Env;
+    const live = await callToolAs(mcpEnv, "demo-acme-outdoor-live-v1", "comply_test_controller", seed(OWNED_SANDBOX));
+    expect(live.result.structuredContent).toMatchObject({ success: false, error: "FORBIDDEN" });
+    expect(mcpKv.puts).toEqual([]);
+  });
+
+  it("anti-gaming: seeding changes nothing get_signals returns for that account", async () => {
+    const env = { ...makeMcpEnv(makeKv()), ...FLAG_ON } as import("../src/types/env").Env;
+    const query = { signal_spec: "owned audiences", account: { brand: OWNED_SANDBOX.fixture.brand, operator: OWNED_SANDBOX.fixture.operator, operator_unit: OWNED_SANDBOX.fixture.operator_unit, sandbox: true } };
+    const before = (await callTool(env, "get_signals", query)).result.structuredContent;
+    await callTool(env, "comply_test_controller", seed(OWNED_SANDBOX));
+    await callTool(env, "comply_test_controller", seed(OWNED_LIVE));
+    const after = (await callTool(env, "get_signals", query)).result.structuredContent;
+    expect(JSON.stringify(after)).toBe(JSON.stringify(before));
+  });
+
+  it("anti-gaming: the seeded-account namespace is read and written by exactly one src file", () => {
+    const root = resolvePath(dirnamePath(toPath(import.meta.url)), "../src");
+    const walk = (d: string): string[] => readdirSync(d).flatMap((f) => {
+      const p = joinPath(d, f);
+      return statSync(p).isDirectory() ? walk(p) : p.endsWith(".ts") ? [p] : [];
+    });
+    const users = walk(root).filter((p) => readFileSync(p, "utf8").includes("compliance:account:"));
+    expect(users.map((p) => p.replace(/\\/g, "/").replace(/^.*\/src\//, "src/"))).toEqual(["src/domain/complianceController.ts"]);
+  });
+});
+
+describe("operator_unit in compliance-task scoping (AdCP 3.2 account natural key)", () => {
+  const UNIT_1 = { ...ACCOUNT_NOVA, operator_unit: { id: "unit-1" } };
+  const UNIT_2 = { ...ACCOUNT_NOVA, operator_unit: { id: "unit-2" } };
+
+  async function armUnder(env: import("../src/types/env").Env, taskId: string, account: unknown) {
+    await callTool(env, "comply_test_controller", {
+      scenario: "force_get_signals_arm", account: { sandbox: true }, params: { arm: "submitted", task_id: taskId },
+    });
+    await callTool(env, "get_signals", { signal_spec: "anything", account });
+  }
+
+  it("flag ON: a task created under unit 1 is found with unit 1 only — not with unit 2, not without a unit", async () => {
+    const env = { ...makeMcpEnv(makeKv()), ...FLAG_ON } as import("../src/types/env").Env;
+    await armUnder(env, "task_unit_1", UNIT_1);
+
+    const own = await callTool(env, "get_task_status", { task_id: "task_unit_1", account: UNIT_1 });
+    expect(own.result.structuredContent.task_id).toBe("task_unit_1");
+    for (const other of [UNIT_2, ACCOUNT_NOVA]) {
+      const r = await callTool(env, "get_task_status", { task_id: "task_unit_1", account: other });
+      expect(r.result.structuredContent.adcp_error.code).toBe("REFERENCE_NOT_FOUND");
+      const listed = await callTool(env, "list_tasks", { account: other, filters: { task_ids: ["task_unit_1"] } });
+      expect(listed.result.structuredContent.query_summary).toEqual({ total_matching: 0, returned: 0 });
+    }
+    const listedOwn = await callTool(env, "list_tasks", { account: UNIT_1, filters: { task_ids: ["task_unit_1"] } });
+    expect(listedOwn.result.structuredContent.query_summary).toEqual({ total_matching: 1, returned: 1 });
+  });
+
+  it("flag OFF: units are ignored, as before", async () => {
+    const env = makeMcpEnv(makeKv());
+    await armUnder(env, "task_unit_off", UNIT_1);
+    const r = await callTool(env, "get_task_status", { task_id: "task_unit_off", account: UNIT_2 });
+    expect(r.result.structuredContent.task_id).toBe("task_unit_off");
+  });
+});

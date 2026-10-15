@@ -14,6 +14,8 @@
 //   SIGNALS_TOOLS = ['get_signals', 'activate_signal']
 //   ADCP_STATUS   — canonical status constants
 
+import { servesAdcp32 } from "../constants/specVersion";
+
 export const ADCP_SIGNALS_CORE_TOOLS = ['get_signals', 'activate_signal'] as const;
 
 export interface McpToolDefinition {
@@ -876,4 +878,23 @@ export const ADCP_TOOLS: McpToolDefinition[] = [
 
 export function getToolByName(name: string): McpToolDefinition | undefined {
     return ADCP_TOOLS.find((t) => t.name === name);
+}
+
+// With SERVE_ADCP_3_2 ON the controller also implements seed_account
+// (src/domain/complianceController.ts). Prose only: the schemas are the same.
+const COMPLY_TEST_CONTROLLER_DESCRIPTION_3_2 =
+    "Sandbox-only deterministic-testing surface (AdCP compliance protocol, universal — " +
+    "not gated to any one AdCP protocol). Implements list_scenarios, force_get_signals_arm, " +
+    "and force_task_completion for the async-discovery conformance path, and seed_account, which " +
+    "records an account fixture as the calling sandbox principal's own test state for one hour " +
+    "(nothing else reads it); any other scenario returns UNKNOWN_SCENARIO, which the spec accepts " +
+    "as a valid response for an unimplemented force_*/simulate_*/seed_* scenario. Every request " +
+    "MUST carry account.sandbox: true.";
+
+/** tools/list. ADCP_TOOLS itself with the flag OFF. */
+export function listTools(env: { SERVE_ADCP_3_2?: string }): McpToolDefinition[] {
+    if (!servesAdcp32(env)) return ADCP_TOOLS;
+    return ADCP_TOOLS.map((t) =>
+        t.name === "comply_test_controller" ? { ...t, description: COMPLY_TEST_CONTROLLER_DESCRIPTION_3_2 } : t,
+    );
 }

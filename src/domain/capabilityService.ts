@@ -89,7 +89,7 @@ const CACHE_TTL_SECONDS = 3600;
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
 import { COMPLIANCE_STATE } from "../constants/complianceState";
 import { SPEC_VERSION, servesAdcp32, supportedReleaseVersions } from "../constants/specVersion";
-import { SUPPORTED_SCENARIOS } from "./complianceController";
+import { supportedScenarios } from "./complianceController";
 import { resolveWebhookSigning, type WebhookSigningKey } from "./webhookSigning";
 import { CANONICAL_ORIGIN } from "../constants/origin";
 import { REQUEST_SIGNING_CAPABILITY } from "./requestSigning";
@@ -289,7 +289,8 @@ function buildStaticCapabilities(env: CapabilityEnv, signing: WebhookSigningKey 
     // get_signals_async.yaml's forced-async path) — no media-buy or
     // creative levers (force_creative_status, force_account_status,
     // simulate_delivery, etc.), since this is a signals-only agent.
-    compliance_testing: { scenarios: [...SUPPORTED_SCENARIOS] },
+    // seed_account joins under AdCP 3.2 (supportedScenarios).
+    compliance_testing: { scenarios: supportedScenarios(env) },
     // Experimental features this agent surfaces beyond the core spec.
     // Dot-separated ids per the GA schema pattern.
     experimental_features: [

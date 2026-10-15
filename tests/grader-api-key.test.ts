@@ -174,6 +174,31 @@ describe("GRADER_API_KEY — an MCP sandbox principal", () => {
     }
     expect(store.size).toBe(2);
   });
+
+  it("async get_signals: the demo key re-using the storyboard's fixed task_id does not hide the grader's task", async () => {
+    const { env } = makeEnv();
+    const TASK = "task_async_signals_nova_ev"; // fixed literal in get_signals_async.yaml
+    const ACCT = { brand: { domain: "novamotors.example" }, operator: "novamotors.example" };
+    const getSignals = { signal_spec: { brief: "likely EV buyers" }, account: ACCT };
+    const status = async (bearer: string) =>
+      (await callToolAs(env, bearer, "get_task_status", { task_id: TASK, account: ACCT })).body;
+
+    expect((await callToolAs(env, GRADER, "comply_test_controller", arm(TASK))).body.result.structuredContent.success).toBe(true);
+    await callToolAs(env, GRADER, "get_signals", getSignals);
+    expect((await status(GRADER)).result.structuredContent).toMatchObject({ status: "submitted", task_id: TASK });
+
+    // The public-key holder arms and consumes the same task_id.
+    expect((await callToolAs(env, DEMO, "comply_test_controller", arm(TASK))).body.result.structuredContent.success).toBe(true);
+    await callToolAs(env, DEMO, "get_signals", getSignals);
+    expect((await status(DEMO)).result.structuredContent).toMatchObject({ status: "submitted", task_id: TASK });
+
+    expect((await status(GRADER)).result.structuredContent).toMatchObject({ status: "submitted", task_id: TASK });
+    const done = await callToolAs(env, GRADER, "comply_test_controller", {
+      scenario: "force_task_completion", account: { sandbox: true }, params: { task_id: TASK, result: { signals: [] } },
+    });
+    expect(done.body.result.structuredContent.success).toBe(true);
+    expect((await status(GRADER)).result.structuredContent).toMatchObject({ status: "completed", task_id: TASK });
+  });
 });
 
 describe("GRADER_API_KEY — unset, empty, or equal to a public key adds no principal", () => {

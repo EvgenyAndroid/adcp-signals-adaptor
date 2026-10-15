@@ -127,14 +127,15 @@
 //     no previous_state, which the 3.2.4 SeedSuccess branch forbids. The
 //     check is a KV get then put, so two concurrent seeds of one account_id
 //     (or seeds landing at two edge locations) can both succeed; the runner
-//     seeds sequentially. SHARED PRINCIPAL: the DEMO key is the only
-//     sandbox bearer, so it is the hosted grader's saved credential too, and
-//     anyone holding that public key shares the grader's
-//     operatorId and can pre-seed a diverging fixture that turns the
-//     grader's seed into INVALID_PARAMS — a setup gap, so a degraded card —
-//     until the seed expires. force_get_signals_arm has the same exposure.
-//     The fix is a second, secret sandbox credential for the grader (a flip
-//     prerequisite in the README); the 30-minute TTL bounds each instance.
+//     seeds sequentially. SHARED PRINCIPAL: everyone holding the public DEMO
+//     key shares one operatorId, so any of them can pre-seed a diverging
+//     fixture that turns another holder's seed into INVALID_PARAMS — for a
+//     grader, a setup gap, so a degraded card — until the seed expires.
+//     force_get_signals_arm has the same exposure. The hosted grader avoids
+//     it with GRADER_API_KEY, a private sandbox bearer with its own
+//     operatorId (src/mcp/server.ts), once that secret is set and the same
+//     value is the agent credential in the AAO registry (a flip prerequisite
+//     in the README); the 30-minute TTL bounds each instance.
 //   - operator_unit. 3.2's account natural key is brand + operator +
 //     optional operator_unit.id (core/account-ref.json), so the unit joins
 //     deriveAccountKey's key when present. brand_id, currency, timezone and
@@ -605,13 +606,17 @@ export async function getComplianceTask(
   taskId: string,
   callerAccount?: unknown,
 ): Promise<ComplianceTaskLookup> {
-  const owner = await env.SIGNALS_CACHE.get(taskOwnerKey(taskId));
-  if (!owner) return { found: false };
-  if (owner !== operatorId) return { found: true, owned: false };
+  // The caller's own record first: the owner index is global and
+  // last-writer-wins, so another operator re-using a fixed storyboard
+  // task_id must not hide this caller's task from it.
   const task = (await env.SIGNALS_CACHE.get(taskKey(operatorId, taskId), "json")) as
     | ComplianceTask
     | null;
-  if (!task) return { found: false }; // owner index outlived the task record (TTL edge) — treat as absent
+  if (!task) {
+    const owner = await env.SIGNALS_CACHE.get(taskOwnerKey(taskId));
+    // owner === operatorId: the index outlived the task record (TTL edge) — treat as absent
+    return owner && owner !== operatorId ? { found: true, owned: false } : { found: false };
+  }
   const callerAccountKey = deriveAccountKey(callerAccount, servesAdcp32(env));
   if (task.account_key && callerAccountKey && task.account_key !== callerAccountKey) {
     return { found: true, owned: false };

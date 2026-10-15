@@ -75,7 +75,7 @@ Since 2026-10-10 the agent verifies inbound RFC 9421 request signatures (`reques
 - a local flag-ON run on the 3.2.4 bundle passes under the hosted status rules, and a flag-OFF 3.1.24 run is unchanged (met on 2026-10-15; repeat it on the commit being flipped);
 - the flag-OFF build is deployed and verified byte-identical;
 - the registry's signals credential is confirmed to be a sandbox principal, because a live one is refused at seeding;
-- the grader authenticates with a secret sandbox credential of its own. Today the public DEMO key is the only sandbox bearer, so the grader shares its principal with everyone holding that key, and anyone can pre-seed a diverging account fixture that fails the grader's `seed_account` with `INVALID_PARAMS` (a setup gap, so a degraded card) for up to 30 minutes. A second sandbox bearer is not built yet.
+- the grader authenticates with a secret sandbox credential of its own. That credential is built: `GRADER_API_KEY` (see Deploying). What remains is `wrangler secret put GRADER_API_KEY` and entering the same value as the agent credential in the AAO registry. While the grader uses the public DEMO key, it shares its principal with everyone holding that key, and anyone can pre-seed a diverging account fixture that fails the grader's `seed_account` with `INVALID_PARAMS` (a setup gap, so a degraded card) for up to 30 minutes.
 
 Rollback is setting the var back to `"false"`.
 
@@ -633,6 +633,7 @@ wrangler secret put DEMO_API_KEY
 # (e.g. `openssl rand -base64 24`), keep it private, then enter the same value
 # as the agent credential in the AAO registry. A value equal to DEMO_API_KEY or
 # the live test-kit key is ignored (and logged); unset means no grader key.
+# Never reuse an api_key from the AdCP spec's test-kits/*.yaml: those are public.
 wrangler secret put GRADER_API_KEY
 
 # Optional: RFC 9421 (Ed25519) signatures on outbound webhooks. The value is a

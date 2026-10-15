@@ -376,6 +376,38 @@ describe("getComplianceTask / listComplianceTasks", () => {
     expect(lookup).toEqual({ found: true, owned: false });
   });
 
+  it("another operator creating the same task_id does not take the first operator's task away", async () => {
+    // Storyboards use fixed task_id literals (get_signals_async:
+    // task_async_signals_nova_ev), so a second operator re-using one must
+    // not turn the first operator's own task into REFERENCE_NOT_FOUND.
+    const kv = makeKv();
+    const env = makeEnv(kv);
+    for (const op of [OP_A, OP_B]) {
+      await handleComplyTestController(
+        env,
+        { scenario: "force_get_signals_arm", account: { sandbox: true }, params: { arm: "submitted", task_id: "task_fixed" } },
+        op,
+      );
+      await checkAndConsumeGetSignalsArm(env, op, undefined);
+    }
+
+    const a = await getComplianceTask(env, OP_A, "task_fixed");
+    expect(a.found && a.owned && a.task.status).toBe("submitted");
+    const b = await getComplianceTask(env, OP_B, "task_fixed");
+    expect(b.found && b.owned && b.task.status).toBe("submitted");
+
+    await handleComplyTestController(
+      env,
+      { scenario: "force_task_completion", account: { sandbox: true }, params: { task_id: "task_fixed", result: { signals: [] } } },
+      OP_A,
+    );
+    const done = await getComplianceTask(env, OP_A, "task_fixed");
+    expect(done.found && done.owned && done.task.status).toBe("completed");
+
+    // An operator with no such task of its own still gets "exists, but not yours".
+    expect(await getComplianceTask(env, "operator_cccccccccccc", "task_fixed")).toEqual({ found: true, owned: false });
+  });
+
   it("listComplianceTasks is empty for an operator with no tasks", async () => {
     const env = makeEnv(makeKv());
     const listed = await listComplianceTasks(env, OP_A);

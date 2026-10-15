@@ -124,3 +124,61 @@ describe("tool-level errors carry canonical AdCP codes", () => {
     }
   });
 });
+
+// ── AdCP 3.2: every error carries recovery (SERVE_ADCP_3_2) ─────────────────
+//
+// 3.2 makes error.recovery a MUST on every error (error-handling.mdx; the
+// 3-1-to-3-2 migration's "Emit error.recovery on every 3.2 error"). One MCP
+// path built an adcp_error without it: the validateActivateRequest codes
+// (MISSING_DESTINATION and friends, reached by activate_signal with an empty
+// destination). With the flag ON a missing recovery is filled where the
+// adcp_error is assembled — transient for SERVICE_UNAVAILABLE, correctable
+// for everything else that reaches there (request-validation codes). With the
+// flag OFF the bytes are unchanged (also pinned by tests/flag-off-golden.test.ts).
+
+describe("AdCP 3.2: recovery on every error", () => {
+  const envOn = { ...env, SERVE_ADCP_3_2: "true" } as import("../src/types/env").Env;
+
+  async function callToolIn(e: import("../src/types/env").Env, name: string, args: Record<string, unknown>) {
+    const res = await handleMcpRequest(
+      mcpReq({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }),
+      e,
+      logger,
+    );
+    const body: McpResultBody = JSON.parse(await res.text());
+    if (body.result?.structuredContent) expectMatchesOutputSchema(name, body.result.structuredContent);
+    return body.result?.structuredContent?.adcp_error;
+  }
+
+  const EMPTY_DESTINATION = { signal_agent_segment_id: "sig_x", destinations: [{ type: "platform", platform: "" }] };
+
+  it("flag ON: activate_signal with an empty destination carries recovery: correctable", async () => {
+    const adcp_error = await callToolIn(envOn, "activate_signal", EMPTY_DESTINATION);
+    expect(adcp_error?.code).toBe("MISSING_DESTINATION");
+    expect(adcp_error?.recovery).toBe("correctable");
+  });
+
+  it("flag OFF: the same error is unchanged (no recovery)", async () => {
+    const adcp_error = await callToolIn(env, "activate_signal", EMPTY_DESTINATION);
+    expect(adcp_error?.code).toBe("MISSING_DESTINATION");
+    expect(adcp_error).not.toHaveProperty("recovery");
+  });
+
+  it("flag ON: every error this file provokes carries a recovery class", async () => {
+    const probes: Array<[string, Record<string, unknown>]> = [
+      ["activate_signal", {}],
+      ["activate_signal", { destination: "the-trade-desk" }],
+      ["activate_signal", EMPTY_DESTINATION],
+      ["get_task_status", {}],
+      ["get_operation_status", {}],
+      ["query_signals_nl", {}],
+      ["no_such_tool_exists", {}],
+      ["get_signals", { signal_spec: "x", adcp_version: "4.0" }],
+    ];
+    for (const [name, args] of probes) {
+      const adcp_error = await callToolIn(envOn, name, args);
+      expect(adcp_error, `${name} should surface an adcp_error`).toBeDefined();
+      expect(["transient", "correctable", "terminal"], `${name} ${JSON.stringify(args)}`).toContain(adcp_error?.recovery);
+    }
+  });
+});

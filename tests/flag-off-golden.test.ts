@@ -525,6 +525,10 @@ const ON_RULES: Array<{ why: string; test: (entry: string, path: string, on: unk
       e === "signed profile-3.2 negative/007-missing-content-digest.json" &&
       at(on, "www_authenticate") === 'Signature error="request_signature_components_incomplete"',
   },
+  {
+    why: "every error carries recovery (3.2 MUST): filled where the thrown error had none",
+    test: (_e, p, on) => /adcp_error\.recovery$/.test(p) && ["transient", "correctable"].includes(at(on, p) as string),
+  },
 ];
 
 describe("flag ON: differs from the golden only where AdCP 3.2 requires", () => {

@@ -429,6 +429,7 @@ async function handleSingleMessage(
                             message: err.message,
                         };
                         if (typeof details["recovery"] === "string") adcpError.recovery = details["recovery"] as string;
+                        else if (servesAdcp32(env)) adcpError.recovery = recoveryFor(code);
                         if (typeof details["field"] === "string") adcpError.field = details["field"] as string;
                         if (Array.isArray(details["supported_major_versions"])) adcpError.supported_major_versions = details["supported_major_versions"] as number[];
                         // Preserve any other details (e.g. validation errors)
@@ -462,11 +463,26 @@ async function handleSingleMessage(
         if (err instanceof McpToolError) {
             const details = (err.details ?? {}) as Record<string, unknown>;
             const code = typeof details["code"] === "string" ? details["code"] as string : "SERVICE_UNAVAILABLE";
-            return rpcSuccess(id, toolError({ code, message: err.message }, undefined, defaultServedVersion(env)));
+            const recovery = servesAdcp32(env)
+                ? { recovery: typeof details["recovery"] === "string" ? details["recovery"] as string : recoveryFor(code) }
+                : {};
+            return rpcSuccess(id, toolError({ code, message: err.message, ...recovery }, undefined, defaultServedVersion(env)));
         }
         logger.error("mcp_unhandled_error", { method, error: String(err) });
         return rpcError(id, RPC_INTERNAL_ERROR, "Internal error");
     }
+}
+
+/**
+ * AdCP 3.2 makes error.recovery a MUST on every error. With SERVE_ADCP_3_2 ON
+ * the two places that assemble an adcp_error fill it when the thrown error
+ * carried none: SERVICE_UNAVAILABLE is transient (its registered class); the
+ * only other codes that reach there without one are request-validation codes
+ * (validateActivateRequest's MISSING_DESTINATION and friends), which the
+ * caller corrects. Flag OFF: unchanged, no fill.
+ */
+function recoveryFor(code: string): string {
+    return code === "SERVICE_UNAVAILABLE" ? "transient" : "correctable";
 }
 
 // ── MCP method handlers ───────────────────────────────────────────────────────

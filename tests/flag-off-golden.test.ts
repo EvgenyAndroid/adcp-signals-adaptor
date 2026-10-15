@@ -401,11 +401,16 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+// One corpus pass is ~100 calls, and the first pass in a worker also compiles
+// the trace validator's schemas; under the full suite's parallel load that has
+// exceeded vitest's 5 s default.
+const CORPUS_TIMEOUT_MS = 60_000;
+
 describe("flag OFF: byte-for-byte the pre-3.2 surface", () => {
   it("default env (no SERVE_ADCP_3_2) matches the cf5ef0e golden", async () => {
     const doc = goldenDocument(await runCorpus({}));
     await expect(doc).toMatchFileSnapshot("./__snapshots__/flag-off-golden.json");
-  });
+  }, CORPUS_TIMEOUT_MS);
 });
 
 // ── flag ON: only the differences AdCP 3.2 requires ─────────────────────────
@@ -548,5 +553,5 @@ describe("flag ON: differs from the golden only where AdCP 3.2 requires", () => 
     });
     expect(unexplained).toEqual([]);
     expect(ON_RULES.map((r) => r.why).filter((w) => !fired.has(w))).toEqual([]);
-  });
+  }, CORPUS_TIMEOUT_MS);
 });

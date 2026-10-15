@@ -216,6 +216,8 @@ export async function handleMcpRequest(
             { method: request.method, url: request.url, headers: request.headers, body: text },
             body,
             new D1ReplayStore(env.DB),
+            // The endpoint's profile, never the request's pin (requestSigning.ts).
+            servesAdcp32(env) ? "3.2" : "3.1",
         );
     } catch (err) {
         // Replay store (D1) failure on the signed path: fail closed.

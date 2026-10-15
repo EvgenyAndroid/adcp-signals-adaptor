@@ -92,7 +92,7 @@ import { SPEC_VERSION, servesAdcp32, supportedReleaseVersions } from "../constan
 import { supportedScenarios } from "./complianceController";
 import { resolveWebhookSigning, type WebhookSigningKey } from "./webhookSigning";
 import { CANONICAL_ORIGIN } from "../constants/origin";
-import { REQUEST_SIGNING_CAPABILITY } from "./requestSigning";
+import { requestSigningCapability } from "./requestSigning";
 
 /**
  * Env slice the capability builder reads. Extends the UCP engine env with
@@ -249,7 +249,8 @@ function buildStaticCapabilities(env: CapabilityEnv, signing: WebhookSigningKey 
     // verifier itself enforces (src/domain/requestSigning.ts), so the
     // declaration can't outrun it. Every list is empty: no operation
     // requires a signature, and any signature presented is verified.
-    request_signing: REQUEST_SIGNING_CAPABILITY,
+    // With SERVE_ADCP_3_2 ON: the 3.2 profile, covers_content_digest "required".
+    request_signing: requestSigningCapability(servesAdcp32(env) ? "3.2" : "3.1"),
     // Emission of signed outbound webhooks under the adcp/webhook-signing/v1
     // profile — RFC 9421, Ed25519 (src/domain/webhookSigning.ts, closes
     // #248). Derived from the secret, not hardcoded: `supported` is true

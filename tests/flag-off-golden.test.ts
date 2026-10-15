@@ -509,6 +509,22 @@ const ON_RULES: Array<{ why: string; test: (entry: string, path: string, on: unk
       /^list_tasks (unit 2|no unit)$/.test(e) && at(on, "body.result.structuredContent.query_summary.total_matching") === 0 ||
       /^get_(task|operation)_status unit 2$/.test(e) && at(on, "body.result.structuredContent.adcp_error.code") === "REFERENCE_NOT_FOUND",
   },
+  {
+    why: "request_signing.covers_content_digest is \"required\" under the 3.2 profile",
+    test: (_e, p, on) => /request_signing\.covers_content_digest$/.test(p) && at(on, p) === "required",
+  },
+  {
+    why: "the endpoint-wide 3.2 profile: 3.1-profile (Base64URL) signatures and profile-3.2 negatives 001/029 are malformed, before any nonce is burned",
+    test: (e, _p, on) =>
+      /^signed (3\.1\.24 positive\/|profile-3\.2 negative\/(001|029)-)/.test(e) &&
+      at(on, "www_authenticate") === 'Signature error="request_signature_header_malformed"' && at(on, "replay_rows") === 0,
+  },
+  {
+    why: "a signature that leaves the body uncovered is components_incomplete (covers_content_digest required)",
+    test: (e, _p, on) =>
+      e === "signed profile-3.2 negative/007-missing-content-digest.json" &&
+      at(on, "www_authenticate") === 'Signature error="request_signature_components_incomplete"',
+  },
 ];
 
 describe("flag ON: differs from the golden only where AdCP 3.2 requires", () => {

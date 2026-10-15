@@ -8,8 +8,9 @@
 // declaration can never run ahead of the code that enforces it.
 //
 // POSTURE. supported: true, every operation list empty, digest coverage
-// "either" (the 3.1 posture; 3.2 makes "required" mandatory, and this
-// endpoint serves 3.0/3.1 only). Empty lists mean no operation REQUIRES a
+// "either" (the 3.1 posture; 3.2 makes "required" mandatory, so with
+// SERVE_ADCP_3_2 ON the endpoint uses "required" — see THE 3.2 PROFILE
+// below). Empty lists mean no operation REQUIRES a
 // signature — bearer callers are untouched, except for the webhook
 // `authentication` payload rule below — but any signature that IS
 // presented is verified on its merits, and a failure is a 401, never a
@@ -57,6 +58,28 @@
 // Checked inside tools/call arguments only, per batch element, at exactly
 // those two sites. Deliberately NOT the SDK's any-depth heuristic, which
 // would also fire on unrelated `authentication` objects.
+//
+// THE 3.2 PROFILE — added 2026-10-15, selected by SERVE_ADCP_3_2. An endpoint
+// that advertises a 3.2 release verifies EVERY signed request under the 3.2
+// profile, whatever the request pins (adcp main security.mdx "Request-profile
+// binary value encoding" :1213-1215; 3-1-to-3-2.mdx "Mixed-version request
+// signing"), and the 3.2.4 capabilities schema requires covers_content_digest
+// "required" whenever supported is true. So the profile is chosen by the flag,
+// never by the request: OFF keeps REQUEST_SIGNING_CAPABILITY and the exact
+// SDK call above; ON uses REQUEST_SIGNING_CAPABILITY_3_2 and two step-1
+// pre-checks in front of the same 13.1.3 verifier, which accepts both of
+// these: a Base64URL token (`-`/`_`) inside the sf-binary of Signature or
+// Content-Digest (3.2 MUST reject it; vector profile-3.2/negative/001), and a
+// Signature dictionary that repeats a label (RFC 8941 §3.2 keys are unique;
+// vector 029). Both are request_signature_header_malformed before the SDK
+// runs, so no nonce is burned. Everything the pre-checks cannot parse is left
+// to the SDK's own step-1 parser. Offline, every wire-graded profile-3.2
+// vector of the 3.2.4 bundle then matches; the remaining differences (002,
+// 026, 031: Host defects no request can carry through Cloudflare's edge) are
+// pinned in tests/request-signing.test.ts. A 15.x verifier would add only
+// those codes, at the cost of a two-major SDK bump that also moves the
+// flag-OFF path; the replay-store interface is unchanged there, so that
+// upgrade stays open as its own change.
 
 import {
   verifyRequestSignature,
@@ -76,6 +99,19 @@ export const REQUEST_SIGNING_CAPABILITY: VerifierCapability & { warn_for: string
   warn_for: [],
   supported_for: [],
 };
+
+/** The 3.2 posture (SERVE_ADCP_3_2): every signed body must cover content-digest. */
+export const REQUEST_SIGNING_CAPABILITY_3_2: typeof REQUEST_SIGNING_CAPABILITY = {
+  ...REQUEST_SIGNING_CAPABILITY,
+  covers_content_digest: "required",
+};
+
+export type SigningProfile = "3.1" | "3.2";
+
+/** The posture for a profile — one source for the capability and the verifier. */
+export function requestSigningCapability(profile: SigningProfile): typeof REQUEST_SIGNING_CAPABILITY {
+  return profile === "3.2" ? REQUEST_SIGNING_CAPABILITY_3_2 : REQUEST_SIGNING_CAPABILITY;
+}
 
 // Public halves of the conformance test counterparty keys (see header).
 const TEST_COUNTERPARTY_KEYS: AdcpJsonWebKey[] = [
@@ -122,12 +158,14 @@ export type SignatureCheck =
  * The whole request-signing decision for one HTTP request. `body` is the
  * decoded raw body (exact bytes, BOM kept — Content-Digest covers them);
  * `parsed` is that body after JSON.parse, which the caller has already done.
+ * `profile` is the endpoint's (SERVE_ADCP_3_2), never the request's pin.
  * Throws only when the replay store fails; the caller must fail closed.
  */
 export async function checkRequestSignature(
   request: { method: string; url: string; headers: Headers; body: string },
   parsed: unknown,
   replayStore: ReplayStore,
+  profile: SigningProfile = "3.1",
 ): Promise<SignatureCheck> {
   if (!request.headers.has("signature") && !request.headers.has("signature-input")) {
     return carriesWebhookAuthentication(parsed)
@@ -147,11 +185,15 @@ export async function checkRequestSignature(
     return { status: "rejected", code: "request_signature_header_malformed", detail: "empty Signature and Signature-Input headers" };
   }
 
+  // 3.2 profile step-1 pre-checks — see the THE 3.2 PROFILE note above.
+  const defect = profile === "3.2" ? profile32HeaderDefect(request.headers) : null;
+  if (defect) return { status: "rejected", code: "request_signature_header_malformed", detail: defect };
+
   let result;
   try {
     result = await verifyRequestSignature(
       { method: request.method, url: request.url, headers: Object.fromEntries(request.headers), body: request.body },
-      { capability: REQUEST_SIGNING_CAPABILITY, jwks, replayStore, revocationStore },
+      { capability: requestSigningCapability(profile), jwks, replayStore, revocationStore },
     );
   } catch (err) {
     if (err instanceof RequestSignatureError) return { status: "rejected", code: err.code, detail: err.message };
@@ -166,6 +208,30 @@ export async function checkRequestSignature(
     return { status: "rejected", code: "request_body_malformed", detail: "duplicate object keys in a signed body" };
   }
   return { status: "verified", keyid: result.keyid };
+}
+
+// `label=:token:` members of an RFC 8941 dictionary (Signature, Content-Digest).
+const SF_BINARY_MEMBER = /(?:^|,)\s*([a-z*][a-z0-9_.*-]*)\s*=\s*:([^:]*):/g;
+const SF_BINARY_BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
+
+/**
+ * The 3.2 profile's two step-1 defects the 13.1.3 parser lets through, or
+ * null. Rejects only on positive evidence: a binary token outside the standard
+ * Base64 alphabet in Signature or Content-Digest, or a Signature label that
+ * appears twice.
+ */
+export function profile32HeaderDefect(headers: Headers): string | null {
+  for (const name of ["signature", "content-digest"]) {
+    const value = headers.get(name);
+    if (!value) continue;
+    const labels: string[] = [];
+    for (const [, label, token] of value.matchAll(SF_BINARY_MEMBER)) {
+      if (!SF_BINARY_BASE64.test(token ?? "")) return `${name}: ${label} is not standard Base64 (RFC 8941 sf-binary)`;
+      labels.push(label ?? "");
+    }
+    if (name === "signature" && new Set(labels).size !== labels.length) return "signature: a label appears more than once";
+  }
+  return null;
 }
 
 /**

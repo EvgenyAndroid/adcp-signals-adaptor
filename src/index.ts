@@ -436,7 +436,7 @@ export default {
             // ── Route matching ────────────────────────────────────────────────────
 
             if (method === "GET" && path === "/privacy") {
-                response = handlePrivacy();
+                response = handlePrivacy(env);
 
             } else if (method === "GET" && path === "/mcp/recent") {
                 response = await handleToolLog(request, env, logger);

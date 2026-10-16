@@ -38,6 +38,13 @@ export function defaultServedVersion(env?: { SERVE_ADCP_3_2?: string }): string 
   return servesAdcp32(env) ? "3.2" : ADCP_WIRE_PIN;
 }
 
+/** The release line that UI copy names (the demo page, /privacy): the
+ *  release served by default ("3.2 GA") with SERVE_ADCP_3_2 ON, else
+ *  ADCP_MAJOR_LINE. Not the schema corpus. */
+export function servedReleaseLine(env?: { SERVE_ADCP_3_2?: string }): string {
+  return servesAdcp32(env) ? `${defaultServedVersion(env)} GA` : ADCP_MAJOR_LINE;
+}
+
 /** Specific spec patch version we're tested against. Bump on each
  *  successful conformance pass against a new patch.
  *

@@ -165,7 +165,9 @@ function _renderTracePerf(perf) {
   var keys = Object.keys(perf).filter(function(k) { return k !== "total"; });
   var total = perf.total || keys.reduce(function(s, k) { return s + (perf[k] || 0); }, 0);
   if (total <= 0) return "";
-  var palette = ["var(--accent)", "var(--violet)", "var(--cyan)", "var(--success)", "var(--warning)"];
+  // House solid series (utils.ts). The old list repeated a colour once
+  // --success became --accent, so segments 1 and 4 were indistinguishable.
+  var palette = CHART_SOLID;
   var segments = keys.map(function(k, i) {
     var pct = (perf[k] / total) * 100;
     var color = palette[i % palette.length];
@@ -206,7 +208,7 @@ function _renderTracePanel(trace) {
   var scrubberHost = document.getElementById("trace-timeline-scrubber");
   if (scrubberHost) {
     if (stepsArr.length > 0) {
-      var palette = ["#4f8eff", "#8b6eff", "#2bd4a0", "#ffcb5c", "#ff7a5c", "#ff4d8e"];
+      var palette = CHART_SOLID;
       var segs = stepsArr.map(function (s, i) {
         var w = ((typeof s.duration_ms === "number" ? s.duration_ms : 0) / totalDur) * 100;
         var color = palette[i % palette.length];

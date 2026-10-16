@@ -172,7 +172,7 @@ function renderFederatedResults(data) {
           var t = v / maxOverlap;
           // Accent gradient: from faint to full intensity
           var alpha = 0.10 + 0.55 * t;
-          bg = "rgba(56, 182, 255, " + alpha.toFixed(2) + ")";
+          bg = chartAlpha(CHART.accent, alpha);
         }
         var classes = "fed-agreement-cell" + (c.diag ? " diag" : "");
         var title = c.diag ? "self: " + v + " signals" : (rowA + " ∩ " + colA + " = " + v + " overlap");

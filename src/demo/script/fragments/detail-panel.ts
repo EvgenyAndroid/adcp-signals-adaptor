@@ -359,25 +359,25 @@ function renderLineageGraph(sig) {
       label: "Raw sources",
       lines: sources.slice(0, 3),
       extra: sources.length > 3 ? "+" + (sources.length - 3) + " more" : "",
-      color: "#2bd4a0",
+      color: CHART.muted,
     },
     {
       label: "Methodology",
       lines: [methodology, "Refresh: " + refresh],
       extra: "",
-      color: "#4f8eff",
+      color: chartTint(CHART.warm, 80, CHART.ink),
     },
     {
       label: "Audience",
       lines: [categoryType, fmtNumber(size) + " people"],
       extra: "",
-      color: "#8b6eff",
+      color: CHART.accent,
     },
     {
       label: "Distribution",
       lines: depPlatforms.slice(0, 3),
       extra: depPlatforms.length > 3 ? "+" + (depPlatforms.length - 3) + " more" : "",
-      color: "#ff7a5c",
+      color: CHART.ink,
     },
   ];
 

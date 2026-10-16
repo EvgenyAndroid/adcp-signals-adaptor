@@ -11,34 +11,13 @@
 // literal. All template-literal backticks and `${...}` inside the
 // inner JS must be escaped with a backslash so the outer literal
 // doesn't interpolate them. Trap audit: tmp-mining/trap_audit.py.
-export const treemapJs = `function categoryHue(category, allCategories) {
-  const idx = allCategories.indexOf(category);
-  if (idx < 0) return 220;
-  return (30 + (idx * 360) / allCategories.length) % 360;
-}
+export const treemapJs = `// Cell fill = the shared house category colour (CHART_CATEGORY in
+// utils.ts), so a category reads the same here as in the scatters.
+// Categories outside that map take the series colours after the mapped ones.
 function categoryColor(category, allCategories) {
-  return \`hsl(\${categoryHue(category, allCategories)} 55% 55%)\`;
-}
-
-// Perceived luminance from HSL — used to pick readable label color
-// per cell. Blues/purples at 55% lightness are perceptually darker
-// than yellows/greens at the same L, so a flat threshold on lightness
-// would flip labels inconsistently. Computing sRGB-relative luminance
-// gets this right across the hue wheel.
-function hslToLuminance(h, s, l) {
-  const hh = h / 360, ss = s, ll = l;
-  const a = ss * Math.min(ll, 1 - ll);
-  const f = (n) => {
-    const k = (n + hh * 12) % 12;
-    return ll - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
-  };
-  const r = f(0), g = f(8), b = f(4);
-  const lin = (c) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-}
-function isDarkColor(category, allCategories) {
-  const h = categoryHue(category, allCategories);
-  return hslToLuminance(h, 0.55, 0.55) < 0.38;
+  if (CHART_CATEGORY[category]) return CHART_CATEGORY[category];
+  const extra = allCategories.filter((c) => !CHART_CATEGORY[c]);
+  return chartSeries(Object.keys(CHART_CATEGORY).length + Math.max(0, extra.indexOf(category)));
 }
 
 function renderTreemap() {
@@ -114,8 +93,11 @@ function renderTreemap() {
     // Tiered label rendering:
     //   large  (> 6000 sq px): 11px name + 10px value subtitle
     //   medium (> 2500 sq px): 10.5px name, no subtitle
-    //   small  (> 1200 sq px): 9.5px name, truncated harder, thinner halo
-    // Below ~1200 sq px we skip — the halo would eat the cell.
+    //   small  (> 1200 sq px): 9.5px name, truncated harder
+    // Below ~1200 sq px we skip — the label would crowd the cell.
+    // No outline halo: paper text on the solid fills, ink text on the
+    // pale tints (chartEdge), each at 4.5:1 or better in every skin.
+    // Inline style, because the .treemap-cell-label rule sets the halo.
     const area = cellW * cellH;
     let tier = null;
     if (area > 6000 && cellH > 28 && cellW > 56) tier = "large";
@@ -124,14 +106,15 @@ function renderTreemap() {
 
     if (tier) {
       const fontSize = tier === "large" ? 11 : tier === "medium" ? 10.5 : 9.5;
-      const haloWidth = tier === "small" ? 1.6 : 2.4;
       const charW = fontSize * 0.62;
+      const onTint = chartEdge(categoryColor(leaf.data.category, categories)) !== "";
       const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
       label.setAttribute("x", leaf.x0 + 5);
       label.setAttribute("y", leaf.y0 + fontSize + 3);
       label.setAttribute("class", "treemap-cell-label");
       label.setAttribute("font-size", String(fontSize));
-      label.setAttribute("stroke-width", String(haloWidth));
+      label.style.stroke = "none";
+      if (onTint) label.style.fill = CHART.ink;
       label.textContent = truncateToFit(leaf.data.name, Math.max(4, Math.floor((cellW - 10) / charW)));
       g.appendChild(label);
 
@@ -141,8 +124,9 @@ function renderTreemap() {
         sub.setAttribute("y", leaf.y0 + fontSize + 17);
         sub.setAttribute("class", "treemap-cell-label");
         sub.setAttribute("font-size", "10");
-        sub.setAttribute("stroke-width", "2");
-        sub.style.opacity = "0.8";
+        sub.style.stroke = "none";
+        sub.style.fontWeight = "500";
+        if (onTint) sub.style.fill = CHART.ink;
         sub.textContent = fmtNumber(leaf.data.value);
         g.appendChild(sub);
       }
@@ -170,9 +154,11 @@ function renderTreemap() {
 
 function renderTreemapLegend(categories) {
   const legend = document.getElementById("treemap-legend");
-  legend.innerHTML = categories.map((c) =>
-    '<div class="lg-item"><span class="lg-swatch" style="background:' + categoryColor(c, categories) + '"></span>' + escapeHtml(c) + '</div>'
-  ).join("");
+  legend.innerHTML = categories.map((c) => {
+    const color = categoryColor(c, categories);
+    const edge = chartEdge(color);
+    return '<div class="lg-item"><span class="lg-swatch" style="background:' + color + (edge ? ';border:1px solid ' + edge : '') + '"></span>' + escapeHtml(c) + '</div>';
+  }).join("");
 }
 
 function truncateToFit(s, maxChars) {

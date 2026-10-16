@@ -300,7 +300,6 @@ function spawnParticle(from, to, opts) {
   p.style.setProperty("--duration-ms", duration + "ms");
   if (color) {
     p.style.background = color;
-    p.style.boxShadow = "0 0 8px " + color;
   }
   document.body.appendChild(p);
   setTimeout(function () { if (p.parentNode) p.parentNode.removeChild(p); }, duration + 100);
@@ -330,5 +329,78 @@ function elementCenter(el) {
     x: rect.left + rect.width / 2 + window.scrollX,
     y: rect.top + rect.height / 2 + window.scrollY
   };
+}
+
+//────────────────────────────────────────────────────────────────────────
+// House chart palette. Every colour a chart or inline style builds in JS
+// comes from the active skin's tokens (--ink, --accent, --warm, --risk,
+// --ink-muted, --mat-sheet in src/demo/styles.ts). The values are var()
+// and color-mix() strings, so the browser resolves them at paint time:
+// a skin switch recolours every rendered chart at once, no re-render.
+// Never hard-code hex in a chart.
+//
+// Roles: accent = magnitude / the primary series; warm = the second
+// series, the low side of a diverging scale, peaks set against an accent
+// ramp; risk = overlap or failure; ink and ink-muted = neutral series.
+//────────────────────────────────────────────────────────────────────────
+var CHART = {
+  ink: "var(--ink)",
+  accent: "var(--accent)",
+  warm: "var(--warm)",
+  risk: "var(--risk)",
+  muted: "var(--ink-muted)",
+  sheet: "var(--mat-sheet)",
+};
+// pct% of colour mixed into base (default: the sheet). An opaque tint.
+function chartTint(color, pct, base) {
+  var p = Math.max(0, Math.min(100, pct));
+  return "color-mix(in srgb, " + color + " " + p.toFixed(1) + "%, " + (base || CHART.sheet) + ")";
+}
+// Colour at opacity a (0..1), see-through to whatever sits behind it.
+function chartAlpha(color, a) {
+  var p = Math.max(0, Math.min(1, a)) * 100;
+  return "color-mix(in srgb, " + color + " " + p.toFixed(1) + "%, transparent)";
+}
+// Categorical fills. Two hues at two depths plus ink lead, so the first
+// five stay distinct in every skin (graphite --warm sits close to
+// --ink-muted; olive --warm sits close to --risk).
+var CHART_SERIES = [
+  CHART.accent, CHART.warm, CHART.ink,
+  chartTint(CHART.accent, 45), chartTint(CHART.warm, 45),
+  CHART.muted, CHART.risk, chartTint(CHART.ink, 35),
+];
+// Solid series: every entry is dark enough to carry a paper-coloured label.
+var CHART_SOLID = [CHART.accent, chartTint(CHART.warm, 80, CHART.ink), CHART.ink, CHART.risk, CHART.muted];
+function chartSeries(i) {
+  return CHART_SERIES[((i % CHART_SERIES.length) + CHART_SERIES.length) % CHART_SERIES.length];
+}
+// One colour per signal category, shared by every chart that keys on it
+// (embedding scatter, Pareto scatter, treemap). Interest takes the deep
+// warm so a paper label on it clears 5:1 and it stays apart from the
+// fallback grey in every skin.
+var CHART_CATEGORY = {
+  demographic: CHART_SERIES[0],
+  interest: CHART_SOLID[1],
+  purchase_intent: CHART_SERIES[2],
+  geo: CHART_SERIES[3],
+  composite: CHART_SERIES[4],
+};
+function chartCategoryColor(category) {
+  return CHART_CATEGORY[category] || CHART_SERIES[7];
+}
+// The tints are too pale to stand on the sheet alone (under 3:1). A mark
+// or swatch in a tint carries a 1px edge in its parent colour, and a label
+// set on a tint is ink, not paper. chartEdge returns "" for solid colours.
+var CHART_TINT_EDGE = {};
+CHART_TINT_EDGE[CHART_SERIES[3]] = CHART.accent;
+CHART_TINT_EDGE[CHART_SERIES[4]] = CHART.warm;
+CHART_TINT_EDGE[CHART_SERIES[7]] = CHART.ink;
+function chartEdge(color) {
+  return CHART_TINT_EDGE[color] || "";
+}
+// Diverging scale through the sheet: -1 = warm, 0 = sheet, +1 = accent.
+function chartDiverging(v) {
+  var t = Math.max(-1, Math.min(1, v));
+  return chartTint(t >= 0 ? CHART.accent : CHART.warm, Math.abs(t) * 100);
 }
 `;

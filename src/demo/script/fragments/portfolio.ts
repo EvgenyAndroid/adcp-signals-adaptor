@@ -67,7 +67,7 @@ async function renderPortPareto() {
     rMaxLog = rMaxLog + xPad;
 
     var W = 760, H = 460, padL = 60, padR = 28, padT = 24, padB = 52;
-    var colorMap = { demographic: "#4f8eff", interest: "#8b6eff", purchase_intent: "#ff7a5c", geo: "#2bd4a0", composite: "#ffcb5c" };
+    var colorMap = CHART_CATEGORY;
     function sx(reach) { return padL + (Math.log10(reach + 1) - rMinLog) / (rMaxLog - rMinLog + 1e-9) * (W - padL - padR); }
     function sy(cpm)   { return H - padB - (cpm - cMin) / (cMax - cMin + 1e-9) * (H - padT - padB); }
 
@@ -100,15 +100,25 @@ async function renderPortPareto() {
       gridlines += '<text x="' + (padL - 8) + '" y="' + (y + 3) + '" text-anchor="end" fill="var(--text-mut)" font-size="10" font-family="ui-monospace">' + t.label + '</text>';
     });
 
-    // Draw dominated first (behind), then frontier (in front, gold halo)
+    // Draw dominated first (behind), then frontier (in front). A frontier
+    // dot gets a separate ink ring outside a sheet gap, so the ring reads
+    // on every category colour, ink dots included. Pale tints carry a 1px
+    // edge in their parent colour (chartEdge).
     function dot(p, isFrontier) {
       var radius = isFrontier ? (4.5 + (p.specificity || 0) * 5) : 3;
-      var color = colorMap[p.category] || "#8892a6";
-      var stroke = isFrontier ? 'stroke="gold" stroke-width="1.3"' : 'stroke="rgba(255,255,255,0.1)" stroke-width="0.5"';
-      var op = isFrontier ? 0.9 : 0.35;
-      return '<circle cx="' + sx(p.reach).toFixed(1) + '" cy="' + sy(p.cpm).toFixed(1) + '" r="' + radius.toFixed(1) + '" fill="' + color + '" fill-opacity="' + op + '" ' + stroke + ' data-sid="' + escapeHtml(p.signal_id) + '" class="' + (isFrontier ? 'pareto-front' : 'pareto-dom') + '">' +
+      var color = chartCategoryColor(p.category);
+      var edge = chartEdge(color);
+      var stroke = edge
+        ? 'stroke="' + edge + '" stroke-width="1"'
+        : isFrontier ? 'stroke="' + CHART.sheet + '" stroke-width="1.4"' : 'stroke="' + chartAlpha(CHART.sheet, 0.5) + '" stroke-width="0.5"';
+      // A tint is already pre-mixed with the sheet, so a dominated tint dot
+      // stays opaque: at 0.5 it faded to a bare outline that read as a ring.
+      var op = isFrontier ? 0.9 : edge ? 1 : 0.5;
+      var cx = sx(p.reach).toFixed(1), cy = sy(p.cpm).toFixed(1);
+      return '<circle cx="' + cx + '" cy="' + cy + '" r="' + radius.toFixed(1) + '" fill="' + color + '" fill-opacity="' + op + '" ' + stroke + ' data-sid="' + escapeHtml(p.signal_id) + '" class="' + (isFrontier ? 'pareto-front' : 'pareto-dom') + '">' +
         '<title>' + escapeHtml(p.name) + ' · reach=' + (p.reach / 1e6).toFixed(1) + 'M · CPM=$' + p.cpm.toFixed(2) + ' · spec=' + (p.specificity || 0).toFixed(2) + (isFrontier ? ' · PARETO-OPTIMAL' : '') + '</title>' +
-      '</circle>';
+      '</circle>' +
+      (isFrontier ? '<circle cx="' + cx + '" cy="' + cy + '" r="' + (radius + 2.2).toFixed(1) + '" fill="none" stroke="' + CHART.ink + '" stroke-width="1" pointer-events="none"/>' : '');
     }
     var dominated = allPoints.filter(function (p) { return !p.on_frontier; }).map(function (p) { return dot(p, false); }).join("");
     var front = allPoints.filter(function (p) { return p.on_frontier; }).map(function (p) { return dot(p, true); }).join("");
@@ -126,19 +136,19 @@ async function renderPortPareto() {
     // Summary cards
     '<div class="pareto-stats">' +
       '<div class="lab-stat-card"><div class="lab-stat-label">Total signals</div><div class="lab-stat-val">' + allPoints.length + '</div></div>' +
-      '<div class="lab-stat-card"><div class="lab-stat-label">On frontier</div><div class="lab-stat-val" style="color:gold">' + frontier.length + '</div></div>' +
+      '<div class="lab-stat-card"><div class="lab-stat-label">On frontier</div><div class="lab-stat-val" style="color:' + CHART.accent + '">' + frontier.length + '</div></div>' +
       '<div class="lab-stat-card"><div class="lab-stat-label">Most reach</div><div class="lab-stat-val" style="font-size:13px">' + escapeHtml(data.summary.most_reach || "—") + '</div></div>' +
       '<div class="lab-stat-card"><div class="lab-stat-label">Lowest CPM</div><div class="lab-stat-val" style="font-size:13px">' + escapeHtml(data.summary.lowest_cost || "—") + '</div></div>' +
     '</div>' +
     '<div class="pareto-legend">' +
-      Object.keys(colorMap).map(function (k) { return '<span class="pl-item"><span class="pl-dot" style="background:' + colorMap[k] + '"></span>' + k.replace("_", " ") + '</span>'; }).join('') +
-      '<span class="pl-item" style="margin-left:auto"><span class="pl-dot" style="background:transparent;border:1.5px solid gold"></span>Pareto-optimal</span>' +
-      '<span class="pl-item"><span class="pl-dot" style="background:#8892a6;opacity:0.45"></span>dominated</span>' +
+      Object.keys(colorMap).map(function (k) { var edge = chartEdge(colorMap[k]); return '<span class="pl-item"><span class="pl-dot" style="background:' + colorMap[k] + (edge ? ';border:1px solid ' + edge : '') + '"></span>' + k.replace("_", " ") + '</span>'; }).join('') +
+      '<span class="pl-item" style="margin-left:auto"><span class="pl-dot" style="width:7px;height:7px;margin:0 2px;background:' + CHART.muted + ';box-shadow:0 0 0 1.5px ' + CHART.sheet + ', 0 0 0 2.5px ' + CHART.ink + '"></span>Pareto-optimal</span>' +
+      '<span class="pl-item"><span class="pl-dot" style="background:' + chartTint(CHART.ink, 35) + '"></span>dominated</span>' +
     '</div>';
     document.getElementById("port-pareto-explainer").innerHTML = renderChartExplainer({
-      what: "Every signal in the catalog plotted as reach (log-scale X) vs CPM (Y). Gold-outlined dots are Pareto-efficient — no other signal beats them on all three of {more reach, less CPM, more specificity}.",
+      what: "Every signal in the catalog plotted as reach (log-scale X) vs CPM (Y). Ringed dots are Pareto-efficient — no other signal beats them on all three of {more reach, less CPM, more specificity}.",
       how: "A signal is Pareto-efficient if no other signal has \u2265 reach AND \u2264 CPM AND \u2265 specificity (with at least one strict inequality). Dot radius \u221d specificity score; color = category type. Frontier: " + frontier.length + " of " + allPoints.length + " candidates.",
-      read: "Upper-left = premium-CPM niche audiences. Lower-right = cheap broad reach. Gold dots are the only rational picks — dominated dots are strictly worse than at least one gold dot. Click any dot to open its detail panel.",
+      read: "Upper-left = premium-CPM niche audiences. Lower-right = cheap broad reach. Ringed dots are the only rational picks — dominated dots are strictly worse than at least one ringed dot. Click any dot to open its detail panel.",
       limits: "Static snapshot. Ignores temporal availability and deployment-platform compatibility. Specificity is heuristic (category-derived).",
     });
     host.querySelectorAll("circle").forEach(function (el) { if (el.dataset.sid) el.addEventListener("click", function () { openDetailHydrated(el.dataset.sid); }); });
@@ -481,8 +491,8 @@ async function renderSeaHeatmap() {
       html += '<text x="' + (nameCol - 8) + '" y="' + (y + rowH / 2 + 3) + '" text-anchor="end" fill="var(--text)" font-size="10.5">' + escapeHtml(r2.name.slice(0, 30)) + '</text>';
       (r2.monthly || []).forEach(function (m, i) {
         var intensity = Math.min(1, Math.max(0, (m - 0.5) / 1.5));
-        var fill = "rgba(79, 142, 255, " + (0.15 + intensity * 0.75).toFixed(3) + ")";
-        if (m >= 1.3) fill = "rgba(255, 122, 92, " + ((m - 1) * 0.6).toFixed(3) + ")";
+        var fill = chartAlpha(CHART.accent, 0.15 + intensity * 0.75);
+        if (m >= 1.3) fill = chartAlpha(CHART.warm, (m - 1) * 0.6);
         html += '<rect x="' + (nameCol + i * cellW) + '" y="' + y + '" width="' + cellW + '" height="' + rowH + '" fill="' + fill + '" stroke="var(--bg-surface)" stroke-width="0.5">' +
           '<title>' + escapeHtml(r2.name) + ' \u00b7 month ' + (i + 1) + ' \u00d7' + m.toFixed(2) + '</title>' +
         '</rect>';

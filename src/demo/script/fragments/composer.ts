@@ -358,7 +358,7 @@ function renderSaturationResult(data) {
     : -1;
 
   var svg = '<svg class="comp-sat-curve" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
-    '<path d="' + areaPts + '" fill="rgba(79,142,255,0.18)" stroke="none"/>' +
+    '<path d="' + areaPts + '" fill="' + chartAlpha(CHART.accent, 0.18) + '" stroke="none"/>' +
     '<path d="' + curve.map(function (c, i) { return (i === 0 ? "M " : "L ") + xScale(i) + " " + yScale(c.unique_reach); }).join(" ") +
       '" fill="none" stroke="var(--accent)" stroke-width="1.8"/>';
   // Sec-31u T2#10: marginal-reach dots get hover-scrub tooltips +

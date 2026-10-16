@@ -114,9 +114,9 @@ async function _refreshConformancePill() {
     const txt = c.passed + " / " + c.applicable;
     el.textContent = txt;
     // Color-code: green when all pass, yellow on partial, red on any fail.
-    el.classList.remove("pill-success", "pill-warn", "pill-error");
+    el.classList.remove("pill-success", "pill-warning", "pill-error");
     if (c.failed > 0) el.classList.add("pill-error");
-    else if (c.passed < c.applicable) el.classList.add("pill-warn");
+    else if (c.passed < c.applicable) el.classList.add("pill-warning");
     else el.classList.add("pill-success");
     const last = (data.ext.compliance.last_run) || "—";
     const runner = (data.ext.compliance.client_runner) || "—";

@@ -293,7 +293,7 @@ function renderToolCard(tool) {
                 const isReq = required.includes(k);
                 return '<div class="tool-prop">' +
                   '<div class="tool-prop-key"><span class="mono">' + escapeHtml(k) + '</span>' +
-                    (isReq ? ' <span class="pill" style="background:rgba(239,68,68,0.12);color:var(--error);font-size:9.5px">required</span>' : '') +
+                    (isReq ? ' <span class="pill" style="background:var(--error-dim);color:var(--error);font-size:9.5px">required</span>' : '') +
                     ' <span class="tool-prop-type mono">' + escapeHtml(p.type || "any") + (p.enum ? " (enum)" : "") + '</span></div>' +
                   (p.description ? '<div class="tool-prop-desc">' + escapeHtml(p.description) + '</div>' : "") +
                   (Array.isArray(p.enum) ? '<div class="tool-prop-enum mono">' + p.enum.map((v) => '<span>' + escapeHtml(String(v)) + '</span>').join("") + '</div>' : "") +

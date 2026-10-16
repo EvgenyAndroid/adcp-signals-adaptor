@@ -129,13 +129,12 @@ function computeStackSummary() {
   sigs.forEach(function (s, i) {
     var sz = s.estimated_audience_size || 0;
     var w = (sz / sum) * W;
-    var hue = (i * 47) % 360;
-    stackSvg += '<rect x="' + xPos + '" y="0" width="' + w.toFixed(1) + '" height="' + H + '" fill="hsl(' + hue + ' 60% 55%)" fill-opacity="0.85"><title>' + escapeHtml(s.name) + ': ' + fmtNumber(sz) + '</title></rect>';
+    stackSvg += '<rect x="' + xPos + '" y="0" width="' + w.toFixed(1) + '" height="' + H + '" fill="' + chartSeries(i) + '" fill-opacity="0.85"><title>' + escapeHtml(s.name) + ': ' + fmtNumber(sz) + '</title></rect>';
     xPos += w;
   });
   // Overlap stripe overlay
   var overlapFrac = sum > 0 ? overlap / sum : 0;
-  stackSvg += '<pattern id="ov-stripe" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="rgba(0,0,0,0.5)" stroke-width="3"/></pattern>';
+  stackSvg += '<pattern id="ov-stripe" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="' + chartAlpha(CHART.ink, 0.5) + '" stroke-width="3"/></pattern>';
   stackSvg += '<rect x="' + ((1 - overlapFrac) * W).toFixed(1) + '" y="0" width="' + (overlapFrac * W).toFixed(1) + '" height="' + H + '" fill="url(#ov-stripe)"/>';
   stackSvg += '</svg>';
   document.getElementById("stack-bar-wrap").innerHTML =
@@ -702,19 +701,16 @@ async function renderEmbeddingScatter() {
     var W = 640, H = 380;
     function sx(x) { return 40 + ((x - xMin) / (xMax - xMin + 1e-9)) * (W - 80); }
     function sy(y) { return H - 30 - ((y - yMin) / (yMax - yMin + 1e-9)) * (H - 60); }
-    var colorMap = {
-      demographic:     "#4f8eff",
-      interest:        "#8b6eff",
-      purchase_intent: "#ff7a5c",
-      geo:             "#2bd4a0",
-      composite:       "#ffcb5c",
-    };
+    var colorMap = CHART_CATEGORY;
     var svgDots = points.map(function (p, idx) {
-      var color = colorMap[p.category] || "#8892a6";
+      var color = chartCategoryColor(p.category);
+      // Pale tints take a 1px edge in their parent colour; solid dots
+      // keep the sheet hairline that separates overlapping marks.
+      var edge = chartEdge(color);
       // Stagger dot entry so the scatter "blooms" on initial render.
       // data-emb-idx wires the click handler installed below.
       return '<circle class="emb-dot ux-stagger-row" data-emb-idx="' + idx + '" style="--ux-stagger-i:' + Math.min(idx, 28) + '" cx="' + sx(p.x).toFixed(1) + '" cy="' + sy(p.y).toFixed(1) + '" r="5" ' +
-        'fill="' + color + '" fill-opacity="0.85" stroke="rgba(255,255,255,0.2)" stroke-width="0.8">' +
+        'fill="' + color + '" fill-opacity="0.85" stroke="' + (edge || chartAlpha(CHART.sheet, 0.7)) + '" stroke-width="' + (edge ? '1' : '0.8') + '">' +
         '<title>' + escapeHtml(p.name) + ' (' + escapeHtml(p.category) + ')&#10;' + escapeHtml(p.description) + '</title>' +
       '</circle>';
     }).join("");
@@ -792,7 +788,8 @@ async function renderEmbeddingScatter() {
     }
     var cats = Object.keys(colorMap);
     legend.innerHTML = cats.map(function (c) {
-      return '<span class="emb-legend-item"><span class="emb-legend-dot" style="background:' + colorMap[c] + '"></span>' + escapeHtml(c) + '</span>';
+      var edge = chartEdge(colorMap[c]);
+      return '<span class="emb-legend-item"><span class="emb-legend-dot" style="background:' + colorMap[c] + (edge ? ';border:1px solid ' + edge : '') + '"></span>' + escapeHtml(c) + '</span>';
     }).join("");
     var expl = document.getElementById("emb-scatter-explainer");
     if (expl) expl.innerHTML = renderChartExplainer({
@@ -819,22 +816,9 @@ async function renderEmbeddingHeatmap() {
     var W = margin + n * cell + 20;
     var H = margin + n * cell + 20;
     function colorFor(v) {
-      // v in [-1, 1]. Diagonal = 1 (self). Map to a cool-warm scale.
-      var t = (v + 1) / 2; // 0..1
-      // lerp between dark blue and warm orange through white
-      if (t > 0.5) {
-        var f = (t - 0.5) * 2;
-        var rr = Math.round(255 * f + 60 * (1 - f));
-        var gg = Math.round(128 * f + 100 * (1 - f));
-        var bb = Math.round(90 * f + 200 * (1 - f));
-        return "rgb(" + rr + "," + gg + "," + bb + ")";
-      } else {
-        var f2 = t * 2;
-        var rr2 = Math.round(60 * f2 + 22 * (1 - f2));
-        var gg2 = Math.round(100 * f2 + 52 * (1 - f2));
-        var bb2 = Math.round(200 * f2 + 120 * (1 - f2));
-        return "rgb(" + rr2 + "," + gg2 + "," + bb2 + ")";
-      }
+      // v in [-1, 1]. Diagonal = 1 (self). Diverging house scale:
+      // warm (opposite) through the sheet (unrelated) to accent (identical).
+      return chartDiverging(v);
     }
     // Sec-31u: heatmap cells animate-in with stagger and respond to
     // hover (highlights row + column, dims rest). data-hr/data-hc carry
@@ -899,8 +883,8 @@ async function renderEmbeddingHeatmap() {
     var expl2 = document.getElementById("emb-heatmap-explainer");
     if (expl2) expl2.innerHTML = renderChartExplainer({
       what: "How semantically close every audience is to every other one, shown as a 20\u00d720 grid of cosine similarity scores.",
-      how: "Cosine similarity between each pair of 512-d embedding vectors. Bright orange = very similar, deep blue = very different. The diagonal is always +1 (every audience matches itself).",
-      read: "Bright blocks along the diagonal = clusters of similar audiences. A bright off-diagonal cell means you might be duplicating reach if you activate both.",
+      how: "Cosine similarity between each pair of 512-d embedding vectors. Deep accent = very similar, deep contrast tone = very different, pale = unrelated (key under the grid). The diagonal is always +1 (every audience matches itself).",
+      read: "Deep accent blocks along the diagonal = clusters of similar audiences. A deep accent off-diagonal cell means you might be duplicating reach if you activate both.",
       limits: "Shows only the first 20 embedded signals for readability. Use /ucp/similarity?n=N for larger matrices.",
     });
   } catch (e) {
@@ -952,11 +936,11 @@ async function renderEmbeddingSankey() {
       var size = Math.max(20, rightSpace - 20);
       var totalForSys = 0;
       mids.forEach(function (m) { totalForSys += (rightFromMid[m] && rightFromMid[m][sys]) || 0; });
-      nodes += '<rect class="sk-node sk-node-right" data-sk-right="' + escapeHtml(sys) + '" x="' + rightX + '" y="' + y + '" width="' + nodeW + '" height="' + size + '" fill="#8b6eff" fill-opacity="0.7"/>' +
+      nodes += '<rect class="sk-node sk-node-right" data-sk-right="' + escapeHtml(sys) + '" x="' + rightX + '" y="' + y + '" width="' + nodeW + '" height="' + size + '" fill="' + CHART.ink + '" fill-opacity="0.7"/>' +
         '<text x="' + (rightX + nodeW + 8) + '" y="' + (y + size / 2 + 4) + '" fill="var(--text)" font-size="11" font-family="ui-sans-serif">' + escapeHtml(sys) + ' · ' + totalForSys + '</text>';
     });
     // Left-column anchor
-    nodes += '<rect x="' + leftX + '" y="20" width="' + nodeW + '" height="' + (H - 40) + '" fill="#2bd4a0" fill-opacity="0.5"/>' +
+    nodes += '<rect x="' + leftX + '" y="20" width="' + nodeW + '" height="' + (H - 40) + '" fill="' + CHART.warm + '" fill-opacity="0.5"/>' +
       '<text x="' + (leftX + nodeW + 8) + '" y="40" fill="var(--text)" font-size="11" font-family="ui-sans-serif">IAB Audience 1.1</text>' +
       '<text x="' + (leftX + nodeW + 8) + '" y="56" fill="var(--text-mut)" font-size="10" font-family="ui-monospace">' + signals.length + ' signals</text>';
     // Flows: each path carries data-sk-mid (and data-sk-right for the
@@ -969,7 +953,7 @@ async function renderEmbeddingSankey() {
       var yLeft = 20 + (H - 40) / 2 + (mi - mids.length / 2) * 10;
       var cx1 = leftX + nodeW + (midX - leftX - nodeW) / 2;
       flows += '<path class="sk-flow sk-flow-leftmid" data-sk-mid="' + mi + '" style="--ux-stagger-i:' + skFi + '" d="M' + (leftX + nodeW) + ',' + yLeft + ' C' + cx1 + ',' + yLeft + ' ' + cx1 + ',' + yMid + ' ' + midX + ',' + yMid + '" ' +
-        'fill="none" stroke="#2bd4a0" stroke-opacity="0.3" stroke-width="' + Math.max(1, midCounts[m] * 1.5) + '"><title>' + escapeHtml(m) + ' · ' + midCounts[m] + '</title></path>';
+        'fill="none" stroke="' + CHART.warm + '" stroke-opacity="0.3" stroke-width="' + Math.max(1, midCounts[m] * 1.5) + '"><title>' + escapeHtml(m) + ' · ' + midCounts[m] + '</title></path>';
       skFi++;
       var rfm = rightFromMid[m] || {};
       rightSystems.forEach(function (sys, ri) {
@@ -978,7 +962,7 @@ async function renderEmbeddingSankey() {
         var yRight = 20 + ri * rightSpace + rightSpace / 2;
         var cx2 = midX + nodeW + (rightX - midX - nodeW) / 2;
         flows += '<path class="sk-flow sk-flow-midright" data-sk-mid="' + mi + '" data-sk-right="' + escapeHtml(sys) + '" style="--ux-stagger-i:' + skFi + '" d="M' + (midX + nodeW) + ',' + yMid + ' C' + cx2 + ',' + yMid + ' ' + cx2 + ',' + yRight + ' ' + rightX + ',' + yRight + '" ' +
-          'fill="none" stroke="#8b6eff" stroke-opacity="0.25" stroke-width="' + Math.max(1, count * 1.2) + '"><title>' + escapeHtml(m) + " -> " + escapeHtml(sys) + ' · ' + count + '</title></path>';
+          'fill="none" stroke="' + CHART.ink + '" stroke-opacity="0.25" stroke-width="' + Math.max(1, count * 1.2) + '"><title>' + escapeHtml(m) + " -> " + escapeHtml(sys) + ' · ' + count + '</title></path>';
         skFi++;
       });
     });
@@ -1057,7 +1041,7 @@ async function renderEmbeddingSankey() {
     var expl3 = document.getElementById("emb-sankey-explainer");
     if (expl3) expl3.innerHTML = renderChartExplainer({
       what: "How this agent\u2019s audiences map into the buyer-side taxonomies a HoldCo planner already uses.",
-      how: "Three columns: our native IAB Audience 1.1 catalog (green) \u2192 derived IAB Content 3.0 topics (blue) \u2192 buyer systems (purple: LiveRamp, TTD, Nielsen, Mastercard). Ribbon width \u221d number of signals that flow through that path.",
+      how: "Three columns: our native IAB Audience 1.1 catalog (left bar) \u2192 derived IAB Content 3.0 topics (middle, accent) \u2192 buyer systems (right, ink: LiveRamp, TTD, Nielsen, Mastercard). Ribbon width \u221d number of signals that flow through that path.",
       read: "Thick ribbons hitting a buyer system = that system already has direct coverage of this audience class. Thin / missing ribbons = integration gaps to prioritize.",
       limits: "Stage flags (live/modeled/roadmap) live on individual signal cards \u2014 this view shows volume, not confidence.",
     });

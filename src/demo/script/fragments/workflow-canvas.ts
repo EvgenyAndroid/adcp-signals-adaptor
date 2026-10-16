@@ -315,7 +315,7 @@ function _wfPaintAgentComplete(ev) {
         // Emit 3 particles staggered for a "flow" effect
         for (var pi = 0; pi < 3; pi++) {
           (function (delay) {
-            setTimeout(function () { spawnParticle(from, to, { duration: 700, color: ev.ok ? null : "#ff4d5e" }); }, delay);
+            setTimeout(function () { spawnParticle(from, to, { duration: 700, color: ev.ok ? null : CHART.risk }); }, delay);
           })(pi * 80);
         }
       }

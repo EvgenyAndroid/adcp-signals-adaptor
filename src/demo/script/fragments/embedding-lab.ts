@@ -258,7 +258,7 @@ function wireLabPlayground() {
       var phaseLabel = data.engine_phase === "pseudo-v1"
         ? "pseudo (deterministic hash — demo only)"
         : "live (" + data.model_label + ")";
-      meta.style.color = "var(--success, #5fd9c4)";
+      meta.style.color = "var(--success)";
       meta.innerHTML =
         "✓ transcoded · " + data.dim + "-d · space=" +
         escapeHtml(data.space_id) + " · phase=" + escapeHtml(phaseLabel) +
@@ -481,10 +481,10 @@ async function renderCoverageGaps() {
         var density = cell ? cell.density : 0;
         var fill;
         if (count === 0) {
-          fill = "rgba(255, 122, 92, 0.15)";  // warm gap
+          fill = chartAlpha(CHART.warm, 0.15);  // warm gap
         } else {
           var intensity = 0.3 + density * 0.7;
-          fill = "rgba(79, 142, 255, " + intensity.toFixed(3) + ")";
+          fill = chartAlpha(CHART.accent, intensity);
         }
         svg += '<rect x="' + (c2 * cellW) + '" y="' + (r2 * cellH) + '" width="' + cellW + '" height="' + cellH + '" fill="' + fill + '" stroke="var(--bg-surface)" stroke-width="0.5">' +
           '<title>cell (' + r2 + ',' + c2 + '): ' + count + ' signals, density=' + density.toFixed(2) + '</title>' +
@@ -505,8 +505,8 @@ async function renderCoverageGaps() {
       '</div>';
     document.getElementById("cov-explainer").innerHTML = renderChartExplainer({
       what: "A 12\u00d712 grid overlay on the 2D embedding projection. Each cell is colored by how many audiences occupy it.",
-      how: "Projects 26 embedded vectors to 2D via JL random projection, bins them into a 12\u00d712 grid. Warm/orange cells = gaps (below-median density). Top-3 gaps are circled and labeled.",
-      read: "Blue dense cells = catalog is saturated here. Orange gaps = \u201cmarketplace opportunities\u201d \u2014 concept regions we could expand into via new signals or partners.",
+      how: "Projects 26 embedded vectors to 2D via JL random projection, bins them into a 12\u00d712 grid. Faint cells = gaps (below-median density). Top-3 gaps are circled and labeled.",
+      read: "Deep accent cells = catalog is saturated here. Faint gaps = \u201cmarketplace opportunities\u201d \u2014 concept regions we could expand into via new signals or partners.",
       limits: "Operates on 26 embedded reference signals, not the full 520-signal catalog. Gaps are approximate.",
     });
   } catch (e) {

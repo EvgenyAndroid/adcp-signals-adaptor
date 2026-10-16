@@ -115,8 +115,9 @@ function renderOverlapResult(data) {
           (x.b_id === a.signal_agent_segment_id && x.a_id === b.signal_agent_segment_id)
         );
         const j = p ? p.jaccard : 0;
-        const hue = 220 - (j * 160); // high Jaccard = red-ish, low = blue-ish
-        const bg = "hsl(" + hue + " 60% " + (40 + j * 30) + "%)";
+        // Low Jaccard = pale warm, high = strong risk. The 58% ceiling keeps
+        // ink text at 4.5:1 or better up to J=0.85 (the heuristic's max) in every skin.
+        const bg = chartTint(chartTint(CHART.risk, j * 100, CHART.warm), 25 + j * 58);
         matrix += '<td class="jcell" style="background:' + bg + '" title="J=' + j.toFixed(3) + ' · intersection=' + fmtNumber(p?.intersection || 0) + '">' + j.toFixed(3) + '</td>';
       }
     }
@@ -161,7 +162,7 @@ function renderOverlapResult(data) {
   const explainer = renderChartExplainer({
     what: "How much two audiences overlap \u2014 as a heat matrix (pairwise) and as UpSet bars (subset sizes when you pick 3+).",
     how: "Jaccard similarity \u2248 category-affinity \u00d7 min(size)/max(size). Same category + same vertical = 0.85, same category = 0.55, same vertical = 0.35, unrelated = 0.12. The real number needs cleanroom match-rates.",
-    read: "Bright red cells = strong overlap (you\u2019d be re-buying the same people). Blue cells = distinct audiences safe to stack. UpSet bars rank the biggest shared slices across your whole selection.",
+    read: "Deep, saturated cells = strong overlap (you\u2019d be re-buying the same people). Pale cells = distinct audiences safe to stack. UpSet bars rank the biggest shared slices across your whole selection.",
     limits: "Heuristic \u2014 not a true 1P overlap. For accurate numbers, push all selected signals into a cleanroom and compute member-level intersection.",
   });
 

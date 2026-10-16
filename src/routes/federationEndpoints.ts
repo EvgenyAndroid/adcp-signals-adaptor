@@ -12,12 +12,13 @@ import { dstillerySearch, DSTILLERY_MCP_URL } from "../federation/dstilleryClien
 import { searchSignalsService } from "../domain/signalService";
 import { getDb } from "../storage/db";
 import { safeRecordSignalTrace, persistSignalTrace } from "../domain/signalTrace";
+import { selfProtocols } from "../domain/agentRegistry";
 
 const SELF_URL = "https://adcp-signals-adaptor.evgeny-193.workers.dev";
 
 // ── /agents/registry ─────────────────────────────────────────────────────────
 
-export function handleAgentsRegistry(): Response {
+export function handleAgentsRegistry(env: Pick<Env, "SERVE_ADCP_3_2">): Response {
   return jsonResponse({
     version: "sec_41_v1",
     self_agent: "evgeny_signals",
@@ -29,7 +30,7 @@ export function handleAgentsRegistry(): Response {
         mcp_url: SELF_URL + "/mcp",
         capabilities_url: SELF_URL + "/capabilities",
         stage: "live",
-        protocols: ["adcp_3.1", "ucp_0.2", "dts_1.2", "mcp_streamable_http"],
+        protocols: selfProtocols(env),
         specialties: [
           "cross_taxonomy_bridge_9_systems",
           "ucp_embedding_live",

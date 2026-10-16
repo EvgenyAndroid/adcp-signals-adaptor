@@ -29,6 +29,8 @@ vi.mock("../src/domain/signalService", async (importOriginal) => {
 import { handleMcpRequest } from "../src/mcp/server";
 import worker from "../src/index";
 import { createLogger } from "../src/utils/logger";
+import { COMPLIANCE_STATE } from "../src/constants/complianceState";
+import { SPEC_VERSION } from "../src/constants/specVersion";
 import type { Env } from "../src/types/env";
 
 const KEY = "demo-key-v32-test";
@@ -263,6 +265,56 @@ describe("flag ON: self-description reports 3.2", () => {
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
     }), makeEnv(true).env, ctx);
     expect(res.headers.get("X-AdCP-Version")).toBeNull();
+  });
+});
+
+// The surfaces #345 left labelled 3.1 with the flag ON. A label that names the
+// release served follows defaultServedVersion; the corpus pin and the recorded
+// compliance run do not change with the flag, so they keep saying 3.1 (the
+// /health corpus pin is pinned in the describe above).
+describe("flag ON: the labels #345 left at 3.1", () => {
+  const ctx = { waitUntil(p: Promise<unknown>) { void p.catch(() => {}); }, passThroughOnException() {} } as unknown as ExecutionContext;
+  const get = async (on: boolean, path: string): Promise<any> => {
+    const res = await worker.fetch(new Request(`https://adcp.signal-stack.io${path}`), makeEnv(on).env, ctx);
+    expect(res.status).toBe(200);
+    const { _trace, ...body } = (await res.json()) as Record<string, unknown>;
+    void _trace; // per-request timings
+    return body;
+  };
+  const caps = async (on: boolean): Promise<any> => (await tool(makeEnv(on).env, "get_adcp_capabilities", {})).sc;
+  const selfProtocols = (tag: string) => [tag, "ucp_0.2", "dts_1.2", "mcp_streamable_http"];
+
+  it("ext.governance.audience_bias_governance_schema.version names the release served", async () => {
+    expect((await caps(false)).ext.governance.audience_bias_governance_schema.version).toBe("adcp_3.1");
+    expect((await caps(true)).ext.governance.audience_bias_governance_schema.version).toBe("adcp_3.2");
+  });
+
+  it.each([
+    ["/agents/registry", "agents", "id"],
+    ["/agents/directory", "agents", "id"],
+    ["/vendor-health/snapshot?probe=false", "rows", "agent_id"],
+  ] as const)("%s: the self entry's protocols name the release served; peers are unchanged", async (path, list, id) => {
+    const off = (await get(false, path))[list] as Array<Record<string, unknown>>;
+    const on = (await get(true, path))[list] as Array<Record<string, unknown>>;
+    // vendor-health rows carry the time of the call
+    const peers = (rows: Array<Record<string, unknown>>) =>
+      rows.filter((a) => a[id] !== "evgeny_signals").map((a) => ({ ...a, snapshot_ts: undefined }));
+    expect(off.find((a) => a[id] === "evgeny_signals")?.["protocols"]).toEqual(selfProtocols("adcp_3.1"));
+    expect(on.find((a) => a[id] === "evgeny_signals")?.["protocols"]).toEqual(selfProtocols("adcp_3.2"));
+    expect(peers(on)).toEqual(peers(off));
+  });
+
+  it("ext.compliance still describes the recorded run: its line, not the release served", async () => {
+    const recorded = (await caps(true)).ext.compliance;
+    expect(recorded).toEqual((await caps(false)).ext.compliance);
+    expect(recorded.compliance_line).toBe(COMPLIANCE_STATE.compliance_line);
+    expect(recorded.spec_version).toBe(`adcp_${COMPLIANCE_STATE.compliance_line.split(".").slice(0, 2).join(".")}`);
+  });
+
+  it("/openapi.json is the same document in both states; info.version is the corpus patch", async () => {
+    const on = await get(true, "/openapi.json");
+    expect(on).toEqual(await get(false, "/openapi.json"));
+    expect(on.info.version).toBe(SPEC_VERSION);
   });
 });
 

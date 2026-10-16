@@ -49,7 +49,7 @@ export async function handleVendorHealthSnapshot(request: Request, env: Env, log
   const url = new URL(request.url);
   const probeLive = url.searchParams.get("probe") !== "false";
 
-  const snap = await buildVendorHealthSnapshot({ probeLive });
+  const snap = await buildVendorHealthSnapshot({ probeLive, env });
 
   // Append to KV history (best-effort, fire-and-await but failures
   // don't propagate). Only append when we actually probed; metadata-only

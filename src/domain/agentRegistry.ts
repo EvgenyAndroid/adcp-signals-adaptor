@@ -6,6 +6,8 @@
 // Equativ) are included here with stage="known_issue" so the UI can
 // surface "we tried" without attempting to call them.
 
+import { defaultServedVersion } from "../constants/specVersion";
+
 export type AgentStage = "live" | "roadmap" | "known_issue";
 export type AgentRole = "signals" | "buying" | "creative" | "unclassified";
 
@@ -48,8 +50,9 @@ export const AGENT_REGISTRY: RegisteredAgent[] = [
     // Self-entry tracks the version we actually serve on the wire
     // (adcp_version "3.1" since the 3.1 GA bump). Peer entries keep their
     // as-observed protocol tags from the directory seed — we don't assert
-    // upgrades for agents we haven't re-probed.
-    protocols: ["adcp_3.1", "ucp_0.2", "dts_1.2", "mcp_streamable_http"],
+    // upgrades for agents we haven't re-probed. This static value is the
+    // flag-OFF one; endpoints serve the entry through asServed(env).
+    protocols: selfProtocols(),
     specialties: [
       "cross_taxonomy_bridge_9_systems",
       "ucp_embedding_live",
@@ -342,6 +345,17 @@ export const AGENT_REGISTRY: RegisteredAgent[] = [
     specialties: ["id_resolution", "abilitec_graph", "ramp_id"],
   },
 ];
+
+/** Our own protocol tags. The AdCP tag is the release served by default:
+ *  adcp_3.1, or adcp_3.2 with SERVE_ADCP_3_2 ON (src/constants/specVersion.ts). */
+export function selfProtocols(env?: { SERVE_ADCP_3_2?: string }): string[] {
+  return [`adcp_${defaultServedVersion(env)}`, "ucp_0.2", "dts_1.2", "mcp_streamable_http"];
+}
+
+/** An entry as served under `env`: the self entry gets selfProtocols(env); peers are returned as-is. */
+export function asServed(agent: RegisteredAgent, env?: { SERVE_ADCP_3_2?: string }): RegisteredAgent {
+  return agent.id === SELF_AGENT_ID ? { ...agent, protocols: selfProtocols(env) } : agent;
+}
 
 export function getLiveAgents(): RegisteredAgent[] {
   return AGENT_REGISTRY.filter((a) => a.stage === "live");

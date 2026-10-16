@@ -427,10 +427,10 @@ afterEach(() => {
 const CORPUS_TIMEOUT_MS = 60_000;
 
 describe("flag OFF: byte-for-byte the pre-3.2 surface", () => {
-  it("default env (no SERVE_ADCP_3_2) matches the cf5ef0e golden, and so does production's \"false\"", async () => {
+  it("default env (no SERVE_ADCP_3_2) matches the cf5ef0e golden, and so does the rollback value \"false\"", async () => {
     const doc = goldenDocument(await runCorpus({}));
     await expect(doc).toMatchFileSnapshot("./__snapshots__/flag-off-golden.json");
-    // wrangler.toml ships SERVE_ADCP_3_2 = "false", and the capability env forwards a defined value.
+    // Rollback sets SERVE_ADCP_3_2 = "false" in wrangler.toml, and the capability env forwards a defined value.
     expect(goldenDocument(await runCorpus({ SERVE_ADCP_3_2: "false" }))).toBe(doc);
   }, CORPUS_TIMEOUT_MS);
 });
@@ -497,6 +497,10 @@ const ON_RULES: Array<{ why: string; test: (entry: string, path: string, on: unk
   {
     why: "the REST capabilities body changes with supported_versions",
     test: (e, p) => e === "GET /capabilities" && p === "body_sha256",
+  },
+  {
+    why: "the governance schema's protocol-version label names the release served",
+    test: (_e, p, on) => /ext\.governance\.audience_bias_governance_schema\.version$/.test(p) && at(on, p) === "adcp_3.2",
   },
   {
     why: "the capabilities cache key gains the _adcp32 suffix",

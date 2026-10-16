@@ -30,15 +30,15 @@
 // — security-through-obscurity to keep randos off the demo URL, while
 // the workshop audience can be told the password verbally.
 
-import { SPEC_LABEL, SPEC_VERSION, ADCP_MAJOR_LINE } from "../constants/specVersion";
+import { SPEC_LABEL, SPEC_VERSION, servesAdcp32, servedReleaseLine } from "../constants/specVersion";
 import { COMPLIANCE_STATE } from "../constants/complianceState";
 import { BRAND_LOGO_DATA_URI } from "../constants/brandLogo";
 import { STYLES } from "../demo/styles";
 import { THEME_HEAD_SCRIPT } from "../demo/skins";
 import { SCRIPT_TAG } from "../demo/script";
 
-export function handleDemo(env: { DEMO_API_KEY: string }): Response {
-  return new Response(renderHtml(env.DEMO_API_KEY), {
+export function handleDemo(env: { DEMO_API_KEY: string; SERVE_ADCP_3_2?: string }): Response {
+  return new Response(renderHtml(env.DEMO_API_KEY, env), {
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
@@ -59,7 +59,16 @@ export function handleDemo(env: { DEMO_API_KEY: string }): Response {
   });
 }
 
-function renderHtml(demoKey: string): string {
+// Sidebar Version. Flag OFF: SPEC_LABEL ("3.1 GA · 3.1.20"), unchanged. Flag
+// ON the release served (3.2) is not the line of the vendored schema corpus
+// (SPEC_VERSION, 3.1.20), so the corpus gets its own row and its own name.
+function versionRows(env: { SERVE_ADCP_3_2?: string }): string {
+  if (!servesAdcp32(env)) return `<div class="kv"><span class="k">Version</span><span class="v mono">${SPEC_LABEL}</span></div>`;
+  return `<div class="kv"><span class="k">Version</span><span class="v mono">${servedReleaseLine(env)}</span></div>
+      <div class="kv"><span class="k">Schemas</span><span class="v mono" title="The vendored AdCP schema corpus the trace inspector validates payloads against">${SPEC_VERSION}</span></div>`;
+}
+
+function renderHtml(demoKey: string, env: { SERVE_ADCP_3_2?: string }): string {
   const safeKey = JSON.stringify(demoKey);
   return `<!doctype html>
 <html lang="en" class="is-locked">
@@ -360,7 +369,7 @@ ${STYLES}
     </nav>
 
     <div class="sidebar-footer">
-      <div class="kv"><span class="k">Version</span><span class="v mono">${SPEC_LABEL}</span></div>
+      ${versionRows(env)}
       <div class="kv"><span class="k">Client</span><span class="v mono">${COMPLIANCE_STATE.client_runner}</span></div>
       <div class="kv"><span class="k">Status</span><span class="v"><span class="status-dot ok"></span>live</span></div>
       <div class="kv"><span class="k">Conformance</span><span class="v"><span class="pill pill-success" id="footer-conformance-pill" title="Loading from /capabilities ext.compliance.results…">${COMPLIANCE_STATE.results.passed} / ${COMPLIANCE_STATE.results.applicable}</span></span></div>
@@ -2238,7 +2247,7 @@ ${STYLES}
             <div class="devkit-panel-title">Endpoints</div>
             <div class="devkit-endpoints">
               <div class="ep-row"><span class="ep-method">POST</span><code>/mcp</code><span class="ep-note">JSON-RPC 2.0 · 11 tools · bearer auth</span></div>
-              <div class="ep-row"><span class="ep-method">GET</span><code>/capabilities</code><span class="ep-note">AdCP ${ADCP_MAJOR_LINE} capabilities handshake · public</span></div>
+              <div class="ep-row"><span class="ep-method">GET</span><code>/capabilities</code><span class="ep-note">AdCP ${servedReleaseLine(env)} capabilities handshake · public</span></div>
               <div class="ep-row"><span class="ep-method">GET</span><code>/signals/search</code><span class="ep-note">Catalog search with filters · bearer</span></div>
               <div class="ep-row"><span class="ep-method">POST</span><code>/signals/estimate</code><span class="ep-note">Rule-based audience sizing · public</span></div>
               <div class="ep-row"><span class="ep-method">POST</span><code>/signals/overlap</code><span class="ep-note">Multi-signal Jaccard overlap · public</span></div>

@@ -8,9 +8,10 @@
 // real user-level data, and all signals are modeled / synthetic.
 
 import { SKIN_TOKENS_CSS, THEME_HEAD_SCRIPT } from "../demo/skins";
+import { servedReleaseLine } from "../constants/specVersion";
 
-export function handlePrivacy(): Response {
-  return new Response(PRIVACY_HTML, {
+export function handlePrivacy(env: { SERVE_ADCP_3_2?: string }): Response {
+  return new Response(privacyHtml(servedReleaseLine(env)), {
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
@@ -19,7 +20,7 @@ export function handlePrivacy(): Response {
   });
 }
 
-const PRIVACY_HTML = `<!doctype html>
+const privacyHtml = (releaseLine: string): string => `<!doctype html>
 <html lang="en" data-theme="graphite">
 <head>
 <meta charset="utf-8"/>
@@ -153,7 +154,7 @@ ${THEME_HEAD_SCRIPT}
   <h2>What this agent does</h2>
   <p>
     Serves a catalog of <strong>synthetic, modeled audience signals</strong>
-    over the AdCP Signals Activation Protocol (3.1 GA) for demonstration
+    over the AdCP Signals Activation Protocol (${releaseLine}) for demonstration
     and conformance-testing purposes. Exposes the catalog via an MCP
     endpoint at <code>/mcp</code>, a REST endpoint at <code>/signals/search</code>,
     and an interactive demo UI at <code>/</code>.

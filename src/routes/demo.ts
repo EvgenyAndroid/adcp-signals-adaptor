@@ -75,6 +75,16 @@ function conformanceKey(env: { SERVE_ADCP_3_2?: string }): string {
   return servesAdcp32(env) ? `Conformance ${COMPLIANCE_STATE.compliance_line}` : "Conformance";
 }
 
+// Sidebar AAO row, flag ON only. The recorded run above is ours; the hosted
+// grade and badges live in the AAO registry, so the row links there instead of
+// restating a status that could go stale. Flag OFF: no row, unchanged.
+const AAO_REGISTRY_URL = "https://agenticadvertising.org/registry/agents/https%3A%2F%2Fadcp.signal-stack.io%2Fmcp";
+function aaoRow(env: { SERVE_ADCP_3_2?: string }): string {
+  if (!servesAdcp32(env)) return "";
+  return `
+      <div class="kv"><span class="k">AAO</span><span class="v"><a href="${AAO_REGISTRY_URL}" target="_blank" rel="noopener noreferrer" class="mono" style="color:var(--accent-ink);text-decoration:none" title="The AAO registry is the live authority for this agent's hosted grade and badges">signals ${servedReleaseLine(env).split(" ")[0]} ↗</a></span></div>`;
+}
+
 function renderHtml(demoKey: string, env: { SERVE_ADCP_3_2?: string }): string {
   const safeKey = JSON.stringify(demoKey);
   return `<!doctype html>
@@ -379,7 +389,7 @@ ${STYLES}
       ${versionRows(env)}
       <div class="kv"><span class="k">Client</span><span class="v mono">${COMPLIANCE_STATE.client_runner}</span></div>
       <div class="kv"><span class="k">Status</span><span class="v"><span class="status-dot ok"></span>live</span></div>
-      <div class="kv"><span class="k">${conformanceKey(env)}</span><span class="v"><span class="pill pill-success" id="footer-conformance-pill" title="Loading from /capabilities ext.compliance.results…">${COMPLIANCE_STATE.results.passed} / ${COMPLIANCE_STATE.results.applicable}</span></span></div>
+      <div class="kv"><span class="k">${conformanceKey(env)}</span><span class="v"><span class="pill pill-success" id="footer-conformance-pill" title="Loading from /capabilities ext.compliance.results…">${COMPLIANCE_STATE.results.passed} / ${COMPLIANCE_STATE.results.applicable}</span></span></div>${aaoRow(env)}
       <div class="kv"><span class="k">Discovery</span><span class="v"><a href="/.well-known/adagents.json" target="_blank" rel="noopener" class="mono" style="color:var(--accent-ink);text-decoration:none" title="Our published AdCP discovery anchor — declares this worker as the authorized signals agent. The trust anchor a buyer agent reads to discover us.">📡 adagents.json ↗</a></span></div>
       <div class="theme-picker" role="group" aria-label="Theme">
         <span class="theme-picker-label">Theme</span>

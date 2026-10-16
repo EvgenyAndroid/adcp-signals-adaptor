@@ -70,6 +70,12 @@ const VERSION_ROWS_ON =
   `      <div class="kv"><span class="k">Schemas</span><span class="v mono" title="The vendored AdCP schema corpus the trace inspector validates payloads against">${SPEC_VERSION}</span></div>`;
 const CONFORMANCE_KEY_OFF = `<span class="k">Conformance</span><span class="v"><span class="pill `;
 const CONFORMANCE_KEY_ON = `<span class="k">Conformance ${COMPLIANCE_STATE.compliance_line}</span><span class="v"><span class="pill `;
+const AAO_LINK = 'href="https://agenticadvertising.org/registry/agents/https%3A%2F%2Fadcp.signal-stack.io%2Fmcp"';
+const AAO_ROW_ON =
+  `\n      <div class="kv"><span class="k">AAO</span><span class="v"><a ${AAO_LINK} target="_blank" rel="noopener noreferrer" class="mono" ` +
+  `style="color:var(--accent-ink);text-decoration:none" title="The AAO registry is the live authority for this agent's hosted grade and badges">signals 3.2 ↗</a></span></div>`;
+// The Conformance row's closing markup; the AAO row follows it with the flag ON.
+const CONFORMANCE_ROW_TAIL_OFF = `${COMPLIANCE_STATE.results.passed} / ${COMPLIANCE_STATE.results.applicable}</span></span></div>`;
 const HANDSHAKE_OFF = "AdCP 3.1 GA capabilities handshake · public";
 const HANDSHAKE_ON = "AdCP 3.2 GA capabilities handshake · public";
 
@@ -106,10 +112,24 @@ describe("demo page (/)", () => {
     expect(on).not.toContain("3.1 GA");
   });
 
-  it("flag ON is the flag-OFF page with exactly those three edits", async () => {
+  it("flag OFF: no AAO row", async () => {
+    expect(await page("/")).not.toContain(AAO_LINK);
+  });
+
+  it("flag ON: an AAO row links to the registry record, the live authority for the hosted grade", async () => {
+    const on = await page("/", "true");
+    expect(count(on, AAO_ROW_ON)).toBe(1);
+    expect(on).not.toMatch(/<span class="k">AAO<\/span>[^\n]*Verified/);
+  });
+
+  it("flag ON is the flag-OFF page with exactly those four edits", async () => {
     const off = await page("/");
     expect(await page("/", "true")).toBe(
-      off.replace(VERSION_ROW_OFF, VERSION_ROWS_ON).replace(CONFORMANCE_KEY_OFF, CONFORMANCE_KEY_ON).replace(HANDSHAKE_OFF, HANDSHAKE_ON),
+      off
+        .replace(VERSION_ROW_OFF, VERSION_ROWS_ON)
+        .replace(CONFORMANCE_ROW_TAIL_OFF, CONFORMANCE_ROW_TAIL_OFF + AAO_ROW_ON)
+        .replace(CONFORMANCE_KEY_OFF, CONFORMANCE_KEY_ON)
+        .replace(HANDSHAKE_OFF, HANDSHAKE_ON),
     );
   });
 });

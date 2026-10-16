@@ -128,7 +128,9 @@ const CACHE_KEY = `${CACHE_KEY_PREFIX}_${SPEC_VERSION}_${COMPLIANCE_STATE.last_r
  *  The AdCP 3.2 flag changes the blob too, so it gets a suffix of its own —
  *  appended only when ON, so the flag-OFF key (and every blob already warm
  *  under it) is unchanged, and a flip in either direction never serves the
- *  other state's blob. */
+ *  other state's blob. The switch-on PR changed the flag-ON blob (governance
+ *  label) without a key change: safe only because no flag-ON blob was ever
+ *  cached in production; from here on a flag-ON change needs a key change. */
 function cacheKeyFor(signing: WebhookSigningKey | null, env?: CapabilityEnv): string {
   return `${CACHE_KEY}_ws-${signing ? signing.kid : "off"}${servesAdcp32(env) ? "_adcp32" : ""}`;
 }

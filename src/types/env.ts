@@ -16,8 +16,8 @@ export interface Env {
   // Set EMBEDDING_ENGINE=llm to activate LLM mode
   EMBEDDING_ENGINE?: string;
 
-  // AdCP 3.2 serving flag (wrangler.toml [vars], "true" there since
-  // 2026-10-16). ON only when exactly "true": the agent then advertises
+  // AdCP 3.2 serving flag (wrangler.toml [vars], "true" there; README
+  // changelog). ON only when exactly "true": the agent then advertises
   // supported_versions ["3.0","3.1","3.2"], defaults unpinned callers to 3.2,
   // implements the seed_account controller scenario, and verifies request
   // signatures under the 3.2 profile (covers_content_digest "required",

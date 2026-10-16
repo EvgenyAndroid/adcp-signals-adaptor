@@ -9,8 +9,8 @@ API_VERSION          = "3.1"
 EMBEDDING_ENGINE     = "llm"
 LINKEDIN_REDIRECT_URI = "https://adcp-signals-adaptor.evgeny-193.workers.dev/auth/linkedin/callback"
 # AdCP 3.2 (src/types/env.ts). Only the exact string "true" turns it on.
-# ON since 2026-10-16: the agent advertises 3.2 and serves it to unpinned
-# callers, so hosted grading uses the 3.2 bundle and the 3.1 card is replaced.
+# ON: the agent advertises 3.2 and serves it to unpinned callers, so hosted
+# grading uses the 3.2 bundle and the 3.1 card is replaced (README changelog).
 # Rollback is "false" here, in a reviewed PR of its own; merging it deploys
 # (deploy.yml). `wrangler deploy` replaces dashboard vars, so this line is the
 # source of truth. Local flag-OFF runs: `wrangler dev --var SERVE_ADCP_3_2:false`.

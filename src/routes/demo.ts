@@ -68,6 +68,13 @@ function versionRows(env: { SERVE_ADCP_3_2?: string }): string {
       <div class="kv"><span class="k">Schemas</span><span class="v mono" title="The vendored AdCP schema corpus the trace inspector validates payloads against">${SPEC_VERSION}</span></div>`;
 }
 
+// Sidebar Conformance key. The row reports the last recorded run (line
+// COMPLIANCE_STATE.compliance_line, 3.1.24), so with the flag ON, under
+// Version 3.2 GA, the key names that line. Flag OFF: "Conformance", unchanged.
+function conformanceKey(env: { SERVE_ADCP_3_2?: string }): string {
+  return servesAdcp32(env) ? `Conformance ${COMPLIANCE_STATE.compliance_line}` : "Conformance";
+}
+
 function renderHtml(demoKey: string, env: { SERVE_ADCP_3_2?: string }): string {
   const safeKey = JSON.stringify(demoKey);
   return `<!doctype html>
@@ -372,7 +379,7 @@ ${STYLES}
       ${versionRows(env)}
       <div class="kv"><span class="k">Client</span><span class="v mono">${COMPLIANCE_STATE.client_runner}</span></div>
       <div class="kv"><span class="k">Status</span><span class="v"><span class="status-dot ok"></span>live</span></div>
-      <div class="kv"><span class="k">Conformance</span><span class="v"><span class="pill pill-success" id="footer-conformance-pill" title="Loading from /capabilities ext.compliance.results…">${COMPLIANCE_STATE.results.passed} / ${COMPLIANCE_STATE.results.applicable}</span></span></div>
+      <div class="kv"><span class="k">${conformanceKey(env)}</span><span class="v"><span class="pill pill-success" id="footer-conformance-pill" title="Loading from /capabilities ext.compliance.results…">${COMPLIANCE_STATE.results.passed} / ${COMPLIANCE_STATE.results.applicable}</span></span></div>
       <div class="kv"><span class="k">Discovery</span><span class="v"><a href="/.well-known/adagents.json" target="_blank" rel="noopener" class="mono" style="color:var(--accent-ink);text-decoration:none" title="Our published AdCP discovery anchor — declares this worker as the authorized signals agent. The trust anchor a buyer agent reads to discover us.">📡 adagents.json ↗</a></span></div>
       <div class="theme-picker" role="group" aria-label="Theme">
         <span class="theme-picker-label">Theme</span>

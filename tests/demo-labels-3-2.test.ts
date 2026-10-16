@@ -7,6 +7,9 @@
 // the vendored schema corpus (SPEC_VERSION, 3.1.20, what the trace inspector
 // validates payloads against), which the flag does not change; with the flag
 // ON it gets its own "Schemas" row, so 3.1.20 never reads as a 3.2 patch.
+// Likewise the Conformance row reports the last recorded run (line
+// COMPLIANCE_STATE.compliance_line, 3.1.24), so with the flag ON its key names
+// that line and 55 / 55 never reads as a 3.2 result.
 //
 // Flag OFF is byte for byte what it was: tests/demo-render-snapshot.test.ts
 // pins the demo body with the flag unset; here "false" must equal unset, and
@@ -15,6 +18,7 @@
 import { describe, it, expect } from "vitest";
 import worker from "../src/index";
 import { SPEC_LABEL, SPEC_VERSION } from "../src/constants/specVersion";
+import { COMPLIANCE_STATE } from "../src/constants/complianceState";
 import type { Env } from "../src/types/env";
 
 const ctx = { waitUntil(p: Promise<unknown>) { void p.catch(() => {}); }, passThroughOnException() {} } as unknown as ExecutionContext;
@@ -64,6 +68,8 @@ const VERSION_ROW_OFF = `<div class="kv"><span class="k">Version</span><span cla
 const VERSION_ROWS_ON =
   `<div class="kv"><span class="k">Version</span><span class="v mono">3.2 GA</span></div>\n` +
   `      <div class="kv"><span class="k">Schemas</span><span class="v mono" title="The vendored AdCP schema corpus the trace inspector validates payloads against">${SPEC_VERSION}</span></div>`;
+const CONFORMANCE_KEY_OFF = `<span class="k">Conformance</span><span class="v"><span class="pill `;
+const CONFORMANCE_KEY_ON = `<span class="k">Conformance ${COMPLIANCE_STATE.compliance_line}</span><span class="v"><span class="pill `;
 const HANDSHAKE_OFF = "AdCP 3.1 GA capabilities handshake · public";
 const HANDSHAKE_ON = "AdCP 3.2 GA capabilities handshake · public";
 
@@ -83,15 +89,28 @@ describe("demo page (/)", () => {
     expect(on).not.toMatch(new RegExp(`3\\.2 GA\\s*·\\s*${SPEC_VERSION.replace(/\./g, "\\.")}`));
   });
 
+  it("flag OFF: the Conformance row key is unqualified", async () => {
+    expect(count(await page("/"), CONFORMANCE_KEY_OFF)).toBe(1);
+  });
+
+  it("flag ON: the Conformance row names the line of the recorded run, so it never reads as a 3.2 result", async () => {
+    const on = await page("/", "true");
+    expect(COMPLIANCE_STATE.compliance_line).toMatch(/^3.1./);
+    expect(count(on, CONFORMANCE_KEY_ON)).toBe(1);
+    expect(on).not.toContain(CONFORMANCE_KEY_OFF);
+  });
+
   it("flag ON: the endpoints panel names the release served", async () => {
     const on = await page("/", "true");
     expect(on).toContain(HANDSHAKE_ON);
     expect(on).not.toContain("3.1 GA");
   });
 
-  it("flag ON is the flag-OFF page with exactly those two edits", async () => {
+  it("flag ON is the flag-OFF page with exactly those three edits", async () => {
     const off = await page("/");
-    expect(await page("/", "true")).toBe(off.replace(VERSION_ROW_OFF, VERSION_ROWS_ON).replace(HANDSHAKE_OFF, HANDSHAKE_ON));
+    expect(await page("/", "true")).toBe(
+      off.replace(VERSION_ROW_OFF, VERSION_ROWS_ON).replace(CONFORMANCE_KEY_OFF, CONFORMANCE_KEY_ON).replace(HANDSHAKE_OFF, HANDSHAKE_ON),
+    );
   });
 });
 

@@ -1108,7 +1108,6 @@ ${THEME_HEAD_SCRIPT}
       <div class="header-sub">multi-agent orchestration / disagreement halo / audit receipts</div>
     </div>
     <div class="header-spacer"></div>
-    <div class="header-sub">May 7 workshop / iHeartMedia</div>
   </header>
 
   <main class="main">

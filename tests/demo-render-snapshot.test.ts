@@ -51,11 +51,26 @@ describe("handleDemo byte-equivalence", () => {
     expect(r.headers.get("Cache-Control")).toBe("public, max-age=300");
     const csp = r.headers.get("Content-Security-Policy") ?? "";
     expect(csp).toContain("default-src 'self'");
-    expect(csp).toContain("style-src 'self' 'unsafe-inline'");
+    expect(csp).toContain("style-src 'self' 'unsafe-inline' https://fonts.googleapis.com");
+    expect(csp).toContain("font-src 'self' https://fonts.gstatic.com");
     expect(csp).toContain("https://esm.sh");
     expect(csp).toContain("https://cdn.jsdelivr.net");
     expect(csp).toContain("img-src 'self' data:");
     expect(csp).toContain("connect-src 'self'");
+  });
+
+  it("loads the Google Fonts stylesheet without blocking first paint", async () => {
+    // A venue network that blackholes fonts.googleapis.com must not blank
+    // the dashboard: the stylesheet uses the media="print" swap, and the
+    // only plain copy sits inside <noscript>.
+    const body = await handleDemo({ DEMO_API_KEY: FIXTURE_API_KEY }).text();
+    const outsideNoscript = body.replace(/<noscript>[\s\S]*?<\/noscript>/g, "");
+    const links = outsideNoscript.match(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com[^>]*>/g) ?? [];
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      expect(link).toContain('media="print"');
+      expect(link).toContain("onload=\"this.media='all'\"");
+    }
   });
 
   it("body contains every major UI structural anchor (sections survive refactor)", async () => {
@@ -113,10 +128,10 @@ describe("handleDemo byte-equivalence", () => {
 
   it("inlined STYLES block is reachable from the response (extraction smoke test)", async () => {
     const body = await handleDemo({ DEMO_API_KEY: "x" }).text();
-    // A representative theme-system selector that exists in the CSS bundle.
-    // If the styles import was lost, this would not render.
-    expect(body).toMatch(/\[data-theme=["']midnight["']\]/);
-    expect(body).toMatch(/\[data-theme=["']daylight["']\]/);
-    expect(body).toMatch(/\[data-theme=["']solar["']\]/);
+    // The three house skins (nofluffadvisory.com) exist in the CSS bundle.
+    // If the styles import was lost, these would not render.
+    expect(body).toMatch(/\[data-theme=["']graphite["']\]/);
+    expect(body).toMatch(/\[data-theme=["']olive["']\]/);
+    expect(body).toMatch(/\[data-theme=["']bordeaux["']\]/);
   });
 });

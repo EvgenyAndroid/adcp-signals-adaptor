@@ -34,6 +34,7 @@ import { SPEC_LABEL, SPEC_VERSION, ADCP_MAJOR_LINE } from "../constants/specVers
 import { COMPLIANCE_STATE } from "../constants/complianceState";
 import { BRAND_LOGO_DATA_URI } from "../constants/brandLogo";
 import { STYLES } from "../demo/styles";
+import { THEME_HEAD_SCRIPT } from "../demo/skins";
 import { SCRIPT_TAG } from "../demo/script";
 
 export function handleDemo(env: { DEMO_API_KEY: string }): Response {
@@ -44,9 +45,14 @@ export function handleDemo(env: { DEMO_API_KEY: string }): Response {
       "Cache-Control": "public, max-age=300",
       // Sec-32: script-src opens to esm.sh for d3-hierarchy (treemap
       // squarify math). connect-src stays self because all /mcp and
-      // /signals/* calls are same-origin.
+      // /signals/* calls are same-origin. style-src + font-src open to
+      // Google Fonts for the house typefaces (Fraunces + Inter, the
+      // nofluffadvisory.com families). The stylesheet loads non-blocking
+      // (media="print" swap), so a venue network that blackholes Google
+      // falls back to the system stack instead of a blank page.
       "Content-Security-Policy":
-        "default-src 'self'; style-src 'self' 'unsafe-inline'; " +
+        "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+        "font-src 'self' https://fonts.gstatic.com; " +
         "script-src 'self' 'unsafe-inline' https://esm.sh https://cdn.jsdelivr.net; " +
         "img-src 'self' data:; connect-src 'self' https://esm.sh;",
     },
@@ -61,7 +67,7 @@ function renderHtml(demoKey: string): string {
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Evgeny's Marketplace Agent</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='2' fill='%234f8eff'/%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%234f8eff' stroke-width='0.8' opacity='0.6'/%3E%3Ccircle cx='8' cy='8' r='7.5' fill='none' stroke='%234f8eff' stroke-width='0.5' opacity='0.3'/%3E%3C/svg%3E"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='2' fill='%238a6d3b'/%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%238a6d3b' stroke-width='0.8' opacity='0.6'/%3E%3Ccircle cx='8' cy='8' r='7.5' fill='none' stroke='%238a6d3b' stroke-width='0.5' opacity='0.3'/%3E%3C/svg%3E"/>
 <script>
   // Run before body parses so authenticated users never see a flash of
   // the auth overlay. sessionStorage is cleared when the tab closes —
@@ -74,6 +80,11 @@ function renderHtml(demoKey: string): string {
     } catch (e) {}
   })();
 </script>
+${THEME_HEAD_SCRIPT}
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&amp;family=Inter:wght@400..700&amp;display=swap" media="print" onload="this.media='all'"/>
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&amp;family=Inter:wght@400..700&amp;display=swap"/></noscript>
 ${STYLES}
 </head>
 <body>
@@ -353,14 +364,12 @@ ${STYLES}
       <div class="kv"><span class="k">Client</span><span class="v mono">${COMPLIANCE_STATE.client_runner}</span></div>
       <div class="kv"><span class="k">Status</span><span class="v"><span class="status-dot ok"></span>live</span></div>
       <div class="kv"><span class="k">Conformance</span><span class="v"><span class="pill pill-success" id="footer-conformance-pill" title="Loading from /capabilities ext.compliance.results…">${COMPLIANCE_STATE.results.passed} / ${COMPLIANCE_STATE.results.applicable}</span></span></div>
-      <div class="kv"><span class="k">Discovery</span><span class="v"><a href="/.well-known/adagents.json" target="_blank" rel="noopener" class="mono" style="color:var(--accent);text-decoration:none" title="Our published AdCP discovery anchor — declares this worker as the authorized signals agent. The trust anchor a buyer agent reads to discover us.">📡 adagents.json ↗</a></span></div>
+      <div class="kv"><span class="k">Discovery</span><span class="v"><a href="/.well-known/adagents.json" target="_blank" rel="noopener" class="mono" style="color:var(--accent-ink);text-decoration:none" title="Our published AdCP discovery anchor — declares this worker as the authorized signals agent. The trust anchor a buyer agent reads to discover us.">📡 adagents.json ↗</a></span></div>
       <div class="theme-picker" role="group" aria-label="Theme">
         <span class="theme-picker-label">Theme</span>
-        <button class="theme-swatch" data-theme-pick="midnight" title="Midnight (dark)" aria-label="Midnight theme"></button>
-        <button class="theme-swatch" data-theme-pick="daylight" title="Daylight (light)" aria-label="Daylight theme"></button>
-        <button class="theme-swatch" data-theme-pick="solar" title="Solar (warm)" aria-label="Solar theme"></button>
-        <button class="theme-swatch" data-theme-pick="paper" title="Paper (high-contrast white)" aria-label="Paper theme"></button>
-        <button class="theme-swatch" data-theme-pick="forest" title="Forest (deep green)" aria-label="Forest theme"></button>
+        <button class="theme-swatch" type="button" data-theme-pick="olive" title="Olive" aria-label="Olive theme"></button>
+        <button class="theme-swatch" type="button" data-theme-pick="graphite" title="Graphite" aria-label="Graphite theme"></button>
+        <button class="theme-swatch" type="button" data-theme-pick="bordeaux" title="Bordeaux" aria-label="Bordeaux theme"></button>
       </div>
       <!-- Sign out: manual logout button + paired with 5-min idle auto-logout
            wired in src/demo/script/fragments/auth.ts. Both clear the

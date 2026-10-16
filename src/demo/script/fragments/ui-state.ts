@@ -11,6 +11,9 @@
 // literal. All template-literal backticks and `${...}` inside the
 // inner JS must be escaped with a backslash so the outer literal
 // doesn't interpolate them. Trap audit: tmp-mining/trap_audit.py.
+// One intended interpolation: the legacy theme map from src/demo/skins.ts.
+import { THEME_LEGACY } from "../../skins";
+
 export const uiStateJs = `
 //────────────────────────────────────────────────────────────────────────
 // Sidebar group collapse / expand (capability-grouped nav).
@@ -137,23 +140,29 @@ _applySidebarGroupState();
 _refreshCollapseAllUi();
 
 //────────────────────────────────────────────────────────────────────────
-// Theme switcher (Midnight / Daylight / Solar / Paper / Forest)
-// Sets data-theme on <html>; CSS in :root[data-theme="..."] picks up
-// the palette. Persists to localStorage under "ui-theme". Add more by
-// adding a CSS block + a swatch button + an entry here.
+// Theme switcher: the three nofluffadvisory.com skins (Graphite default /
+// Olive / Bordeaux). Sets data-theme on <html>; CSS in
+// :root[data-theme="..."] picks up the skin tokens. Persists to
+// localStorage under "ui-theme". The no-flash script in the <head>
+// (THEME_HEAD_SCRIPT in src/demo/skins.ts) applies the same value before
+// first paint. Values saved by the old five-theme picker are mapped
+// (paper to olive, the rest to graphite) and re-saved on first load.
 //────────────────────────────────────────────────────────────────────────
 const THEME_KEY = "ui-theme";
-const THEME_VALID = { midnight: 1, daylight: 1, solar: 1, paper: 1, forest: 1 };
+const THEME_DEFAULT = "graphite";
+const THEME_VALID = { graphite: 1, olive: 1, bordeaux: 1 };
+const THEME_LEGACY = ${JSON.stringify(THEME_LEGACY)};
 
 function _readTheme() {
   try {
     const v = localStorage.getItem(THEME_KEY);
     if (v && THEME_VALID[v]) return v;
+    if (v && THEME_LEGACY[v]) return THEME_LEGACY[v];
   } catch (e) {}
-  return "midnight";
+  return THEME_DEFAULT;
 }
 function _applyTheme(name) {
-  const theme = THEME_VALID[name] ? name : "midnight";
+  const theme = THEME_VALID[name] ? name : THEME_DEFAULT;
   document.documentElement.setAttribute("data-theme", theme);
   document.querySelectorAll("[data-theme-pick]").forEach(function(btn) {
     btn.classList.toggle("is-active", btn.getAttribute("data-theme-pick") === theme);

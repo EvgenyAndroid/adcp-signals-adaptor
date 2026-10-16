@@ -20,7 +20,7 @@
 // to be rare even when a vendor's edge is slow. A vendor that takes
 // 8s to handshake renders as alive-but-slow rather than dead.
 
-import { AGENT_REGISTRY, getLiveAgents, type RegisteredAgent } from "./agentRegistry";
+import { AGENT_REGISTRY, getLiveAgents, asServed, type RegisteredAgent } from "./agentRegistry";
 import { probeAgent, getCircuitSnapshot } from "../federation/genericMcpClient";
 
 export type CircuitStateName = "closed" | "open" | "half_open";
@@ -130,8 +130,10 @@ function bucketHealth(
  * @param probeLive when false, returns the snapshot WITHOUT probing
  *                  (uses cached circuit state + registry metadata only).
  *                  Used by the initial page-load to render quickly.
+ * @param env       the serving flag: our own row's protocols name the
+ *                  release served (asServed in agentRegistry.ts).
  */
-export async function buildVendorHealthSnapshot(opts?: { probeLive?: boolean }): Promise<VendorHealthSnapshot> {
+export async function buildVendorHealthSnapshot(opts?: { probeLive?: boolean; env?: { SERVE_ADCP_3_2?: string } }): Promise<VendorHealthSnapshot> {
   const probeLive = opts?.probeLive !== false; // default true
   const ts = new Date().toISOString();
 
@@ -170,7 +172,7 @@ export async function buildVendorHealthSnapshot(opts?: { probeLive?: boolean }):
       role: agent.role,
       stage: agent.stage,
       mcp_url: agent.mcp_url,
-      protocols: agent.protocols ?? [],
+      protocols: asServed(agent, opts?.env).protocols ?? [],
       specialties: agent.specialties ?? [],
       notes: agent.notes ?? null,
       probed,

@@ -627,7 +627,7 @@ export default {
 
                 // ── Sec-41 Part 3: Agent Federation (A2A) ───────────────────────────
             } else if (method === "GET" && path === "/agents/registry") {
-                response = handleAgentsRegistry();
+                response = handleAgentsRegistry(env);
             } else if (method === "POST" && path === "/agents/federated-search") {
                 response = await handleFederatedSearch(request, env, logger);
             } else if (method === "POST" && path === "/agents/cross-similarity") {
@@ -637,7 +637,7 @@ export default {
 
                 // ── Sec-48: agent syndication (directory + probe + orchestrate) ──
             } else if (method === "GET" && path === "/agents/directory") {
-                response = handleAgentsDirectory();
+                response = handleAgentsDirectory(env);
             } else if (method === "GET" && path === "/agents/probe-all") {
                 response = await handleAgentsProbeAll(request, env, logger);
             } else if (method === "POST" && path === "/agents/orchestrate") {

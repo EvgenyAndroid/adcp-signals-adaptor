@@ -16,14 +16,14 @@ export interface Env {
   // Set EMBEDDING_ENGINE=llm to activate LLM mode
   EMBEDDING_ENGINE?: string;
 
-  // AdCP 3.2 serving flag (wrangler.toml [vars], "false" there). ON only when
-  // exactly "true": the agent then advertises supported_versions
-  // ["3.0","3.1","3.2"], defaults unpinned callers to 3.2, implements the
-  // seed_account controller scenario, and verifies request signatures under
-  // the 3.2 profile (covers_content_digest "required", RFC 8941 Base64).
-  // Anything else is today's 3.1 agent, byte for byte. Flipping it moves
-  // hosted grading to the 3.2 bundle and replaces the 3.1 card, so the flip
-  // is its own reviewed PR. See src/constants/specVersion.ts.
+  // AdCP 3.2 serving flag (wrangler.toml [vars], "true" there since
+  // 2026-10-16). ON only when exactly "true": the agent then advertises
+  // supported_versions ["3.0","3.1","3.2"], defaults unpinned callers to 3.2,
+  // implements the seed_account controller scenario, and verifies request
+  // signatures under the 3.2 profile (covers_content_digest "required",
+  // RFC 8941 Base64). Anything else is the 3.1 agent, byte for byte. Flipping
+  // it moves hosted grading between the 3.1 and 3.2 bundles and replaces the
+  // card, so each flip is its own reviewed PR. See src/constants/specVersion.ts.
   SERVE_ADCP_3_2?: string;
 
   // Optional override for the federated publisher synaptic-audience catalog

@@ -22,6 +22,7 @@ import {
   findAgent,
   SELF_URL,
   SELF_AGENT_ID,
+  asServed,
   type RegisteredAgent,
 } from "../domain/agentRegistry";
 import {
@@ -132,7 +133,7 @@ async function selfToolDispatch(name: string, args: Record<string, unknown>, env
 
 // ── GET /agents/directory ───────────────────────────────────────────────────
 
-export function handleAgentsDirectory(): Response {
+export function handleAgentsDirectory(env: Pick<Env, "SERVE_ADCP_3_2">): Response {
   const byRole: Record<string, number> = {};
   const byStage: Record<string, number> = {};
   for (const a of AGENT_REGISTRY) {
@@ -144,7 +145,7 @@ export function handleAgentsDirectory(): Response {
     count: AGENT_REGISTRY.length,
     by_role: byRole,
     by_stage: byStage,
-    agents: AGENT_REGISTRY,
+    agents: AGENT_REGISTRY.map((a) => asServed(a, env)),
     note: "Static directory snapshot. Hit /agents/probe-all for live liveness + tool-list per agent.",
   });
 }

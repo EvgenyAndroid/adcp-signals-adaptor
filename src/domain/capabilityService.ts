@@ -88,7 +88,7 @@ const CACHE_TTL_SECONDS = 3600;
 
 import { buildUcpCapability, type UcpCapabilityEnv } from "../ucp/vacDeclaration";
 import { COMPLIANCE_STATE } from "../constants/complianceState";
-import { SPEC_VERSION, servesAdcp32, supportedReleaseVersions } from "../constants/specVersion";
+import { SPEC_VERSION, servesAdcp32, supportedReleaseVersions, defaultServedVersion } from "../constants/specVersion";
 import { supportedScenarios } from "./complianceController";
 import { resolveWebhookSigning, type WebhookSigningKey } from "./webhookSigning";
 import { CANONICAL_ORIGIN } from "../constants/origin";
@@ -519,7 +519,8 @@ function buildStaticCapabilities(env: CapabilityEnv, signing: WebhookSigningKey 
       compliance: {
         // Labels the run this block describes: the 3.1 line, at the
         // storyboard patch the runner resolved. (Said adcp_3.0 until
-        // 2026-09-10 while describing a 3.1.20 run.)
+        // 2026-09-10 while describing a 3.1.20 run.) Not the release served:
+        // with SERVE_ADCP_3_2 ON it still names the recorded run's line.
         spec_version: "adcp_3.1",
         compliance_line: COMPLIANCE_STATE.compliance_line,
         headline: COMPLIANCE_STATE.headline,
@@ -668,8 +669,9 @@ function buildStaticCapabilities(env: CapabilityEnv, signing: WebhookSigningKey 
           "https://adcp-signals-adaptor.evgeny-193.workers.dev/privacy#opt-out",
         audience_bias_governance_schema: {
           supported: true,
-          // Protocol-version label (see the file header: rc → 3.0 → now 3.1).
-          version: "adcp_3.1",
+          // Protocol-version label (see the file header: rc → 3.0 → 3.1): the
+          // release served by default, so adcp_3.2 with SERVE_ADCP_3_2 ON.
+          version: `adcp_${defaultServedVersion(env)}`,
         },
         // Sec-40: data hygiene moved inside governance block. Declares the
         // weekly purge schedule + retention windows + manual trigger.

@@ -4,7 +4,7 @@
 //
 //   1. LIVE — uses Anthropic Messages API when ANTHROPIC_API_KEY is set
 //      in env. Same pattern as src/domain/queryParser.ts (model
-//      claude-sonnet-4-20250514).
+//      ANTHROPIC_MODEL below).
 //
 //   2. TEMPLATE — rule-based fallback when no API key. Generates
 //      structurally-identical reasoning traces from deterministic
@@ -43,6 +43,17 @@ export function makeAgenticContext(env: Env, request_id?: string): AgenticContex
 
 // ── Live Anthropic call ─────────────────────────────────────────────────────
 
+/** The model for every live call (claude-sonnet-4-20250514 was retired on
+ *  15 Jun 2026 and now returns 404; this is its drop-in replacement). */
+export const ANTHROPIC_MODEL = "claude-sonnet-5-5";
+/** Request headers for the server-side refusal fallback: a declined request
+ *  is re-run on the model Anthropic recommends for that refusal category. */
+export const ANTHROPIC_FALLBACK_BETA = "server-side-fallback-2026-07-01";
+/** Sonnet 5.5 thinks adaptively and thinking counts toward max_tokens, so each
+ *  caller's reply budget gets this headroom on top. At low effort the model
+ *  skips or shortens thinking on these short, structured requests. */
+export const THINKING_HEADROOM_TOKENS = 2000;
+
 export interface LlmCallOptions {
   system?: string;
   messages: Array<{ role: "user" | "assistant"; content: string }>;
@@ -76,7 +87,7 @@ export async function llmCall(ctx: AgenticContext, opts: LlmCallOptions): Promis
     };
   }
   const start = Date.now();
-  const model = opts.model ?? "claude-sonnet-4-20250514";
+  const model = opts.model ?? ANTHROPIC_MODEL;
   const maxTokens = opts.max_tokens ?? 1500;
   const timeoutMs = opts.timeout_ms ?? 30_000;
   const system = opts.system
@@ -89,7 +100,9 @@ export async function llmCall(ctx: AgenticContext, opts: LlmCallOptions): Promis
 
   const body: Record<string, unknown> = {
     model,
-    max_tokens: maxTokens,
+    max_tokens: maxTokens + THINKING_HEADROOM_TOKENS,
+    output_config: { effort: "low" },
+    fallbacks: "default",
     messages: opts.messages,
   };
   if (system) body.system = system;
@@ -100,6 +113,7 @@ export async function llmCall(ctx: AgenticContext, opts: LlmCallOptions): Promis
       headers: {
         "Content-Type": "application/json",
         "anthropic-version": "2023-06-01",
+        "anthropic-beta": ANTHROPIC_FALLBACK_BETA,
         "x-api-key": ctx.env.ANTHROPIC_API_KEY!,
       },
       body: JSON.stringify(body),
@@ -110,7 +124,16 @@ export async function llmCall(ctx: AgenticContext, opts: LlmCallOptions): Promis
       const errText = await resp.text();
       return { ok: false, text: "", model, latency_ms: latency, error: "Claude API " + resp.status + ": " + errText.slice(0, 200) };
     }
-    const data = (await resp.json()) as { content?: Array<{ type: string; text?: string }> };
+    const data = (await resp.json()) as {
+      content?: Array<{ type: string; text?: string }>;
+      stop_reason?: string;
+      stop_details?: { category?: string | null } | null;
+    };
+    // A classifier decline is an HTTP 200; check it before reading content.
+    if (data.stop_reason === "refusal") {
+      return { ok: false, text: "", model, latency_ms: latency, error: "Claude declined the request (" + (data.stop_details?.category ?? "uncategorised") + ")" };
+    }
+    // Read by block type: a response can open with an (empty) thinking block.
     const raw = (data.content ?? []).find((b) => b.type === "text")?.text ?? "";
     const cleaned = raw.replace(/^```(?:json)?\s*/m, "").replace(/\s*```\s*$/m, "").trim();
     let json: unknown;

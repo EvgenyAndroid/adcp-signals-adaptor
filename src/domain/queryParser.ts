@@ -14,6 +14,7 @@
  */
 
 import { fetchWithTimeout } from "../utils/fetchWithLimits";
+import { ANTHROPIC_MODEL, ANTHROPIC_FALLBACK_BETA, THINKING_HEADROOM_TOKENS } from "./agenticCore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -130,7 +131,7 @@ SCHEMA:
 export interface ParseOptions {
   /** Anthropic API key — injected from Worker env */
   apiKey?: string;
-  /** Override model — defaults to claude-sonnet-4-20250514 */
+  /** Override model — defaults to ANTHROPIC_MODEL (agenticCore.ts) */
   model?: string;
   /** Max tokens for AST response */
   maxTokens?: number;
@@ -140,12 +141,13 @@ export async function parseNLQuery(
   nlQuery: string,
   options: ParseOptions = {}
 ): Promise<AudienceQueryAST> {
-  const model = options.model ?? "claude-sonnet-4-20250514";
+  const model = options.model ?? ANTHROPIC_MODEL;
   const maxTokens = options.maxTokens ?? 2000;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "anthropic-version": "2023-06-01",
+    "anthropic-beta": ANTHROPIC_FALLBACK_BETA,
   };
   if (options.apiKey) {
     headers["x-api-key"] = options.apiKey;
@@ -153,7 +155,9 @@ export async function parseNLQuery(
 
   const body = {
     model,
-    max_tokens: maxTokens,
+    max_tokens: maxTokens + THINKING_HEADROOM_TOKENS,
+    output_config: { effort: "low" },
+    fallbacks: "default",
     system: SYSTEM_PROMPT,
     messages: [
       {
@@ -179,7 +183,16 @@ export async function parseNLQuery(
       throw new Error(`Claude API error ${resp.status}: ${err}`);
     }
 
-    const data = (await resp.json()) as { content: Array<{ type: string; text?: string }> };
+    const data = (await resp.json()) as {
+      content: Array<{ type: string; text?: string }>;
+      stop_reason?: string;
+      stop_details?: { category?: string | null } | null;
+    };
+    // A classifier decline is an HTTP 200; check it before reading content.
+    if (data.stop_reason === "refusal") {
+      throw new Error(`Claude declined the request (${data.stop_details?.category ?? "uncategorised"})`);
+    }
+    // Read by block type: a response can open with an (empty) thinking block.
     raw = data.content.find((b) => b.type === "text")?.text ?? "";
   } catch (e) {
     throw new Error(`queryParser: fetch failed — ${(e as Error).message}`);

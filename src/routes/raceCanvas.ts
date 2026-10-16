@@ -25,14 +25,19 @@
 
 import { SPEC_VERSION } from "../constants/specVersion";
 
+import { SKIN_TOKENS_CSS, THEME_HEAD_SCRIPT } from "../demo/skins";
+
 export function handleRaceCanvas(env: { DEMO_API_KEY: string }): Response {
   return new Response(renderRaceCanvas(env.DEMO_API_KEY), {
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "public, max-age=300",
+      // style-src + font-src open to Google Fonts for the house typefaces
+      // (Fraunces + Inter, the nofluffadvisory.com families), as on /.
       "Content-Security-Policy":
-        "default-src 'self'; style-src 'self' 'unsafe-inline'; " +
+        "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+        "font-src 'self' https://fonts.gstatic.com; " +
         "script-src 'self' 'unsafe-inline'; " +
         "img-src 'self' data:; connect-src 'self';",
     },
@@ -47,38 +52,88 @@ function renderRaceCanvas(demoKey: string): string {
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Race Canvas — Vendor Orchestration</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='2' fill='%2338b6ff'/%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%2338b6ff' stroke-width='0.8' opacity='0.6'/%3E%3C/svg%3E"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='2' fill='%238a6d3b'/%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%238a6d3b' stroke-width='0.8' opacity='0.6'/%3E%3C/svg%3E"/>
+${THEME_HEAD_SCRIPT}
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<!-- Non-blocking: media=print keeps the font CSS off the critical path, so
+     the page paints on system fonts even if Google Fonts is slow or
+     unreachable; onload swaps it in. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&amp;family=Inter:wght@400..700&amp;display=swap" media="print" onload="this.media='all'"/>
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&amp;family=Inter:wght@400..700&amp;display=swap"/></noscript>
 <style>
+  /* House style: the three nofluffadvisory.com skins, shared with the
+     dashboard (SKIN_TOKENS_CSS, src/demo/skins.ts). Graphite is the default
+     on :root; the head script above applies the saved skin. Components
+     read the NFA tokens (ink / paper / rule / accent / warm / risk) and
+     the few semantic names below, never raw colours.
+     Status: accent = responded / verified, warm = elevated / warn /
+     material, risk = blocking / restricted. Every state also carries a
+     text label. */
+  ${SKIN_TOKENS_CSS}
   :root {
-    --bg: #0a0d12;
-    --bg-elevated: #11161e;
-    --bg-panel: #161c26;
-    --border: #232b38;
-    --border-strong: #2e3947;
-    --text: #e6ebf2;
-    --text-dim: #8a95a8;
-    --text-faint: #5b6679;
-    --accent: #38b6ff;
-    --accent-glow: rgba(56, 182, 255, 0.35);
-    --accent-dim: rgba(56, 182, 255, 0.15);
-    --bg-input: #0d121a;
-    --border-faint: #1a2030;
-    --warn: #f0b400;
-    --warn-glow: rgba(240, 180, 0, 0.4);
-    --block: #ff4d5e;
-    --block-glow: rgba(255, 77, 94, 0.45);
-    --ok: #2ed573;
-    --font-mono: "JetBrains Mono", "SF Mono", Consolas, Menlo, monospace;
-    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    /* Kit (NFA global.css). Depth mixes the skin's own ink; #fff appears
+       only inside the two mats. */
+    --accent-on-dark: color-mix(in srgb, var(--accent-2) 55%, var(--paper));
+    --mat:          color-mix(in srgb, var(--paper) 35%, #fff);
+    --mat-sheet:    color-mix(in srgb, var(--paper) 40%, #fff);
+    --mat-edge:     color-mix(in srgb, var(--rule) 70%, transparent);
+    --shadow-1: 0 1px 1px color-mix(in srgb, var(--ink) 6%, transparent),
+                0 10px 22px -14px color-mix(in srgb, var(--ink) 30%, transparent);
+    --shadow-2: 0 1px 1px color-mix(in srgb, var(--ink) 8%, transparent),
+                0 8px 18px -8px color-mix(in srgb, var(--ink) 30%, transparent),
+                0 26px 44px -26px color-mix(in srgb, var(--ink) 38%, transparent);
+    --shadow-3: 0 1px 1px color-mix(in srgb, var(--ink) 8%, transparent),
+                0 14px 26px -10px color-mix(in srgb, var(--ink) 34%, transparent),
+                0 40px 60px -30px color-mix(in srgb, var(--ink) 42%, transparent);
+    --shadow-sheet: 0 1px 1px color-mix(in srgb, var(--ink) 5%, transparent),
+                    0 30px 60px -36px color-mix(in srgb, var(--ink) 50%, transparent);
+    --scrim:        color-mix(in srgb, var(--ink) 38%, transparent);
+
+    /* Semantic names this page and its inline styles read. */
+    --bg:            var(--paper);
+    --bg-elevated:   color-mix(in srgb, var(--paper-2) 45%, var(--paper));
+    --bg-panel:      var(--mat-sheet);
+    --bg-input:      var(--mat);
+    --border:        var(--rule);
+    --border-faint:  color-mix(in srgb, var(--rule) 55%, var(--mat-sheet));
+    --border-strong: color-mix(in srgb, var(--ink) 26%, var(--paper));
+    --text:          var(--ink);
+    --text-dim:      var(--ink-muted);
+    --text-faint:    var(--ink-light);
+    --accent-dim:    rgba(var(--accent-rgb), 0.10);
+    --accent-border: rgba(var(--accent-rgb), 0.38);
+    --ok:            var(--accent);
+    --warn:          var(--warm);
+    --warn-ink:      color-mix(in srgb, var(--warm) 78%, var(--ink));
+    --block:         var(--risk);
+
+    --font-serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+    --font-sans:  'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono:  ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --font-ui:    var(--font-sans);
+    --font-label: var(--font-sans);
+    --label-size:  11px;
+    --label-track: 0.14em;
+    --stamp-size:  10px;
+    --stamp-track: 0.12em;
+    --r-print: 2px;
+    --r-card:  4px;
+    --r-pill:  999px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
   body {
-    background: var(--bg);
-    color: var(--text);
-    font: 14px/1.5 var(--font-ui);
+    background: var(--paper);
+    color: var(--ink);
+    font: 14px/1.5 var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
   }
+  ::selection { background: rgba(var(--accent-rgb), 0.2); }
+  :where(a, button, input, select, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  code, pre { font-family: var(--font-mono); }
   .app {
     display: grid;
     grid-template-columns: 1fr 380px;
@@ -88,60 +143,69 @@ function renderRaceCanvas(demoKey: string): string {
   }
   .header {
     grid-column: 1 / -1;
-    padding: 16px 24px;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-elevated);
+    padding: 14px 28px 14px 24px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper);
     display: flex;
     align-items: center;
     gap: 16px;
   }
+  /* Page title: Fraunces, the NFA heading face, in ink (the wordmark). */
   .header-title {
-    font-size: 18px;
+    font-family: var(--font-serif);
+    font-size: 26px;
     font-weight: 600;
-    color: var(--text);
-    letter-spacing: -0.01em;
+    line-height: 1.08;
+    letter-spacing: -0.022em;
+    font-variation-settings: 'opsz' 80;
+    color: var(--ink);
   }
-  .header-title .accent { color: var(--accent); }
+  .header-title .accent { color: var(--ink); }
+  /* Mono caps labels with the house tracking. */
   .header-sub {
-    font: 12px/1.4 var(--font-mono);
-    color: var(--text-faint);
+    margin-top: 5px;
+    font: 600 var(--label-size)/1.4 var(--font-label);
+    text-transform: uppercase;
+    letter-spacing: var(--label-track);
+    color: var(--ink-light);
   }
   .header-back {
-    color: var(--text-dim);
+    color: var(--ink);
     text-decoration: none;
-    font-size: 13px;
-    border: 1px solid var(--border);
-    padding: 6px 12px;
-    border-radius: 6px;
-    transition: all 0.15s;
+    font: 500 13px var(--font-sans);
+    border: 1px solid var(--border-strong);
+    padding: 7px 13px;
+    border-radius: var(--r-print);
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
   }
   .header-back:hover {
+    background: var(--paper-2);
     border-color: var(--accent);
     color: var(--accent);
   }
   .header-spacer { flex: 1; }
   /* Page info popover — same pattern as the main demo's lane-info-*. */
   .header-title-block { position: relative; }
-  .header-title-row { display: flex; align-items: center; gap: 8px; }
+  .header-title-row { display: flex; align-items: center; gap: 10px; }
   .page-info-btn {
     width: 24px; height: 24px;
     display: inline-flex; align-items: center; justify-content: center;
     border-radius: 50%;
     background: transparent;
     border: 1px solid transparent;
-    color: var(--text-faint);
+    color: var(--ink-light);
     cursor: pointer;
-    transition: all 0.12s;
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
   }
   .page-info-btn:hover {
-    background: var(--bg-panel);
+    background: var(--paper-2);
     color: var(--accent);
-    border-color: var(--accent);
+    border-color: var(--accent-border);
   }
   .page-info-btn.is-open {
-    background: rgba(56,182,255,0.14);
+    background: var(--accent-dim);
     color: var(--accent);
-    border-color: var(--accent);
+    border-color: var(--accent-border);
   }
   .page-info-popover {
     position: absolute;
@@ -150,11 +214,11 @@ function renderRaceCanvas(demoKey: string): string {
     z-index: 50;
     width: 420px;
     max-width: calc(100vw - 32px);
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+    background: var(--mat-sheet);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-card);
     padding: 16px 18px 14px;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+    box-shadow: var(--shadow-2);
     display: none;
     animation: pageInfoFade 0.15s ease-out;
   }
@@ -168,15 +232,18 @@ function renderRaceCanvas(demoKey: string): string {
     position: absolute;
     top: -7px; left: 18px;
     width: 12px; height: 12px;
-    background: var(--bg-panel);
-    border-top: 1px solid var(--border);
-    border-left: 1px solid var(--border);
+    background: var(--mat-sheet);
+    border-top: 1px solid var(--rule);
+    border-left: 1px solid var(--rule);
     transform: rotate(45deg);
   }
   .page-info-title {
-    font-size: 13px;
+    font-family: var(--font-serif);
+    font-size: 16px;
     font-weight: 600;
-    color: var(--text);
+    line-height: 1.25;
+    letter-spacing: -0.012em;
+    color: var(--ink);
     margin-bottom: 10px;
   }
   .page-info-steps {
@@ -184,15 +251,15 @@ function renderRaceCanvas(demoKey: string): string {
     padding: 0 0 0 22px;
     font-size: 12.5px;
     line-height: 1.55;
-    color: var(--text-dim);
+    color: var(--ink-muted);
   }
   .page-info-steps li { margin-bottom: 8px; }
   .page-info-steps li:last-child { margin-bottom: 0; }
-  .page-info-steps strong { color: var(--text); }
+  .page-info-steps strong { color: var(--ink); }
   .page-info-steps code {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 3px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-print);
     padding: 1px 5px;
     font-size: 11px;
     color: var(--accent);
@@ -200,13 +267,13 @@ function renderRaceCanvas(demoKey: string): string {
   .page-info-trace {
     margin-top: 10px;
     padding-top: 10px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--rule);
     font: 11px var(--font-mono);
-    color: var(--text-faint);
+    color: var(--ink-light);
     line-height: 1.5;
   }
   .page-info-trace code {
-    color: var(--text-dim);
+    color: var(--ink-muted);
     background: transparent;
     border: none;
     padding: 0;
@@ -218,100 +285,114 @@ function renderRaceCanvas(demoKey: string): string {
     position: relative;
   }
   .sidebar {
-    border-left: 1px solid var(--border);
+    border-left: 1px solid var(--rule);
     background: var(--bg-elevated);
     overflow-y: auto;
-    padding: 20px;
+    padding: 22px 20px;
   }
 
-  /* ── Brief input + control bar ─────────────────────────────────────── */
+  /* ── Brief input + control bar (a paper sheet on the ground) ───────── */
   .controls {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px;
+    background: var(--mat-sheet);
+    border: 1px solid var(--mat-edge);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow-1);
+    padding: 16px 18px;
     margin-bottom: 20px;
   }
   .controls-row {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     align-items: stretch;
   }
   .controls-label {
-    font: 11px/1.4 var(--font-mono);
+    font: 600 var(--label-size)/1.4 var(--font-label);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-faint);
-    margin-bottom: 6px;
+    letter-spacing: var(--label-track);
+    color: var(--accent);
+    margin-bottom: 8px;
   }
   .brief-input {
     flex: 1;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
+    background: var(--mat);
+    border: 1px solid var(--rule);
+    color: var(--ink);
     padding: 10px 14px;
-    border-radius: 6px;
-    font: 13px/1.4 var(--font-ui);
+    border-radius: var(--r-print);
+    font: 14px/1.4 var(--font-sans);
     transition: border-color 0.15s;
   }
+  .brief-input::placeholder { color: var(--ink-light); }
   .brief-input:focus {
     outline: none;
     border-color: var(--accent);
   }
+  .brief-input:focus-visible { outline: 1px solid var(--accent); outline-offset: 0; }
   /* Try-chips: one-click brief examples below the input. Same pattern
      as demo.ts canvas-quickpicks; reuses [data-brief-target] handler. */
   .try-chips {
     display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
-    margin-top: 10px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
   }
   .try-chips-label {
-    font: 10px var(--font-mono);
-    color: var(--text-faint);
+    font: 600 var(--stamp-size) var(--font-label);
+    color: var(--ink-light);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-right: 2px;
+    letter-spacing: var(--stamp-track);
+    margin-right: 4px;
   }
+  /* House chip (NFA .art-chip): sheet fill, hairline, 2px radius. */
   .try-chip {
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-    font: 11px var(--font-mono);
-    padding: 4px 9px;
-    border-radius: 4px;
+    background: var(--mat-sheet);
+    border: 1px solid var(--rule);
+    color: var(--ink-muted);
+    font: 500 12px/1.3 var(--font-sans);
+    padding: 4px 10px;
+    border-radius: var(--r-print);
     cursor: pointer;
-    transition: all 0.12s;
+    transition: border-color 0.12s, color 0.12s, background 0.12s;
   }
   .try-chip:hover {
     color: var(--accent);
     border-color: var(--accent);
   }
+  /* House buttons (NFA .btn): flat, 2px radius. Primary = ink fill that
+     turns accent on hover; ghost = a hairline. */
   .btn {
-    background: var(--accent);
-    color: #0a0d12;
-    border: none;
-    padding: 10px 18px;
-    border-radius: 6px;
-    font: 600 13px var(--font-ui);
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--ink);
+    color: var(--paper);
+    border: 1px solid var(--ink);
+    padding: 9px 18px;
+    border-radius: var(--r-print);
+    font: 500 13.5px var(--font-sans);
+    white-space: nowrap;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
   }
-  .btn:hover { filter: brightness(1.1); }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn:hover { background: var(--accent); border-color: var(--accent); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn:not(.btn-ghost):disabled:hover { background: var(--ink); border-color: var(--ink); }
   .btn-ghost {
     background: transparent;
     border: 1px solid var(--border-strong);
-    color: var(--text);
+    color: var(--ink);
   }
   .btn-ghost:hover {
+    background: var(--paper-2);
     border-color: var(--accent);
     color: var(--accent);
   }
 
-  /* ── Vendor waterfall ──────────────────────────────────────────────── */
+  /* ── Vendor waterfall: a sheet whose dark file bar is the page's one
+     ink feature (NFA .sheet__bar) ───────────────────────────────────── */
   .race-board {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+    background: var(--mat-sheet);
+    border: 1px solid var(--mat-edge);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow-sheet);
     padding: 18px;
     position: relative;
   }
@@ -319,21 +400,37 @@ function renderRaceCanvas(demoKey: string): string {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 14px;
+    gap: 16px;
+    margin: -18px -18px 16px;
+    padding: 11px 18px;
+    border-radius: 3px 3px 0 0;
+    background: linear-gradient(135deg, var(--ink), var(--ink-2));
+    color: var(--paper);
   }
   .race-board-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text);
+    display: flex;
+    align-items: center;
+    font: 500 12.5px/1.3 var(--font-mono);
+    color: var(--paper);
+    white-space: nowrap;
+  }
+  .race-board-title::before {
+    content: "";
+    width: 7px; height: 7px;
+    margin-right: 10px;
+    border-radius: 50%;
+    background: var(--accent-on-dark);
+    flex-shrink: 0;
   }
   .race-board-meta {
     font: 11px/1.4 var(--font-mono);
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--paper) 66%, var(--ink));
+    text-align: right;
   }
   .vendor-rows {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     position: relative;
     min-height: 100px;
   }
@@ -343,11 +440,11 @@ function renderRaceCanvas(demoKey: string): string {
     gap: 16px;
     align-items: center;
     padding: 12px 14px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-print);
     position: relative;
-    transition: all 0.3s;
+    transition: border-color 0.3s, background-color 0.3s, box-shadow 0.3s;
     opacity: 0;
     animation: fadeInRow 0.35s ease-out forwards;
   }
@@ -355,76 +452,104 @@ function renderRaceCanvas(demoKey: string): string {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  .vendor-row.is-conflict {
-    border-color: var(--block);
-    box-shadow: 0 0 0 1px var(--block-glow), 0 0 20px var(--block-glow);
-  }
+  /* Conflict rows: a status hairline and a 2px status edge (the NFA
+     registry row mark), no glow. Blocking also tints the paper, so the
+     two states differ by weight as well as hue (olive warm and risk are
+     close). Blocking outranks warn when a row sits in both kinds of pair. */
   .vendor-row.is-warn {
-    border-color: var(--warn);
-    box-shadow: 0 0 0 1px var(--warn-glow), 0 0 16px var(--warn-glow);
+    border-color: rgba(var(--warm-rgb), 0.6);
+    box-shadow: inset 2px 0 0 var(--warm);
+  }
+  .vendor-row.is-conflict {
+    border-color: rgba(var(--risk-rgb), 0.6);
+    background: color-mix(in srgb, var(--risk) 7%, var(--paper));
+    box-shadow: inset 2px 0 0 var(--risk);
   }
   .vendor-name {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
+    min-width: 0;
   }
   .vendor-name-primary {
-    font-size: 13px;
+    font-size: 13.5px;
     font-weight: 600;
-    color: var(--text);
+    color: var(--ink);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .vendor-name-secondary {
-    font: 11px/1 var(--font-mono);
-    color: var(--text-faint);
+    font: 10.5px/1.3 var(--font-mono);
+    color: var(--ink-light);
   }
+  /* Progress: the stage label sits above a 6px bar so it never overlaps
+     the fill; "responded" turns the label into a stamp. */
   .vendor-progress {
-    height: 8px;
-    background: var(--bg-elevated);
-    border-radius: 4px;
+    height: 30px;
     position: relative;
-    overflow: hidden;
+  }
+  .vendor-progress::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 6px;
+    border-radius: 1px;
+    background: var(--paper-2);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rule) 70%, transparent);
   }
   .vendor-progress-fill {
     position: absolute;
-    top: 0;
     left: 0;
     bottom: 0;
-    background: linear-gradient(90deg, var(--accent), #6dd5ff);
-    border-radius: 4px;
+    height: 6px;
+    background: rgba(var(--accent-rgb), 0.45);
+    border-radius: 1px;
     width: 0;
-    transition: width 0.4s ease-out;
+    transition: width 0.4s ease-out, background-color 0.3s;
   }
-  .vendor-progress-fill.is-done {
-    background: linear-gradient(90deg, var(--ok), #5eea96);
-  }
-  .vendor-progress-fill.is-failed {
-    background: linear-gradient(90deg, var(--block), #ff7a87);
-  }
+  .vendor-progress-fill.is-done { background: var(--accent); }
+  .vendor-progress-fill.is-failed { background: var(--risk); }
   .vendor-stage-label {
     position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    font: 10px/1 var(--font-mono);
-    color: var(--text-faint);
+    right: 0;
+    top: 0;
+    padding: 3px 0;
+    font: 600 var(--stamp-size)/1 var(--font-label);
+    color: var(--ink-light);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--stamp-track);
   }
+  .vendor-progress-fill.is-done + .vendor-stage-label {
+    padding: 3px 6px;
+    border-radius: var(--r-print);
+    background: color-mix(in srgb, var(--accent) 82%, var(--ink));
+    color: var(--paper);
+    font-weight: 700;
+  }
+  .vendor-progress-fill.is-failed + .vendor-stage-label { color: var(--risk); }
   .vendor-response {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 4px 12px;
-    font: 11px/1.4 var(--font-mono);
+    gap: 3px 12px;
+    font: 11px/1.45 var(--font-mono);
   }
-  .vendor-response-k { color: var(--text-faint); }
-  .vendor-response-v { color: var(--text); text-align: right; }
-  .vendor-response-v.warn { color: var(--warn); }
-  .vendor-response-v.block { color: var(--block); }
+  .vendor-response-k { color: var(--ink-light); }
+  .vendor-response-v { color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+  /* Elevated / warn and restricted / block values carry a tinted mark,
+     so the state reads in every skin (graphite warm sits near ink). */
+  .vendor-response-v.warn,
+  .vendor-response-v.block {
+    justify-self: end;
+    margin-right: -4px;
+    padding: 0 4px;
+    border-radius: var(--r-print);
+    font-weight: 600;
+  }
+  .vendor-response-v.warn { color: var(--warn-ink); background: rgba(var(--warm-rgb), 0.14); }
+  .vendor-response-v.block { color: var(--risk); background: rgba(var(--risk-rgb), 0.12); }
   .vendor-response-empty {
-    color: var(--text-faint);
+    color: var(--ink-light);
     font-style: italic;
     text-align: right;
   }
@@ -438,82 +563,121 @@ function renderRaceCanvas(demoKey: string): string {
     pointer-events: none;
     z-index: 10;
   }
+  /* Severity reads from the skin: blocking = risk, material = warm,
+     minor = accent; material dashes and minor dots, so severity also
+     reads without hue. Flat strokes, no glow. */
   .halo-arc {
+    fill: none;
+    stroke: var(--accent);
     animation: arcPulse 2.5s ease-in-out infinite;
   }
+  .halo-arc--blocking { stroke: var(--risk); }
+  .halo-arc--material { stroke: var(--warm); stroke-dasharray: 7 5; }
+  .halo-arc--minor    { stroke: var(--accent); stroke-dasharray: 2 5; }
   @keyframes arcPulse {
-    0%, 100% { opacity: 0.85; }
+    0%, 100% { opacity: 0.9; }
     50%      { opacity: 0.55; }
   }
 
   /* ── Disagreements panel (replaces inline callouts) ────────────────── */
   .disagreements-panel {
     margin-top: 16px;
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 16px;
+    background: var(--mat-sheet);
+    border: 1px solid var(--mat-edge);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow-1);
+    padding: 16px 18px 18px;
     display: none;
   }
   .disagreements-panel.is-active { display: block; }
   .disagreements-panel-header {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     justify-content: space-between;
-    margin-bottom: 12px;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--rule);
   }
   .disagreements-panel-title {
-    font-size: 13px;
+    font-family: var(--font-serif);
+    font-size: 19px;
     font-weight: 600;
-    color: var(--text);
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    color: var(--ink);
   }
   .disagreements-panel-meta {
-    font: 11px/1 var(--font-mono);
-    color: var(--text-faint);
+    font: 600 var(--stamp-size)/1 var(--font-label);
+    text-transform: uppercase;
+    letter-spacing: var(--stamp-track);
+    color: var(--ink-light);
   }
   .disagreements-list {
     display: flex;
     flex-direction: column;
     gap: 10px;
   }
+  /* Severity is the short top stroke (the NFA numeral rule), not a thick
+     left border. */
   .disagreement-card {
-    border-left: 4px solid var(--block);
-    background: var(--bg);
-    border-radius: 6px;
-    padding: 12px 14px;
+    position: relative;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-print);
+    padding: 14px 16px 12px;
     opacity: 0;
     animation: fadeInRow 0.35s ease-out forwards;
   }
-  .disagreement-card.warn { border-left-color: var(--warn); }
-  .disagreement-card.minor { border-left-color: var(--accent); }
+  .disagreement-card::before {
+    content: "";
+    position: absolute;
+    top: -1px; left: 16px;
+    width: 2.6rem; height: 2px;
+    background: var(--risk);
+  }
+  .disagreement-card.warn::before { background: var(--warm); }
+  .disagreement-card.minor::before { background: var(--accent); }
   .disagreement-card-head {
     display: flex;
     align-items: center;
     gap: 10px;
     margin-bottom: 6px;
   }
+  /* Severity stamps: blocking is solid, material tinted, minor outlined,
+     so the three read apart in every skin. */
   .disagreement-badge {
     display: inline-block;
-    padding: 3px 8px;
-    border-radius: 4px;
-    background: var(--block);
-    color: #0a0d12;
-    font: 700 10px var(--font-mono);
+    padding: 3px 6px;
+    border-radius: var(--r-print);
+    background: color-mix(in srgb, var(--risk) 85%, var(--ink));
+    color: var(--paper);
+    font: 700 var(--stamp-size)/1 var(--font-label);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--stamp-track);
   }
-  .disagreement-card.warn .disagreement-badge { background: var(--warn); }
-  .disagreement-card.minor .disagreement-badge { background: var(--accent); }
+  .disagreement-card.warn .disagreement-badge {
+    background: rgba(var(--warm-rgb), 0.16);
+    color: var(--warn-ink);
+    box-shadow: inset 0 0 0 1px rgba(var(--warm-rgb), 0.45);
+  }
+  .disagreement-card.minor .disagreement-badge {
+    background: transparent;
+    color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
   .disagreement-field {
-    font-size: 13px;
+    font-family: var(--font-serif);
+    font-size: 16px;
     font-weight: 600;
-    color: var(--text);
+    letter-spacing: -0.01em;
+    color: var(--ink);
   }
   .disagreement-rationale {
-    font-size: 12px;
-    line-height: 1.5;
-    color: var(--text-dim);
-    margin-bottom: 8px;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--ink-muted);
+    margin-bottom: 10px;
   }
   .disagreement-chips {
     display: flex;
@@ -526,53 +690,67 @@ function renderRaceCanvas(demoKey: string): string {
     align-items: center;
     gap: 6px;
     padding: 3px 8px;
-    border-radius: 4px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    font: 11px/1 var(--font-mono);
-    color: var(--text);
+    border-radius: var(--r-print);
+    background: var(--mat-sheet);
+    border: 1px solid var(--rule);
+    font: 11px/1.3 var(--font-mono);
+    color: var(--ink);
   }
   .vendor-chip-value {
-    color: var(--text-dim);
+    color: var(--ink-muted);
     margin-left: 4px;
   }
   .disagreement-reconcile {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid var(--border);
-    font-size: 12px;
-    line-height: 1.5;
-    color: var(--text);
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--rule);
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--ink);
     display: none;
   }
   .disagreement-reconcile.is-active {
     display: block;
     animation: fadeInRow 0.4s ease-out;
   }
+  /* The reconciled value is a Fraunces figure. */
+  .disagreement-reconcile strong {
+    font-family: var(--font-serif);
+    font-size: 16px;
+    font-weight: 600;
+    font-variant-numeric: lining-nums;
+    letter-spacing: -0.01em;
+  }
   .disagreement-reconcile-label {
-    font: 10px/1 var(--font-mono);
+    font: 600 var(--stamp-size)/1 var(--font-label);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--label-track);
     color: var(--accent);
-    margin-bottom: 4px;
+    margin-bottom: 6px;
   }
   .disagreement-reconcile-pending {
-    color: var(--text-faint);
-    font-style: italic;
+    color: var(--ink-light);
+    font: italic 13.5px/1.5 var(--font-serif);
   }
 
-  /* ── Receipt sidebar ───────────────────────────────────────────────── */
+  /* ── Receipt sidebar: a stack of printed receipts ──────────────────── */
   .sidebar-title {
-    font: 11px/1 var(--font-mono);
+    font: 600 var(--label-size)/1 var(--font-label);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-faint);
-    margin-bottom: 4px;
+    letter-spacing: var(--label-track);
+    color: var(--accent);
+    margin-bottom: 8px;
   }
   .sidebar-sub {
-    font-size: 13px;
-    color: var(--text);
+    font-family: var(--font-serif);
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--ink);
     margin-bottom: 18px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--rule);
   }
   .receipt-list {
     display: flex;
@@ -580,61 +758,70 @@ function renderRaceCanvas(demoKey: string): string {
     gap: 8px;
   }
   .receipt-card {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 6px;
+    background: var(--mat-sheet);
+    border: 1px solid var(--mat-edge);
+    border-radius: var(--r-print);
+    box-shadow: var(--shadow-1);
     padding: 10px 12px;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: border-color 0.15s, box-shadow 0.15s;
     opacity: 0;
     animation: fadeInRow 0.3s ease-out forwards;
   }
   .receipt-card:hover {
     border-color: var(--accent);
-    transform: translateX(-2px);
+    box-shadow: var(--shadow-2);
   }
   .receipt-card-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 10px;
   }
-  .receipt-card-row + .receipt-card-row { margin-top: 4px; }
+  .receipt-card-row + .receipt-card-row { margin-top: 5px; }
+  /* The hash line reads as the receipt's perforated foot. */
+  .receipt-card-row:last-child {
+    margin-top: 8px;
+    padding-top: 7px;
+    border-top: 1px dashed var(--rule);
+  }
   .receipt-card-vendor {
-    font-size: 12px;
+    font-size: 12.5px;
     font-weight: 600;
-    color: var(--text);
+    color: var(--ink);
   }
   .receipt-card-meta {
     font: 10px/1 var(--font-mono);
-    color: var(--text-faint);
+    color: var(--ink-light);
   }
   .receipt-card-action {
-    font: 10px/1 var(--font-mono);
+    font: 10.5px/1 var(--font-mono);
     color: var(--accent);
   }
+  /* VERIFIED stamp. */
   .receipt-card-pill {
     display: inline-block;
-    padding: 2px 6px;
-    border-radius: 3px;
-    background: var(--ok);
-    color: #0a0d12;
-    font: 600 9px var(--font-mono);
+    padding: 3px 6px;
+    border-radius: var(--r-print);
+    background: color-mix(in srgb, var(--accent) 82%, var(--ink));
+    color: var(--paper);
+    font: 700 var(--stamp-size)/1 var(--font-label);
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--stamp-track);
+    white-space: nowrap;
   }
   .receipt-card-empty {
-    color: var(--text-faint);
-    font-size: 13px;
-    font-style: italic;
+    color: var(--ink-light);
+    font: italic 14px/1.5 var(--font-serif);
     padding: 16px 0;
     text-align: center;
   }
 
-  /* ── Receipt modal ─────────────────────────────────────────────────── */
+  /* ── Receipt modal (a sheet over a quiet scrim) ────────────────────── */
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.6);
+    background: var(--scrim);
     display: none;
     align-items: center;
     justify-content: center;
@@ -642,9 +829,11 @@ function renderRaceCanvas(demoKey: string): string {
   }
   .modal-backdrop.is-open { display: flex; }
   .modal {
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-strong);
-    border-radius: 10px;
+    position: relative;
+    background: var(--mat-sheet);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow-3);
     padding: 24px;
     width: 90%;
     max-width: 720px;
@@ -652,167 +841,201 @@ function renderRaceCanvas(demoKey: string): string {
     overflow-y: auto;
   }
   .modal-title {
-    font-size: 16px;
+    font-family: var(--font-serif);
+    font-size: 22px;
     font-weight: 600;
-    margin-bottom: 4px;
+    line-height: 1.2;
+    letter-spacing: -0.018em;
+    color: var(--ink);
+    margin-bottom: 6px;
+    padding-right: 76px;
   }
   .modal-sub {
-    font: 11px/1.4 var(--font-mono);
-    color: var(--text-faint);
+    font: 11px/1.5 var(--font-mono);
+    color: var(--ink-light);
     margin-bottom: 16px;
   }
   .modal-section {
     margin-top: 14px;
   }
   .modal-section-title {
-    font: 11px/1 var(--font-mono);
+    font: 600 var(--stamp-size)/1 var(--font-label);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-faint);
+    letter-spacing: var(--label-track);
+    color: var(--accent);
     margin-bottom: 6px;
   }
   .modal pre {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px;
-    font: 11px/1.5 var(--font-mono);
-    color: var(--text);
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-print);
+    padding: 10px 12px;
+    font: 11px/1.55 var(--font-mono);
+    color: var(--ink);
     overflow-x: auto;
     white-space: pre-wrap;
     word-break: break-all;
   }
   .modal-close {
     position: absolute;
-    top: 16px;
-    right: 16px;
+    top: 18px;
+    right: 18px;
     background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text);
+    border: 1px solid var(--border-strong);
+    color: var(--ink);
     padding: 6px 10px;
-    border-radius: 4px;
+    border-radius: var(--r-print);
     cursor: pointer;
-    font: 11px var(--font-mono);
+    font: 700 var(--stamp-size)/1 var(--font-label);
+    text-transform: uppercase;
+    letter-spacing: var(--stamp-track);
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .modal-close:hover {
+    background: var(--paper-2);
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   /* ── Add-vendor bar ────────────────────────────────────────────────── */
   .add-vendor-bar {
     margin-top: 24px;
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 16px;
+    background: var(--mat-sheet);
+    border: 1px solid var(--mat-edge);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow-1);
+    padding: 14px 18px;
     display: flex;
-    gap: 10px;
+    gap: 12px;
     align-items: center;
   }
-  .add-vendor-bar.is-disabled { opacity: 0.4; pointer-events: none; }
+  .add-vendor-bar.is-disabled { opacity: 0.5; pointer-events: none; }
   .add-vendor-label {
-    font: 11px/1 var(--font-mono);
+    font: 600 var(--label-size)/1 var(--font-label);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-faint);
+    letter-spacing: var(--label-track);
+    color: var(--ink-light);
+    white-space: nowrap;
   }
   .add-vendor-select {
     flex: 1;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
+    background: var(--mat);
+    border: 1px solid var(--rule);
+    color: var(--ink);
     padding: 8px 12px;
-    border-radius: 6px;
-    font: 13px var(--font-ui);
+    border-radius: var(--r-print);
+    font: 13px var(--font-sans);
   }
 
-  /* ── Empty state ───────────────────────────────────────────────────── */
+  /* ── Empty state (NFA hatch-panel register: a dashed hairline) ─────── */
   .empty-state {
-    color: var(--text-faint);
-    font-size: 13px;
+    color: var(--ink-light);
+    font: italic 15px/1.5 var(--font-serif);
     text-align: center;
     padding: 40px 20px;
+    border: 1px dashed color-mix(in srgb, var(--ink) 22%, transparent);
+    border-radius: var(--r-card);
   }
 
   /* Sec-31u: Trace inspector — minimal port of the main demo's
      trace inspector for the Race Canvas page. */
   .race-trace-trigger {
-    position: fixed; bottom: 20px; right: 20px;
-    display: flex; align-items: center; gap: 6px;
-    padding: 9px 14px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-strong);
-    border-radius: 999px;
-    color: var(--accent);
-    font: 11px var(--font-mono);
+    position: fixed; bottom: 22px; right: 22px;
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px 10px 14px;
+    background: var(--mat-sheet);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-pill);
+    color: var(--ink);
+    font: 600 12px var(--font-sans);
     cursor: pointer;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.32);
+    box-shadow: var(--shadow-2);
     z-index: 90;
-    transition: all 0.15s;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
   }
-  .race-trace-trigger:hover { transform: translateY(-1px); border-color: var(--accent); }
+  .race-trace-trigger svg { color: var(--accent); }
+  .race-trace-trigger:hover { border-color: var(--accent); background: var(--mat); }
   .race-trace-trigger.is-pulsing {
     animation: race-trace-pulse 1.6s ease-in-out 3;
     border-color: var(--accent);
+    color: var(--accent);
   }
   @keyframes race-trace-pulse {
-    0%   { box-shadow: 0 6px 18px rgba(0,0,0,0.32), 0 0 0 0 var(--accent); }
-    35%  { box-shadow: 0 6px 18px rgba(0,0,0,0.32), 0 0 0 14px transparent; }
-    100% { box-shadow: 0 6px 18px rgba(0,0,0,0.32), 0 0 0 0 transparent; }
+    /* A quiet hairline ring that widens and fades, no glow. */
+    0%   { box-shadow: var(--shadow-2), 0 0 0 0 rgba(var(--accent-rgb), 0.45); }
+    45%  { box-shadow: var(--shadow-2), 0 0 0 9px rgba(var(--accent-rgb), 0); }
+    100% { box-shadow: var(--shadow-2), 0 0 0 0 rgba(var(--accent-rgb), 0); }
   }
+  /* Closed, the panel casts no shadow, so nothing bleeds in at the edge. */
   .race-trace-panel {
     position: fixed; top: 0; bottom: 0; right: 0;
     width: 420px; max-width: 92vw;
-    background: var(--bg-elevated);
-    border-left: 1px solid var(--border-strong);
-    box-shadow: -8px 0 24px rgba(0,0,0,0.4);
+    background: var(--mat-sheet);
+    border-left: 1px solid var(--rule);
+    box-shadow: none;
     z-index: 100;
-    transform: translateX(100%);
-    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transform: translateX(102%);
+    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s;
     display: flex; flex-direction: column;
     overflow: hidden;
   }
-  .race-trace-panel.is-open { transform: translateX(0); }
+  .race-trace-panel.is-open {
+    transform: translateX(0);
+    box-shadow: -22px 0 48px -26px color-mix(in srgb, var(--ink) 45%, transparent);
+  }
   .race-trace-panel-head {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text);
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--rule);
+    color: var(--ink);
+  }
+  .race-trace-panel-head strong {
+    font-family: var(--font-serif);
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.018em;
   }
   .race-trace-panel-head button {
     background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 4px 10px;
-    border-radius: 4px;
-    font: 11px var(--font-mono);
+    border: 1px solid var(--border-strong);
+    color: var(--ink);
+    padding: 5px 10px;
+    border-radius: var(--r-print);
+    font: 700 var(--stamp-size)/1 var(--font-label);
+    text-transform: uppercase;
+    letter-spacing: var(--stamp-track);
     cursor: pointer;
   }
-  .race-trace-panel-head button:hover { border-color: var(--accent); color: var(--accent); }
+  .race-trace-panel-head button:hover { background: var(--paper-2); border-color: var(--accent); color: var(--accent); }
   .race-trace-body {
     flex: 1;
     overflow-y: auto;
-    padding: 14px 18px;
-    color: var(--text);
+    padding: 16px 20px;
+    color: var(--ink);
   }
   .race-trace-empty {
-    color: var(--text-faint);
-    font: 12px var(--font-mono);
+    color: var(--ink-light);
+    font: italic 14px/1.5 var(--font-serif);
     padding: 20px 0;
   }
   .race-trace-head {
     margin-bottom: 14px;
     padding-bottom: 10px;
-    border-bottom: 1px solid var(--border-faint);
+    border-bottom: 1px solid var(--rule);
   }
   .race-trace-head .op {
-    font-size: 14px; font-weight: 600; color: var(--text);
+    font-family: var(--font-serif);
+    font-size: 17px; font-weight: 600; color: var(--ink);
+    letter-spacing: -0.012em;
     margin-bottom: 2px;
   }
   .race-trace-head .meta {
-    font: 11px var(--font-mono); color: var(--text-faint);
+    font: 11px var(--font-mono); color: var(--ink-light);
   }
   .race-trace-step {
-    background: var(--bg);
-    border: 1px solid var(--border-faint);
-    border-radius: 6px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-print);
     padding: 10px 12px;
     margin-bottom: 8px;
   }
@@ -825,16 +1048,16 @@ function renderRaceCanvas(demoKey: string): string {
     background: var(--accent-dim);
     color: var(--accent);
     padding: 2px 7px;
-    border-radius: 999px;
+    border-radius: var(--r-print);
   }
   .race-trace-step-head .step-label {
     flex: 1;
     font: 12.5px var(--font-mono);
-    color: var(--text);
+    color: var(--ink);
   }
   .race-trace-step-head .step-dur {
     font: 11px var(--font-mono);
-    color: var(--text-faint);
+    color: var(--ink-light);
   }
   .race-trace-detail {
     display: grid;
@@ -844,16 +1067,19 @@ function renderRaceCanvas(demoKey: string): string {
     line-height: 1.4;
     padding: 2px 0;
   }
-  .race-trace-detail .k { color: var(--text-faint); }
-  .race-trace-detail .v { color: var(--text); word-break: break-all; }
+  .race-trace-detail .k { color: var(--ink-light); }
+  .race-trace-detail .v { color: var(--ink); word-break: break-all; }
   .race-trace-note {
     margin-top: 6px;
     font: 11px var(--font-mono);
-    color: var(--text-faint);
+    color: var(--ink-muted);
     font-style: italic;
     padding: 6px 8px;
-    background: var(--bg-input);
-    border-radius: 4px;
+    background: var(--paper-2);
+    border-radius: var(--r-print);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .halo-arc, .race-trace-trigger.is-pulsing { animation: none; }
   }
 </style>
 </head>
@@ -873,7 +1099,7 @@ function renderRaceCanvas(demoKey: string): string {
           <div class="page-info-title">How Race Canvas works</div>
           <ol class="page-info-steps">
             <li><strong>Parallel race.</strong> 6 vendor agents probed in parallel against the same brief; each returns audience_size, sensitive_category_verdict, recommended_bid_floor, governance_outcome.</li>
-            <li><strong>Disagreement halo.</strong> Detector compares responses on 4 fields. Numeric: ±15% threshold (audience), ±20% (bid floor). Categorical: any difference triggers. Severity: blocking / material / minor maps to red / yellow / blue arc.</li>
+            <li><strong>Disagreement halo.</strong> Detector compares responses on 4 fields. Numeric: ±15% threshold (audience), ±20% (bid floor). Categorical: any difference triggers. Severity: blocking / material / minor maps to a solid / dashed / dotted arc.</li>
             <li><strong>Reconciliation.</strong> Median across vendors for numeric; conservative-pick (worst-of) for categorical. Audit receipts (FNV-1a hash of input/output) stack in the right sidebar — click any to inspect raw payload.</li>
           </ol>
           <div class="page-info-trace">Code: <code>/race/start</code> → <code>synthesizeVendorResponse</code> → <code>detectDisagreements</code></div>
@@ -971,8 +1197,24 @@ function renderRaceCanvas(demoKey: string): string {
     <div class="modal-sub" style="opacity:0.7">Every recorded AdCP tool call (get_signals, activate_signal, query_signals_nl, get_operation_status, list_creative_formats, get_products, create_media_buy, check_governance) with schema validation against the vendored ${SPEC_VERSION} corpus. Refresh to pull latest.</div>
     <button class="modal-close" id="signal-trace-modal-close">close</button>
     <div style="margin-top:14px"><button class="try-chip" id="signal-trace-refresh">↻ refresh</button></div>
-    <div id="signal-trace-list" style="margin-top:12px;font:11.5px ui-monospace,Menlo,Consolas,monospace">loading…</div>
+    <div id="signal-trace-list" style="margin-top:12px;font:11.5px var(--font-mono)">loading…</div>
   </div>
+</div>
+
+<!-- Sec-31u: trace inspector for Race Canvas. Trigger appears bottom-right
+     once the first traced response lands; panel slides in from right with
+     steps formatted from the captured _trace. Parsed before the page
+     script, which binds its click handlers at load. -->
+<button id="race-trace-trigger" class="race-trace-trigger" style="display:none" type="button" aria-label="View trace">
+  <svg viewBox="0 0 20 20" width="14" height="14"><circle cx="10" cy="10" r="3" fill="currentColor"/><circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.6"/></svg>
+  <span>View trace</span>
+</button>
+<div id="race-trace-panel" class="race-trace-panel" aria-hidden="true">
+  <div class="race-trace-panel-head">
+    <strong>Trace inspector</strong>
+    <button id="race-trace-close" type="button">close</button>
+  </div>
+  <div id="race-trace-body" class="race-trace-body"></div>
 </div>
 
 <script>
@@ -1163,20 +1405,19 @@ function renderRaceCanvas(demoKey: string): string {
     var cx = Math.min(ax, bx) - depth;
     var cy = (ay + by) / 2;
 
-    var color = disagreement.severity === "blocking" ? "#ff4d5e" :
-                disagreement.severity === "material" ? "#f0b400" : "#38b6ff";
+    // Stroke colour comes from the skin via .halo-arc--<severity> in CSS.
+    var sevKey = disagreement.severity === "blocking" ? "blocking" :
+                 disagreement.severity === "material" ? "material" : "minor";
 
     var ns = "http://www.w3.org/2000/svg";
     var pathStr = "M" + ax + "," + ay + " Q" + cx + "," + cy + " " + bx + "," + by;
     var path = document.createElementNS(ns, "path");
     path.setAttribute("d", pathStr);
     path.setAttribute("fill", "none");
-    path.setAttribute("stroke", color);
-    path.setAttribute("stroke-width", "3");
+    path.setAttribute("stroke-width", "2.5");
     path.setAttribute("opacity", "0.85");
     path.setAttribute("stroke-linecap", "round");
-    path.setAttribute("filter", "drop-shadow(0 0 8px " + color + ")");
-    path.classList.add("halo-arc");
+    path.classList.add("halo-arc", "halo-arc--" + sevKey);
     elHalo.appendChild(path);
 
     // Mark the conflicting rows with conflict styling.
@@ -1607,13 +1848,13 @@ function renderRaceCanvas(demoKey: string): string {
     if (!validation || !validation.errors || validation.errors.length === 0) return "";
     var rows = validation.errors.map(function (e) {
       var human = _raceHumanizeErr(e.message);
-      return '<div style="font-size:10.5px;line-height:1.55;padding:2px 0;color:#ffbfa3">' +
-        '<code style="background:rgba(255,123,123,0.14);color:#ffd7c8;padding:0 4px;border-radius:2px">' + escapeHtml(e.path || "(root)") + '</code> ' +
+      return '<div style="font-size:10.5px;line-height:1.55;padding:2px 0;color:var(--risk)">' +
+        '<code style="background:rgba(var(--risk-rgb),0.10);color:var(--risk);padding:0 4px;border-radius:var(--r-print)">' + escapeHtml(e.path || "(root)") + '</code> ' +
         escapeHtml(human) +
-        ' <span style="color:#ff9b6b;opacity:0.7">[' + escapeHtml(e.keyword) + ']</span>' +
+        ' <span style="color:var(--risk);opacity:0.75">[' + escapeHtml(e.keyword) + ']</span>' +
       '</div>';
     }).join("");
-    var legend = '<details style="margin:6px 0;font-size:10.5px;color:#9aa6b3">' +
+    var legend = '<details style="margin:6px 0;font-size:10.5px;color:var(--ink-light)">' +
       '<summary style="cursor:pointer">How to read these errors</summary>' +
       '<div style="padding:6px 0 6px 12px;line-height:1.55">' +
         '<div><strong>Path</strong> (e.g. <code>#/signals/0</code>): JSON-Pointer into the payload below. <code>#</code> is the root.</div>' +
@@ -1626,7 +1867,7 @@ function renderRaceCanvas(demoKey: string): string {
   function _raceRenderSignalTrace(t, idx) {
     var dirIcon = t.direction === "outbound" ? "→" : "←";
     var sourceShort = t.source.length > 36 ? t.source.slice(0, 33) + "…" : t.source;
-    var statusColor = t.response.status === "ok" ? "#5fd9c4" : "#ff7b7b";
+    var statusColor = t.response.status === "ok" ? "var(--accent)" : "var(--risk)";
     var reqValid = t.request.validation && t.request.validation.valid;
     var resValid = t.response.validation && t.response.validation.valid;
     var reqErrs = (t.request.validation && t.request.validation.errors) || [];
@@ -1638,10 +1879,10 @@ function renderRaceCanvas(demoKey: string): string {
     var reqIsSkip = reqErrs.some(function (e) { return e.keyword === "skipped" || e.keyword === "missing_schema"; });
     var resIsSkip = resErrs.some(function (e) { return e.keyword === "skipped" || e.keyword === "missing_schema"; });
     function badge(ok, errCount, isExt, isSkip) {
-      if (isExt) return '<span style="color:#ffc45f" title="Tool not yet standardized in published AdCP spec — recorded for audit, schema link goes to the proposal.">⚙ ext</span>';
-      if (isSkip) return '<span style="color:#9aa6b3" title="Validator could not run; schema URL link still works">⊘ skip</span>';
-      if (ok) return '<span style="color:#5fd9c4">✓ schema</span>';
-      return '<span style="color:#ff9b6b">✗ ' + errCount + ' err</span>';
+      if (isExt) return '<span style="color:var(--warn-ink)" title="Tool not yet standardized in published AdCP spec — recorded for audit, schema link goes to the proposal.">⚙ ext</span>';
+      if (isSkip) return '<span style="color:var(--ink-light)" title="Validator could not run; schema URL link still works">⊘ skip</span>';
+      if (ok) return '<span style="color:var(--accent)">✓ schema</span>';
+      return '<span style="color:var(--risk)">✗ ' + errCount + ' err</span>';
     }
     // Endpoint URL (outbound only) — clickable, matches the main viewer.
     var endpointBlock = "";
@@ -1652,7 +1893,7 @@ function renderRaceCanvas(demoKey: string): string {
         visible = u.host + u.pathname;
         if (visible.length > 48) visible = visible.slice(0, 45) + "…";
       } catch (_) { if (visible.length > 48) visible = visible.slice(0, 45) + "…"; }
-      endpointBlock = ' · <a href="' + escapeHtml(t.endpoint_url) + '" target="_blank" rel="noopener" title="' + escapeHtml(t.endpoint_url) + '" style="color:#38b6ff;font-size:10.5px;text-decoration:none">⎘ ' + escapeHtml(visible) + '</a>';
+      endpointBlock = ' · <a href="' + escapeHtml(t.endpoint_url) + '" target="_blank" rel="noopener" title="' + escapeHtml(t.endpoint_url) + '" style="color:var(--accent);font-size:10.5px;text-decoration:none">⎘ ' + escapeHtml(visible) + '</a>';
     }
     // Peer version chip — pulled live from MCP initialize.
     var peerVerBlock = "";
@@ -1662,9 +1903,9 @@ function renderRaceCanvas(demoKey: string): string {
       var pLabel = pv ? "peer v" + pv : "peer";
       var pTitle = (pn ? pn + " · " : "") + (pv ? "version " + pv : "version unknown") +
         " (advertised by the peer in the MCP initialize handshake)";
-      peerVerBlock = ' · <span style="color:#ffcb5c;font-size:10.5px;background:rgba(255,203,92,0.12);padding:1px 6px;border-radius:3px" title="' + escapeHtml(pTitle) + '">' + escapeHtml(pLabel) + '</span>';
+      peerVerBlock = ' · <span style="color:var(--warn-ink);font-size:10.5px;background:rgba(var(--warm-rgb),0.10);padding:1px 6px;border-radius:var(--r-print)" title="' + escapeHtml(pTitle) + '">' + escapeHtml(pLabel) + '</span>';
     }
-    return '<details style="margin-bottom:10px;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:4px">' +
+    return '<details style="margin-bottom:10px;padding:8px 12px;background:var(--paper);border:1px solid var(--rule);border-radius:var(--r-print)">' +
       '<summary style="cursor:pointer;font-size:12px;line-height:1.7">' +
         '<strong>' + escapeHtml(t.tool_name) + '</strong> · ' + dirIcon + ' ' + escapeHtml(sourceShort) +
         endpointBlock +
@@ -1674,13 +1915,13 @@ function renderRaceCanvas(demoKey: string): string {
         ' · ' + badge(reqValid, reqErrCount, reqIsExt, reqIsSkip) + ' req · ' + badge(resValid, resErrCount, resIsExt, resIsSkip) + ' res' +
       '</summary>' +
       '<div style="margin-top:8px"><strong style="font-size:10px;letter-spacing:0.1em">REQUEST</strong>' +
-        ' · validating against <a href="' + escapeHtml(t.request.validation.schema_url) + '" target="_blank" style="color:#38b6ff;font-size:10px">' + escapeHtml(t.request.validation.schema_url.split("/").slice(-2).join("/")) + ' ↗</a></div>' +
+        ' · validating against <a href="' + escapeHtml(t.request.validation.schema_url) + '" target="_blank" style="color:var(--accent);font-size:10px">' + escapeHtml(t.request.validation.schema_url.split("/").slice(-2).join("/")) + ' ↗</a></div>' +
       _raceRenderErrorList(t.request.validation) +
-      '<pre style="background:rgba(0,0,0,0.4);padding:8px;border-radius:3px;max-height:240px;overflow:auto;font-size:10.5px;white-space:pre-wrap;word-break:break-all">' + escapeHtml(JSON.stringify(t.request.payload, null, 2)) + '</pre>' +
+      '<pre style="background:var(--paper-2);border:1px solid var(--rule);color:var(--ink);padding:8px;border-radius:var(--r-print);max-height:240px;overflow:auto;font-size:10.5px;white-space:pre-wrap;word-break:break-all">' + escapeHtml(JSON.stringify(t.request.payload, null, 2)) + '</pre>' +
       '<div><strong style="font-size:10px;letter-spacing:0.1em">RESPONSE</strong>' +
-        ' · validating against <a href="' + escapeHtml(t.response.validation.schema_url) + '" target="_blank" style="color:#38b6ff;font-size:10px">' + escapeHtml(t.response.validation.schema_url.split("/").slice(-2).join("/")) + ' ↗</a></div>' +
+        ' · validating against <a href="' + escapeHtml(t.response.validation.schema_url) + '" target="_blank" style="color:var(--accent);font-size:10px">' + escapeHtml(t.response.validation.schema_url.split("/").slice(-2).join("/")) + ' ↗</a></div>' +
       _raceRenderErrorList(t.response.validation) +
-      '<pre style="background:rgba(0,0,0,0.4);padding:8px;border-radius:3px;max-height:240px;overflow:auto;font-size:10.5px;white-space:pre-wrap;word-break:break-all">' + escapeHtml(JSON.stringify(t.response.payload, null, 2)) + '</pre>' +
+      '<pre style="background:var(--paper-2);border:1px solid var(--rule);color:var(--ink);padding:8px;border-radius:var(--r-print);max-height:240px;overflow:auto;font-size:10.5px;white-space:pre-wrap;word-break:break-all">' + escapeHtml(JSON.stringify(t.response.payload, null, 2)) + '</pre>' +
     '</details>';
   }
   async function _raceLoadSignalTraces() {
@@ -1712,21 +1953,6 @@ function renderRaceCanvas(demoKey: string): string {
   });
 })();
 </script>
-
-<!-- Sec-31u: trace inspector for Race Canvas. Trigger appears bottom-right
-     once the first traced response lands; panel slides in from right with
-     steps formatted from the captured _trace. -->
-<button id="race-trace-trigger" class="race-trace-trigger" style="display:none" type="button" aria-label="View trace">
-  <svg viewBox="0 0 20 20" width="14" height="14"><circle cx="10" cy="10" r="3" fill="currentColor"/><circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.6"/></svg>
-  <span>View trace</span>
-</button>
-<div id="race-trace-panel" class="race-trace-panel" aria-hidden="true">
-  <div class="race-trace-panel-head">
-    <strong>Trace inspector</strong>
-    <button id="race-trace-close" type="button">close</button>
-  </div>
-  <div id="race-trace-body" class="race-trace-body"></div>
-</div>
 
 </body>
 </html>`;

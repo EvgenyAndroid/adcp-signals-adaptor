@@ -30,9 +30,12 @@ export function handleEcosystemPage(env: { DEMO_API_KEY: string }): Response {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "public, max-age=300",
       // Three.js loaded from a CDN — extend script-src accordingly.
+      // style-src + font-src open to Google Fonts for the house typefaces
+      // (Fraunces + Inter, the nofluffadvisory.com families).
       "Content-Security-Policy":
         "default-src 'self'; " +
-        "style-src 'self' 'unsafe-inline'; " +
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+        "font-src 'self' https://fonts.gstatic.com; " +
         "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; " +
         "img-src 'self' data:; " +
         "connect-src 'self'; " +

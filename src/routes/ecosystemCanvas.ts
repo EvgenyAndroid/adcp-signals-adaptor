@@ -27,6 +27,8 @@
 
 const SAFE_THREE_VERSION = "r170";
 
+import { SKIN_TOKENS_CSS, THEME_HEAD_SCRIPT } from "../demo/skins";
+
 export function renderEcosystemCanvas(demoKey: string): string {
   const safeKey = JSON.stringify(demoKey);
   return `<!doctype html>
@@ -35,142 +37,260 @@ export function renderEcosystemCanvas(demoKey: string): string {
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>AdCP Ecosystem — live agentic orchestration</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='2' fill='%2338b6ff'/%3E%3Ccircle cx='8' cy='8' r='6' fill='none' stroke='%2338b6ff' stroke-width='0.6' opacity='0.5'/%3E%3C/svg%3E"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='2' fill='%238a6d3b'/%3E%3Ccircle cx='8' cy='8' r='6' fill='none' stroke='%238a6d3b' stroke-width='0.6' opacity='0.5'/%3E%3C/svg%3E"/>
+${THEME_HEAD_SCRIPT}
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&amp;family=Inter:wght@400..700&amp;display=swap" media="print" onload="this.media='all'"/>
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&amp;family=Inter:wght@400..700&amp;display=swap"/></noscript>
 <style>
+  /* House style: the three nofluffadvisory.com skins (values mirror
+     src/styles/themes.css there; shared with the dashboard via
+     SKIN_TOKENS_CSS in src/demo/skins.ts).
+     Graphite is the default; the head script above sets data-theme from
+     the stored "ui-theme". The page API below (--bg, --panel, --text*,
+     --c-*) is derived from the skin tokens, and the WebGL scene reads the
+     same custom properties at startup, so a skin is one source of truth. */
+  ${SKIN_TOKENS_CSS}
+
   :root {
-    --bg: #04060a;
-    --bg-elev: #0a0e15;
-    --panel: rgba(10, 14, 21, 0.92);
-    --panel-border: rgba(56, 182, 255, 0.18);
-    --text: #d6e1f0;
-    --text-dim: #6f8298;
-    --text-faint: #455467;
-    --accent: #38b6ff;
-    --accent-glow: rgba(56, 182, 255, 0.4);
+    /* Kit (NFA global.css): paper objects on a mat, depth from the ink. */
+    --accent-on-dark: color-mix(in srgb, var(--accent-2) 55%, var(--paper));
+    --mat-sheet:   color-mix(in srgb, var(--paper) 40%, #fff);
+    --mat-edge:    color-mix(in srgb, var(--rule) 70%, transparent);
+    --shadow-1: 0 1px 1px color-mix(in srgb, var(--ink) 6%, transparent),
+                0 10px 22px -14px color-mix(in srgb, var(--ink) 30%, transparent);
+    --shadow-2: 0 1px 1px color-mix(in srgb, var(--ink) 8%, transparent),
+                0 8px 18px -8px color-mix(in srgb, var(--ink) 30%, transparent),
+                0 26px 44px -26px color-mix(in srgb, var(--ink) 38%, transparent);
+    --shadow-panel: 0 30px 60px -36px color-mix(in srgb, var(--ink) 70%, transparent);
+    --scrim:       color-mix(in srgb, var(--ink) 38%, transparent);
+    --r-print: 2px;
+    --r-card:  4px;
+    --font-serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+    --font-sans:  'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono:  ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --font-label: var(--font-sans);
+    --label-size:  11px;
+    --label-track: 0.14em;
+    --ease-snap:   cubic-bezier(0.2, 0.8, 0.2, 1);
 
-    --c-sales:       #ffb454;
-    --c-signals:     #38b6ff;
-    --c-buying:      #ff5e87;
-    --c-creative:    #c98aff;
-    --c-measurement: #5fd9c4;
-    --c-governance:  #f59e0b;
-    --c-identity:    #80a8ff;   /* fix-all-gaps: ID resolution */
-    --c-cleanroom:   #b8a0ff;   /* fix-all-gaps: privacy-preserving join */
-    --c-buyer:       #ffffff;
+    /* Page API (names kept from the dark version of this page). */
+    --bg:            var(--paper);
+    --bg-elev:       var(--paper-2);
+    --panel:         var(--mat-sheet);
+    --panel-border:  var(--rule);
+    --border-strong: color-mix(in srgb, var(--ink) 26%, var(--paper));
+    --text:          var(--ink);
+    --text-dim:      var(--ink-muted);
+    --text-mut:      var(--ink-light);
+    --text-faint:    var(--ink-light);
+    --accent-hot:    color-mix(in srgb, var(--accent) 82%, var(--ink));
+    --accent-dim:    rgba(var(--accent-rgb), 0.10);
+    --accent-border: rgba(var(--accent-rgb), 0.38);
 
-    --c-discovery:   #38b6ff;
-    --c-signal:      #5fd9c4;
-    --c-policy:      #f59e0b;
-    --c-product:     #ffb454;
-    --c-creative-msg:#c98aff;
-    --c-bid:         #ff5e87;
-    --c-measure:     #ffd166;
+    /* Agent roles: three ink families, each in three steps.
+         accent  = the audience side   signals / identity (light) / measurement (deep)
+         warm    = supply and demand   sales / creative (light) / buying (deep)
+         risk    = the gate            governance; clean room in ink
+       The buyer orchestrator at the centre is ink. */
+    --c-signals:     var(--accent);
+    --c-identity:    color-mix(in srgb, var(--accent) 62%, var(--paper));
+    --c-measurement: color-mix(in srgb, var(--accent) 62%, var(--ink));
+    --c-sales:       var(--warm);
+    --c-creative:    color-mix(in srgb, var(--warm) 62%, var(--paper));
+    --c-buying:      color-mix(in srgb, var(--warm) 66%, var(--ink));
+    --c-governance:  var(--risk);
+    --c-cleanroom:   var(--ink);
+    --c-buyer:       var(--ink);
+
+    /* Message kinds: requests (fan-outs) are a neutral hairline; every
+       response takes the colour of the role that sends it. */
+    --c-discovery:    color-mix(in srgb, var(--ink) 40%, var(--paper));
+    --c-signal:       var(--c-signals);
+    --c-policy:       var(--c-governance);
+    --c-product:      var(--c-sales);
+    --c-creative-msg: var(--c-creative);
+    --c-bid:          var(--c-buying);
+    --c-measure:      var(--c-measurement);
+
+    /* Bid-commit particles: the skin's gold-leaning ink. */
+    --c-money:       var(--accent);
+    /* Scene hairlines (tethers, the buyer ring, the background grain). */
+    --c-hairline:    var(--ink);
+    --c-grain:       var(--rule);
   }
+  /* Graphite: its warm is a low-chroma slate, so the warm family's light and
+     deep steps collapsed onto the neutral greys (discovery vs creative was
+     CIE76 4.2; sales vs buying 10.3). These mixes keep every legend pair at
+     ΔE 18.8 or more: requests fade to a faint hairline grey, creative leans
+     toward the accent, buying and measurement go deeper, and the clean room
+     takes a mid grey so it no longer matches buying's near-ink. */
+  :root:not([data-theme]),
+  :root[data-theme="graphite"] {
+    --c-discovery:   color-mix(in srgb, var(--ink) 14%, var(--paper));
+    --c-creative:    color-mix(in srgb, var(--warm) 45%, var(--accent));
+    --c-buying:      color-mix(in srgb, var(--warm) 15%, var(--ink));
+    --c-measurement: color-mix(in srgb, var(--accent) 40%, var(--ink));
+    --c-cleanroom:   color-mix(in srgb, var(--ink) 40%, var(--paper));
+  }
+  /* Olive: warm (terracotta) and risk sit too close to share a legend, so
+     the gate goes to ink and the clean room to a mid grey. Its gold is the
+     warm-accent mix. */
+  :root[data-theme="olive"] {
+    --c-governance:  var(--ink);
+    --c-cleanroom:   color-mix(in srgb, var(--ink) 45%, var(--paper));
+    --c-money:       color-mix(in srgb, var(--warm) 55%, var(--accent));
+  }
+  /* Bordeaux: the wine-gold warm is the gold. */
+  :root[data-theme="bordeaux"] {
+    --c-money:       var(--warm);
+  }
+
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif; overflow: hidden; }
+  html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-sans); overflow: hidden; -webkit-font-smoothing: antialiased; }
   #stage { position: fixed; inset: 0; }
   canvas { display: block; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Shared label voice: sans caps with the house tracking. */
+  .brand-sub, .meta-pill, .brief-banner-label, .phase-banner, .legend-title,
+  .onboarding-step, .trace-panel-title, .trace-kind, .agent-panel-role,
+  .agent-panel-lift-label, .trace-detail-kind, .trace-detail-section-title {
+    font-family: var(--font-label);
+    text-transform: uppercase;
+    letter-spacing: var(--label-track);
+  }
 
   .topbar {
     position: fixed; top: 0; left: 0; right: 0; z-index: 10;
     display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 18px;
-    background: linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0));
+    padding: 10px 18px;
+    background: color-mix(in srgb, var(--paper) 92%, transparent);
+    border-bottom: 1px solid var(--rule);
     pointer-events: none;
   }
   .brand { pointer-events: auto; display: flex; align-items: center; gap: 12px; font-size: 13px; }
-  .brand-mark { width: 24px; height: 24px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, var(--accent), rgba(56, 182, 255, 0.1)); box-shadow: 0 0 18px var(--accent-glow); }
-  .brand-title { font-weight: 600; letter-spacing: 0.04em; }
-  .brand-sub { color: var(--text-dim); font-size: 11px; margin-top: 1px; }
-  .topbar-meta { pointer-events: auto; display: flex; gap: 14px; align-items: center; font: 11px ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--text-dim); }
-  .meta-pill { padding: 5px 10px; background: rgba(0,0,0,0.4); border: 1px solid rgba(56, 182, 255, 0.16); border-radius: 12px; }
-  .meta-pill b { color: var(--text); font-weight: 600; }
+  /* The mark: an ink ring around an accent point (the favicon's figure). */
+  .brand-mark {
+    position: relative; flex: none;
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 1.5px solid var(--ink);
+  }
+  .brand-mark::after {
+    content: ""; position: absolute; inset: 6px; border-radius: 50%;
+    background: var(--accent);
+  }
+  .brand-title { font-family: var(--font-serif); font-size: 17px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.1; color: var(--ink); }
+  .brand-sub { color: var(--text-faint); font-size: 9.5px; letter-spacing: 0.1em; margin-top: 3px; }
+  .topbar-meta { pointer-events: auto; display: flex; gap: 8px; align-items: center; color: var(--text-dim); }
+  .meta-pill {
+    display: inline-flex; align-items: baseline; gap: 7px;
+    padding: 5px 9px;
+    background: var(--panel); border: 1px solid var(--rule); border-radius: var(--r-print);
+    font-size: 9.5px; color: var(--text-faint);
+  }
+  .meta-pill b {
+    font-family: var(--font-serif); font-size: 14px; font-weight: 600; line-height: 1;
+    letter-spacing: 0; text-transform: none; color: var(--ink);
+    font-variant-numeric: lining-nums tabular-nums;
+  }
 
   /* Brief banner — the single most prominent affordance. Shows what
-     campaign is currently being orchestrated. Spawns with a glow pulse
-     animation; settles to a quieter persistent state during the cycle.
-     Designed to be readable mid-cinema at any camera distance. */
+     campaign is currently being orchestrated: a paper sheet with a short
+     accent stroke, the brief set in the serif. Settles in with a brief
+     lift on spawn. */
   .brief-banner {
-    position: fixed; top: 60px; left: 50%;
+    position: fixed; top: 64px; left: 50%;
     transform: translateX(-50%);
     z-index: 9;
     pointer-events: none;
-    width: min(720px, 86vw);
-    padding: 14px 22px 12px;
-    background: linear-gradient(135deg, rgba(56, 182, 255, 0.10), rgba(10, 14, 21, 0.92));
-    border: 1px solid rgba(56, 182, 255, 0.35);
-    border-radius: 10px;
-    box-shadow: 0 8px 36px rgba(56, 182, 255, 0.18);
+    width: min(660px, 86vw);
+    padding: 12px 22px 11px;
+    background: var(--panel);
+    border: 1px solid var(--mat-edge);
+    border-radius: var(--r-print);
+    box-shadow: var(--shadow-1);
     text-align: center;
     transition: opacity 0.4s, transform 0.4s;
   }
+  .brief-banner::before {
+    content: ""; position: absolute; top: -1px; left: 50%; width: 2.6rem; height: 2px;
+    transform: translateX(-50%); background: var(--accent);
+  }
   .brief-banner.hidden { opacity: 0; transform: translateX(-50%) translateY(-8px); }
   .brief-banner-label {
-    font: 9.5px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    text-transform: uppercase; letter-spacing: 0.14em;
-    color: var(--accent); margin-bottom: 6px;
-    opacity: 0.85;
+    font-size: 9.5px;
+    color: var(--accent); margin-bottom: 5px;
   }
   .brief-banner-prompt {
-    font-size: 16px; font-weight: 500;
-    color: var(--text); line-height: 1.35;
-    letter-spacing: 0.01em;
+    font-family: var(--font-serif);
+    font-size: 17px; font-weight: 500;
+    color: var(--text); line-height: 1.3;
+    letter-spacing: -0.01em;
   }
   .brief-banner-meta {
     margin-top: 8px;
-    display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
-    font: 10.5px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;
+    font: 10.5px var(--font-mono);
     color: var(--text-dim);
   }
-  .brief-meta-pill { padding: 2px 9px; background: rgba(0,0,0,0.35); border: 1px solid rgba(56, 182, 255, 0.16); border-radius: 10px; }
+  .brief-meta-pill { padding: 2px 8px; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--r-print); }
   .brief-meta-pill b { color: var(--text); font-weight: 600; }
-  .brief-meta-pill.audio-hot { border-color: rgba(95, 217, 196, 0.45); color: #5fd9c4; }
-  .brief-meta-pill.ctv-hot   { border-color: rgba(255, 180, 84, 0.45); color: #ffb454; }
-  .brief-meta-pill.b2b-hot   { border-color: rgba(201, 138, 255, 0.45); color: #c98aff; }
+  /* The dominant weight dimension reads as the one accent stamp. */
+  .brief-meta-pill.audio-hot,
+  .brief-meta-pill.ctv-hot,
+  .brief-meta-pill.b2b-hot { border-color: var(--accent-border); background: var(--accent-dim); color: var(--accent-hot); }
   .brief-banner.spawn-pulse {
-    animation: brief-spawn 0.9s ease-out;
+    animation: brief-spawn 0.9s var(--ease-snap);
   }
   @keyframes brief-spawn {
-    0%   { transform: translateX(-50%) scale(0.92); box-shadow: 0 0 0 rgba(56, 182, 255, 0); }
-    40%  { transform: translateX(-50%) scale(1.03); box-shadow: 0 8px 60px rgba(56, 182, 255, 0.55); }
-    100% { transform: translateX(-50%) scale(1.0);  box-shadow: 0 8px 36px rgba(56, 182, 255, 0.18); }
+    0%   { transform: translateX(-50%) translateY(-6px); opacity: 0.4; box-shadow: var(--shadow-1); }
+    40%  { transform: translateX(-50%) translateY(1px);  opacity: 1;   box-shadow: var(--shadow-2); }
+    100% { transform: translateX(-50%) translateY(0);    opacity: 1;   box-shadow: var(--shadow-1); }
   }
 
-  /* Phase banner — sits below the topbar, centered. The single most
-     important affordance: tells the viewer WHAT IS HAPPENING right now
-     ("PHASE 2 of 6 · governance check"). Updates in real time as cycle
-     events arrive over SSE. */
+  /* Phase banner — sits below the brief, centered. Tells the viewer WHAT
+     IS HAPPENING right now ("PHASE 2 of 6 · governance check"). Updates
+     in real time as cycle events arrive over SSE. The active phase
+     tints the dot, the rule and the text with its role colour. */
   .phase-banner {
     position: fixed; top: 178px; left: 50%;
     transform: translateX(-50%);
     z-index: 9;
     pointer-events: none;
     display: flex; align-items: center; gap: 12px;
-    padding: 8px 18px;
-    background: rgba(10, 14, 21, 0.92);
-    border: 1px solid var(--panel-border);
-    border-radius: 18px;
-    font: 12px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 7px 16px;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-print);
+    font-size: 11px;
     color: var(--text-dim);
     transition: border-color 0.25s, color 0.25s, background 0.25s;
   }
-  .phase-banner.is-phase-signals     { border-color: var(--c-signals);     color: var(--c-signals); }
-  .phase-banner.is-phase-governance  { border-color: var(--c-governance);  color: var(--c-governance); }
-  .phase-banner.is-phase-sales       { border-color: var(--c-sales);       color: var(--c-sales); }
-  .phase-banner.is-phase-creative    { border-color: var(--c-creative);    color: var(--c-creative); }
-  .phase-banner.is-phase-buying      { border-color: var(--c-buying);      color: var(--c-buying); }
-  .phase-banner.is-phase-measurement { border-color: var(--c-measurement); color: var(--c-measurement); }
-  .phase-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px currentColor; animation: phase-pulse 1.4s ease-in-out infinite; }
-  @keyframes phase-pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+  .phase-banner.is-phase-identity    { --phase: var(--c-identity); }
+  .phase-banner.is-phase-signals     { --phase: var(--c-signals); }
+  .phase-banner.is-phase-governance  { --phase: var(--c-governance); }
+  .phase-banner.is-phase-sales       { --phase: var(--c-sales); }
+  .phase-banner.is-phase-creative    { --phase: var(--c-creative); }
+  .phase-banner.is-phase-buying      { --phase: var(--c-buying); }
+  .phase-banner.is-phase-cleanroom   { --phase: var(--c-cleanroom); }
+  .phase-banner.is-phase-measurement { --phase: var(--c-measurement); }
+  .phase-banner[class*="is-phase-"] {
+    border-color: color-mix(in srgb, var(--phase) 55%, var(--rule));
+    color: color-mix(in srgb, var(--phase) 70%, var(--ink));
+  }
+  .phase-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--phase, var(--ink-light)); animation: phase-pulse 1.4s ease-in-out infinite; }
+  @keyframes phase-pulse { 0%,100% { opacity: 0.45; } 50% { opacity: 1; } }
   .phase-num { font-weight: 600; color: var(--text); }
-  .phase-meta { color: var(--text-dim); font-size: 10.5px; letter-spacing: 0.04em; text-transform: none; }
+  .phase-meta { color: var(--text-faint); font-size: 10.5px; letter-spacing: 0.04em; text-transform: none; }
 
   /* Agent name labels — DOM elements positioned every frame from
      each node's projected screen coords. Always visible so viewers
      can read who is firing without clicking. Lower opacity for back-
      hemisphere agents (z behind camera) so the constellation reads
-     clearly even when crowded. */
+     clearly even when crowded. --role is set per label from the
+     agent's role colour; text darkens it toward ink for contrast. */
   #label-layer {
     position: fixed; inset: 0; z-index: 6;
     pointer-events: none;
@@ -179,11 +299,11 @@ export function renderEcosystemCanvas(demoKey: string): string {
     position: absolute;
     transform: translate(-50%, -50%);
     padding: 1px 6px;
-    background: rgba(10, 14, 21, 0.85);
-    border: 1px solid rgba(56, 182, 255, 0.10);
-    border-radius: 3px;
-    font: 9px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    color: var(--text-dim);
+    background: color-mix(in srgb, var(--mat-sheet) 90%, transparent);
+    border: 1px solid color-mix(in srgb, var(--role, var(--rule)) 45%, transparent);
+    border-radius: var(--r-print);
+    font: 9px var(--font-mono);
+    color: color-mix(in srgb, var(--role, var(--ink-muted)) 70%, var(--ink));
     white-space: nowrap;
     letter-spacing: 0.01em;
     max-width: 140px;
@@ -193,23 +313,23 @@ export function renderEcosystemCanvas(demoKey: string): string {
     will-change: left, top, opacity;
   }
   .agent-label.firing {
-    color: var(--text);
+    color: var(--ink);
     border-color: var(--accent);
-    background: rgba(56, 182, 255, 0.12);
+    background: var(--mat-sheet);
     transform: translate(-50%, -50%) scale(1.08);
   }
 
   .legend {
     position: fixed; bottom: 18px; left: 18px; z-index: 10;
-    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 8px;
-    padding: 10px 14px; font-size: 11px;
-    backdrop-filter: blur(8px);
+    background: var(--panel); border: 1px solid var(--mat-edge); border-radius: var(--r-card);
+    box-shadow: var(--shadow-1);
+    padding: 12px 14px; font-size: 11.5px; color: var(--text-dim);
     pointer-events: auto;
   }
-  .legend-title { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-faint); margin-bottom: 6px; }
+  .legend-title { font-size: 9.5px; color: var(--text-faint); margin-bottom: 6px; }
   .legend-row { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
-  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
-  .legend-divider { height: 1px; background: rgba(56, 182, 255, 0.12); margin: 8px 0 6px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .legend-divider { height: 1px; background: var(--rule); margin: 9px 0 7px; }
 
   /* fix-all-gaps: onboarding walkthrough modal — shown on first visit
      (localStorage gates re-show). 5 cards explaining the layout +
@@ -217,64 +337,71 @@ export function renderEcosystemCanvas(demoKey: string): string {
   .onboarding {
     position: fixed; inset: 0; z-index: 30;
     display: none; align-items: center; justify-content: center;
-    background: rgba(0, 0, 0, 0.72);
-    backdrop-filter: blur(6px);
+    background: var(--scrim);
   }
   .onboarding.open { display: flex; }
   .onboarding-card {
-    background: var(--panel);
-    border: 1px solid var(--accent);
-    border-radius: 12px;
-    padding: 24px 28px;
-    width: min(440px, 86vw);
-    box-shadow: 0 24px 80px rgba(56, 182, 255, 0.30);
+    position: relative;
+    background: var(--mat-sheet);
+    border: 1px solid var(--mat-edge);
+    border-radius: var(--r-card);
+    padding: 26px 30px 22px;
+    width: min(460px, 86vw);
+    box-shadow: var(--shadow-panel), var(--shadow-2);
+  }
+  .onboarding-card::before {
+    content: ""; position: absolute; top: -1px; left: 30px; width: 2.6rem; height: 2px; background: var(--accent);
   }
   .onboarding-step {
-    font: 9.5px ui-monospace, monospace;
-    text-transform: uppercase; letter-spacing: 0.16em;
-    color: var(--accent); margin-bottom: 8px;
+    font-size: 9.5px;
+    color: var(--accent); margin-bottom: 10px;
   }
   .onboarding-title {
-    font-size: 18px; font-weight: 600; margin: 0 0 10px;
+    font-family: var(--font-serif);
+    font-size: 24px; font-weight: 600; line-height: 1.15; letter-spacing: -0.015em;
+    margin: 0 0 12px; color: var(--ink);
   }
   .onboarding-body {
-    font-size: 13px; line-height: 1.55; color: var(--text-dim); margin-bottom: 20px;
+    font-size: 13.5px; line-height: 1.6; color: var(--text-dim); margin-bottom: 22px;
   }
-  .onboarding-body kbd {
-    background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16);
-    padding: 1px 5px; border-radius: 3px; font-family: ui-monospace, monospace;
+  .onboarding-body kbd, .onboarding-body code {
+    background: var(--paper-2); border: 1px solid var(--rule);
+    padding: 1px 5px; border-radius: var(--r-print); font-family: var(--font-mono);
     color: var(--text); font-size: 11px;
   }
-  .onboarding-body b { color: var(--text); font-weight: 500; }
+  .onboarding-body b { color: var(--text); font-weight: 600; }
   .onboarding-actions {
     display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding-top: 14px; border-top: 1px solid var(--rule);
   }
-  .onboarding-progress { display: flex; gap: 4px; }
-  .onboarding-progress-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-faint); }
+  .onboarding-progress { display: flex; gap: 5px; }
+  .onboarding-progress-dot { width: 14px; height: 2px; background: var(--rule); }
   .onboarding-progress-dot.active { background: var(--accent); }
   .onboarding-btn {
-    background: var(--accent); color: #04060a; border: none;
-    padding: 8px 16px; border-radius: 6px;
-    font-family: inherit; font-size: 12px; font-weight: 600;
+    background: var(--ink); color: var(--paper); border: 1px solid var(--ink);
+    padding: 8px 16px; border-radius: var(--r-print);
+    font-family: var(--font-sans); font-size: 12.5px; font-weight: 600;
     cursor: pointer;
   }
-  .onboarding-btn:hover { background: var(--accent-hot, #6fa4ff); }
+  .onboarding-btn:hover { background: var(--accent-hot); border-color: var(--accent-hot); }
   .onboarding-skip {
     background: transparent; color: var(--text-dim); border: none;
-    font: 11px ui-monospace, monospace; cursor: pointer;
+    font: 600 11px var(--font-label); letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
     padding: 4px 8px;
   }
-  .onboarding-skip:hover { color: var(--text); }
+  .onboarding-skip:hover { color: var(--accent); }
 
-  /* Global pause — inline in topbar-meta now (was fixed-positioned). */
-  .global-pause {
-    background: rgba(0,0,0,0.4); color: var(--text-dim);
-    padding: 6px 12px; font-size: 11px; cursor: pointer;
-    border: 1px solid rgba(56, 182, 255, 0.16); border-radius: 12px;
-    pointer-events: auto; font-family: inherit;
+  /* Buttons: flat paper, hairline, 2px corners (the house button).
+     Global pause — inline in topbar-meta now (was fixed-positioned). */
+  .global-pause, .home-link, .audio-toggle, .cinema-btn {
+    background: var(--panel); color: var(--text);
+    padding: 6px 11px; font: 500 11.5px/1.2 var(--font-sans);
+    border: 1px solid var(--border-strong); border-radius: var(--r-print);
+    cursor: pointer; pointer-events: auto; text-decoration: none;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
   }
-  .global-pause:hover { color: var(--accent); border-color: var(--accent); }
-  .global-pause.is-paused { color: #ffb454; border-color: #ffb454; background: rgba(255, 180, 84, 0.12); }
+  .global-pause:hover, .home-link:hover, .audio-toggle:hover, .cinema-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .global-pause.is-paused { color: var(--warm); border-color: var(--warm); background: rgba(var(--warm-rgb), 0.10); }
 
   /* fix-all-gaps: beam filter chips — inline, just below the
      phase banner. Click a chip to filter beams to that phase only. */
@@ -287,84 +414,87 @@ export function renderEcosystemCanvas(demoKey: string): string {
   }
   body.hide-ui .beam-filter { opacity: 0; pointer-events: none; transition: opacity 0.4s; }
   .beam-chip {
-    background: rgba(0,0,0,0.55);
-    border: 1px solid rgba(56, 182, 255, 0.16);
-    color: var(--text-mut);
-    padding: 3px 9px; border-radius: 10px;
-    font: 10px ui-monospace, monospace; letter-spacing: 0.04em;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    color: var(--text-dim);
+    padding: 4px 9px; border-radius: var(--r-print);
+    font: 500 11px var(--font-sans);
     cursor: pointer;
   }
-  .beam-chip:hover { color: var(--text); border-color: rgba(56, 182, 255, 0.45); }
-  .beam-chip.active { color: var(--text); background: var(--accent-glow); border-color: var(--accent); }
+  .beam-chip:hover { color: var(--text); border-color: var(--border-strong); }
+  .beam-chip.active { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 
   /* fix-all-gaps: in-scene click highlight ring on the agent panel. */
   .agent-panel { transition: box-shadow 0.25s; }
-  .agent-panel.is-clicked-highlight { box-shadow: 0 12px 60px rgba(56, 182, 255, 0.6); }
+  .agent-panel.is-clicked-highlight { box-shadow: 0 0 0 3px var(--accent-dim), var(--shadow-2); }
 
   .trace-panel {
     position: fixed; top: 70px; right: 18px; bottom: 18px; width: 360px; z-index: 10;
-    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 10px;
+    background: var(--panel); border: 1px solid var(--mat-edge); border-radius: var(--r-card);
+    box-shadow: var(--shadow-1);
     padding: 14px 16px;
-    backdrop-filter: blur(8px);
     overflow-y: auto;
     pointer-events: auto;
   }
-  .trace-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(56, 182, 255, 0.12); }
-  .trace-panel-title { font-size: 12px; font-weight: 600; }
+  .trace-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding-bottom: 9px; border-bottom: 1px solid var(--rule); }
+  .trace-panel-title { font-size: 10px; font-weight: 600; color: var(--ink); }
   .trace-panel-toggle {
-    background: transparent; border: 1px solid rgba(56, 182, 255, 0.16);
-    color: var(--text-dim); padding: 3px 8px; font-size: 10px; border-radius: 4px;
-    cursor: pointer; font-family: inherit;
+    background: var(--panel); border: 1px solid var(--border-strong);
+    color: var(--text); padding: 3px 9px; font: 500 10.5px var(--font-sans); border-radius: var(--r-print);
+    cursor: pointer;
   }
   .trace-panel-toggle:hover { color: var(--accent); border-color: var(--accent); }
-  .brief-card { padding: 8px 10px; margin: 8px 0; background: rgba(56, 182, 255, 0.06); border-left: 2px solid var(--accent); border-radius: 4px; }
-  .brief-prompt { font-size: 12px; line-height: 1.4; }
-  .brief-meta { font: 10px ui-monospace, "SF Mono", monospace; color: var(--text-dim); margin-top: 4px; }
-  .trace-line { display: grid; grid-template-columns: 12px 80px 1fr; gap: 8px; padding: 4px 0; font-size: 11px; line-height: 1.35; border-top: 1px solid rgba(56, 182, 255, 0.05); }
+  /* Brief card: a hairline section with the short accent stroke. */
+  .brief-card { position: relative; padding: 10px 0 6px; margin: 4px 0 10px; border-top: 1px solid var(--rule); }
+  .brief-card::before { content: ""; position: absolute; top: -1px; left: 0; width: 2.6rem; height: 2px; background: var(--accent); }
+  .brief-prompt { font-family: var(--font-serif); font-size: 14px; font-weight: 500; line-height: 1.35; color: var(--ink); }
+  .brief-meta { font: 10px var(--font-mono); color: var(--text-faint); margin: 4px 0 4px; }
+  .trace-line { display: grid; grid-template-columns: 12px 80px 1fr; gap: 8px; padding: 5px 0; font-size: 11.5px; line-height: 1.38; border-top: 1px dashed var(--rule); }
   .trace-line:first-child { border-top: 0; }
-  .trace-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; }
-  .trace-kind { font: 9.5px ui-monospace, monospace; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; padding-top: 1px; }
+  .trace-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 4px; }
+  .trace-kind { font-size: 9px; letter-spacing: 0.06em; color: var(--text-faint); padding-top: 2px; }
   .trace-summary { color: var(--text); }
-  .trace-summary.deny { color: #ff7b7b; }
-  .trace-summary.allow { color: #5fd9c4; }
-  .trace-summary.review { color: #f59e0b; }
+  .trace-summary.deny { color: var(--risk); font-weight: 600; }
+  .trace-summary.allow { color: var(--accent-hot); }
+  .trace-summary.review { color: color-mix(in srgb, var(--warm) 80%, var(--ink)); }
 
   .agent-panel {
     position: fixed; top: 220px; left: 18px; z-index: 11;
     width: 340px;
-    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 10px;
+    background: var(--panel); border: 1px solid var(--mat-edge); border-radius: var(--r-card);
     padding: 14px 16px;
-    backdrop-filter: blur(8px);
     pointer-events: auto;
     display: none;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    box-shadow: var(--shadow-2);
   }
   .agent-panel.open { display: block; }
   .agent-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-  .agent-panel-name { font-weight: 600; font-size: 13px; }
-  .agent-panel-vendor { color: var(--text-dim); font-size: 10.5px; margin-top: 2px; }
-  .agent-panel-role { padding: 2px 8px; border-radius: 10px; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em; font-family: ui-monospace, monospace; }
+  .agent-panel-name { font-family: var(--font-serif); font-weight: 600; font-size: 16px; line-height: 1.2; color: var(--ink); }
+  .agent-panel-vendor { color: var(--text-dim); font-size: 11px; margin-top: 2px; }
+  /* Role stamp: --role is set from the agent's role colour. */
+  .agent-panel-role {
+    padding: 3px 7px; border-radius: var(--r-print); font-size: 9px; letter-spacing: 0.1em; white-space: nowrap;
+    background: color-mix(in srgb, var(--role, var(--accent)) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--role, var(--accent)) 40%, transparent);
+    color: color-mix(in srgb, var(--role, var(--accent)) 70%, var(--ink));
+  }
   .agent-panel-close {
     background: transparent; border: none; color: var(--text-dim); cursor: pointer;
     font-size: 18px; line-height: 1; padding: 0; margin-left: 6px;
   }
-  .agent-panel-stage { font: 10px ui-monospace, monospace; color: var(--text-dim); margin-top: 6px; }
-  .agent-panel-stage.live { color: #5fd9c4; }
-  .agent-panel-spec { margin-top: 8px; font-size: 11px; color: var(--text-dim); line-height: 1.45; }
-  .agent-panel-lift { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(56, 182, 255, 0.1); }
-  .agent-panel-lift-label { font: 9.5px ui-monospace, monospace; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em; }
-  .agent-panel-lift-bar { width: 100%; height: 6px; background: rgba(255,255,255,0.04); border-radius: 3px; margin-top: 4px; overflow: hidden; }
-  .agent-panel-lift-fill { height: 100%; background: linear-gradient(90deg, #ff5e87, #ffb454, #5fd9c4); transition: width 0.6s ease; }
+  .agent-panel-close:hover { color: var(--accent); }
+  .agent-panel-stage { font: 10px var(--font-mono); color: var(--text-dim); margin-top: 8px; overflow-wrap: anywhere; }
+  .agent-panel-stage.live { color: var(--accent-hot); }
+  .agent-panel-spec { margin-top: 8px; font-size: 11.5px; color: var(--text-dim); line-height: 1.5; }
+  .agent-panel-lift { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--rule); }
+  .agent-panel-lift-label { font-size: 9px; color: var(--text-faint); }
+  .agent-panel-lift-bar { width: 100%; height: 4px; background: var(--paper-2); border-radius: 1px; margin-top: 6px; overflow: hidden; }
+  .agent-panel-lift-fill { height: 100%; background: var(--accent); transition: width 0.6s ease; }
 
   .audio-toggle {
     position: fixed; bottom: 18px; left: 230px; z-index: 11;
-    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 16px;
-    padding: 6px 12px; font-size: 11px; cursor: pointer; color: var(--text-dim);
-    pointer-events: auto;
-    font-family: inherit;
   }
-  .audio-toggle:hover { color: var(--accent); border-color: var(--accent); }
-  .audio-toggle.on { color: var(--accent); border-color: var(--accent); }
+  .audio-toggle.on { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 
   /* Hide-UI mode for clean recordings: dim every panel except the
      constellation. Recovers on toggle-off. */
@@ -387,25 +517,25 @@ export function renderEcosystemCanvas(demoKey: string): string {
 
   /* Trace detail modal — opens on click of any trace line. Slides in
      from the right with a staggered reveal of its sections. JSON is
-     syntax-tinted; reasoning explains the trace in the ceremony's
-     dramaturgy ("why this happened"). */
+     tinted with the skin's inks; reasoning explains the trace in the
+     ceremony's dramaturgy ("why this happened"). */
   .trace-detail-modal {
     position: fixed; inset: 0; z-index: 18;
     display: none; align-items: center; justify-content: flex-end;
-    background: rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(4px);
+    background: color-mix(in srgb, var(--ink) 22%, transparent);
     pointer-events: none;
   }
   .trace-detail-modal.open { display: flex; pointer-events: auto; }
   .trace-detail-card {
+    position: relative;
     width: min(540px, 92vw); max-height: 86vh;
     margin-right: 18px;
-    background: var(--panel);
-    border: 1px solid var(--accent);
-    border-radius: 10px;
+    background: var(--mat-sheet);
+    border: 1px solid var(--mat-edge);
+    border-radius: var(--r-card);
     padding: 18px 22px 22px;
     overflow-y: auto;
-    box-shadow: 0 18px 80px rgba(56, 182, 255, 0.32);
+    box-shadow: var(--shadow-panel), var(--shadow-2);
     pointer-events: auto;
     transform: translateX(40px); opacity: 0;
     transition: transform 0.32s ease-out, opacity 0.28s;
@@ -416,30 +546,31 @@ export function renderEcosystemCanvas(demoKey: string): string {
   .trace-detail-head {
     display: flex; align-items: center; gap: 10px;
     padding-bottom: 12px; margin-bottom: 14px;
-    border-bottom: 1px solid rgba(56, 182, 255, 0.16);
+    border-bottom: 1px solid var(--rule);
   }
+  /* The trace kind as an ink stamp. */
   .trace-detail-kind {
-    font: 10px ui-monospace, monospace;
-    text-transform: uppercase; letter-spacing: 0.10em;
-    padding: 3px 9px;
-    background: var(--accent-glow); color: var(--accent);
-    border: 1px solid var(--accent); border-radius: 3px;
+    font-size: 9.5px; font-weight: 700; letter-spacing: 0.12em;
+    padding: 4px 8px;
+    background: var(--ink); color: var(--paper);
+    border-radius: var(--r-print);
   }
   .trace-detail-agent {
     flex: 1;
-    font-size: 12.5px; color: var(--text-dim);
+    font: 11.5px var(--font-mono); color: var(--text-dim);
   }
   .trace-detail-close {
-    background: transparent; border: 1px solid rgba(56, 182, 255, 0.32);
+    background: var(--panel); border: 1px solid var(--border-strong);
     color: var(--text-dim); width: 26px; height: 26px;
-    border-radius: 4px; cursor: pointer; padding: 0;
+    border-radius: var(--r-print); cursor: pointer; padding: 0;
     font-family: inherit; font-size: 16px; line-height: 22px;
   }
   .trace-detail-close:hover { color: var(--accent); border-color: var(--accent); }
   .trace-detail-summary {
-    font-size: 14px; line-height: 1.45;
+    font-family: var(--font-serif);
+    font-size: 18px; font-weight: 500; line-height: 1.35; letter-spacing: -0.01em;
     color: var(--text);
-    padding: 10px 0;
+    padding: 6px 0 10px;
     margin-bottom: 6px;
     opacity: 0;
     transform: translateY(8px);
@@ -455,33 +586,32 @@ export function renderEcosystemCanvas(demoKey: string): string {
     100% { opacity: 1; transform: translateY(0); }
   }
   .trace-detail-section-title {
-    font: 9.5px ui-monospace, monospace;
-    text-transform: uppercase; letter-spacing: 0.12em;
-    color: var(--text-faint); margin-bottom: 6px;
+    font-size: 9.5px;
+    color: var(--accent); margin-bottom: 7px;
   }
   .trace-detail-reasoning {
-    font-size: 12.5px; line-height: 1.55;
+    font-size: 13px; line-height: 1.6;
     color: var(--text-dim);
   }
-  .trace-detail-reasoning b { color: var(--text); font-weight: 500; }
+  .trace-detail-reasoning b { color: var(--text); font-weight: 600; }
   .trace-detail-agents {
     display: flex; flex-wrap: wrap; gap: 6px;
   }
   .trace-detail-agent-pill {
-    font: 10.5px ui-monospace, monospace;
-    padding: 3px 9px;
-    background: rgba(56, 182, 255, 0.08);
-    border: 1px solid rgba(56, 182, 255, 0.22);
-    border-radius: 3px;
+    font: 10.5px var(--font-mono);
+    padding: 3px 8px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-print);
     color: var(--text);
   }
-  .trace-detail-agent-pill .role { color: var(--text-faint); margin-right: 6px; }
+  .trace-detail-agent-pill .role { color: var(--text-faint); margin-right: 6px; text-transform: uppercase; letter-spacing: 0.08em; font-size: 9.5px; }
   .trace-detail-json {
-    font: 11px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    line-height: 1.5;
-    background: rgba(0, 0, 0, 0.45);
-    border: 1px solid rgba(56, 182, 255, 0.12);
-    border-radius: 6px;
+    font: 11px var(--font-mono);
+    line-height: 1.55;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-print);
     padding: 12px 14px;
     margin: 0;
     overflow-x: auto;
@@ -489,23 +619,25 @@ export function renderEcosystemCanvas(demoKey: string): string {
     max-height: 260px;
     white-space: pre-wrap; word-break: break-all;
   }
-  .trace-detail-json .k { color: var(--c-signals); }
-  .trace-detail-json .s { color: var(--c-measurement); }
-  .trace-detail-json .n { color: var(--c-sales); }
-  .trace-detail-json .b { color: var(--c-buying); }
+  .trace-detail-json .k { color: var(--accent-hot); }
+  .trace-detail-json .s { color: var(--ink); }
+  .trace-detail-json .n { color: color-mix(in srgb, var(--warm) 80%, var(--ink)); }
+  .trace-detail-json .b { color: var(--risk); }
   .trace-detail-brief {
-    font-size: 12px; color: var(--text-dim);
-    padding: 8px 12px;
-    background: rgba(56, 182, 255, 0.05);
-    border-left: 2px solid var(--accent);
-    border-radius: 4px;
+    position: relative;
+    font-size: 12.5px; color: var(--text-dim);
+    padding: 10px 12px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-print);
   }
+  .trace-detail-brief::before { content: ""; position: absolute; top: -1px; left: 12px; width: 2.6rem; height: 2px; background: var(--accent); }
 
   /* Trace lines are clickable — surface the affordance on hover. */
   .trace-line { cursor: pointer; transition: background 0.12s, opacity 0.2s; }
-  .trace-line:hover { background: rgba(56, 182, 255, 0.06); }
+  .trace-line:hover { background: var(--accent-dim); }
   /* When a beam filter is active, dim trace lines that don't match
-     the active phase. Matching ones get a subtle accent border so
+     the active phase. Matching ones get a subtle accent marker so
      the filter affordance is visible in BOTH the constellation and
      the trace panel. */
   .trace-line.filter-dim { opacity: 0.32; }
@@ -515,9 +647,10 @@ export function renderEcosystemCanvas(demoKey: string): string {
   }
   /* Filter status hint sits next to the chip row. Subtle. */
   .filter-status {
+    flex-basis: 100%;
     text-align: center;
     margin-top: 4px;
-    font: 10px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font: 10px var(--font-mono);
     color: var(--text-faint);
     pointer-events: none;
     transition: opacity 0.3s;
@@ -526,60 +659,68 @@ export function renderEcosystemCanvas(demoKey: string): string {
   .filter-status.visible { opacity: 1; }
   .filter-status .matches { color: var(--accent); font-weight: 600; }
 
-  /* Matrix-rain modal: vertical scroll of raw JSON-RPC frames for one
-     agent. Phosphor-green retro aesthetic on top of the constellation. */
+  /* Raw-frame modal: a vertical scroll of raw JSON-RPC frames for one
+     agent, set as the page's one dark ink panel over the constellation. */
   .matrix-modal {
     position: fixed; inset: 0; z-index: 20;
     display: none; align-items: stretch; justify-content: center;
-    background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(2px);
+    background: var(--scrim);
   }
   .matrix-modal.open { display: flex; }
   .matrix-modal-head {
     position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
     z-index: 22;
     display: flex; align-items: center; gap: 12px;
-    padding: 8px 18px;
-    background: rgba(0, 0, 0, 0.85);
-    border: 1px solid #2eff6a; border-radius: 4px;
-    color: #2eff6a; font: 11px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 8px 10px 8px 16px;
+    background: var(--ink);
+    border: 1px solid color-mix(in srgb, var(--paper) 14%, transparent);
+    border-radius: var(--r-print);
+    box-shadow: var(--shadow-2);
+    color: var(--paper); font: 600 11px var(--font-label);
+    text-transform: uppercase; letter-spacing: 0.1em;
   }
+  .matrix-modal-head::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent-on-dark); }
   .matrix-modal-title { font-weight: 600; }
   .matrix-modal-close {
-    background: transparent; border: 1px solid #2eff6a; color: #2eff6a;
+    background: transparent; border: 1px solid color-mix(in srgb, var(--paper) 40%, transparent); color: var(--paper);
     width: 22px; height: 22px; line-height: 18px; padding: 0;
-    border-radius: 3px; cursor: pointer;
+    border-radius: var(--r-print); cursor: pointer;
     font-family: inherit; font-size: 14px;
   }
-  .matrix-modal-close:hover { background: rgba(46, 255, 106, 0.15); }
+  .matrix-modal-close:hover { border-color: var(--accent-on-dark); color: var(--accent-on-dark); }
   .matrix-modal-foot {
     position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
     z-index: 22;
-    color: #2eff6a; font: 10px ui-monospace, monospace;
-    opacity: 0.55; letter-spacing: 0.08em;
+    padding: 5px 12px;
+    background: var(--ink); border-radius: var(--r-print);
+    color: color-mix(in srgb, var(--paper) 80%, transparent); font: 10px var(--font-mono);
+    letter-spacing: 0.08em; white-space: nowrap;
   }
   .matrix-rain {
-    flex: 1;
+    flex: 0 1 auto;   /* the sheet keeps its own width (was flex: 1 on a transparent column) */
     align-self: center;
     width: min(720px, 80vw);
     max-height: 80vh;
     overflow: hidden;
-    padding: 60px 24px 60px;
-    color: #6dd089;     /* fix-all-gaps: less saturated — was #2eff6a */
-    font: 10.5px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    line-height: 1.45;
-    text-shadow: 0 0 5px rgba(109, 208, 137, 0.4);
+    padding: 28px 28px 28px;
+    background: linear-gradient(135deg, var(--ink), var(--ink-2));
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow-panel);
+    color: color-mix(in srgb, var(--paper) 78%, transparent);
+    font: 10.5px var(--font-mono);
+    line-height: 1.5;
     position: relative;
   }
   .matrix-rain pre {
     margin: 0 0 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px dashed color-mix(in srgb, var(--paper) 16%, transparent);
     white-space: pre-wrap; word-break: break-all;
     opacity: 0.0;
     animation: matrix-fade-in 0.6s ease forwards;
   }
-  .matrix-rain pre:nth-child(odd) { color: #6dd089; }
-  .matrix-rain pre:nth-child(even) { color: #8de0a3; }
+  .matrix-rain pre:nth-child(odd) { color: color-mix(in srgb, var(--paper) 80%, transparent); }
+  .matrix-rain pre:nth-child(even) { color: var(--accent-on-dark); }
   @keyframes matrix-fade-in {
     0% { opacity: 0; transform: translateY(-8px); }
     100% { opacity: 0.92; transform: translateY(0); }
@@ -588,45 +729,39 @@ export function renderEcosystemCanvas(demoKey: string): string {
   /* Home link + pause now flow inline as part of .topbar-meta — was
      position: fixed before, which overlapped the b2b_pull / back-to-
      demo pills. Inline keeps the topbar tidy and avoids fixed-element
-     collisions. */
-  .home-link {
-    background: rgba(0,0,0,0.4); color: var(--text-dim);
-    padding: 6px 12px; font-size: 11px; text-decoration: none;
-    border: 1px solid rgba(56, 182, 255, 0.16); border-radius: 12px;
-    pointer-events: auto;
-    font-family: inherit;
-  }
-  .home-link:hover { color: var(--accent); border-color: var(--accent); }
+     collisions. (Shared button rule above.) */
 
+  /* The constellation sits on the paper; the edges settle toward the
+     second paper tone, the way the site's hero bands dissolve. */
   .hero-overlay {
     position: fixed; inset: 0; pointer-events: none; z-index: 5;
-    background: radial-gradient(circle at 50% 50%, transparent, rgba(0,0,0,0.45));
+    background: radial-gradient(circle at 50% 52%, transparent 52%, color-mix(in srgb, var(--paper-2) 75%, transparent));
   }
 
   /* (phase-title-overlay removed — was covering the constellation.
      Phase info still surfaces via the small phase-banner pill at top
      center, the topbar's cycle counter, and audio chord progression.) */
 
-  /* Subtle pulse on the phase banner when phase changes — replaces
+  /* Subtle lift on the phase banner when phase changes — replaces
      the giant overlay. Eye catches the transition without losing
      the constellation. */
   .phase-banner.pulse-now {
-    animation: phase-banner-tick 0.7s ease;
+    animation: phase-banner-tick 0.7s var(--ease-snap);
   }
   @keyframes phase-banner-tick {
-    0%   { transform: translateX(-50%) scale(1.0); }
-    35%  { transform: translateX(-50%) scale(1.06); box-shadow: 0 0 24px var(--accent-glow); }
-    100% { transform: translateX(-50%) scale(1.0); }
+    0%   { transform: translateX(-50%) translateY(0); }
+    35%  { transform: translateX(-50%) translateY(-2px); box-shadow: var(--shadow-2); }
+    100% { transform: translateX(-50%) translateY(0); }
   }
 
-  /* Governance-deny flash — full-screen red pulse signaling cycle abort.
-     Triggered programmatically by JS by toggling .firing class. Used
-     for cinematic drama: the room sees the protocol "fail loud". */
+  /* Governance-deny flash — a full-screen risk wash signaling cycle
+     abort, multiplied into the paper like ink. Triggered by JS toggling
+     .firing. The room sees the protocol "fail loud". */
   .deny-flash {
     position: fixed; inset: 0; pointer-events: none; z-index: 8;
-    background: radial-gradient(circle at 50% 50%, rgba(255, 70, 70, 0.55), rgba(120, 20, 20, 0.0));
+    background: radial-gradient(circle at 50% 50%, rgba(var(--risk-rgb), 0.30), rgba(var(--risk-rgb), 0.0) 70%);
     opacity: 0;
-    mix-blend-mode: screen;
+    mix-blend-mode: multiply;
   }
   .deny-flash.firing {
     animation: deny-pulse 1.4s ease-out;
@@ -648,57 +783,56 @@ export function renderEcosystemCanvas(demoKey: string): string {
   body.hide-ui .cinema-cluster { opacity: 0; pointer-events: none; transition: opacity 0.4s; }
   body.hide-ui .cinema-cluster.armed { opacity: 0.45; }
   body.hide-ui .cinema-cluster:hover { opacity: 1; }
-  .cinema-btn {
-    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 16px;
-    padding: 6px 12px; font-size: 11px; cursor: pointer; color: var(--text-dim);
-    font-family: inherit;
-  }
-  .cinema-btn:hover { color: var(--accent); border-color: var(--accent); }
-  .cinema-btn.on { color: var(--accent); border-color: var(--accent); background: rgba(56, 182, 255, 0.08); }
+  .cinema-btn.on { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 
   /* Stats overlay — merged into the legend panel via shared parent.
      Style for the inline section inside .legend (no longer a fixed
-     panel of its own; was causing stack overlap with the legend). */
-  .stats-section { font: 11px ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
-  .stat-row { display: flex; justify-content: space-between; padding: 2px 0; gap: 12px; font-size: 11px; }
+     panel of its own; was causing stack overlap with the legend).
+     Values set in the serif, the house numerals. */
+  .stats-section { font-size: 11.5px; }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; padding: 2px 0; gap: 12px; font-size: 11.5px; }
   .sparkline-row {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 4px 0 2px; gap: 12px;
+    padding: 5px 0 2px; gap: 12px;
   }
-  .sparkline-label { font-size: 10px; color: var(--text-mut); }
+  .sparkline-label { font: 10px var(--font-mono); color: var(--text-mut); }
   .sparkline-svg {
     width: 90px; height: 18px;
-    background: rgba(0,0,0,0.30);
-    border-radius: 2px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 1px;
     padding: 2px 4px;
   }
-  .stat-row .k { color: var(--text-mut); }
-  .stat-row .v { color: var(--text); font-weight: 600; }
-  .stat-row .v.live  { color: #5fd9c4; }
-  .stat-row .v.stale { color: #ff9080; }
+  .stat-row .k { color: var(--text-mut); white-space: nowrap; }
+  .stat-row .v { font-family: var(--font-serif); font-size: 13px; color: var(--text); font-weight: 600; font-variant-numeric: lining-nums tabular-nums; text-align: right; }
+  .stat-row .v.live  { color: var(--accent-hot); }
+  .stat-row .v.stale { color: var(--risk); }
   /* Legend panel may grow tall — cap it to viewport so the entire
      thing scrolls inside its own bounds rather than overlapping
      other UI when there's lots of agent roles + message kinds. */
   .legend {
     max-height: calc(100vh - 36px);
     overflow-y: auto;
+    /* Narrow enough to clear the audio toggle that sits at left: 230px. */
+    width: 206px;
   }
 
   /* Keyboard hint pill — small bottom-right ribbon listing the keys.
      Fades after 8s on first paint; reappears on '?' keypress. */
   .kbd-hint {
     position: fixed; bottom: 18px; right: 18px; z-index: 11;
-    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 6px;
+    background: var(--panel); border: 1px solid var(--rule); border-radius: var(--r-print);
+    box-shadow: var(--shadow-1);
     padding: 6px 10px;
-    font: 10.5px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font: 10.5px var(--font-mono);
     color: var(--text-dim);
     pointer-events: none;
     transition: opacity 0.6s;
   }
   .kbd-hint.fade-out { opacity: 0; }
   .kbd-hint kbd {
-    background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12);
-    padding: 1px 5px; border-radius: 3px; margin: 0 1px;
+    background: var(--paper-2); border: 1px solid var(--rule);
+    padding: 1px 5px; border-radius: var(--r-print); margin: 0 1px;
     font-family: inherit; color: var(--text);
   }
 </style>
@@ -924,10 +1058,6 @@ export function renderEcosystemCanvas(demoKey: string): string {
 <script type="module">
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
-import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
-import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
 // fix-render-fix: hoist mutable UI flags here (before scene init +
 // animate() is called) so the animation loop's references can never
@@ -947,26 +1077,63 @@ window.addEventListener("unhandledrejection", function (e) {
   console.error("[ecosystem] unhandled promise:", e.reason);
 });
 
-// ── Constants ────────────────────────────────────────────────────────────
+// ── Palette: read once from the active skin's CSS custom properties ─────
+//
+// The page's <style> defines every scene colour as a custom property
+// (--paper, --ink, --accent, --c-<role>, --c-<message kind>, ...) per house
+// skin, and the head script has already set data-theme. A hidden probe
+// resolves each var() to its computed colour (rgb(...) or color(srgb ...)
+// once color-mix is involved), which becomes an sRGB hex for THREE. No
+// colour literals live in the scene code, so the WebGL layer and the HTML
+// chrome always print in the same inks.
+function parseCssColor(str) {
+  const s = String(str || "").trim();
+  const nums = s.match(/-?[0-9]*[.]?[0-9]+(?:e-?[0-9]+)?/g);
+  if (!nums || nums.length < 3) return null;
+  const k = s.indexOf("color(") === 0 ? 1 : 255;
+  return new THREE.Color().setRGB(+nums[0] / k, +nums[1] / k, +nums[2] / k, THREE.SRGBColorSpace);
+}
+const __cssProbe = document.createElement("span");
+__cssProbe.style.display = "none";
+document.body.appendChild(__cssProbe);
+function cssHex(name, fallbackName) {
+  __cssProbe.style.color = "";
+  __cssProbe.style.color = "var(" + name + ")";
+  let c = parseCssColor(getComputedStyle(__cssProbe).color);
+  if (!c && fallbackName) return cssHex(fallbackName);
+  return c ? c.getHex() : 0;
+}
+const PAL = {
+  paper:    cssHex("--paper"),
+  sheet:    cssHex("--mat-sheet", "--paper"),
+  ink:      cssHex("--ink"),
+  accent:   cssHex("--accent"),
+  risk:     cssHex("--risk"),
+  money:    cssHex("--c-money", "--accent"),
+  hairline: cssHex("--c-hairline", "--ink"),
+  grain:    cssHex("--c-grain", "--rule"),
+  buyer:    cssHex("--c-buyer", "--ink"),
+};
 const ROLE_COLORS = {
-  sales:       0xffb454,
-  signals:     0x38b6ff,
-  buying:      0xff5e87,
-  creative:    0xc98aff,
-  measurement: 0x5fd9c4,
-  governance:  0xf59e0b,
-  identity:    0x80a8ff,  // fix-all-gaps: ID-resolution providers
-  cleanroom:   0xb8a0ff,  // fix-all-gaps: privacy-preserving joins
+  sales:       cssHex("--c-sales"),
+  signals:     cssHex("--c-signals"),
+  buying:      cssHex("--c-buying"),
+  creative:    cssHex("--c-creative"),
+  measurement: cssHex("--c-measurement"),
+  governance:  cssHex("--c-governance"),
+  identity:    cssHex("--c-identity"),   // fix-all-gaps: ID-resolution providers
+  cleanroom:   cssHex("--c-cleanroom"),  // fix-all-gaps: privacy-preserving joins
 };
 const HINT_COLORS = {
-  discovery:   0x38b6ff,
-  signal:      0x5fd9c4,
-  policy:      0xf59e0b,
-  product:     0xffb454,
-  creative:    0xc98aff,
-  bid:         0xff5e87,
-  measurement: 0xffd166,
+  discovery:   cssHex("--c-discovery"),
+  signal:      cssHex("--c-signal"),
+  policy:      cssHex("--c-policy"),
+  product:     cssHex("--c-product"),
+  creative:    cssHex("--c-creative-msg"),
+  bid:         cssHex("--c-bid"),
+  measurement: cssHex("--c-measure"),
 };
+__cssProbe.remove();
 const BUYER_AGENT_ID = "__buyer_orchestrator";
 const SPHERE_RADIUS = 16;
 
@@ -975,37 +1142,23 @@ const stage = document.getElementById("stage");
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x04060a, 1);
+renderer.setClearColor(PAL.paper, 1);
 stage.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x04060a, 0.018);
+// Fog in the paper colour: far nodes settle into the page like print.
+// Lighter than the dark version (0.018), which washed the inks out on paper.
+scene.fog = new THREE.FogExp2(PAL.paper, 0.010);
 
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
 camera.position.set(0, 6, 38);
 
-// ── Post-processing: bloom the emissive nodes + beams ───────────────────
+// ── Rendering: one pass, straight to the canvas ────────────────────────
 //
-// EffectComposer renders the scene into a render target, then applies
-// UnrealBloomPass which threshold-extracts bright pixels and gaussian-
-// blurs them at multiple scales for a glow effect. Tuned conservatively
-// so we don't drown the constellation in glow — just enough to make
-// the firing nodes feel hot. Exposure stays near 1.0 so colors don't
-// shift.
-const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
-const bloomPass = new UnrealBloomPass(
-  new THREE.Vector2(window.innerWidth, window.innerHeight),
-  0.35,   // strength — multi-effect stacking (halos + sparks + buyer
-          //            pulse + money particles) overwhelmed even 0.55.
-          //            0.35 keeps glow visible without washing the
-          //            constellation white.
-  0.45,   // radius
-  0.45    // threshold — only firing/active emissive crosses; idle
-          //              nodes stay crisp and readable
-);
-composer.addPass(bloomPass);
-composer.addPass(new OutputPass());
+// The scene prints on paper, so there is no bloom: the old
+// EffectComposer + UnrealBloomPass + OutputPass chain (a glow on a dark
+// ground) is gone, and renderer.render() draws a single pass. Firing
+// nodes announce themselves with a ring instead (see animate()).
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -1015,13 +1168,14 @@ controls.autoRotateSpeed = 0.35;
 controls.minDistance = 22;
 controls.maxDistance = 70;
 
-// Soft ambient + a colored rim light
-scene.add(new THREE.AmbientLight(0x4060a0, 0.5));
-const rim = new THREE.DirectionalLight(0x80b0ff, 0.8);
+// Soft paper-white ambient + a key light from above, so the nodes read as
+// their flat role inks with a gentle shaded edge.
+scene.add(new THREE.AmbientLight(PAL.sheet, 1.9));
+const rim = new THREE.DirectionalLight(PAL.sheet, 0.8);
 rim.position.set(20, 20, 10);
 scene.add(rim);
 
-// Background star sprinkle for depth
+// Background grain for depth (rule-coloured specks on the paper)
 {
   const starGeo = new THREE.BufferGeometry();
   const N = 800;
@@ -1035,19 +1189,19 @@ scene.add(rim);
     positions[i * 3 + 2] = r * Math.sin(p) * Math.sin(t);
   }
   starGeo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  const starMat = new THREE.PointsMaterial({ color: 0x6080a0, size: 0.06, transparent: true, opacity: 0.55 });
+  const starMat = new THREE.PointsMaterial({ color: PAL.grain, size: 0.06, transparent: true, opacity: 0.55 });
   scene.add(new THREE.Points(starGeo, starMat));
 }
 
-// Buyer-orchestrator at origin
+// Buyer-orchestrator at origin: the ink node, ringed in the accent.
 const buyerGeo = new THREE.SphereGeometry(1.2, 32, 32);
-const buyerMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.32, metalness: 0.2, roughness: 0.5 });
+const buyerMat = new THREE.MeshStandardMaterial({ color: PAL.buyer, emissive: PAL.buyer, emissiveIntensity: 0.32, metalness: 0.0, roughness: 0.9 });
 const buyerMesh = new THREE.Mesh(buyerGeo, buyerMat);
 scene.add(buyerMesh);
 {
-  // Buyer halo — calmer (was 0.20, now 0.10)
-  const haloGeo = new THREE.RingGeometry(1.5, 1.75, 64);
-  const haloMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.10 });
+  // Buyer halo: an accent hairline ring
+  const haloGeo = new THREE.RingGeometry(1.5, 1.62, 64);
+  const haloMat = new THREE.MeshBasicMaterial({ color: PAL.accent, side: THREE.DoubleSide, transparent: true, opacity: 0.55 });
   const halo = new THREE.Mesh(haloGeo, haloMat);
   halo.rotation.x = Math.PI / 2;
   scene.add(halo);
@@ -1068,11 +1222,11 @@ function layoutToPosition(layout) {
 
 function spawnAgent(agent) {
   const pos = layoutToPosition(agent.layout);
-  const color = ROLE_COLORS[agent.role] || 0xffffff;
+  const color = ROLE_COLORS[agent.role] || PAL.ink;
   const geo = new THREE.SphereGeometry(0.7, 24, 24);
   const mat = new THREE.MeshStandardMaterial({
-    color, emissive: color, emissiveIntensity: agent.stage === "live" ? 0.55 : 0.30,
-    metalness: 0.15, roughness: 0.55,
+    color, emissive: color, emissiveIntensity: agent.stage === "live" ? 0.22 : 0.12,
+    metalness: 0.0, roughness: 0.9,   // matte: printed inks, no sheen
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.copy(pos);
@@ -1080,16 +1234,16 @@ function spawnAgent(agent) {
   scene.add(mesh);
 
   // Halo ring (driven by lift score)
-  const haloGeo = new THREE.RingGeometry(1.0, 1.35, 48);
+  const haloGeo = new THREE.RingGeometry(1.0, 1.14, 48);   // a fine ring, not a donut
   const haloMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.0 });
   const halo = new THREE.Mesh(haloGeo, haloMat);
   halo.position.copy(pos);
   halo.lookAt(0, 0, 0);
   scene.add(halo);
 
-  // Tether line from buyer to agent (subtle, always visible)
+  // Tether line from buyer to agent: an ink hairline, always visible
   const tetherGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), pos.clone()]);
-  const tetherMat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.06 });
+  const tetherMat = new THREE.LineBasicMaterial({ color: PAL.hairline, transparent: true, opacity: 0.10 });
   const tether = new THREE.Line(tetherGeo, tetherMat);
   scene.add(tether);
 
@@ -1102,8 +1256,9 @@ function spawnAgent(agent) {
   labelEl.className = "agent-label";
   const stageBadge = agent.stage === "live" ? "● " : "○ ";
   labelEl.textContent = stageBadge + agent.name;
-  labelEl.style.color = "#" + color.toString(16).padStart(6, "0");
-  labelEl.style.borderColor = "rgba(" + ((color >> 16) & 0xff) + "," + ((color >> 8) & 0xff) + "," + (color & 0xff) + ",0.35)";
+  // The label's text + border take the role colour through --role
+  // (CSS darkens it toward ink for contrast on the paper).
+  labelEl.style.setProperty("--role", "var(--c-" + agent.role + ", var(--ink-muted))");
   document.getElementById("label-layer").appendChild(labelEl);
 
   agentMeshes.set(agent.id, { mesh, halo, position: pos, agent, lift: 0.5, label: labelEl, firingTimeout: 0 });
@@ -1140,18 +1295,16 @@ function flashAgentDramaScatter(agentId) {
   if (!m) return;
   // Inject a bright red halo with steep decay, overrides the lift halo
   // for a moment.
-  liftHaloDecay.set(agentId, { intensity: 1.4, decayPerFrame: 0.018, dramaColor: 0xff4646 });
+  liftHaloDecay.set(agentId, { intensity: 1.4, decayPerFrame: 0.018, dramaColor: PAL.risk });
   // Bigger emissive boost than ordinary firing.
   m.firingTimeout = 50;
   if (m.label) {
-    m.label.style.color = "#ff7070";
-    m.label.style.borderColor = "rgba(255, 70, 70, 0.7)";
+    m.label.style.color = "var(--risk)";
+    m.label.style.borderColor = "rgba(var(--risk-rgb), 0.7)";
     setTimeout(function () {
-      // Restore original styling
-      const role = m.agent.role;
-      const c = ROLE_COLORS[role] || 0xffffff;
-      m.label.style.color = "#" + c.toString(16).padStart(6, "0");
-      m.label.style.borderColor = "rgba(" + ((c >> 16) & 0xff) + "," + ((c >> 8) & 0xff) + "," + (c & 0xff) + ",0.35)";
+      // Restore original styling (the role colour via --role in CSS)
+      m.label.style.color = "";
+      m.label.style.borderColor = "";
     }, 1400);
   }
 }
@@ -1235,7 +1388,7 @@ function spawnBeam(fromId, toId, colorHint, intensity) {
   const samples = 24;
   const points = curve.getPoints(samples);
   const geo = new THREE.BufferGeometry().setFromPoints(points);
-  const color = HINT_COLORS[colorHint] || 0x80a0ff;
+  const color = HINT_COLORS[colorHint] || HINT_COLORS.discovery;
   const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: weight.lineOpacity });
   const line = new THREE.Line(geo, mat);
   scene.add(line);
@@ -1326,7 +1479,7 @@ function spawnMoneyFlow(fromId, toId, count) {
       // but no longer trail-painting the screen.
       const geo = new THREE.SphereGeometry(0.07 + Math.random() * 0.04, 6, 6);
       const mat = new THREE.MeshBasicMaterial({
-        color: 0xffd166,    // gold
+        color: PAL.money,   // the skin's gold-leaning ink
         transparent: true,
         opacity: 0.65,
       });
@@ -1378,7 +1531,7 @@ function triggerSupernova() {
   // ring becoming the loudest thing on screen.
   const ringGeo = new THREE.RingGeometry(1.4, 1.50, 64);
   const ringMat = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
+    color: PAL.accent,
     side: THREE.DoubleSide,
     transparent: true,
     opacity: 0.40,
@@ -1399,7 +1552,7 @@ function triggerSupernova() {
     );
     const sparkGeo = new THREE.SphereGeometry(0.10, 6, 6);
     const sparkMat = new THREE.MeshBasicMaterial({
-      color: 0xfff0c0,
+      color: PAL.money,
       transparent: true,
       opacity: 0.70,
     });
@@ -1478,15 +1631,15 @@ function updateLiveProbeStatuses(statuses) {
     let borderColor;
     if (isOk) {
       badge = "● ";
-      borderColor = "rgba(95, 217, 196, 0.55)"; // mint
+      borderColor = "rgba(var(--accent-rgb), 0.60)"; // accent: ok
     } else if (isAlive) {
       // 4xx — alive but won't accept our probe shape
       badge = "● ";
-      borderColor = "rgba(245, 158, 11, 0.50)"; // amber
+      borderColor = "rgba(var(--warm-rgb), 0.60)"; // warm: 4xx
     } else {
       // 5xx / timeout / unreachable
       badge = "◑ ";
-      borderColor = "rgba(255, 100, 100, 0.45)"; // dim red
+      borderColor = "rgba(var(--risk-rgb), 0.55)"; // risk: down
     }
     m.label.textContent = badge + agent.name;
     m.label.style.borderColor = borderColor;
@@ -2088,8 +2241,8 @@ function showAgent(agent) {
   apName.textContent = agent.name;
   apVendor.textContent = agent.vendor;
   apRole.textContent = agent.role;
-  apRole.style.background = "rgba(56, 182, 255, 0.12)";
-  apRole.style.color = "var(--c-" + agent.role + ", var(--accent))";
+  // The role stamp's tint, rule and text all derive from --role in CSS.
+  apRole.style.setProperty("--role", "var(--c-" + agent.role + ", var(--accent))");
   apStage.textContent = agent.stage === "live" ? "● live · " + (agent.mcp_url || "") : "○ synthetic";
   apStage.className = "agent-panel-stage" + (agent.stage === "live" ? " live" : "");
   apSpec.textContent = (agent.specialties || []).join(" · ") || "—";
@@ -2460,7 +2613,7 @@ function animate() {
   // The constellation still renders in its current frame, so user
   // can rotate / zoom and inspect.
   if (globalPaused) {
-    composer.render();
+    renderer.render(scene, camera);
     return;
   }
 
@@ -2588,13 +2741,13 @@ function animate() {
       if (decay.dramaColor !== undefined) {
         m.halo.material.color.setHex(decay.dramaColor);
       } else {
-        const baseColor = ROLE_COLORS[m.agent.role] || 0xffffff;
+        const baseColor = ROLE_COLORS[m.agent.role] || PAL.ink;
         m.halo.material.color.setHex(baseColor);
       }
       if (decay.intensity <= 0) {
         liftHaloDecay.delete(agentId);
         m.halo.scale.set(1, 1, 1);
-        const baseColor = ROLE_COLORS[m.agent.role] || 0xffffff;
+        const baseColor = ROLE_COLORS[m.agent.role] || PAL.ink;
         m.halo.material.color.setHex(baseColor);
       }
     } else {
@@ -2605,15 +2758,23 @@ function animate() {
       m.halo.material.opacity = Math.max(0, Math.max(0, m.lift - 0.6) * 0.22);
       m.halo.scale.set(1, 1, 1);
     }
+    // Firing ring: with no bloom on the paper, a node that sends or
+    // receives a message shows a short ring in its role colour (the
+    // house "latest" node mark) instead of glowing.
+    if (m.firingTimeout > 0) {
+      m.halo.material.opacity = Math.max(m.halo.material.opacity, 0.30 * (m.firingTimeout / 22));
+    }
     m.halo.lookAt(camera.position);
 
     // Mesh emissive: base + sine-wave pulse + firing-pulse boost.
     // Tone-down pass: live nodes idle around 0.35 (was 0.55), pulse
     // amplitude halved, firing boost cut from 0.7 to 0.4 so agents
     // can't OVER-bloom regardless of bloom threshold tuning.
-    let emiBase = (m.agent.stage === "live" ? 0.35 : 0.20) + 0.08 * Math.sin(t * 2 + m.position.x);
+    // Paper pass: emission now only evens out the shading (the node keeps
+    // its role ink); the firing cue is the ring above, plus a small lift.
+    let emiBase = (m.agent.stage === "live" ? 0.22 : 0.12) + 0.04 * Math.sin(t * 2 + m.position.x);
     if (m.firingTimeout > 0) {
-      emiBase += 0.40 * (m.firingTimeout / 22);
+      emiBase += 0.18 * (m.firingTimeout / 22);
       m.firingTimeout -= 1;
     }
     m.mesh.material.emissiveIntensity = emiBase;
@@ -2645,14 +2806,16 @@ function animate() {
         m.label.style.left = x + "px";
         m.label.style.top = (y + 16) + "px";
         // Firing/clicked labels fully visible; ambient labels at lower opacity
-        m.label.style.opacity = isFiring || isClicked ? "1" : String(Math.min(0.55, 0.30 + facing * 0.30));
+        // (ambient labels sit higher than on the dark ground: faded text
+        // on paper stops reading long before it does on black)
+        m.label.style.opacity = isFiring || isClicked ? "1" : String(Math.min(0.85, 0.55 + facing * 0.30));
       } else {
         m.label.style.opacity = "0";
       }
     }
   }
 
-  composer.render();
+  renderer.render(scene, camera);
 }
 animate();
 
@@ -2660,8 +2823,6 @@ window.addEventListener("resize", function () {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  composer.setSize(window.innerWidth, window.innerHeight);
-  bloomPass.setSize(window.innerWidth, window.innerHeight);
 });
 
 // Stash the demo key for any future authed fetches.

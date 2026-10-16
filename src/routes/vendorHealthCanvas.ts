@@ -22,14 +22,19 @@
 //   - No backticks in embedded JS
 //   - Audit before commit
 
+import { SKIN_TOKENS_CSS, THEME_HEAD_SCRIPT } from "../demo/skins";
+
 export function handleVendorHealthCanvas(env: { DEMO_API_KEY: string }): Response {
   return new Response(renderVendorHealthCanvas(env.DEMO_API_KEY), {
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "public, max-age=300",
+      // style-src + font-src open to Google Fonts for the house typefaces
+      // (Fraunces + Inter, the nofluffadvisory.com families).
       "Content-Security-Policy":
-        "default-src 'self'; style-src 'self' 'unsafe-inline'; " +
+        "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+        "font-src 'self' https://fonts.gstatic.com; " +
         "script-src 'self' 'unsafe-inline'; " +
         "img-src 'self' data:; connect-src 'self';",
     },
@@ -44,70 +49,121 @@ function renderVendorHealthCanvas(demoKey: string): string {
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Vendor Health — Fleet Dashboard</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='3' fill='%232ed573'/%3E%3Ccircle cx='8' cy='8' r='6' fill='none' stroke='%232ed573' stroke-width='0.8' opacity='0.5'/%3E%3C/svg%3E"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='3' fill='%238a6d3b'/%3E%3Ccircle cx='8' cy='8' r='6' fill='none' stroke='%238a6d3b' stroke-width='0.8' opacity='0.5'/%3E%3C/svg%3E"/>
+${THEME_HEAD_SCRIPT}
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&amp;family=Inter:wght@400..700&amp;display=swap" media="print" onload="this.media='all'"/>
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&amp;family=Inter:wght@400..700&amp;display=swap"/></noscript>
 <style>
+  /* House style: the three nofluffadvisory.com skins, shared with the
+     dashboard (SKIN_TOKENS_CSS, src/demo/skins.ts). Graphite is
+     the default; the script above applies the skin saved by the
+     dashboard picker. The page reads the semantic layer at the end of
+     this block, defined once from the skin tokens. No literal colours
+     below it. */
+  ${SKIN_TOKENS_CSS}
   :root {
-    --bg: #0a0d12;
-    --bg-elevated: #11161e;
-    --bg-panel: #161c26;
-    --border: #232b38;
-    --border-strong: #2e3947;
-    --text: #e6ebf2;
-    --text-dim: #8a95a8;
-    --text-faint: #5b6679;
-    --accent: #38b6ff;
-    --healthy: #2ed573;
-    --healthy-glow: rgba(46, 213, 115, 0.3);
-    --degraded: #f0b400;
-    --degraded-glow: rgba(240, 180, 0, 0.3);
-    --down: #ff4d5e;
-    --down-glow: rgba(255, 77, 94, 0.3);
-    --unknown: #6b7689;
-    --font-mono: "JetBrains Mono", "SF Mono", Consolas, Menlo, monospace;
-    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    /* Kit (NFA global.css): mats, depth from the skin's own ink. */
+    --accent-on-dark: color-mix(in srgb, var(--accent-2) 55%, var(--paper));
+    --mat-sheet:    color-mix(in srgb, var(--paper) 40%, #fff);
+    --mat-edge:     color-mix(in srgb, var(--rule) 70%, transparent);
+    --shadow-1: 0 1px 1px color-mix(in srgb, var(--ink) 6%, transparent),
+                0 10px 22px -14px color-mix(in srgb, var(--ink) 30%, transparent);
+    --shadow-2: 0 1px 1px color-mix(in srgb, var(--ink) 8%, transparent),
+                0 8px 18px -8px color-mix(in srgb, var(--ink) 30%, transparent),
+                0 26px 44px -26px color-mix(in srgb, var(--ink) 38%, transparent);
+    --shadow-panel: 0 30px 60px -36px color-mix(in srgb, var(--ink) 70%, transparent);
+    --scrim:        color-mix(in srgb, var(--ink) 38%, transparent);
+
+    --font-serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+    --font-sans:  'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono:  ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --font-label: var(--font-sans);
+    --label-size:  11px;
+    --label-track: 0.14em;
+    --stamp-size:  10px;
+    --stamp-track: 0.12em;
+    --r-print: 2px;
+    --r-card:  4px;
+    --ease-snap:    cubic-bezier(0.2, 0.8, 0.2, 1);
+    --motion-paper: 450ms;
+
+    /* Page semantic layer. */
+    --bg:            var(--paper);
+    --bg-elevated:   var(--paper);
+    --bg-panel:      var(--mat-sheet);
+    --bg-hover:      color-mix(in srgb, var(--accent) 6%, var(--mat-sheet));
+    --border:        var(--rule);
+    --border-strong: color-mix(in srgb, var(--ink) 26%, var(--paper));
+    --border-quiet:  color-mix(in srgb, var(--ink) 30%, transparent);
+    --text:          var(--ink);
+    --text-dim:      var(--ink-muted);
+    --text-faint:    var(--ink-light);
+
+    /* Status (NFA registry semantics): accent = healthy, warm = degraded,
+       risk = down, an ink neutral = unknown. Every status also carries a
+       text label, and the drill-down chart gives each a marker shape. */
+    --healthy:  var(--accent);
+    --degraded: color-mix(in srgb, var(--warm) 78%, var(--ink));
+    --down:     var(--risk);
+    --unknown:  var(--ink-light);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
   body {
     background: var(--bg);
     color: var(--text);
-    font: 14px/1.5 var(--font-ui);
+    font: 14px/1.5 var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+  ::selection { background: rgba(var(--accent-rgb), 0.2); }
+  :where(a, button):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   .header {
-    padding: 16px 24px;
+    padding: 14px 28px;
     border-bottom: 1px solid var(--border);
     background: var(--bg-elevated);
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 18px;
   }
   .header-back {
     color: var(--text-dim);
     text-decoration: none;
     font-size: 13px;
+    font-weight: 500;
     border: 1px solid var(--border);
     padding: 6px 12px;
-    border-radius: 6px;
-    transition: all 0.15s;
+    border-radius: var(--r-print);
+    transition: border-color 0.15s, color 0.15s;
   }
   .header-back:hover { border-color: var(--accent); color: var(--accent); }
+  /* Page title: Fraunces, the NFA heading face. */
   .header-title {
-    font-size: 18px;
+    font-family: var(--font-serif);
+    font-size: 26px;
     font-weight: 600;
-    letter-spacing: -0.01em;
+    line-height: 1.1;
+    letter-spacing: -0.022em;
+    font-variation-settings: 'opsz' 80;
+    color: var(--text);
   }
   .header-title .accent { color: var(--accent); }
   .header-sub {
-    font: 12px/1.4 var(--font-mono);
+    margin-top: 5px;
+    font: 600 var(--label-size)/1.4 var(--font-label);
+    text-transform: uppercase;
+    letter-spacing: var(--label-track);
     color: var(--text-faint);
   }
   .header-spacer { flex: 1; }
   /* Page info popover — same pattern as Race Canvas. */
   .header-title-block { position: relative; }
-  .header-title-row { display: flex; align-items: center; gap: 8px; }
+  .header-title-row { display: flex; align-items: center; gap: 10px; }
   .page-info-btn {
-    width: 24px; height: 24px;
+    width: 26px; height: 26px;
     display: inline-flex; align-items: center; justify-content: center;
     border-radius: 50%;
     background: transparent;
@@ -117,14 +173,14 @@ function renderVendorHealthCanvas(demoKey: string): string {
     transition: all 0.12s;
   }
   .page-info-btn:hover {
-    background: var(--bg-panel);
+    background: var(--bg-hover);
     color: var(--accent);
-    border-color: var(--accent);
+    border-color: rgba(var(--accent-rgb), 0.38);
   }
   .page-info-btn.is-open {
-    background: rgba(56,182,255,0.14);
+    background: rgba(var(--accent-rgb), 0.10);
     color: var(--accent);
-    border-color: var(--accent);
+    border-color: rgba(var(--accent-rgb), 0.38);
   }
   .page-info-popover {
     position: absolute;
@@ -135,9 +191,9 @@ function renderVendorHealthCanvas(demoKey: string): string {
     max-width: calc(100vw - 32px);
     background: var(--bg-panel);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--r-card);
     padding: 16px 18px 14px;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+    box-shadow: var(--shadow-2);
     display: none;
     animation: pageInfoFade 0.15s ease-out;
   }
@@ -156,119 +212,157 @@ function renderVendorHealthCanvas(demoKey: string): string {
     border-left: 1px solid var(--border);
     transform: rotate(45deg);
   }
-  .page-info-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 10px; }
-  .page-info-steps { margin: 0 0 12px; padding: 0 0 0 22px; font-size: 12.5px; line-height: 1.55; color: var(--text-dim); }
+  .page-info-title {
+    font-family: var(--font-serif);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.012em;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+  .page-info-steps { margin: 0 0 12px; padding: 0 0 0 22px; font-size: 12.5px; line-height: 1.55; color: var(--text); }
   .page-info-steps li { margin-bottom: 8px; }
   .page-info-steps li:last-child { margin-bottom: 0; }
   .page-info-steps strong { color: var(--text); }
   .page-info-steps code {
-    background: var(--bg);
+    font-family: var(--font-mono);
+    background: var(--paper-2);
     border: 1px solid var(--border);
-    border-radius: 3px;
+    border-radius: var(--r-print);
     padding: 1px 5px;
     font-size: 11px;
     color: var(--accent);
   }
   .page-info-trace { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font: 11px var(--font-mono); color: var(--text-faint); line-height: 1.5; }
-  .page-info-trace code { color: var(--text-dim); background: transparent; border: none; padding: 0; font-size: 11px; }
+  .page-info-trace code { font-family: var(--font-mono); color: var(--text-dim); background: transparent; border: none; padding: 0; font-size: 11px; }
+  /* House buttons (NFA .btn): flat, 2px radius. Primary = ink fill that
+     turns accent on hover; ghost = a hairline. */
   .btn {
-    background: var(--accent);
-    color: #0a0d12;
-    border: none;
+    background: var(--ink);
+    color: var(--paper);
+    border: 1px solid var(--ink);
     padding: 9px 16px;
-    border-radius: 6px;
-    font: 600 13px var(--font-ui);
+    border-radius: var(--r-print);
+    font: 500 13.5px var(--font-sans);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
   }
-  .btn:hover { filter: brightness(1.1); }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn:hover { background: var(--accent); border-color: var(--accent); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn:disabled:hover { background: var(--ink); border-color: var(--ink); }
   .btn-ghost {
     background: transparent;
     border: 1px solid var(--border-strong);
     color: var(--text);
   }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-ghost:hover { background: var(--paper-2); border-color: var(--accent); color: var(--accent); }
+  .btn-ghost:disabled:hover { background: transparent; border-color: var(--border-strong); color: var(--text); }
 
   .main {
-    padding: 24px;
+    padding: 28px;
     max-width: 1500px;
     margin: 0 auto;
   }
 
   /* ── Aggregate strip ───────────────────────────────────────────────── */
+  /* KPI sheets: the house numeral rule (a short status stroke on the top
+     edge, never a thick left border), sans caps labels, Fraunces
+     numerals. The total is the page's one ink panel. */
   .aggregate-strip {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 12px;
-    margin-bottom: 18px;
+    gap: 14px;
+    margin-bottom: 22px;
   }
   .agg-card {
+    position: relative;
     background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 16px;
+    border: 1px solid var(--mat-edge);
+    border-radius: var(--r-card);
+    padding: 16px 18px 14px;
+    box-shadow: var(--shadow-1);
   }
-  .agg-card.healthy { border-left: 4px solid var(--healthy); }
-  .agg-card.degraded { border-left: 4px solid var(--degraded); }
-  .agg-card.down { border-left: 4px solid var(--down); }
-  .agg-card.unknown { border-left: 4px solid var(--unknown); }
-  .agg-card.total { border-left: 4px solid var(--accent); }
+  .agg-card::before {
+    content: "";
+    position: absolute;
+    top: -1px; left: 18px;
+    width: 2.6rem; height: 2px;
+    background: var(--unknown);
+  }
+  .agg-card.healthy::before { background: var(--healthy); }
+  .agg-card.degraded::before { background: var(--degraded); }
+  .agg-card.down::before { background: var(--down); }
+  .agg-card.unknown::before { background: var(--unknown); }
+  .agg-card.total {
+    background: linear-gradient(135deg, var(--ink), var(--ink-2));
+    border-color: var(--ink);
+    box-shadow: var(--shadow-2);
+  }
+  .agg-card.total::before { background: var(--accent-on-dark); }
   .agg-num {
-    font: 700 28px/1 var(--font-mono);
+    font-family: var(--font-serif);
+    font-size: 34px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: lining-nums tabular-nums;
     color: var(--text);
   }
   .agg-label {
-    font: 11px/1 var(--font-mono);
+    font: 600 var(--label-size)/1.35 var(--font-label);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--label-track);
     color: var(--text-faint);
-    margin-top: 6px;
+    margin-top: 9px;
   }
   .agg-card .agg-num.healthy { color: var(--healthy); }
   .agg-card .agg-num.degraded { color: var(--degraded); }
   .agg-card .agg-num.down { color: var(--down); }
   .agg-card .agg-num.unknown { color: var(--unknown); }
+  .agg-card.total .agg-num { color: var(--paper); }
+  .agg-card.total .agg-label { color: color-mix(in srgb, var(--paper) 72%, transparent); }
 
   /* ── Filter chips ──────────────────────────────────────────────────── */
+  /* A ledger toolbar between two hairlines; chips are NFA .art-chip
+     (sheet fill, hairline, 2px radius; the active chip is an ink fill). */
   .filter-row {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    margin-bottom: 18px;
-    padding: 12px 14px;
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+    margin-bottom: 22px;
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
   }
   .filter-group-label {
-    font: 11px/1 var(--font-mono);
+    font: 600 var(--label-size)/1 var(--font-label);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--label-track);
     color: var(--text-faint);
     align-self: center;
-    margin-right: 4px;
+    margin-right: 2px;
   }
   .chip {
-    padding: 6px 12px;
-    border-radius: 14px;
-    background: var(--bg);
+    padding: 5px 11px;
+    border-radius: var(--r-print);
+    background: var(--bg-panel);
     border: 1px solid var(--border);
     color: var(--text-dim);
-    font: 11px/1 var(--font-mono);
+    font: 500 12.5px/1.2 var(--font-sans);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: background 0.14s, border-color 0.14s, color 0.14s;
   }
   .chip:hover { border-color: var(--accent); color: var(--accent); }
   .chip.is-active {
-    background: var(--accent);
-    color: #0a0d12;
-    border-color: var(--accent);
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
   }
   .filter-divider {
     width: 1px;
     background: var(--border);
-    margin: 0 4px;
+    margin: 0 6px;
   }
   .filter-status-meta {
     margin-left: auto;
@@ -278,28 +372,44 @@ function renderVendorHealthCanvas(demoKey: string): string {
   }
 
   /* ── Vendor grid ───────────────────────────────────────────────────── */
+  /* Paper sheets on the page. Status reads from the stamp (text) and the
+     short top stroke, which grows across the sheet on hover (the NFA
+     catalog rule). */
   .vendor-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
-    gap: 14px;
+    gap: 16px;
   }
   .vendor-card {
     background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 16px;
+    border: 1px solid var(--mat-edge);
+    border-radius: var(--r-card);
+    padding: 16px 18px 14px;
+    box-shadow: var(--shadow-1);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: border-color 0.15s, box-shadow var(--motion-paper) var(--ease-snap), transform var(--motion-paper) var(--ease-snap);
     position: relative;
   }
-  .vendor-card:hover {
-    border-color: var(--accent);
-    transform: translateY(-1px);
+  .vendor-card::before {
+    content: "";
+    position: absolute;
+    top: -1px; left: 18px;
+    width: 2.6rem; height: 2px;
+    background: var(--unknown);
+    transition: width var(--motion-paper) var(--ease-snap);
   }
-  .vendor-card.healthy { border-left: 4px solid var(--healthy); }
-  .vendor-card.degraded { border-left: 4px solid var(--degraded); }
-  .vendor-card.down { border-left: 4px solid var(--down); }
-  .vendor-card.unknown { border-left: 4px solid var(--unknown); }
+  .vendor-card:hover { border-color: var(--border); }
+  .vendor-card:hover::before { width: calc(100% - 36px); }
+  .vendor-card.healthy::before { background: var(--healthy); }
+  .vendor-card.degraded::before { background: var(--degraded); }
+  .vendor-card.down::before { background: var(--down); }
+  .vendor-card.unknown::before { background: var(--unknown); }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .vendor-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .vendor-card, .vendor-card::before { transition: none; }
+  }
   .vendor-card.is-hidden { display: none; }
   .vendor-card.is-probing {
     opacity: 0.5;
@@ -313,49 +423,55 @@ function renderVendorHealthCanvas(demoKey: string): string {
     gap: 12px;
   }
   .vc-name {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--text);
     line-height: 1.3;
+    letter-spacing: -0.005em;
   }
   .vc-vendor {
-    font: 11px/1.4 var(--font-mono);
+    margin-top: 3px;
+    font: 11px/1.5 var(--font-mono);
     color: var(--text-faint);
   }
+  /* Status stamps (NFA registry chips): sans caps on a hairline, tinted
+     by status. Unknown is a dashed outline: nothing observed yet. */
   .vc-status-pill {
     flex-shrink: 0;
     display: inline-block;
-    padding: 3px 9px;
-    border-radius: 4px;
-    font: 700 10px var(--font-mono);
+    padding: 3px 8px;
+    border-radius: var(--r-print);
+    border: 1px solid var(--border);
+    font: 600 10px/1.35 var(--font-label);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
   }
-  .vc-status-pill.healthy { background: var(--healthy); color: #0a0d12; }
-  .vc-status-pill.degraded { background: var(--degraded); color: #0a0d12; }
-  .vc-status-pill.down { background: var(--down); color: #0a0d12; }
-  .vc-status-pill.unknown { background: var(--unknown); color: var(--text); }
+  .vc-status-pill.healthy { color: var(--healthy); border-color: color-mix(in srgb, var(--healthy) 45%, transparent); background: color-mix(in srgb, var(--healthy) 8%, transparent); }
+  .vc-status-pill.degraded { color: var(--degraded); border-color: color-mix(in srgb, var(--degraded) 50%, transparent); background: color-mix(in srgb, var(--degraded) 8%, transparent); }
+  .vc-status-pill.down { color: var(--down); border-color: color-mix(in srgb, var(--down) 45%, transparent); background: color-mix(in srgb, var(--down) 7%, transparent); }
+  .vc-status-pill.unknown { color: var(--unknown); border-style: dashed; border-color: var(--border-quiet); background: transparent; }
   .vc-stage {
     display: inline-block;
-    padding: 2px 6px;
-    border-radius: 3px;
-    background: var(--bg);
+    padding: 2px 5px;
+    border-radius: var(--r-print);
     border: 1px solid var(--border);
-    font: 9px/1 var(--font-mono);
+    font: 700 9px/1 var(--font-label);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--stamp-track);
     color: var(--text-faint);
     margin-right: 4px;
+    vertical-align: 1px;
   }
-  .vc-stage.live { color: var(--healthy); border-color: var(--healthy); }
-  .vc-stage.known_issue { color: var(--down); border-color: var(--down); }
-  .vc-stage.roadmap { color: var(--unknown); border-color: var(--unknown); }
+  .vc-stage.live { color: var(--healthy); border-color: color-mix(in srgb, var(--healthy) 45%, transparent); }
+  .vc-stage.known_issue { color: var(--down); border-color: color-mix(in srgb, var(--down) 45%, transparent); }
+  .vc-stage.roadmap { color: var(--unknown); border-style: dashed; border-color: var(--border-quiet); }
 
   .vc-metrics {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     gap: 12px;
-    margin: 10px 0;
+    margin: 12px 0 10px;
     padding: 10px 0;
     border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
@@ -363,12 +479,12 @@ function renderVendorHealthCanvas(demoKey: string): string {
   .vc-metric {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
   }
   .vc-metric-label {
-    font: 10px/1 var(--font-mono);
+    font: 600 var(--stamp-size)/1 var(--font-label);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--label-track);
     color: var(--text-faint);
   }
   .vc-metric-value {
@@ -384,12 +500,13 @@ function renderVendorHealthCanvas(demoKey: string): string {
     margin-top: 4px;
     display: block;
   }
+  .vc-spark polyline { vector-effect: non-scaling-stroke; }
   .vc-spark-wrap {
     position: relative;
     margin-top: 4px;
   }
   .vc-spark-empty {
-    font: 10px var(--font-mono);
+    font: 10.5px var(--font-mono);
     color: var(--text-faint);
     line-height: 24px;
   }
@@ -399,16 +516,16 @@ function renderVendorHealthCanvas(demoKey: string): string {
   .vc-spark-tooltip {
     position: absolute;
     display: none;
-    background: var(--bg);
-    border: 1px solid var(--border-strong);
-    border-radius: 4px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--r-print);
     padding: 4px 7px;
     font: 10px/1.4 var(--font-mono);
     color: var(--text);
     pointer-events: none;
     white-space: nowrap;
     z-index: 5;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    box-shadow: var(--shadow-1);
   }
   .vc-spark-tooltip.is-visible { display: block; }
   .vc-spark-tooltip .tt-bucket {
@@ -429,19 +546,19 @@ function renderVendorHealthCanvas(demoKey: string): string {
     align-items: center;
   }
   .vc-trend-pill {
-    font: 10px/1 var(--font-mono);
+    font: 600 10px/1 var(--font-mono);
     padding: 3px 6px;
-    background: var(--bg);
+    background: transparent;
     border: 1px solid var(--border);
-    border-radius: 3px;
+    border-radius: var(--r-print);
     color: var(--text-dim);
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
   }
-  .vc-trend-pill.good { color: var(--healthy); border-color: var(--healthy); }
-  .vc-trend-pill.bad  { color: var(--down); border-color: var(--down); }
+  .vc-trend-pill.good { color: var(--healthy); border-color: color-mix(in srgb, var(--healthy) 45%, transparent); }
+  .vc-trend-pill.bad  { color: var(--down); border-color: color-mix(in srgb, var(--down) 45%, transparent); }
   .vc-trend-pill.neutral { color: var(--text-faint); }
   .vc-trend-empty {
-    font: 10px var(--font-mono);
+    font: 10.5px var(--font-mono);
     color: var(--text-faint);
     margin-top: 6px;
   }
@@ -450,11 +567,11 @@ function renderVendorHealthCanvas(demoKey: string): string {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 8px;
+    margin-top: 10px;
     gap: 8px;
   }
   .vc-foot-meta {
-    font: 10px/1.4 var(--font-mono);
+    font: 10.5px/1.4 var(--font-mono);
     color: var(--text-faint);
   }
   .vc-foot-actions {
@@ -462,25 +579,27 @@ function renderVendorHealthCanvas(demoKey: string): string {
     gap: 6px;
   }
   .vc-btn {
-    background: var(--bg);
+    background: transparent;
     border: 1px solid var(--border);
     color: var(--text-dim);
     padding: 4px 10px;
-    border-radius: 4px;
-    font: 10px/1 var(--font-mono);
+    border-radius: var(--r-print);
+    font: 500 11.5px/1.2 var(--font-sans);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
   }
   .vc-btn:hover {
+    background: var(--paper-2);
     border-color: var(--accent);
     color: var(--accent);
   }
 
   /* ── Drill-down modal ──────────────────────────────────────────────── */
+  /* A spec sheet: Fraunces title, mono keys in accent over dashed rows. */
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.6);
+    background: var(--scrim);
     display: none;
     align-items: center;
     justify-content: center;
@@ -488,10 +607,11 @@ function renderVendorHealthCanvas(demoKey: string): string {
   }
   .modal-backdrop.is-open { display: flex; }
   .modal {
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-strong);
-    border-radius: 10px;
-    padding: 24px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow-panel), var(--shadow-1);
+    padding: 24px 26px;
     width: 90%;
     max-width: 760px;
     max-height: 85vh;
@@ -499,37 +619,56 @@ function renderVendorHealthCanvas(demoKey: string): string {
     position: relative;
   }
   .modal-title {
-    font-size: 17px;
+    font-family: var(--font-serif);
+    font-size: 22px;
     font-weight: 600;
-    margin-bottom: 4px;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    font-variation-settings: 'opsz' 80;
+    color: var(--text);
+    margin-bottom: 6px;
+    padding-right: 180px;
   }
   .modal-sub {
-    font: 12px/1.4 var(--font-mono);
+    font: 11.5px/1.4 var(--font-mono);
     color: var(--text-faint);
-    margin-bottom: 16px;
+    margin-bottom: 4px;
   }
   .modal-section {
-    margin-top: 16px;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
   }
   .modal-section-title {
-    font: 11px/1 var(--font-mono);
+    font: 600 var(--label-size)/1 var(--font-label);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-faint);
+    letter-spacing: var(--label-track);
+    color: var(--text);
     margin-bottom: 8px;
   }
   .modal-grid {
     display: grid;
     grid-template-columns: 160px 1fr;
-    gap: 6px 16px;
+    gap: 0;
     font: 12px/1.5 var(--font-mono);
   }
-  .modal-grid-key { color: var(--text-faint); }
-  .modal-grid-val { color: var(--text); word-break: break-all; }
+  .modal-grid-key {
+    color: var(--accent);
+    padding: 5px 16px 5px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .modal-grid-key::after { content: ":"; color: var(--text-faint); }
+  .modal-grid-val {
+    color: var(--text);
+    word-break: break-all;
+    padding: 5px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .modal-grid > :nth-last-child(-n+2) { border-bottom: 0; }
   .modal pre {
-    background: var(--bg);
+    background: var(--paper);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--r-print);
     padding: 10px;
     font: 11px/1.5 var(--font-mono);
     color: var(--text);
@@ -540,40 +679,45 @@ function renderVendorHealthCanvas(demoKey: string): string {
   /* Modal time-series chart — drill-down replacement for the textual
      history dump. Renders the same KV ring-buffer history as the card
      sparkline but at full size: x-axis sample index, y-axis latency
-     (ms), bucket-colored points, dashed threshold lines for the 2.5s
-     (degraded) and 5s (down) bucket boundaries.
+     (ms), bucket-coloured and bucket-shaped points, dashed threshold
+     lines for the 2.5s (degraded) and 5s (down) bucket boundaries.
      Empty-state and stat-row visible always; chart fades in once
      there's at least 1 datapoint. */
   .modal-chart-stats {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
+    gap: 10px;
     margin-bottom: 12px;
   }
   .modal-chart-stat {
-    background: var(--bg);
+    background: var(--paper);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 8px 10px;
+    border-radius: var(--r-print);
+    padding: 10px 12px 9px;
   }
   .modal-chart-stat-label {
-    font: 9px/1 var(--font-mono);
+    font: 600 var(--stamp-size)/1 var(--font-label);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--label-track);
     color: var(--text-faint);
-    margin-bottom: 4px;
+    margin-bottom: 7px;
   }
   .modal-chart-stat-value {
-    font: 600 14px var(--font-mono);
+    font-family: var(--font-serif);
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    font-variant-numeric: lining-nums tabular-nums;
     color: var(--text);
   }
   .modal-chart-stat-value.good  { color: var(--healthy); }
   .modal-chart-stat-value.bad   { color: var(--down); }
   .modal-chart-stat-value.neutral { color: var(--text-dim); }
   .modal-chart-host {
-    background: var(--bg);
+    background: var(--paper);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--r-print);
     padding: 8px;
     overflow-x: auto;
   }
@@ -582,8 +726,13 @@ function renderVendorHealthCanvas(demoKey: string): string {
     max-width: 100%;
     min-width: 600px;
   }
+  .modal-chart-svg text { font-family: var(--font-mono); fill: var(--text-faint); }
+  .modal-chart-svg .mc-grid { stroke: var(--border); }
+  .modal-chart-svg .mc-thresh-degraded { stroke: var(--degraded); }
+  .modal-chart-svg .mc-thresh-down { stroke: var(--down); }
+  .modal-chart-svg .mc-line { stroke: color-mix(in srgb, var(--ink) 50%, transparent); }
   .modal-chart-empty {
-    font: 12px/1.5 var(--font-mono);
+    font: italic 14px/1.5 var(--font-serif);
     color: var(--text-faint);
     padding: 24px 12px;
     text-align: center;
@@ -591,20 +740,29 @@ function renderVendorHealthCanvas(demoKey: string): string {
   .modal-chart-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
-    margin-top: 8px;
-    font: 10px/1 var(--font-mono);
+    gap: 14px;
+    margin-top: 10px;
+    font: 10.5px/1 var(--font-mono);
     color: var(--text-faint);
   }
   .modal-chart-legend-item {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
   }
+  .modal-chart-legend-item.is-degraded { color: var(--degraded); }
+  .modal-chart-legend-item.is-down { color: var(--down); }
+  /* Legend markers match the chart's point shapes: circle, diamond,
+     square, hollow circle. */
   .modal-chart-legend-dot {
     width: 8px; height: 8px;
     border-radius: 50%;
+    background: var(--unknown);
   }
+  .modal-chart-legend-dot.healthy { background: var(--healthy); }
+  .modal-chart-legend-dot.degraded { background: var(--degraded); border-radius: 0; transform: rotate(45deg) scale(0.85); }
+  .modal-chart-legend-dot.down { background: var(--down); border-radius: 0; }
+  .modal-chart-legend-dot.unknown { background: transparent; box-shadow: inset 0 0 0 1.5px var(--unknown); }
   .modal-chart-legend-dash {
     display: inline-block;
     width: 14px;
@@ -612,23 +770,24 @@ function renderVendorHealthCanvas(demoKey: string): string {
   }
   .modal-actions {
     position: absolute;
-    top: 16px;
-    right: 16px;
+    top: 20px;
+    right: 22px;
     display: flex;
     gap: 6px;
   }
   .modal-close,
   .modal-reprobe {
     background: transparent;
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-strong);
     color: var(--text);
-    padding: 6px 10px;
-    border-radius: 4px;
+    padding: 6px 11px;
+    border-radius: var(--r-print);
     cursor: pointer;
-    font: 11px var(--font-mono);
-    transition: all 0.15s;
+    font: 500 12px/1.2 var(--font-sans);
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
   }
-  .modal-reprobe:hover { border-color: var(--accent); color: var(--accent); }
+  .modal-close:hover,
+  .modal-reprobe:hover { background: var(--paper-2); border-color: var(--accent); color: var(--accent); }
   .modal-reprobe:disabled { opacity: 0.5; cursor: progress; }
   .modal-reprobe.is-loading::after {
     content: "";
@@ -648,34 +807,34 @@ function renderVendorHealthCanvas(demoKey: string): string {
   .modal-chart-window {
     display: flex;
     gap: 4px;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     align-items: center;
   }
   .modal-chart-window-label {
-    font: 10px var(--font-mono);
+    font: 600 var(--stamp-size) var(--font-label);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--label-track);
     color: var(--text-faint);
     margin-right: 6px;
   }
   .modal-chart-window-btn {
-    padding: 4px 9px;
-    background: var(--bg);
+    padding: 4px 10px;
+    background: var(--bg-panel);
     border: 1px solid var(--border);
     color: var(--text-dim);
-    border-radius: 4px;
-    font: 10.5px var(--font-mono);
+    border-radius: var(--r-print);
+    font: 11px var(--font-mono);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: background 0.14s, border-color 0.14s, color 0.14s;
   }
   .modal-chart-window-btn:hover {
     border-color: var(--accent);
     color: var(--accent);
   }
   .modal-chart-window-btn.is-active {
-    background: var(--accent);
-    color: #0a0d12;
-    border-color: var(--accent);
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
   }
   .modal-tools-list {
     display: flex;
@@ -684,23 +843,23 @@ function renderVendorHealthCanvas(demoKey: string): string {
   }
   .modal-tool {
     padding: 3px 8px;
-    background: var(--bg);
+    background: var(--paper);
     border: 1px solid var(--border);
-    border-radius: 3px;
+    border-radius: var(--r-print);
     font: 11px var(--font-mono);
-    color: var(--text);
+    color: var(--text-dim);
   }
 
   .empty-state {
     color: var(--text-faint);
-    font-size: 13px;
+    font: italic 15px/1.5 var(--font-serif);
     text-align: center;
     padding: 60px 20px;
     grid-column: 1 / -1;
   }
 
   .loading-bar {
-    height: 3px;
+    height: 2px;
     background: var(--accent);
     width: 0;
     transition: width 0.3s;
@@ -713,6 +872,28 @@ function renderVendorHealthCanvas(demoKey: string): string {
     0% { width: 0; }
     50% { width: 70%; }
     100% { width: 95%; }
+  }
+
+  /* Narrow screens: the strip folds, cards take the full width, the
+     header and the modal stack. Desktop is unaffected. */
+  @media (max-width: 1100px) {
+    .aggregate-strip { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .header { position: relative; flex-wrap: wrap; gap: 12px; padding: 12px 16px; }
+    .header-title-block { position: static; flex: 1 1 200px; min-width: 0; }
+    .header-spacer { display: none; }
+    .page-info-popover { left: 16px; right: 16px; width: auto; max-width: none; }
+    .page-info-popover::before { display: none; }
+    .main { padding: 18px 16px; }
+    .aggregate-strip { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .agg-card.total { grid-column: 1 / -1; }
+    .vendor-grid { grid-template-columns: minmax(0, 1fr); }
+    .modal { width: calc(100% - 24px); padding: 18px 16px; }
+    .modal-actions { position: static; justify-content: flex-end; margin-top: 10px; }
+    .modal-title { padding-right: 0; }
+    .modal-grid { grid-template-columns: 116px minmax(0, 1fr); }
+    .modal-chart-stats { grid-template-columns: repeat(2, 1fr); }
   }
 </style>
 </head>
@@ -886,18 +1067,40 @@ function renderVendorHealthCanvas(demoKey: string): string {
   // TTL in KV). See src/storage/vendorHealthHistory.ts. These are the
   // analytical layer that sits on top of the raw datapoint array — the
   // dashboard card (small) and modal (large) both render through them.
+  // Colours are the page's status tokens (house skins). SVG marks take
+  // them through an inline style="fill:..." / style="stroke:...".
   function bucketColor(bucket) {
-    if (bucket === "healthy") return "#2ed573";
-    if (bucket === "degraded") return "#f0b400";
-    if (bucket === "down") return "#ff4d5e";
-    return "#6b7689";
+    if (bucket === "healthy") return "var(--healthy)";
+    if (bucket === "degraded") return "var(--degraded)";
+    if (bucket === "down") return "var(--down)";
+    return "var(--unknown)";
   }
   function bucketBg(bucket) {
     // Tinted background variant of bucketColor for stat-pill backgrounds.
-    if (bucket === "healthy") return "rgba(46,213,115,0.10)";
-    if (bucket === "degraded") return "rgba(240,180,0,0.10)";
-    if (bucket === "down") return "rgba(255,77,94,0.10)";
-    return "rgba(107,118,137,0.10)";
+    return "color-mix(in srgb, " + bucketColor(bucket) + " 10%, transparent)";
+  }
+  // Drill-down chart point: colour AND shape carry the bucket, so the
+  // states stay apart in every skin (healthy circle, degraded diamond,
+  // down square, unknown hollow circle).
+  function bucketMarker(bucket, x, y, titleHtml) {
+    var c = bucketColor(bucket);
+    var t = "<title>" + titleHtml + "</title>";
+    var ring = "stroke:var(--paper);stroke-width:1";
+    if (bucket === "degraded") {
+      return "<rect x=\\"" + (x - 3.6).toFixed(1) + "\\" y=\\"" + (y - 3.6).toFixed(1) +
+        "\\" width=\\"7.2\\" height=\\"7.2\\" transform=\\"rotate(45 " + x.toFixed(1) + " " + y.toFixed(1) +
+        ")\\" style=\\"fill:" + c + ";" + ring + "\\">" + t + "</rect>";
+    }
+    if (bucket === "down") {
+      return "<rect x=\\"" + (x - 3.8).toFixed(1) + "\\" y=\\"" + (y - 3.8).toFixed(1) +
+        "\\" width=\\"7.6\\" height=\\"7.6\\" style=\\"fill:" + c + ";" + ring + "\\">" + t + "</rect>";
+    }
+    if (bucket === "healthy") {
+      return "<circle cx=\\"" + x.toFixed(1) + "\\" cy=\\"" + y.toFixed(1) +
+        "\\" r=\\"4\\" style=\\"fill:" + c + ";" + ring + "\\">" + t + "</circle>";
+    }
+    return "<circle cx=\\"" + x.toFixed(1) + "\\" cy=\\"" + y.toFixed(1) +
+      "\\" r=\\"3.6\\" style=\\"fill:var(--paper);stroke:" + c + ";stroke-width:1.5\\">" + t + "</circle>";
   }
   function median(arr) {
     if (!arr || arr.length === 0) return 0;
@@ -1016,18 +1219,12 @@ function renderVendorHealthCanvas(demoKey: string): string {
         y = padTop + plotH;
       }
       pathParts.push((j === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1));
-      var color = bucketColor(dp.health_bucket || "unknown");
       var titleText = (dp.ts || "?") + "\\u000a" +
         "bucket: " + (dp.health_bucket || "unknown") + "\\u000a" +
         "latency: " + (typeof dp.latency_ms === "number" ? dp.latency_ms + "ms" : "—") + "\\u000a" +
         "alive: " + (dp.alive ? "yes" : "no") +
         (dp.circuit_state ? "\\u000acircuit: " + dp.circuit_state : "");
-      pointMarkers.push(
-        "<circle cx=\\"" + x.toFixed(1) + "\\" cy=\\"" + y.toFixed(1) +
-        "\\" r=\\"3.5\\" fill=\\"" + color +
-        "\\" stroke=\\"#0a0d12\\" stroke-width=\\"1\\"><title>" +
-        escapeHtml(titleText) + "</title></circle>"
-      );
+      pointMarkers.push(bucketMarker(dp.health_bucket || "unknown", x, y, escapeHtml(titleText)));
     }
 
     // Y-axis ticks (5 ticks: 0, 25%, 50%, 75%, 100%)
@@ -1037,11 +1234,11 @@ function renderVendorHealthCanvas(demoKey: string): string {
       var ty = padTop + plotH - (ticks[t] / maxLat) * plotH;
       var label = ticks[t] >= 1000 ? (ticks[t] / 1000).toFixed(1) + "s" : Math.round(ticks[t]) + "ms";
       yTicksHtml += "<text x=\\"" + (padX - 8) + "\\" y=\\"" + (ty + 3) +
-        "\\" text-anchor=\\"end\\" font-size=\\"10\\" fill=\\"#5b6679\\" font-family=\\"monospace\\">" +
+        "\\" text-anchor=\\"end\\" font-size=\\"10\\">" +
         label + "</text>";
-      yTicksHtml += "<line x1=\\"" + padX + "\\" y1=\\"" + ty +
+      yTicksHtml += "<line class=\\"mc-grid\\" x1=\\"" + padX + "\\" y1=\\"" + ty +
         "\\" x2=\\"" + (padX + plotW) + "\\" y2=\\"" + ty +
-        "\\" stroke=\\"#232b38\\" stroke-width=\\"0.5\\" opacity=\\"0.6\\"/>";
+        "\\" stroke-width=\\"0.75\\"/>";
     }
 
     // Threshold annotations (only render if visible in plot range).
@@ -1049,41 +1246,41 @@ function renderVendorHealthCanvas(demoKey: string): string {
     var thresh2Y = padTop + plotH - (5000 / maxLat) * plotH;
     var threshHtml = "";
     if (thresh1Y >= padTop && thresh1Y <= padTop + plotH) {
-      threshHtml += "<line x1=\\"" + padX + "\\" y1=\\"" + thresh1Y +
+      threshHtml += "<line class=\\"mc-thresh-degraded\\" x1=\\"" + padX + "\\" y1=\\"" + thresh1Y +
         "\\" x2=\\"" + (padX + plotW) + "\\" y2=\\"" + thresh1Y +
-        "\\" stroke=\\"#f0b400\\" stroke-width=\\"0.7\\" stroke-dasharray=\\"3,3\\" opacity=\\"0.7\\"/>";
+        "\\" stroke-width=\\"0.8\\" stroke-dasharray=\\"3,3\\"/>";
     }
     if (thresh2Y >= padTop && thresh2Y <= padTop + plotH) {
-      threshHtml += "<line x1=\\"" + padX + "\\" y1=\\"" + thresh2Y +
+      threshHtml += "<line class=\\"mc-thresh-down\\" x1=\\"" + padX + "\\" y1=\\"" + thresh2Y +
         "\\" x2=\\"" + (padX + plotW) + "\\" y2=\\"" + thresh2Y +
-        "\\" stroke=\\"#ff4d5e\\" stroke-width=\\"0.7\\" stroke-dasharray=\\"3,3\\" opacity=\\"0.7\\"/>";
+        "\\" stroke-width=\\"0.8\\" stroke-dasharray=\\"3,3\\"/>";
     }
 
     // X-axis label
     var xLabel = "<text x=\\"" + (padX + plotW / 2) + "\\" y=\\"" + (h - 4) +
-      "\\" text-anchor=\\"middle\\" font-size=\\"10\\" fill=\\"#5b6679\\" font-family=\\"monospace\\">probe sample (oldest → newest, " +
+      "\\" text-anchor=\\"middle\\" font-size=\\"10\\">probe sample (oldest → newest, " +
       history.length + " of 24 max)</text>";
 
     // Y-axis label (rotated)
     var yLabel = "<text x=\\"14\\" y=\\"" + (padTop + plotH / 2) +
       "\\" transform=\\"rotate(-90 14," + (padTop + plotH / 2) +
-      ")\\" text-anchor=\\"middle\\" font-size=\\"10\\" fill=\\"#5b6679\\" font-family=\\"monospace\\">latency</text>";
+      ")\\" text-anchor=\\"middle\\" font-size=\\"10\\">latency</text>";
 
     var legend = "<div class=\\"modal-chart-legend\\">" +
-      "<span class=\\"modal-chart-legend-item\\"><span class=\\"modal-chart-legend-dot\\" style=\\"background:#2ed573\\"></span>healthy</span>" +
-      "<span class=\\"modal-chart-legend-item\\"><span class=\\"modal-chart-legend-dot\\" style=\\"background:#f0b400\\"></span>degraded</span>" +
-      "<span class=\\"modal-chart-legend-item\\"><span class=\\"modal-chart-legend-dot\\" style=\\"background:#ff4d5e\\"></span>down</span>" +
-      "<span class=\\"modal-chart-legend-item\\"><span class=\\"modal-chart-legend-dot\\" style=\\"background:#6b7689\\"></span>unknown</span>" +
-      "<span class=\\"modal-chart-legend-item\\" style=\\"color:#f0b400\\"><span class=\\"modal-chart-legend-dash\\"></span>2.5s degraded threshold</span>" +
-      "<span class=\\"modal-chart-legend-item\\" style=\\"color:#ff4d5e\\"><span class=\\"modal-chart-legend-dash\\"></span>5s down threshold</span>" +
+      "<span class=\\"modal-chart-legend-item\\"><span class=\\"modal-chart-legend-dot healthy\\"></span>healthy</span>" +
+      "<span class=\\"modal-chart-legend-item\\"><span class=\\"modal-chart-legend-dot degraded\\"></span>degraded</span>" +
+      "<span class=\\"modal-chart-legend-item\\"><span class=\\"modal-chart-legend-dot down\\"></span>down</span>" +
+      "<span class=\\"modal-chart-legend-item\\"><span class=\\"modal-chart-legend-dot unknown\\"></span>unknown</span>" +
+      "<span class=\\"modal-chart-legend-item is-degraded\\"><span class=\\"modal-chart-legend-dash\\"></span>2.5s degraded threshold</span>" +
+      "<span class=\\"modal-chart-legend-item is-down\\"><span class=\\"modal-chart-legend-dash\\"></span>5s down threshold</span>" +
       "</div>";
 
     return "<svg class=\\"modal-chart-svg\\" viewBox=\\"0 0 " + w + " " + h +
       "\\" preserveAspectRatio=\\"xMidYMid meet\\">" +
       yTicksHtml +
       threshHtml +
-      "<path d=\\"" + pathParts.join(" ") +
-      "\\" fill=\\"none\\" stroke=\\"#38b6ff\\" stroke-width=\\"1.5\\"/>" +
+      "<path class=\\"mc-line\\" d=\\"" + pathParts.join(" ") +
+      "\\" fill=\\"none\\" stroke-width=\\"1.25\\"/>" +
       pointMarkers.join("") +
       yLabel +
       xLabel +
@@ -1123,8 +1320,10 @@ function renderVendorHealthCanvas(demoKey: string): string {
       var dpSingle = history[0];
       var ttSingle = (dpSingle.ts || "?") + " | " + bucket + " | " +
         (typeof dpSingle.latency_ms === "number" ? dpSingle.latency_ms + "ms" : "—");
-      return "<svg class=\\"vc-spark\\" width=\\"100%\\" height=\\"24\\" viewBox=\\"0 0 100 24\\" preserveAspectRatio=\\"none\\">" +
-        "<circle cx=\\"50\\" cy=\\"12\\" r=\\"3\\" fill=\\"" + bucketColor(bucket) + "\\"><title>" +
+      // One sample: keep the aspect ratio so the dot stays round (a
+      // stretched viewBox draws it as a smear).
+      return "<svg class=\\"vc-spark\\" width=\\"100%\\" height=\\"24\\" viewBox=\\"0 0 100 24\\" preserveAspectRatio=\\"xMidYMid meet\\">" +
+        "<circle cx=\\"50\\" cy=\\"12\\" r=\\"3\\" style=\\"fill:" + bucketColor(bucket) + "\\"><title>" +
         escapeHtml(ttSingle) + "</title></circle></svg>";
     }
     var maxLat = 0;
@@ -1142,25 +1341,27 @@ function renderVendorHealthCanvas(demoKey: string): string {
       var lat = history[j].latency_ms;
       var y = (typeof lat === "number") ? (h - (lat / maxLat) * h * 0.85 - 2) : (h / 2);
       pts.push(x.toFixed(1) + "," + y.toFixed(1));
-      // Invisible-but-larger hover targets at each datapoint with a
-      // native SVG <title> for hover tooltip. r=3 gives a generous hit
-      // box; the visible polyline already shows the trend, so the dot
-      // stays at low opacity (0.001 = effectively invisible). Browsers
-      // render <title> as a tooltip on hover.
+      // One dot per datapoint in its own bucket colour, with a native
+      // SVG <title> for the hover tooltip. The viewBox stretches
+      // (preserveAspectRatio none), which would smear a circle into a
+      // wide ellipse, so each dot is a zero-length line with a round cap
+      // and a non-scaling stroke: it stays a 4px round dot at any width.
       var dpForTitle = history[j];
       var ttText = (dpForTitle.ts || "?") + " | " +
         (dpForTitle.health_bucket || "unknown") + " | " +
         (typeof dpForTitle.latency_ms === "number" ? dpForTitle.latency_ms + "ms" : "—");
       hoverDots.push(
-        "<circle cx=\\"" + x.toFixed(1) + "\\" cy=\\"" + y.toFixed(1) +
-        "\\" r=\\"3\\" fill=\\"" + bucketColor(dpForTitle.health_bucket || "unknown") +
-        "\\" opacity=\\"0.55\\"><title>" + escapeHtml(ttText) + "</title></circle>"
+        "<line x1=\\"" + x.toFixed(1) + "\\" y1=\\"" + y.toFixed(1) +
+        "\\" x2=\\"" + x.toFixed(1) + "\\" y2=\\"" + y.toFixed(1) +
+        "\\" stroke-width=\\"4\\" stroke-linecap=\\"round\\" vector-effect=\\"non-scaling-stroke\\" style=\\"stroke:" +
+        bucketColor(dpForTitle.health_bucket || "unknown") +
+        "\\" opacity=\\"0.7\\"><title>" + escapeHtml(ttText) + "</title></line>"
       );
     }
     var lastBucket = history[history.length - 1].health_bucket || "unknown";
     var color = bucketColor(lastBucket);
     return "<svg class=\\"vc-spark\\" width=\\"100%\\" height=\\"24\\" viewBox=\\"0 0 100 24\\" preserveAspectRatio=\\"none\\">" +
-      "<polyline fill=\\"none\\" stroke=\\"" + color + "\\" stroke-width=\\"1.5\\" points=\\"" + pts.join(" ") + "\\"/>" +
+      "<polyline fill=\\"none\\" style=\\"stroke:" + color + "\\" stroke-width=\\"1.5\\" points=\\"" + pts.join(" ") + "\\"/>" +
       hoverDots.join("") +
       "</svg>";
   }

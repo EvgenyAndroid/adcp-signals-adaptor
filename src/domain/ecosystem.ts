@@ -420,7 +420,7 @@ function fanoutPause(): Promise<void> {
 }
 
 // Brief-fit score per agent: how well do this agent's specialties match
-// this brief's weight profile? Returns [0..1+]. Used to bias every
+// this brief's weight profile? Returns [0..1]. Used to bias every
 // synthetic responder so agents look like they CARE about the brief
 // rather than randomly responding. Specialty keywords are mapped to
 // brief-weight dimensions; matches multiply the agent's response.
@@ -466,7 +466,10 @@ function briefFitScore(agent: EcosystemAgent, brief: Brief): number {
   if (matches === 0 && specs.some((s) => s.includes("cross_taxonomy") || s.includes("ucp_") || s.includes("dts_"))) {
     score += brief.weights.audience * 0.2;
   }
-  return Math.min(1.4, score);
+  // Capped at 1: the trace prints this as "fit N%", and the cycle's lift
+  // averages it, so a specialist matching several dimensions tops out at a
+  // perfect fit instead of reading 140%.
+  return Math.min(1, score);
 }
 
 export async function syntheticSignalsResponse(agent: EcosystemAgent, brief: Brief): Promise<{

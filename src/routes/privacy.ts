@@ -26,7 +26,7 @@ const privacyHtml = (releaseLine: string): string => `<!doctype html>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Privacy — AdCP Signals Adaptor (Demo)</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='2' fill='%238a6d3b'/%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%238a6d3b' stroke-width='0.8' opacity='0.6'/%3E%3Ccircle cx='8' cy='8' r='7.5' fill='none' stroke='%238a6d3b' stroke-width='0.5' opacity='0.3'/%3E%3C/svg%3E"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='2' fill='%236e5730'/%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%236e5730' stroke-width='0.8' opacity='0.6'/%3E%3Ccircle cx='8' cy='8' r='7.5' fill='none' stroke='%236e5730' stroke-width='0.5' opacity='0.3'/%3E%3C/svg%3E"/>
 ${THEME_HEAD_SCRIPT}
 <style>
   /* House style (nofluffadvisory.com): the three skins, set as a printed

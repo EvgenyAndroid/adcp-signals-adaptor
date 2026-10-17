@@ -37,7 +37,7 @@ export function renderEcosystemCanvas(demoKey: string): string {
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>AdCP Ecosystem — live agentic orchestration</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='2' fill='%238a6d3b'/%3E%3Ccircle cx='8' cy='8' r='6' fill='none' stroke='%238a6d3b' stroke-width='0.6' opacity='0.5'/%3E%3C/svg%3E"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='2' fill='%236e5730'/%3E%3Ccircle cx='8' cy='8' r='6' fill='none' stroke='%236e5730' stroke-width='0.6' opacity='0.5'/%3E%3C/svg%3E"/>
 ${THEME_HEAD_SCRIPT}
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>

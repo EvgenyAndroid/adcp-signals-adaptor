@@ -92,8 +92,9 @@ ${SKIN_TOKENS_CSS}
   --accent-dim:    rgba(var(--accent-rgb), 0.10);
   --accent-border: rgba(var(--accent-rgb), 0.38);
   /* Accent as small text, or as a fill under paper text. Graphite's
-     bronze is 4.1:1 on paper, under AA; NFA's .stamp--cleared recipe
-     (accent into ink) clears it in every skin: 5.4 / 8.5 / 10.4.
+     bronze is darkened from NFA's (src/demo/skins.ts) to 5.8:1 on paper;
+     NFA's .stamp--cleared recipe (accent into ink) adds margin in every
+     skin: 7.1 / 8.5 / 10.4.
      --accent itself stays for rules, strokes, dots, bars and large
      Fraunces numerals. */
   --accent-ink:    color-mix(in srgb, var(--accent) 80%, var(--ink));

@@ -113,7 +113,7 @@ ${SKIN_TOKENS_CSS}
   --error-dim:   rgba(var(--risk-rgb), 0.10);
   --neutral:     var(--ink-light);
   --violet:      color-mix(in srgb, var(--warm) 80%, var(--ink));
-  --cyan:        color-mix(in srgb, var(--accent-2) 75%, var(--ink));
+  --cyan:        color-mix(in srgb, var(--accent-2) 60%, var(--ink));   /* 60%: graphite clears 4.5:1 on paper-2 (75% was 3.7) */
 
   /* Aliases some components already reference. */
   --bg:         var(--bg-base);
@@ -530,7 +530,7 @@ svg.ico path, svg.ico circle, svg.ico rect, svg.ico line { vector-effect: non-sc
 }
 .theme-swatch:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .theme-swatch[data-theme-pick="olive"]    { --swatch: #4a5a2e; }
-.theme-swatch[data-theme-pick="graphite"] { --swatch: #8a6d3b; }
+.theme-swatch[data-theme-pick="graphite"] { --swatch: #6e5730; }
 .theme-swatch[data-theme-pick="bordeaux"] { --swatch: #6e2433; }
 
 .sidebar-footer {
@@ -6315,7 +6315,7 @@ textarea.lab-input { resize: vertical; line-height: 1.5; }
   cursor: pointer; color: var(--text-mut);
   transition: color 0.15s, border-color 0.15s;
 }
-.canvas-viewmode:hover:not(.disabled) { color: var(--accent); border-color: var(--accent-border); }
+.canvas-viewmode:hover:not(.disabled):not(.active) { color: var(--accent); border-color: var(--accent-border); }
 .canvas-viewmode.active {
   color: var(--paper); border-color: var(--ink);
   background: var(--ink);

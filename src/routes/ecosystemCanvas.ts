@@ -125,13 +125,15 @@ ${THEME_HEAD_SCRIPT}
      CIE76 4.2; sales vs buying 10.3). These mixes keep every legend pair at
      ΔE 18.8 or more: requests fade to a faint hairline grey, creative leans
      toward the accent, buying and measurement go deeper, and the clean room
-     takes a mid grey so it no longer matches buying's near-ink. */
+     takes a mid grey so it no longer matches buying's near-ink. The two
+     accent mixes use the pre-AA bronze #8a6d3b on purpose: these are chart
+     fills, not text, and the distances above were tuned on it. */
   :root:not([data-theme]),
   :root[data-theme="graphite"] {
     --c-discovery:   color-mix(in srgb, var(--ink) 14%, var(--paper));
-    --c-creative:    color-mix(in srgb, var(--warm) 45%, var(--accent));
+    --c-creative:    color-mix(in srgb, var(--warm) 45%, #8a6d3b);
     --c-buying:      color-mix(in srgb, var(--warm) 15%, var(--ink));
-    --c-measurement: color-mix(in srgb, var(--accent) 40%, var(--ink));
+    --c-measurement: color-mix(in srgb, #8a6d3b 40%, var(--ink));
     --c-cleanroom:   color-mix(in srgb, var(--ink) 40%, var(--paper));
   }
   /* Olive: warm (terracotta) and risk sit too close to share a legend, so

@@ -5,8 +5,8 @@
 // house style: the dashboard (src/demo/styles.ts) and the standalone
 // pages (src/routes/raceCanvas.ts, vendorHealthCanvas.ts,
 // ecosystemCanvas.ts, privacy.ts). Values mirror nofluffadvisory.com
-// src/styles/themes.css, except graphite's --accent (darkened for AA,
-// see the graphite block); when that file changes, change it here only.
+// src/styles/themes.css exactly; when that file changes, change it here
+// too.
 //
 //   SKIN_TOKENS_CSS   the skin token blocks, keyed on [data-theme] on
 //                     <html>. Graphite also sits on bare :root, so it
@@ -29,9 +29,9 @@ export const SKIN_TOKENS_CSS = `:root, :root[data-theme="graphite"] {
   --paper:        #ebedf1;
   --paper-2:      #dee1e7;
   --rule:         #ccd0d7;
-  /* One deliberate departure from NFA themes.css: the bronze is darkened
-     (lightness only, NFA #8a6d3b) so small accent text clears WCAG AA
-     4.5:1 on every graphite surface; #8a6d3b was 4.1:1 on paper. */
+  /* The bronze was darkened (lightness only) from #8a6d3b on both the
+     dashboard and nofluffadvisory.com on 16 Oct 2026, so small accent text
+     clears WCAG AA 4.5:1 on every graphite surface (#8a6d3b was 4.1:1). */
   --accent:       #6e5730;
   --accent-2:     #a98a57;
   --accent-rgb:   110, 87, 48;

@@ -93,7 +93,7 @@ function renderHtml(demoKey: string, env: { SERVE_ADCP_3_2?: string }): string {
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Evgeny's Marketplace Agent</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='2' fill='%238a6d3b'/%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%238a6d3b' stroke-width='0.8' opacity='0.6'/%3E%3Ccircle cx='8' cy='8' r='7.5' fill='none' stroke='%238a6d3b' stroke-width='0.5' opacity='0.3'/%3E%3C/svg%3E"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='2' fill='%236e5730'/%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%236e5730' stroke-width='0.8' opacity='0.6'/%3E%3Ccircle cx='8' cy='8' r='7.5' fill='none' stroke='%236e5730' stroke-width='0.5' opacity='0.3'/%3E%3C/svg%3E"/>
 <script>
   // Run before body parses so authenticated users never see a flash of
   // the auth overlay. sessionStorage is cleared when the tab closes —

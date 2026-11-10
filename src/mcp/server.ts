@@ -1065,6 +1065,18 @@ async function callGetSignals(
     // Internal error. AAO's pagination_walk check failed on this exact
     // crash (NOT on the pagination shape itself).
     const rawSignalSpec = args["signal_spec"];
+    // signal_spec is a string in every released schema (get-signals-request.json,
+    // 3.1.x and 3.2.x). The { brief } object form stays tolerated for the older
+    // runner described above; anything else (a number, a boolean, an array) is a
+    // malformed request, not a search term. 3.2.9's error_compliance_signals sends
+    // signal_spec: 123 and grades the typed error.
+    if (rawSignalSpec != null && typeof rawSignalSpec !== "string"
+        && !(typeof rawSignalSpec === "object" && !Array.isArray(rawSignalSpec))) {
+        throw new McpToolError(
+            "signal_spec must be a string",
+            { code: "INVALID_REQUEST", recovery: "correctable", field: "/signal_spec" },
+        );
+    }
     const briefFromSpec = typeof rawSignalSpec === "string"
         ? rawSignalSpec
         : (rawSignalSpec && typeof rawSignalSpec === "object" && !Array.isArray(rawSignalSpec)

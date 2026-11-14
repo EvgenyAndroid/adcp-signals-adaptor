@@ -23,13 +23,21 @@
 // write multi-KB rows into the shared database at the cap's full rate.
 // Review fix 2026-10-10.
 //
-// Cap: REPLAY_CAP_PER_KEYID UNEXPIRED entries per keyid, the test kit's
-// grading target (test-kits/signed-requests-runner.yaml, rate_abuse:
-// 100). The only trusted keys are the public test counterparty's, so the
-// grading cap is also the production cap. Entries live for the TTL the SDK
-// passes (at least 360 s), so after the grader's 100-request rate-abuse fill a
-// keyid stays capped for about six minutes; re-grading inside that window
-// reads rate_abuse.
+// Cap, per keyid, counting UNEXPIRED entries (replayCapFor). The test kit's
+// grading target, 100 (test-kits/signed-requests-runner.yaml, rate_abuse),
+// applies to RATE_ABUSE_VECTOR_KEYID only, the key vector 020-rate-abuse signs
+// with: since 3.2.11 the kit lets an agent lower the cap to that target for
+// that keyid only and says it MUST NOT apply the lowered cap to the runner's
+// other keys, among them test-functional-2026, which signs ordinary
+// functional requests (adcp#8877). Every other trusted keyid gets
+// REPLAY_CAP_OTHER_KEYIDS. That is below the spec's production floor
+// (security.mdx, at least 1,000,000 per keyid) on purpose: every key this
+// verifier trusts is a public test key anyone can sign with, so a million-row
+// cap would let any caller fill the shared table, and 5,000 is far above the
+// signed functional traffic of a grading run. Entries live for the TTL the SDK
+// passes (at least 360 s), so after the grader's 100-request rate-abuse fill
+// the vector 020 keyid stays capped for about six minutes; re-grading inside
+// that window reads rate_abuse.
 //
 // Expired rows are swept by the weekly purge (src/storage/scheduledPurge.ts).
 // Until then they are ignored: every read and the cap count only rows with
@@ -40,7 +48,16 @@
 
 import type { ReplayInsertResult, ReplayStore } from "@adcp/sdk/signing/server";
 
+/** The keyid vector 020-rate-abuse signs with: the only one held to the grading cap. */
+export const RATE_ABUSE_VECTOR_KEYID = "test-ed25519-2026";
+/** The kit's grading target for vector 020, applied to RATE_ABUSE_VECTOR_KEYID only. */
 export const REPLAY_CAP_PER_KEYID = 100;
+/** Every other trusted keyid (see the header for why not the 1,000,000 production floor). */
+export const REPLAY_CAP_OTHER_KEYIDS = 5_000;
+
+export function replayCapFor(keyid: string): number {
+  return keyid === RATE_ABUSE_VECTOR_KEYID ? REPLAY_CAP_PER_KEYID : REPLAY_CAP_OTHER_KEYIDS;
+}
 
 async function nonceDigest(nonce: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(nonce));
@@ -63,7 +80,7 @@ export class D1ReplayStore implements ReplayStore {
       .prepare("SELECT COUNT(*) AS live FROM request_signing_replay WHERE keyid = ? AND expires_at > ?")
       .bind(keyid, now)
       .first<{ live: number }>();
-    return (row?.live ?? 0) >= REPLAY_CAP_PER_KEYID;
+    return (row?.live ?? 0) >= replayCapFor(keyid);
   }
 
   async insert(keyid: string, scope: string, nonce: string, ttlSeconds: number, now: number): Promise<ReplayInsertResult> {
@@ -78,7 +95,7 @@ export class D1ReplayStore implements ReplayStore {
          ON CONFLICT (keyid, nonce_sha256) DO UPDATE SET expires_at = excluded.expires_at
           WHERE request_signing_replay.expires_at <= ?4`,
       )
-      .bind(keyid, await nonceDigest(nonce), now + ttlSeconds, now, REPLAY_CAP_PER_KEYID)
+      .bind(keyid, await nonceDigest(nonce), now + ttlSeconds, now, replayCapFor(keyid))
       .run();
     if (res.meta.changes > 0) return "ok";
     return (await this.has(keyid, scope, nonce, now)) ? "replayed" : "rate_abuse";

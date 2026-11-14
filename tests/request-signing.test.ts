@@ -34,7 +34,7 @@ import {
   REQUEST_SIGNING_CAPABILITY,
   type SignatureCheck,
 } from "../src/domain/requestSigning";
-import { D1ReplayStore, REPLAY_CAP_PER_KEYID } from "../src/storage/replayRepo";
+import { D1ReplayStore, RATE_ABUSE_VECTOR_KEYID, REPLAY_CAP_OTHER_KEYIDS, REPLAY_CAP_PER_KEYID, replayCapFor } from "../src/storage/replayRepo";
 import { runScheduledPurge } from "../src/storage/scheduledPurge";
 import { handleMcpRequest } from "../src/mcp/server";
 import { verify as shimVerify } from "../src/shims/crypto";
@@ -105,9 +105,11 @@ function makeKv(): { kv: KVNamespace; store: Map<string, string> } {
 
 interface VectorKey extends AdcpJsonWebKey { _private_d_for_test_only?: string }
 const TEST_KEYS = (JSON.parse(readFileSync(join(VECTORS, "keys.json"), "utf8")) as { keys: VectorKey[] }).keys;
+// test-functional-2026 is new in 3.2.11 (adcp#8877); the vendored 3.1.24 keys.json predates it.
+const FUNCTIONAL_KEYS = (JSON.parse(readFileSync(join(HERE, "fixtures/request-signing-functional-key-3.2.11.json"), "utf8")) as { keys: VectorKey[] }).keys;
 
 function privateJwk(kid: string): AdcpJsonWebKey {
-  const k = TEST_KEYS.find((key) => key.kid === kid);
+  const k = [...TEST_KEYS, ...FUNCTIONAL_KEYS].find((key) => key.kid === kid);
   if (!k) throw new Error(`no test key ${kid}`);
   const { _private_d_for_test_only: d, ...pub } = k;
   return { ...pub, d: d! };
@@ -325,6 +327,23 @@ describe("D1ReplayStore — (keyid, nonce) replay cache with a per-keyid cap", (
     expect(await store.insert("test-es256-2026", "https://a.example/mcp", "n-next", 360, T)).toBe("ok");
   });
 
+  it(`the ${REPLAY_CAP_PER_KEYID} cap is the vector 020 keyid's only; the functional-dispatch and other test keys take ${REPLAY_CAP_OTHER_KEYIDS}`, async () => {
+    expect(replayCapFor(RATE_ABUSE_VECTOR_KEYID)).toBe(REPLAY_CAP_PER_KEYID);
+    for (const kid of ["test-functional-2026", "test-es256-2026"]) {
+      const { db, sqlite } = makeD1();
+      const store = new D1ReplayStore(db);
+      expect(replayCapFor(kid)).toBe(REPLAY_CAP_OTHER_KEYIDS);
+      for (let i = 0; i < REPLAY_CAP_PER_KEYID; i++) seedReplay(sqlite, kid, `f${i}`, T + 360);
+      // Past the grading cap: still accepted (the 3.2.11 kit's MUST NOT).
+      expect(await store.isCapHit(kid, "s", T)).toBe(false);
+      expect(await store.insert(kid, "s", "f-past-grading-cap", 360, T)).toBe("ok");
+      // At this keyid's own cap the next one is rate_abuse.
+      for (let i = REPLAY_CAP_PER_KEYID + 1; i < REPLAY_CAP_OTHER_KEYIDS; i++) seedReplay(sqlite, kid, `f${i}`, T + 360);
+      expect(await store.isCapHit(kid, "s", T)).toBe(true);
+      expect(await store.insert(kid, "s", "f-next", 360, T)).toBe("rate_abuse");
+    }
+  });
+
   it("concurrent inserts of one nonce: exactly one ok, the rest replayed", async () => {
     const { db, sqlite } = makeD1();
     const store = new D1ReplayStore(db);
@@ -401,6 +420,13 @@ describe("handleMcpRequest — bearer OR verified signature", () => {
   it("signature-only with the ES256 test key → 200 too", async () => {
     const { env } = makeEnv();
     const { status, body } = await call(env, signedReq(toolCall("comply_test_controller", { scenario: "list_scenarios", account: { sandbox: true } }), { kid: "test-es256-2026" }));
+    expect(status).toBe(200);
+    expect(body.result.structuredContent.success).toBe(true);
+  });
+
+  it("signature-only with the 3.2.11 functional-dispatch key (test-functional-2026) → 200 too", async () => {
+    const { env } = makeEnv();
+    const { status, body } = await call(env, signedReq(toolCall("comply_test_controller", { scenario: "list_scenarios", account: { sandbox: true } }), { kid: "test-functional-2026" }));
     expect(status).toBe(200);
     expect(body.result.structuredContent.success).toBe(true);
   });

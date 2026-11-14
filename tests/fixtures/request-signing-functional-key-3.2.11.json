@@ -1,0 +1,19 @@
+{
+  "$comment": "test-functional-2026 as published in compliance/3.2.11/test-vectors/request-signing/keys.json (public conformance test material; the private half is published there too).",
+  "keys": [
+    {
+      "$comment": "Functional-dispatch request-signing key. Dedicated keypair the signed-requests-runner test-kit contract uses to sign ordinary functional storyboard requests. No conformance vector signs with it, so functional traffic never consumes the per-keyid replay-cache budget that vector 020-rate-abuse grades on test-ed25519-2026; see test-kits/signed-requests-runner.yaml.",
+      "kid": "test-functional-2026",
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "alg": "EdDSA",
+      "use": "sig",
+      "key_ops": [
+        "verify"
+      ],
+      "adcp_use": "request-signing",
+      "x": "t1Ol9jp0AixUFiZfyy_7cqnR3hpz0fxYD6x9SGX-d8Y",
+      "_private_d_for_test_only": "AcltCGLWSJ1OEkbhpTWbqdb9lLVmJstnzHzXkVAy6c0"
+    }
+  ]
+}

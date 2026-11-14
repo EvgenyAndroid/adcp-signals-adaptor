@@ -20,10 +20,14 @@
 // Empty lists also mean identity.key_origins carries no request_signing
 // entry (every key_origins entry needs a non-empty list).
 //
-// TRUSTED KEYS. Only the public AdCP conformance test counterparty: the four
+// TRUSTED KEYS. Only the public AdCP conformance test counterparty: the five
 // keys published at
-//   https://adcontextprotocol.org/compliance/3.1.24/test-vectors/request-signing/keys.json
-// (public halves here; the file also publishes the private halves). Anyone can
+//   https://adcontextprotocol.org/compliance/3.2.11/test-vectors/request-signing/keys.json
+// (public halves here; the file also publishes the private halves). The fifth,
+// test-functional-2026 (new in 3.2.11, adcp#8877), is the key the runner signs
+// ordinary functional requests with (the kit's functional_dispatch.signing_keyid),
+// and the kit says a verifier MUST treat every runner_signing_keys keyid as the
+// test counterparty. Anyone can
 // sign with them, so a verified signature from them is a SANDBOX principal no
 // stronger than the public DEMO key — src/mcp/server.ts never maps it to live
 // mode. test-gov-2026 (wrong adcp_use) and test-revoked-2026 (pre-revoked) are
@@ -136,6 +140,10 @@ const TEST_COUNTERPARTY_KEYS: AdcpJsonWebKey[] = [
     kid: "test-es256-2026", kty: "EC", crv: "P-256", alg: "ES256", use: "sig", key_ops: ["verify"],
     adcp_use: "request-signing", x: "vGSQmjzPN1txgDY-oBb108gMsRETA9J5IPxqlBczQOY",
     y: "JGIbsHoOnHLL_LFqGYUW43BYDAqGYrNRZUylkE7rqSU",
+  },
+  {
+    kid: "test-functional-2026", kty: "OKP", crv: "Ed25519", alg: "EdDSA", use: "sig", key_ops: ["verify"],
+    adcp_use: "request-signing", x: "t1Ol9jp0AixUFiZfyy_7cqnR3hpz0fxYD6x9SGX-d8Y",
   },
   {
     kid: "test-gov-2026", kty: "OKP", crv: "Ed25519", alg: "EdDSA", use: "sig", key_ops: ["verify"],
